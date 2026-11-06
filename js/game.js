@@ -139,6 +139,39 @@
         ability: { name: 'Swamp Regenerator', range: 0, type: 'passive', desc: 'Any allied card next to the hydra is healed 10 HP at beginning of next turn.' }
       },
       passiveHint: 'Regrowth: If damaged, regains 20 HP next turn. Swamp Regenerator: Adjacent allies heal 10 HP next turn.'
+    },
+
+    terra_mother: {
+      id: 'terra_mother',
+      name: 'Terra-Mother',
+      element: 'earth',
+      stars: 4,
+      maxHp: 100,
+      cardImg: 'Cards/Terra_Mother_Card.png',
+      spriteBase: 'Sprites/Terra_Mother/Terra_Mother',
+      sprites: {
+        idle_down: 'Sprites/Terra_Mother/Terra_Mother_idle_down_256x256.png',
+        idle_up: 'Sprites/Terra_Mother/Terra_Mother_idle_up_256x256.png',
+        idle_left: 'Sprites/Terra_Mother/Terra_Mother_idle_left_256x256.png',
+        idle_right: 'Sprites/Terra_Mother/Terra_Mother_idle_right_256x256.png',
+        walk_down: 'Sprites/Terra_Mother/Terra_Mother_walk_down_256x256.png',
+        walk_up: 'Sprites/Terra_Mother/Terra_Mother_walk_up_256x256.png',
+        walk_left: 'Sprites/Terra_Mother/Terra_Mother_walk_left_256x256.png',
+        walk_right: 'Sprites/Terra_Mother/Terra_Mother_walk_right_256x256.png',
+        attack: 'Sprites/Terra_Mother/Terra_Mother_attack_root_crush_256x256.png',
+        attack_left: 'Sprites/Terra_Mother/Terra_Mother_attack_charge_left_256x256.png',
+        attack_right: 'Sprites/Terra_Mother/Terra_Mother_attack_charge_right_256x256.png',
+        attack_aoe: 'Sprites/Terra_Mother/Terra_Mother_attack_ancient_saplings_256x256.png',
+        hurt: 'Sprites/Terra_Mother/Terra_Mother_hurt_damaged_256x256.png',
+        defeated: 'Sprites/Terra_Mother/Terra_Mother_defeated_slumped_256x256.png'
+      },
+      baseMove: 2,
+      skills: {
+        atk1: { name: 'Root Crush', range: 1, dmg: 35, type: 'target', desc: 'Deals 35 damage.' },
+        atk2: { name: 'Ram', range: 0, type: 'passive_ram', desc: 'After Terra-Mother moves, hostiles in front of her are knocked back 3 tiles.' },
+        ability: { name: 'Thorn of Life', range: 0, type: 'passive', desc: 'When Terra-Mother stays in the same place for 3 turns in a row, Thorns grow in a random tile next to or diagonal her.' }
+      },
+      passiveHint: 'Ram: After moving, hostiles ahead are knocked back 3 tiles. Thorn of Life: Staying in place 3 turns grows Thorns.'
     }
   };
 
@@ -147,7 +180,7 @@
   // ---------------------------------------------------------------------------
   class BeastsGame {
     constructor() {
-      this.VERSION = '1.06';
+      this.VERSION = '1.07';
       this.COLS = 10;
       this.ROWS = 8;
       this.round = 1;
@@ -225,6 +258,8 @@
         hasActed: false,
         facing: team === 1 ? 'right' : 'left',
         animState: 'idle',
+        stationaryTurns: 0,
+        hasMovedThisTurn: false,
         status: {
           immobilized: 0,
           howlBuff: 0,
@@ -243,7 +278,7 @@
       document.getElementById('btn-atk1').addEventListener('click', () => this.setActionMode('atk1'));
       document.getElementById('btn-atk2').addEventListener('click', () => {
         const u = this.selectedUnit;
-        if (u && (u.skills.atk2.type === 'counter_stance' || u.skills.atk2.type === 'self_move' || u.skills.atk2.type === 'passive')) {
+        if (u && (u.skills.atk2.type === 'counter_stance' || u.skills.atk2.type === 'self_move' || u.skills.atk2.type === 'passive' || u.skills.atk2.type === 'passive_ram')) {
           this.attemptAttack(u, 'atk2', u.x, u.y);
         } else {
           this.setActionMode('atk2');
@@ -341,7 +376,7 @@
           this.setActionMode('atk1');
         } else if (e.key === '3') {
           const u = this.selectedUnit;
-          if (u && (u.skills.atk2.type === 'counter_stance' || u.skills.atk2.type === 'self_move' || u.skills.atk2.type === 'passive')) {
+          if (u && (u.skills.atk2.type === 'counter_stance' || u.skills.atk2.type === 'self_move' || u.skills.atk2.type === 'passive' || u.skills.atk2.type === 'passive_ram')) {
             this.attemptAttack(u, 'atk2', u.x, u.y);
           } else {
             this.setActionMode('atk2');
@@ -583,6 +618,41 @@
         if (stepIdx >= path.length) {
           unit.movesLeft = Math.max(0, unit.movesLeft - path.length);
           unit.animState = 'idle';
+          unit.hasMovedThisTurn = true;
+          unit.stationaryTurns = 0;
+
+          // Terra-Mother Ram: After Terra-Mother moves, hostiles in front of her are knocked back 3 tiles!
+          if (unit.id === 'terra_mother' && path.length > 0) {
+            const dx = unit.facing === 'right' ? 1 : (unit.facing === 'left' ? -1 : 0);
+            const dy = unit.facing === 'down' ? 1 : (unit.facing === 'up' ? -1 : 0);
+            const frontX = unit.x + dx;
+            const frontY = unit.y + dy;
+            const target = this.getUnitAt(frontX, frontY);
+            if (target && target.team !== unit.team && target.hp > 0) {
+              let currX = target.x;
+              let currY = target.y;
+              let pushedTiles = 0;
+              for (let k = 1; k <= 3; k++) {
+                const nx = currX + dx;
+                const ny = currY + dy;
+                if (nx < 0 || nx >= this.COLS || ny < 0 || ny >= this.ROWS) break;
+                const obsHazard = this.getHazardAt(nx, ny);
+                if (obsHazard && obsHazard.type === 'rock_barrier') break;
+                if (this.getUnitAt(nx, ny)) break;
+                currX = nx;
+                currY = ny;
+                pushedTiles++;
+              }
+              if (pushedTiles > 0) {
+                target.x = currX;
+                target.y = currY;
+                window.sounds.playRock();
+                this.spawnFloatingText(target.x, target.y, `RAMMED! -${pushedTiles} TILES`, 'status');
+                this.log(`💥 Ram: Terra-Mother rammed ${target.name}, knocking them back ${pushedTiles} tiles!`, 'attack');
+                this.renderUnits();
+              }
+            }
+          }
 
           // Terraform bonus: Earth Golem stepping onto a Rock Barrier gains +1 extra move!
           const hazardHere = this.getHazardAt(unit.x, unit.y);
@@ -598,6 +668,21 @@
             window.sounds.playFire();
             this.spawnFloatingText(unit.x, unit.y, '-10 FIRE', 'damage');
             this.log(`${unit.name} stepped into fire taking 10 flame damage!`, 'attack');
+          }
+
+          // Check if landed on Thorns Tile (Thorn of Life)
+          if (hazardHere && hazardHere.type === 'thorns' && unit.element !== 'earth') {
+            unit.hp = Math.max(0, unit.hp - 15);
+            window.sounds.playHit();
+            this.spawnFloatingText(unit.x, unit.y, '-15 THORNS', 'damage');
+            this.log(`${unit.name} stepped into sharp thorns taking 15 piercing damage!`, 'attack');
+            // Heal Terra-Mother if on the opposing team
+            const tmAllies = this.units.filter(u => u.id === 'terra_mother' && u.hp > 0 && u.team !== unit.team);
+            tmAllies.forEach(tm => {
+              tm.hp = Math.min(tm.maxHp, tm.hp + 15);
+              this.spawnFloatingText(tm.x, tm.y, '+15 THORN LIFE', 'heal');
+              this.log(`🌿 Thorn of Life restored 15 HP to Terra-Mother!`, 'system');
+            });
           }
 
           this.render();
@@ -779,6 +864,13 @@
         return;
       }
 
+      // Special Terra-Mother Move 2: RAM (Passive Check)
+      if (skill.type === 'passive_ram') {
+        this.spawnFloatingText(unit.x, unit.y, 'RAM PASSIVE', 'status');
+        this.log(`💥 Terra-Mother's Ram is passive: After moving, hostiles in front of her are knocked back 3 tiles!`, 'system');
+        return;
+      }
+
       // Special Rock Barrier Spawning (Earth Golem Move 2: "Adds a stone wall in any cardinal or diagonal direction")
       if (skill.type === 'spawn_barrier') {
         if (targetX > unit.x) unit.facing = 'right';
@@ -811,6 +903,7 @@
       else if (unit.id === 'earth_golem') window.sounds.playRock();
       else if (unit.id === 'werewolf') window.sounds.playHit();
       else if (unit.id === 'hydra') window.sounds.playPoison();
+      else if (unit.id === 'terra_mother') window.sounds.playRock();
 
       // Orient attacker towards target
       if (targetX > unit.x) unit.facing = 'right';
@@ -880,6 +973,14 @@
         window.sounds.playHeal();
         this.spawnFloatingText(unit.x, unit.y, 'SWAMP REGEN ACTIVE', 'heal');
         this.log(`🌱 Hydra Ability — Swamp Regenerator: Any allied card next to the hydra is healed 10 HP at the beginning of next turn.`, 'system');
+        return;
+      }
+
+      // Terra-Mother Ability: THORN OF LIFE
+      if (unit.id === 'terra_mother') {
+        window.sounds.playHeal();
+        this.spawnFloatingText(unit.x, unit.y, 'THORN OF LIFE', 'heal');
+        this.log(`🌹 Terra-Mother Ability — Thorn of Life: When staying in the same place for 3 turns in a row, Thorns grow in a random adjacent or diagonal tile.`, 'system');
         return;
       }
     }
@@ -1035,6 +1136,43 @@
       window.sounds.playClick();
       const endBtn = document.getElementById('btn-end-turn');
       if (endBtn) endBtn.classList.remove('pulse-ready');
+
+      // Check stationary turns for Terra-Mother on the team ending their turn:
+      const endingTeamUnits = this.units.filter(u => u.team === this.currentTeam && u.hp > 0);
+      endingTeamUnits.forEach(u => {
+        if (u.id === 'terra_mother') {
+          if (!u.hasMovedThisTurn) {
+            u.stationaryTurns = (u.stationaryTurns || 0) + 1;
+            this.log(`🌿 Terra-Mother rooted in place (${u.stationaryTurns}/3 turns).`, 'system');
+            if (u.stationaryTurns >= 3) {
+              const candidates = [];
+              for (let dx = -1; dx <= 1; dx++) {
+                for (let dy = -1; dy <= 1; dy++) {
+                  if (dx === 0 && dy === 0) continue;
+                  const nx = u.x + dx;
+                  const ny = u.y + dy;
+                  if (nx >= 0 && nx < this.COLS && ny >= 0 && ny < this.ROWS) {
+                    if (!this.getHazardAt(nx, ny) && !this.getUnitAt(nx, ny)) {
+                      candidates.push({ x: nx, y: ny });
+                    }
+                  }
+                }
+              }
+              if (candidates.length > 0) {
+                const chosen = candidates[Math.floor(Math.random() * candidates.length)];
+                this.addHazard(chosen.x, chosen.y, 'thorns', 99);
+                window.sounds.playRock();
+                this.spawnFloatingText(chosen.x, chosen.y, 'THORN OF LIFE!', 'status');
+                this.log(`🌹 Thorn of Life: Terra-Mother stayed in place 3 turns! Thorns sprouted at (${chosen.x}, ${chosen.y})!`, 'system');
+              }
+              u.stationaryTurns = 0;
+            }
+          } else {
+            u.stationaryTurns = 0;
+          }
+          u.hasMovedThisTurn = false;
+        }
+      });
 
       this.currentTeam = this.currentTeam === 1 ? 2 : 1;
       if (this.currentTeam === 1) {
@@ -1289,10 +1427,10 @@
     // Mythical Beast Draft System (3 Selections Per Team)
     // -------------------------------------------------------------------------
     initDraft() {
-      this.draftPoolTemplates = ['phoenix', 'earth_golem', 'werewolf', 'hydra'];
+      this.draftPoolTemplates = ['phoenix', 'earth_golem', 'werewolf', 'hydra', 'terra_mother'];
       this.draftState = {
         active: false,
-        poolStock: { phoenix: 2, earth_golem: 2, werewolf: 2, hydra: 2 },
+        poolStock: { phoenix: 2, earth_golem: 2, werewolf: 2, hydra: 2, terra_mother: 2 },
         team1Picks: [],
         team2Picks: [],
         turnOrder: [],
@@ -1319,7 +1457,7 @@
 
       this.draftState = {
         active: true,
-        poolStock: { phoenix: 2, earth_golem: 2, werewolf: 2, hydra: 2 },
+        poolStock: { phoenix: 2, earth_golem: 2, werewolf: 2, hydra: 2, terra_mother: 2 },
         team1Picks: [],
         team2Picks: [],
         turnOrder: turnOrder,
@@ -1586,9 +1724,13 @@
         el.style.top = `${y * 12.5}%`;
 
         const img = document.createElement('img');
-        img.src = h.type === 'fire' 
-          ? 'Sprites/Effects/Fire_Tile_256x256.png' 
-          : 'Sprites/Effects/Rock_Barrier_Tile_256x256.png';
+        if (h.type === 'fire') {
+          img.src = 'Sprites/Effects/Fire_Tile_256x256.png';
+        } else if (h.type === 'rock_barrier') {
+          img.src = 'Sprites/Effects/Rock_Barrier_Tile_256x256.png';
+        } else if (h.type === 'thorns') {
+          img.src = 'Sprites/Effects/Thorn_Tile_256x256.png';
+        }
         el.appendChild(img);
         this.elHazardsLayer.appendChild(el);
       }

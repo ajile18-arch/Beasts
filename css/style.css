@@ -702,6 +702,22 @@ body {
   filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.8));
 }
 
+.hazard-sprite.thorns img {
+  filter: drop-shadow(0 0 10px rgba(34, 197, 94, 0.75)) brightness(1.1);
+  animation: thornPulse 2.8s infinite alternate ease-in-out;
+}
+
+@keyframes thornPulse {
+  0% {
+    transform: scale(0.96);
+    filter: drop-shadow(0 0 8px rgba(34, 197, 94, 0.6)) brightness(1.0);
+  }
+  100% {
+    transform: scale(1.04);
+    filter: drop-shadow(0 0 16px rgba(34, 197, 94, 0.95)) brightness(1.2);
+  }
+}
+
 @keyframes fireRoar {
   0% {
     transform: scale(1.18) translateY(0);
@@ -1623,8 +1639,8 @@ body {
 
 .draft-cards-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 14px;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
 }
 
 .draft-card-item {
