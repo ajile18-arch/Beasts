@@ -192,13 +192,13 @@
     // Spawn 4 beasts
     initUnits() {
       this.units = [
-        // Team 1: Solar (Phoenix & Earth Golem)
-        this.createUnitInstance('phoenix', 1, 2, 2),
-        this.createUnitInstance('earth_golem', 1, 2, 5),
+        // Team 1: Solar (Player's Team) - Left column in central tiles
+        this.createUnitInstance('phoenix', 1, 0, 3),
+        this.createUnitInstance('earth_golem', 1, 0, 4),
 
-        // Team 2: Lunar (Werewolf & Hydra)
-        this.createUnitInstance('werewolf', 2, 7, 2),
-        this.createUnitInstance('hydra', 2, 7, 5)
+        // Team 2: Lunar (Hostile Team) - Far right column in central tiles
+        this.createUnitInstance('werewolf', 2, 9, 3),
+        this.createUnitInstance('hydra', 2, 9, 4)
       ];
     }
 
