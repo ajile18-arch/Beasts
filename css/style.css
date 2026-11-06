@@ -451,6 +451,12 @@ body {
   color: #94a3b8;
 }
 
+.moves-tag.hostile {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: #ef4444;
+  color: #fca5a5;
+}
+
 .status-moves-summary {
   display: flex;
   flex-direction: column;
@@ -500,6 +506,14 @@ body {
   border-color: var(--border-gold);
   color: #fff;
   box-shadow: 0 0 8px rgba(212, 175, 55, 0.4);
+}
+
+.beast-chip[data-unit="werewolf"].active,
+.beast-chip[data-unit="hydra"].active {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.4), rgba(239, 68, 68, 0.15));
+  border-color: #ef4444;
+  color: #fca5a5;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
 }
 
 /* --------------------------------------------------------------------------
@@ -768,6 +782,12 @@ body {
   box-shadow: 0 0 15px rgba(212, 175, 55, 0.8);
   animation: selectRing 1.5s infinite ease-in-out;
   pointer-events: none;
+}
+
+.unit-entity.team-2.selected .unit-sprite-box::before {
+  border-color: #ef4444;
+  background: radial-gradient(ellipse, rgba(239, 68, 68, 0.4) 0%, transparent 75%);
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.85);
 }
 
 .unit-entity.team-1 .unit-sprite-box img {

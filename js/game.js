@@ -147,7 +147,7 @@
   // ---------------------------------------------------------------------------
   class BeastsGame {
     constructor() {
-      this.VERSION = '1.02';
+      this.VERSION = '1.03';
       this.COLS = 10;
       this.ROWS = 8;
       this.round = 1;
@@ -407,8 +407,13 @@
       // Moves left indicator
       const movesTag = document.getElementById('status-moves-tag');
       if (movesTag) {
-        movesTag.textContent = `${unit.movesLeft} Moves`;
-        movesTag.className = unit.movesLeft > 0 ? 'moves-tag' : 'moves-tag spent';
+        if (unit.team !== this.currentTeam) {
+          movesTag.textContent = 'Hostile (Inspect)';
+          movesTag.className = 'moves-tag hostile';
+        } else {
+          movesTag.textContent = `${unit.movesLeft} Moves`;
+          movesTag.className = unit.movesLeft > 0 ? 'moves-tag' : 'moves-tag spent';
+        }
       }
 
       // Move briefs (Option B)
@@ -457,10 +462,14 @@
         return;
       }
 
+      const isHostile = u.team !== this.currentTeam;
+
       document.getElementById('active-avatar').style.backgroundImage = `url(${u.sprites.idle_down})`;
-      document.getElementById('active-name').textContent = u.name;
-      document.getElementById('active-moves-left').textContent = `Moves: ${u.movesLeft}`;
-      document.getElementById('active-passive-hint').textContent = u.passiveHint;
+      document.getElementById('active-name').textContent = isHostile ? `${u.name} (Hostile)` : u.name;
+      document.getElementById('active-moves-left').textContent = isHostile ? `Hostile Beast` : `Moves: ${u.movesLeft}`;
+      document.getElementById('active-passive-hint').textContent = isHostile 
+        ? `Inspecting enemy beast (Viewing info only). Click any friendly beast to resume actions.` 
+        : u.passiveHint;
 
       // Update button labels from template
       document.getElementById('atk1-title').textContent = u.skills.atk1.name;
@@ -502,23 +511,37 @@
 
       const unitAtCell = this.getUnitAt(x, y);
 
-      // If clicked on an ally, select that ally
+      // 1. If clicked on an ally, switch active control to that ally
       if (unitAtCell && unitAtCell.team === this.currentTeam) {
         this.selectUnit(unitAtCell);
         return;
       }
 
-      // If in an action mode with active unit
-      if (this.selectedUnit && this.selectedUnit.team === this.currentTeam) {
-        if (this.actionMode === 'move') {
-          this.attemptMove(this.selectedUnit, x, y);
-        } else if (this.actionMode === 'atk1') {
-          this.attemptAttack(this.selectedUnit, 'atk1', x, y);
-        } else if (this.actionMode === 'atk2') {
-          this.attemptAttack(this.selectedUnit, 'atk2', x, y);
+      // 2. If friendly unit is active and an action mode is engaged, attempt action if target is valid
+      if (this.selectedUnit && this.selectedUnit.team === this.currentTeam && this.actionMode) {
+        if (this.actionMode === 'atk1' || this.actionMode === 'atk2') {
+          const skill = this.selectedUnit.skills[this.actionMode];
+          const validTargets = this.getValidAttackTargets(this.selectedUnit, skill);
+          if (validTargets.some(t => t.x === x && t.y === y)) {
+            this.attemptAttack(this.selectedUnit, this.actionMode, x, y);
+            return;
+          }
+        } else if (this.actionMode === 'move') {
+          const validMoves = this.getValidMoves(this.selectedUnit);
+          if (validMoves.some(m => m.x === x && m.y === y)) {
+            this.attemptMove(this.selectedUnit, x, y);
+            return;
+          }
         } else if (this.actionMode === 'ability') {
           this.attemptAbility(this.selectedUnit, x, y);
+          return;
         }
+      }
+
+      // 3. If clicked on an enemy / hostile beast at any time, select to view their info only!
+      if (unitAtCell && unitAtCell.team !== this.currentTeam) {
+        this.selectUnit(unitAtCell);
+        return;
       }
     }
 
