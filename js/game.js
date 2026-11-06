@@ -1,4 +1,4 @@
-﻿/**
+/**
  * BEASTS: Tactical Tabletop Arena - Game Engine
  */
 
@@ -147,7 +147,7 @@
   // ---------------------------------------------------------------------------
   class BeastsGame {
     constructor() {
-      this.VERSION = '1.01';
+      this.VERSION = '1.02';
       this.COLS = 10;
       this.ROWS = 8;
       this.round = 1;
@@ -362,16 +362,16 @@
       this.updateCardDossier(unit);
       this.updateActionDock();
 
-      // Automatically default to move mode if unit has moves remaining
-      if (unit && unit.team === this.currentTeam && unit.movesLeft > 0 && !unit.hasActed) {
-        this.setActionMode('move');
+      // Automatically default to move mode when switching to a friendly beast with moves available
+      if (unit && unit.team === this.currentTeam && unit.movesLeft > 0 && (!unit.status.immobilized || unit.status.immobilized === 0)) {
+        this.setActionMode('move', true, true);
       } else {
-        this.setActionMode(null);
+        this.setActionMode(null, true, true);
       }
       this.render();
     }
 
-    setActionMode(mode) {
+    setActionMode(mode, force = false, silent = false) {
       if (!this.selectedUnit) return;
       if (this.selectedUnit.team !== this.currentTeam) {
         this.actionMode = null;
@@ -379,13 +379,13 @@
         return;
       }
 
-      if (this.actionMode === mode) {
+      if (!force && this.actionMode === mode) {
         this.actionMode = null; // Toggle off
       } else {
         this.actionMode = mode;
       }
 
-      window.sounds.playClick();
+      if (!silent) window.sounds.playClick();
       this.updateActionDockButtons();
       this.renderHighlights();
     }
