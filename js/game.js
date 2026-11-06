@@ -147,6 +147,7 @@
   // ---------------------------------------------------------------------------
   class BeastsGame {
     constructor() {
+      this.VERSION = '1.00';
       this.COLS = 10;
       this.ROWS = 8;
       this.round = 1;
@@ -166,6 +167,9 @@
       this.elLog = document.getElementById('combat-log');
       this.elRoster = document.getElementById('roster-list');
       this.elWinnerModal = document.getElementById('winner-modal');
+
+      const verEl = document.getElementById('game-version');
+      if (verEl) verEl.textContent = `v${this.VERSION}`;
 
       this.initBoard();
       this.initUnits();
@@ -1249,7 +1253,7 @@
       this.initUnits();
       this.render();
       this.selectUnit(this.units[0]);
-      this.log(`Match restarted on Ancient Tabletop Arena.`, 'system');
+      this.log(`Match restarted on Ancient Tabletop Arena (v${this.VERSION}).`, 'system');
     }
 
     // -------------------------------------------------------------------------
