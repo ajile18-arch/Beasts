@@ -1194,9 +1194,15 @@
         }
 
         const statusUnderHTML = this.renderUnitStatusUnder(u);
+        const isCurrentTurn = u.team === this.currentTeam && u.hp > 0;
+        const hasActions = (u.movesLeft > 0 && u.status.immobilized === 0) || !u.hasActed;
+        const turnDotHTML = isCurrentTurn
+          ? `<div class="turn-indicator-dot ${hasActions ? 'ready' : 'exhausted'}" title="${u.name} (Team ${u.team}) - Active Turn"></div>`
+          : '';
 
         el.innerHTML = `
           <div class="unit-hud">
+            ${turnDotHTML}
             <div class="unit-hp-bar">
               <div class="unit-hp-fill ${u.hp / u.maxHp < 0.3 ? 'low' : ''}" style="width: ${(u.hp / u.maxHp) * 100}%"></div>
             </div>
