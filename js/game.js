@@ -69,7 +69,7 @@
       baseMove: 2,
       skills: {
         atk1: { name: 'Crushing Grip', range: 1, dmg: 20, immobilize: 1, type: 'target', desc: 'Deals 20 damage. Disables hostile movement on next turn.' },
-        atk2: { name: 'Rock Barrier', range: 1, type: 'spawn_barrier', desc: 'Adds stone wall in front of Earth Golem (Earth-passable only).' },
+        atk2: { name: 'Rock Barrier', range: 1, type: 'spawn_barrier', desc: 'Adds stone wall in any cardinal or diagonal direction (Earth-passable only).' },
         ability: { name: 'Terraform', range: 0, type: 'passive', desc: 'Gives an extra tile of movement when on own Rock Barriers.' }
       },
       passiveHint: 'Ability: Terraform — Gives an extra tile of movement when on own Rock Barriers.'
@@ -743,8 +743,13 @@
         return;
       }
 
-      // Special Rock Barrier Spawning (Earth Golem Move 2: "Adds a stone wall in the tile directly in front")
+      // Special Rock Barrier Spawning (Earth Golem Move 2: "Adds a stone wall in any cardinal or diagonal direction")
       if (skill.type === 'spawn_barrier') {
+        if (targetX > unit.x) unit.facing = 'right';
+        else if (targetX < unit.x) unit.facing = 'left';
+        else if (targetY > unit.y) unit.facing = 'down';
+        else if (targetY < unit.y) unit.facing = 'up';
+
         this.addHazard(targetX, targetY, 'rock_barrier', 99);
         window.sounds.playRock();
         unit.animState = 'attack_aoe';
@@ -933,6 +938,34 @@
       if (skill.range === 0 || skill.type === 'counter_stance' || skill.type === 'self_move' || skill.type === 'passive') {
         return [{ x: unit.x, y: unit.y }];
       }
+
+      // Rock Barrier (Earth Golem Move 2):
+      // Allows placement in all directions (Up, Down, Left, Right) as well as Diagonally!
+      if (skill.type === 'spawn_barrier') {
+        const barrierTargets = [];
+        const directions = [
+          { x: 0, y: -1 },  // Up (North)
+          { x: 0, y: 1 },   // Down (South)
+          { x: -1, y: 0 },  // Left (West)
+          { x: 1, y: 0 },   // Right (East)
+          { x: -1, y: -1 }, // Up-Left (North-West)
+          { x: 1, y: -1 },  // Up-Right (North-East)
+          { x: -1, y: 1 },  // Down-Left (South-West)
+          { x: 1, y: 1 }    // Down-Right (South-East)
+        ];
+
+        directions.forEach(d => {
+          const tx = unit.x + d.x;
+          const ty = unit.y + d.y;
+          if (tx >= 0 && tx < this.COLS && ty >= 0 && ty < this.ROWS) {
+            if (!this.getUnitAt(tx, ty) && !this.getHazardAt(tx, ty)) {
+              barrierTargets.push({ x: tx, y: ty });
+            }
+          }
+        });
+        return barrierTargets;
+      }
+
       const targets = [];
       const range = skill.range || 1;
 
@@ -940,17 +973,10 @@
         for (let c = 0; c < this.COLS; c++) {
           const dist = Math.abs(c - unit.x) + Math.abs(r - unit.y);
           if (dist > 0 && dist <= range) {
-            // If spawning a barrier, valid on any empty cell
-            if (skill.type === 'spawn_barrier') {
-              if (!this.getUnitAt(c, r) && !this.getHazardAt(c, r)) {
-                targets.push({ x: c, y: r });
-              }
-            } else {
-              // Valid on hostile beasts
-              const targetUnit = this.getUnitAt(c, r);
-              if (targetUnit && targetUnit.team !== unit.team && targetUnit.hp > 0) {
-                targets.push({ x: c, y: r });
-              }
+            // Valid on hostile beasts
+            const targetUnit = this.getUnitAt(c, r);
+            if (targetUnit && targetUnit.team !== unit.team && targetUnit.hp > 0) {
+              targets.push({ x: c, y: r });
             }
           }
         }
@@ -1373,7 +1399,13 @@
         const targets = this.getValidAttackTargets(this.selectedUnit, skill);
         targets.forEach(t => {
           const cell = this.getCellElement(t.x, t.y);
-          if (cell) cell.classList.add('valid-attack');
+          if (cell) {
+            if (skill.type === 'spawn_barrier') {
+              cell.classList.add('valid-special');
+            } else {
+              cell.classList.add('valid-attack');
+            }
+          }
         });
       } else if (this.actionMode === 'ability') {
         // Self or team ability highlight
