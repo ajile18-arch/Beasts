@@ -147,7 +147,7 @@
   // ---------------------------------------------------------------------------
   class BeastsGame {
     constructor() {
-      this.VERSION = '1.04';
+      this.VERSION = '1.05';
       this.COLS = 10;
       this.ROWS = 8;
       this.round = 1;
@@ -926,13 +926,19 @@
       this.checkWinCondition();
     }
 
+    hasMovementOptions(unit) {
+      if (!unit || unit.hp <= 0) return false;
+      if (unit.team !== this.currentTeam) return false;
+      return unit.movesLeft > 0 && (!unit.status.immobilized || unit.status.immobilized === 0);
+    }
+
     hasViableOptions(unit) {
       if (!unit || unit.hp <= 0) return false;
       // If it is not this unit's team's turn, it has no viable options right now
       if (unit.team !== this.currentTeam) return false;
 
       // Has movement available (and not immobilized)
-      const canMove = unit.movesLeft > 0 && (unit.status.immobilized === 0 || !unit.status.immobilized);
+      const canMove = this.hasMovementOptions(unit);
 
       // Has action/attack available
       const canAct = !unit.hasActed;
@@ -1614,11 +1620,13 @@
         }
 
         const statusUnderHTML = this.renderUnitStatusUnder(u);
-        const hasViable = this.hasViableOptions(u);
-        const dotTitle = hasViable
-          ? `${u.name} (Ready): ${u.movesLeft} moves left${u.hasActed ? ', Action spent' : ', Action available'}`
-          : `${u.name} (Exhausted): No moves or options available`;
-        const turnDotHTML = `<div class="turn-indicator-dot ${hasViable ? 'viable' : 'exhausted'}" title="${dotTitle}"></div>`;
+        const hasMoves = this.hasMovementOptions(u);
+        const dotTitle = hasMoves
+          ? `${u.name} (Moving): ${u.movesLeft} movement options available`
+          : (u.team === this.currentTeam 
+              ? `${u.name} (Movement Exhausted): 0 moves remaining${!u.hasActed ? ' (Action available)' : ''}` 
+              : `${u.name}: Waiting for turn`);
+        const turnDotHTML = `<div class="turn-indicator-dot ${hasMoves ? 'viable' : 'exhausted'}" title="${dotTitle}"></div>`;
 
         el.innerHTML = `
           <div class="unit-hud">
