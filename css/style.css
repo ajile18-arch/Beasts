@@ -646,17 +646,51 @@ body {
 }
 
 .hazard-sprite.fire img {
-  filter: drop-shadow(0 0 10px rgba(239, 68, 68, 0.8));
-  animation: fireFlicker 2s infinite alternate ease-in-out;
+  transform-origin: center bottom;
+  transition: transform 0.4s ease, filter 0.4s ease, opacity 0.4s ease;
+}
+
+/* 2 Turns Left: Large, Roaring Billowing Flames */
+.hazard-sprite.fire.fire-turns-2 img {
+  transform: scale(1.22);
+  filter: drop-shadow(0 0 14px rgba(249, 115, 22, 0.95)) drop-shadow(0 0 25px rgba(239, 68, 68, 0.8)) brightness(1.2);
+  animation: fireRoar 1.4s infinite alternate ease-in-out;
+}
+
+/* 1 Turn Left: Smaller, Low Burning Fading Embers */
+.hazard-sprite.fire.fire-turns-1 img {
+  transform: scale(0.65);
+  filter: drop-shadow(0 0 6px rgba(239, 68, 68, 0.6)) brightness(0.85);
+  opacity: 0.85;
+  animation: fireDying 2.2s infinite alternate ease-in-out;
 }
 
 .hazard-sprite.rock-barrier img {
   filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.8));
 }
 
-@keyframes fireFlicker {
-  0% { filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.7)) brightness(1); }
-  100% { filter: drop-shadow(0 0 16px rgba(249, 115, 22, 0.95)) brightness(1.15); }
+@keyframes fireRoar {
+  0% {
+    transform: scale(1.18) translateY(0);
+    filter: drop-shadow(0 0 12px rgba(239, 68, 68, 0.8)) drop-shadow(0 0 20px rgba(249, 115, 22, 0.7)) brightness(1.1);
+  }
+  100% {
+    transform: scale(1.26) translateY(-3px);
+    filter: drop-shadow(0 0 18px rgba(249, 115, 22, 1)) drop-shadow(0 0 30px rgba(239, 68, 68, 0.9)) brightness(1.3);
+  }
+}
+
+@keyframes fireDying {
+  0% {
+    transform: scale(0.63) translateY(0);
+    filter: drop-shadow(0 0 4px rgba(239, 68, 68, 0.5)) brightness(0.8);
+    opacity: 0.75;
+  }
+  100% {
+    transform: scale(0.68) translateY(-1px);
+    filter: drop-shadow(0 0 8px rgba(249, 115, 22, 0.65)) brightness(0.9);
+    opacity: 0.9;
+  }
 }
 
 /* Units Layer */

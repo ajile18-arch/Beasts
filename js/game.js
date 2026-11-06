@@ -1078,6 +1078,7 @@
           }
         }
       }
+      this.renderHazards();
 
       // Auto-select first active unit of this team
       const nextUnit = teamUnits[0];
@@ -1267,7 +1268,8 @@
         const [x, y] = key.split(',').map(Number);
         const h = this.hazards[key];
         const el = document.createElement('div');
-        el.className = `hazard-sprite ${h.type.replace('_', '-')}`;
+        const durationClass = h.type === 'fire' ? `fire-turns-${h.duration}` : '';
+        el.className = `hazard-sprite ${h.type.replace('_', '-')} ${durationClass}`.trim();
         el.style.left = `${x * 10}%`;
         el.style.top = `${y * 12.5}%`;
 
