@@ -570,6 +570,19 @@
 
           if (unit.movesLeft === 0) {
             this.setActionMode(null);
+            // If unit already acted and moves reached 0, shift to next ready beast
+            if (unit.hasActed && unit.team === this.currentTeam && !this.isAiThinking) {
+              const nextReady = this.units.find(u => u.team === this.currentTeam && u.hp > 0 && u !== unit && this.hasViableOptions(u));
+              if (nextReady) {
+                setTimeout(() => {
+                  this.selectUnit(nextReady);
+                  this.log(`Active command shifted to ${nextReady.name} (Ready to act).`, 'system');
+                }, 350);
+              } else {
+                const endBtn = document.getElementById('btn-end-turn');
+                if (endBtn) endBtn.classList.add('pulse-ready');
+              }
+            }
           } else {
             this.renderHighlights();
           }
@@ -872,6 +885,20 @@
       this.checkWinCondition();
     }
 
+    hasViableOptions(unit) {
+      if (!unit || unit.hp <= 0) return false;
+      // If it is not this unit's team's turn, it has no viable options right now
+      if (unit.team !== this.currentTeam) return false;
+
+      // Has movement available (and not immobilized)
+      const canMove = unit.movesLeft > 0 && (unit.status.immobilized === 0 || !unit.status.immobilized);
+
+      // Has action/attack available
+      const canAct = !unit.hasActed;
+
+      return canMove || canAct;
+    }
+
     finishAction(unit) {
       setTimeout(() => {
         if (unit.hp > 0) unit.animState = 'idle';
@@ -879,6 +906,24 @@
       }, 500);
 
       this.actionMode = null;
+
+      // If playing on active player's team and this unit is out of options:
+      if (unit.team === this.currentTeam && !this.hasViableOptions(unit) && !this.isAiThinking) {
+        // Find next friendly beast that still has viable options
+        const nextReady = this.units.find(u => u.team === this.currentTeam && u.hp > 0 && u !== unit && this.hasViableOptions(u));
+        if (nextReady) {
+          setTimeout(() => {
+            this.selectUnit(nextReady);
+            this.log(`Active command shifted to ${nextReady.name} (Ready to act).`, 'system');
+          }, 350);
+        } else {
+          // All player beasts have finished!
+          this.log(`All beasts have completed their turns. Ready to End Turn.`, 'system');
+          const endBtn = document.getElementById('btn-end-turn');
+          if (endBtn) endBtn.classList.add('pulse-ready');
+        }
+      }
+
       this.render();
       this.updateCardDossier(unit);
       this.updateActionDock();
@@ -920,6 +965,9 @@
       if (this.isAiThinking) return;
 
       window.sounds.playClick();
+      const endBtn = document.getElementById('btn-end-turn');
+      if (endBtn) endBtn.classList.remove('pulse-ready');
+
       this.currentTeam = this.currentTeam === 1 ? 2 : 1;
       if (this.currentTeam === 1) {
         this.round++;
@@ -1081,6 +1129,9 @@
               // 3. Attack Phase: After moving, attack if in range
               setTimeout(() => {
                 this.executeAiAttack(u, nearest);
+                u.hasActed = true;
+                u.movesLeft = 0;
+                this.render();
                 unitIdx++;
                 setTimeout(stepAiUnit, 600);
               }, 400);
@@ -1091,6 +1142,9 @@
 
         // If didn't move, attack directly
         this.executeAiAttack(u, nearest);
+        u.hasActed = true;
+        u.movesLeft = 0;
+        this.render();
         unitIdx++;
         setTimeout(stepAiUnit, 600);
       };
@@ -1226,11 +1280,11 @@
         }
 
         const statusUnderHTML = this.renderUnitStatusUnder(u);
-        const isCurrentTurn = u.team === this.currentTeam && u.hp > 0;
-        const hasActions = (u.movesLeft > 0 && u.status.immobilized === 0) || !u.hasActed;
-        const turnDotHTML = isCurrentTurn
-          ? `<div class="turn-indicator-dot ${hasActions ? 'ready' : 'exhausted'}" title="${u.name} (Team ${u.team}) - Active Turn"></div>`
-          : '';
+        const hasViable = this.hasViableOptions(u);
+        const dotTitle = hasViable
+          ? `${u.name} (Ready): ${u.movesLeft} moves left${u.hasActed ? ', Action spent' : ', Action available'}`
+          : `${u.name} (Exhausted): No moves or options available`;
+        const turnDotHTML = `<div class="turn-indicator-dot ${hasViable ? 'viable' : 'exhausted'}" title="${dotTitle}"></div>`;
 
         el.innerHTML = `
           <div class="unit-hud">
