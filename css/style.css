@@ -1502,50 +1502,26 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
     overflow: hidden;
   }
 
-  .card-panel .panel-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding-bottom: 2px;
-    border-bottom: 1px solid rgba(212, 175, 55, 0.2);
-    margin-bottom: 2px;
-  }
-
-  .card-panel .panel-header h3 {
-    font-size: 11px;
-    letter-spacing: 1px;
-    margin: 0;
-  }
-
-  .card-panel .tip {
-    font-size: 9px;
-    color: var(--text-gold);
-  }
-
-  .card-panel .drawer-close-btn {
-    display: none !important;
-  }
-
   .card-panel .card-display-container {
     display: flex;
     flex-direction: row;
     align-items: stretch;
-    gap: 8px;
+    gap: 10px;
     width: 100%;
     height: 100%;
     overflow: hidden;
   }
 
   .card-panel .card-frame {
-    width: 78px;
-    height: 104px;
-    min-width: 78px;
+    width: 88px;
+    height: 118px;
+    min-width: 88px;
     flex-shrink: 0;
     position: relative;
     border-radius: 6px;
     overflow: hidden;
     border: 1.5px solid var(--border-gold);
-    box-shadow: 0 0 8px rgba(0, 0, 0, 0.8);
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.85);
   }
 
   .card-panel .card-frame img {
@@ -1620,8 +1596,8 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   }
 
   .card-panel .move-brief {
-    font-size: 9px;
-    line-height: 1.2;
+    font-size: 10px;
+    line-height: 1.25;
     color: #e2e8f0;
     white-space: nowrap;
     overflow: hidden;
@@ -1630,7 +1606,7 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
 
   .card-panel .move-brief b {
     color: var(--text-gold);
-    font-size: 8.5px;
+    font-size: 9.5px;
   }
 
   .card-panel .buff-tags {
@@ -1830,9 +1806,9 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   }
 
   .card-panel .card-frame {
-    width: 66px;
-    height: 88px;
-    min-width: 66px;
+    width: 76px;
+    height: 102px;
+    min-width: 76px;
   }
 
   .card-panel .status-header h4 {
@@ -1840,11 +1816,11 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   }
 
   .card-panel .move-brief {
-    font-size: 8px;
+    font-size: 8.5px;
   }
 
   .card-panel .move-brief b {
-    font-size: 8px;
+    font-size: 8.5px;
   }
 
   .card-panel .beast-chip {

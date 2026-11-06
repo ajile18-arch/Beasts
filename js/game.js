@@ -1,4 +1,4 @@
-/**
+﻿/**
  * BEASTS: Tactical Tabletop Arena - Game Engine
  */
 
@@ -147,7 +147,7 @@
   // ---------------------------------------------------------------------------
   class BeastsGame {
     constructor() {
-      this.VERSION = '1.00';
+      this.VERSION = '1.01';
       this.COLS = 10;
       this.ROWS = 8;
       this.round = 1;

@@ -17,7 +17,7 @@
     <header class="game-header">
       <div class="logo-area">
         <h1 class="game-title">BEASTS</h1>
-        <span class="version-tag" id="game-version">v1.00</span>
+        <span class="version-tag" id="game-version">v1.01</span>
         <span class="subtitle">Tactical Tabletop Arena</span>
       </div>
 
@@ -41,7 +41,7 @@
 
       <div class="header-controls">
         <div class="round-counter">Rnd <span id="round-num">1</span></div>
-        <button id="btn-toggle-card" class="ui-btn mobile-only-btn" title="View Card Dossier">🃏 <span class="btn-lbl">Card</span></button>
+        <button id="btn-toggle-card" class="ui-btn mobile-only-btn" title="View Active Beast">🃏 <span class="btn-lbl">Card</span></button>
         <button id="btn-toggle-log" class="ui-btn mobile-only-btn" title="View Tactical Log & Roster">📜 <span class="btn-lbl">Log</span></button>
         <button id="btn-mode" class="ui-btn secondary" title="Switch between Solo AI and 2P Hotseat"><span id="mode-label">Solo vs AI</span></button>
         <button id="btn-sound" class="ui-btn icon-btn" title="Toggle Sound">🔊</button>
@@ -51,13 +51,8 @@
 
     <!-- Main Workspace Area -->
     <main class="main-layout">
-      <!-- Left Column / Mobile Top: Card & Beast Dossier (Option B) -->
+      <!-- Left Column / Mobile Top: Card & Beast (Option B) -->
       <aside class="side-panel card-panel" id="card-panel">
-        <div class="panel-header">
-          <h3>CARD DOSSIER</h3>
-          <span class="tip" id="card-dossier-tip">Active Beast Card</span>
-          <button class="drawer-close-btn mobile-only-btn" id="btn-close-card" title="Close">✕</button>
-        </div>
         <div class="card-display-container">
           <div class="card-frame" id="card-frame">
             <img id="card-img" src="Cards/Phoenix_Card.png" alt="Card Display">
@@ -178,7 +173,7 @@
           <button id="btn-clear-log" class="tiny-btn">Clear</button>
         </div>
         <div class="combat-log" id="combat-log">
-          <div class="log-entry system">Beasts Tactical Arena v1.00 initialized. Select your beast to begin.</div>
+          <div class="log-entry system">Beasts Tactical Arena v1.01 initialized. Select your beast to begin.</div>
         </div>
       </aside>
     </main>
