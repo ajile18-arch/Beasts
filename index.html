@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Beasts - Tactical Tabletop Arena</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=MedievalSharp&family=Metamorphous&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div id="app">
+    <!-- Top Header Bar -->
+    <header class="game-header">
+      <div class="logo-area">
+        <h1 class="game-title">BEASTS</h1>
+        <span class="subtitle">Tactical Tabletop Arena</span>
+      </div>
+
+      <div class="turn-tracker">
+        <div class="team-badge team-1 active" id="team1-badge">
+          <span class="crest">☀️</span>
+          <div class="team-info">
+            <span class="team-label">TEAM 1 (SOLAR)</span>
+            <span class="team-beasts">Phoenix & Earth Golem</span>
+          </div>
+        </div>
+        <div class="turn-divider">VS</div>
+        <div class="team-badge team-2" id="team2-badge">
+          <span class="crest">🌙</span>
+          <div class="team-info">
+            <span class="team-label">TEAM 2 (LUNAR)</span>
+            <span class="team-beasts">Werewolf & Hydra</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="header-controls">
+        <div class="round-counter">Round <span id="round-num">1</span></div>
+        <button id="btn-mode" class="ui-btn secondary" title="Switch between Solo AI and 2P Hotseat">Mode: <span id="mode-label">Solo vs AI</span></button>
+        <button id="btn-sound" class="ui-btn icon-btn" title="Toggle Sound">🔊</button>
+        <button id="btn-reset" class="ui-btn secondary" title="Restart Match">↺ Restart</button>
+      </div>
+    </header>
+
+    <!-- Main Workspace Area -->
+    <main class="main-layout">
+      <!-- Left Column: Card & Beast Dossier -->
+      <aside class="side-panel card-panel">
+        <div class="panel-header">
+          <h3>CARD DOSSIER</h3>
+          <span class="tip">Click any beast to view</span>
+        </div>
+        <div class="card-display-container">
+          <div class="card-frame" id="card-frame">
+            <img id="card-img" src="Cards/Phoenix_Card.png" alt="Card Display">
+            <div class="card-hp-overlay">
+              <div class="hp-bar-outer">
+                <div class="hp-bar-inner" id="card-hp-fill" style="width: 100%;"></div>
+              </div>
+              <span id="card-hp-text">120 / 120 HP</span>
+            </div>
+          </div>
+          <div class="beast-live-status" id="beast-live-status">
+            <div class="status-header">
+              <h4 id="status-name">Phoenix</h4>
+              <span class="element-tag fire" id="status-element">Fire</span>
+            </div>
+            <div class="buff-tags" id="status-buffs">
+              <!-- Dynamically populated with active buffs/debuffs -->
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Center: 10x8 Tactical Board -->
+      <section class="board-container">
+        <div class="board-viewport" id="board-viewport">
+          <div class="board-grid" id="board-grid">
+            <!-- Background Image Layer -->
+            <img src="Game_Board_Playable_Grid_2560x2048.png" class="board-bg" alt="Game Board">
+            
+            <!-- Dynamic Tile Layer (10 cols x 8 rows) -->
+            <div class="grid-cells-layer" id="cells-layer"></div>
+
+            <!-- Hazard / Effects Layer (Fire, Rock Barriers) -->
+            <div class="grid-hazards-layer" id="hazards-layer"></div>
+
+            <!-- Units / Sprites Layer -->
+            <div class="grid-units-layer" id="units-layer"></div>
+
+            <!-- Combat Floating FX Layer -->
+            <div class="grid-fx-layer" id="fx-layer"></div>
+          </div>
+        </div>
+
+        <!-- Action Command Dock -->
+        <div class="action-dock" id="action-dock">
+          <div class="active-beast-summary">
+            <div class="active-avatar" id="active-avatar"></div>
+            <div class="active-details">
+              <div class="active-title-row">
+                <span class="name" id="active-name">Select a Beast</span>
+                <span class="moves-left" id="active-moves-left">Moves: 2</span>
+              </div>
+              <span class="passive-hint" id="active-passive-hint">Click on your piece to activate movement and attacks.</span>
+            </div>
+          </div>
+
+          <div class="ability-buttons-group" id="ability-buttons">
+            <button class="ability-btn" id="btn-move" data-action="move">
+              <span class="btn-icon">👣</span>
+              <div class="btn-text">
+                <span class="btn-title">Move</span>
+                <span class="btn-desc">Standard movement</span>
+              </div>
+            </button>
+            <button class="ability-btn" id="btn-atk1" data-action="atk1">
+              <span class="btn-icon">⚔️</span>
+              <div class="btn-text">
+                <span class="btn-title" id="atk1-title">Attack 1</span>
+                <span class="btn-desc" id="atk1-desc">20 Dmg</span>
+              </div>
+            </button>
+            <button class="ability-btn" id="btn-atk2" data-action="atk2">
+              <span class="btn-icon">⚡</span>
+              <div class="btn-text">
+                <span class="btn-title" id="atk2-title">Attack 2</span>
+                <span class="btn-desc" id="atk2-desc">Special Move</span>
+              </div>
+            </button>
+            <button class="ability-btn special" id="btn-ability" data-action="ability">
+              <span class="btn-icon">🌟</span>
+              <div class="btn-text">
+                <span class="btn-title" id="ability-title">Ability</span>
+                <span class="btn-desc" id="ability-desc">Passive / Active</span>
+              </div>
+            </button>
+            <button class="ui-btn end-turn-btn" id="btn-end-turn">
+              <span>END TURN</span>
+              <span class="shortcut">↵</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right Column: Combat Log & Roster -->
+      <aside class="side-panel log-panel">
+        <div class="panel-header">
+          <h3>MATCH ROSTER</h3>
+        </div>
+        <div class="roster-list" id="roster-list">
+          <!-- Populated dynamically with health & status -->
+        </div>
+
+        <div class="panel-header log-header">
+          <h3>TACTICAL LOG</h3>
+          <button id="btn-clear-log" class="tiny-btn">Clear</button>
+        </div>
+        <div class="combat-log" id="combat-log">
+          <div class="log-entry system">Match initiated on the Ancient Tabletop Arena. Select your beast to begin.</div>
+        </div>
+      </aside>
+    </main>
+
+    <!-- Winner Modal Overlay -->
+    <div class="modal-overlay hidden" id="winner-modal">
+      <div class="modal-card">
+        <div class="modal-crest" id="winner-crest">🏆</div>
+        <h2 id="winner-title">VICTORY!</h2>
+        <p id="winner-message">Team Solar has eliminated all opposing beasts.</p>
+        <button class="ui-btn primary-btn" id="btn-rematch">Play Again</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/audio.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>
