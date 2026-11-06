@@ -2,7 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>Beasts - Tactical Tabletop Arena</title>
   <link rel="stylesheet" href="css/style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -37,20 +39,23 @@
       </div>
 
       <div class="header-controls">
-        <div class="round-counter">Round <span id="round-num">1</span></div>
-        <button id="btn-mode" class="ui-btn secondary" title="Switch between Solo AI and 2P Hotseat">Mode: <span id="mode-label">Solo vs AI</span></button>
+        <div class="round-counter">Rnd <span id="round-num">1</span></div>
+        <button id="btn-toggle-card" class="ui-btn mobile-only-btn" title="View Card Dossier">🃏 <span class="btn-lbl">Card</span></button>
+        <button id="btn-toggle-log" class="ui-btn mobile-only-btn" title="View Tactical Log & Roster">📜 <span class="btn-lbl">Log</span></button>
+        <button id="btn-mode" class="ui-btn secondary" title="Switch between Solo AI and 2P Hotseat"><span id="mode-label">Solo vs AI</span></button>
         <button id="btn-sound" class="ui-btn icon-btn" title="Toggle Sound">🔊</button>
-        <button id="btn-reset" class="ui-btn secondary" title="Restart Match">↺ Restart</button>
+        <button id="btn-reset" class="ui-btn secondary" title="Restart Match">↺</button>
       </div>
     </header>
 
     <!-- Main Workspace Area -->
     <main class="main-layout">
       <!-- Left Column: Card & Beast Dossier -->
-      <aside class="side-panel card-panel">
+      <aside class="side-panel card-panel" id="card-panel">
         <div class="panel-header">
           <h3>CARD DOSSIER</h3>
-          <span class="tip">Click any beast to view</span>
+          <span class="tip">Click any beast</span>
+          <button class="drawer-close-btn mobile-only-btn" id="btn-close-card" title="Close">✕</button>
         </div>
         <div class="card-display-container">
           <div class="card-frame" id="card-frame">
@@ -146,9 +151,10 @@
       </section>
 
       <!-- Right Column: Combat Log & Roster -->
-      <aside class="side-panel log-panel">
+      <aside class="side-panel log-panel" id="log-panel">
         <div class="panel-header">
           <h3>MATCH ROSTER</h3>
+          <button class="drawer-close-btn mobile-only-btn" id="btn-close-log" title="Close">✕</button>
         </div>
         <div class="roster-list" id="roster-list">
           <!-- Populated dynamically with health & status -->
@@ -163,6 +169,9 @@
         </div>
       </aside>
     </main>
+
+    <!-- Mobile Drawer Backdrop -->
+    <div class="drawer-backdrop hidden" id="drawer-backdrop"></div>
 
     <!-- Winner Modal Overlay -->
     <div class="modal-overlay hidden" id="winner-modal">

@@ -1116,3 +1116,363 @@ body {
   0% { transform: scale(0.8); opacity: 0; }
   100% { transform: scale(1); opacity: 1; }
 }
+
+/* --------------------------------------------------------------------------
+   Mobile Drawer & Responsive System
+   -------------------------------------------------------------------------- */
+.mobile-only-btn {
+  display: none;
+}
+
+.drawer-close-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--border-bronze);
+  color: var(--text-gold);
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 14px;
+  touch-action: manipulation;
+}
+
+.drawer-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  z-index: 40;
+  opacity: 1;
+  transition: opacity 0.25s ease;
+}
+
+.drawer-backdrop.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Touch optimization */
+button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Tablet & Mobile Screens */
+@media (max-width: 1024px) {
+  body {
+    height: 100dvh;
+    overflow-y: auto;
+  }
+
+  #app {
+    height: 100dvh;
+    min-height: -webkit-fill-available;
+  }
+
+  .game-header {
+    height: 54px;
+    padding: 0 12px;
+  }
+
+  .game-title {
+    font-size: 20px;
+    letter-spacing: 2px;
+  }
+
+  .subtitle {
+    display: none;
+  }
+
+  .mobile-only-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+
+  .turn-tracker {
+    gap: 8px;
+    padding: 4px 10px;
+  }
+
+  .team-beasts {
+    display: none;
+  }
+
+  .team-label {
+    font-size: 10px;
+  }
+
+  .main-layout {
+    display: flex;
+    flex-direction: column;
+    padding: 6px;
+    gap: 8px;
+    height: calc(100dvh - 54px);
+    overflow: hidden;
+  }
+
+  /* Drawers */
+  .side-panel.card-panel {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: min(340px, 88vw);
+    height: 100dvh;
+    z-index: 50;
+    transform: translateX(-105%);
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 10px 0 35px rgba(0, 0, 0, 0.85);
+  }
+
+  .side-panel.card-panel.open {
+    transform: translateX(0);
+  }
+
+  .side-panel.log-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: min(340px, 88vw);
+    height: 100dvh;
+    z-index: 50;
+    transform: translateX(105%);
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: -10px 0 35px rgba(0, 0, 0, 0.85);
+  }
+
+  .side-panel.log-panel.open {
+    transform: translateX(0);
+  }
+
+  .card-frame {
+    width: 220px;
+    height: 294px;
+  }
+
+  /* Board Area */
+  .board-container {
+    flex: 1;
+    width: 100%;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .board-viewport {
+    flex: 1;
+    width: 100%;
+    min-height: 0;
+    padding: 2px;
+  }
+
+  .board-grid {
+    width: min(100%, calc((100dvh - 200px) * 1.25));
+    aspect-ratio: 10 / 8;
+  }
+
+  /* Action Command Dock */
+  .action-dock {
+    min-height: auto;
+    padding: 8px 10px;
+    gap: 8px;
+    flex-direction: column;
+    align-items: stretch;
+    background: #151722;
+  }
+
+  .active-beast-summary {
+    min-width: unset;
+    gap: 8px;
+  }
+
+  .active-avatar {
+    width: 40px;
+    height: 40px;
+  }
+
+  .active-title-row .name {
+    font-size: 13px;
+  }
+
+  .passive-hint {
+    font-size: 10px;
+    max-width: 100%;
+  }
+
+  .ability-buttons-group {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr) auto;
+    gap: 6px;
+    width: 100%;
+  }
+
+  .ability-btn {
+    min-width: unset;
+    padding: 8px 4px;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 3px;
+    text-align: center;
+    min-height: 48px;
+  }
+
+  .ability-btn .btn-icon {
+    font-size: 16px;
+  }
+
+  .ability-btn .btn-text {
+    align-items: center;
+    text-align: center;
+  }
+
+  .btn-title {
+    font-size: 9px;
+  }
+
+  .btn-desc {
+    display: none;
+  }
+
+  .end-turn-btn {
+    padding: 8px 12px;
+    font-size: 11px;
+    min-height: 48px;
+  }
+}
+
+/* Small Smartphone Screen Adjustments (< 600px) */
+@media (max-width: 600px) {
+  .game-header {
+    height: 48px;
+    padding: 0 8px;
+  }
+
+  .game-title {
+    font-size: 16px;
+    letter-spacing: 1px;
+  }
+
+  .header-controls {
+    gap: 4px;
+  }
+
+  .round-counter {
+    padding: 4px 6px;
+    font-size: 10px;
+  }
+
+  .ui-btn {
+    padding: 6px 6px;
+    font-size: 10px;
+  }
+
+  #btn-mode {
+    display: none;
+  }
+
+  .turn-tracker {
+    padding: 2px 4px;
+    gap: 2px;
+  }
+
+  .team-badge {
+    padding: 2px 4px;
+  }
+
+  .team-label {
+    display: none;
+  }
+
+  .board-grid {
+    width: 100%;
+    aspect-ratio: 10 / 8;
+  }
+
+  .action-dock {
+    padding: 6px 8px;
+  }
+
+  .ability-buttons-group {
+    grid-template-columns: repeat(2, 1fr) repeat(2, 1fr);
+  }
+
+  .end-turn-btn {
+    grid-column: span 4;
+    width: 100%;
+    margin-top: 2px;
+  }
+
+  .floating-text {
+    font-size: 13px;
+  }
+}
+
+/* Landscape Mode on Phones (max-height: 500px) */
+@media (max-height: 500px) and (orientation: landscape) {
+  .game-header {
+    height: 38px;
+    padding: 0 10px;
+  }
+
+  .game-title {
+    font-size: 14px;
+  }
+
+  .main-layout {
+    flex-direction: row;
+    height: calc(100dvh - 38px);
+    padding: 4px;
+  }
+
+  .board-container {
+    flex: 1;
+    flex-direction: row;
+  }
+
+  .board-viewport {
+    flex: 1;
+    padding: 2px;
+  }
+
+  .board-grid {
+    height: 100%;
+    width: auto;
+    aspect-ratio: 10 / 8;
+  }
+
+  .action-dock {
+    width: 180px;
+    flex-direction: column;
+    padding: 6px;
+    overflow-y: auto;
+  }
+
+  .ability-buttons-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .ability-btn {
+    flex-direction: row;
+    padding: 4px 8px;
+    min-height: 36px;
+    justify-content: flex-start;
+  }
+
+  .btn-desc {
+    display: none;
+  }
+}

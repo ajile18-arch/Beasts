@@ -35,11 +35,11 @@
       },
       baseMove: 3,
       skills: {
-        atk1: { name: 'Flame Strike', range: 2, dmg: 25, type: 'target', desc: 'Ranged flame blast (25 Dmg)' },
-        atk2: { name: 'Fire Blast AoE', range: 3, dmg: 20, splash: 10, type: 'aoe', desc: 'Explosive blast (20 Dmg + 10 Splash)' },
-        ability: { name: 'Rebirth Flare', range: 0, heal: 25, aoeDmg: 15, type: 'self_aoe', desc: 'Heals 25 HP & burns adjacent enemies' }
+        atk1: { name: 'Flaming Talons', range: 1, dmg: 30, type: 'target', desc: 'Deals 30 damage.' },
+        atk2: { name: 'Fire Orb', range: 0, type: 'counter_stance', desc: 'Curls into a ball and returns half damage to attacker.' },
+        ability: { name: 'Trails of Fire', range: 0, type: 'passive', desc: 'Leaves tile in flame for 2 turns. Flame does 10 damage.' }
       },
-      passiveHint: 'Trails of Fire: Leaves burning fire tiles as it moves. Immune to flame.'
+      passiveHint: 'Ability: Trails of Fire — Leaves tile in flame for 2 turns. Flame does 10 damage.'
     },
 
     earth_golem: {
@@ -68,11 +68,11 @@
       },
       baseMove: 2,
       skills: {
-        atk1: { name: 'Crushing Grip', range: 1, dmg: 20, immobilize: 1, type: 'target', desc: 'Deals 20 Dmg & immobilizes enemy next turn' },
-        atk2: { name: 'Rock Barrier', range: 1, type: 'spawn_barrier', desc: 'Summons a Stone Wall in front (Earth-passable only)' },
-        ability: { name: 'Terraform Fortify', range: 0, shield: 30, type: 'self', desc: 'Reinforces stone armor (+30 Shield)' }
+        atk1: { name: 'Crushing Grip', range: 1, dmg: 20, immobilize: 1, type: 'target', desc: 'Deals 20 damage. Disables hostile movement on next turn.' },
+        atk2: { name: 'Rock Barrier', range: 1, type: 'spawn_barrier', desc: 'Adds stone wall in front of Earth Golem (Earth-passable only).' },
+        ability: { name: 'Terraform', range: 0, type: 'passive', desc: 'Gives an extra tile of movement when on own Rock Barriers.' }
       },
-      passiveHint: 'Terraform: Gains +1 movement when moving across Rock Barriers.'
+      passiveHint: 'Ability: Terraform — Gives an extra tile of movement when on own Rock Barriers.'
     },
 
     werewolf: {
@@ -101,11 +101,11 @@
       },
       baseMove: 3,
       skills: {
-        atk1: { name: 'Rip Apart', range: 1, dmg: 20, type: 'target', desc: 'Vicious melee strike (20 Dmg + Howl Bonus)' },
-        atk2: { name: 'Retreat', range: 0, moveBuff: 1, type: 'self', desc: 'Disengage sprint (+1 extra tile of movement)' },
-        ability: { name: 'Howl', range: 0, atkBuff: 10, duration: 2, type: 'team_buff', desc: 'Boosts all ally attacks by +10 Dmg for 2 turns' }
+        atk1: { name: 'Rip Apart', range: 1, dmg: 20, type: 'target', desc: 'Deals 20 damage.' },
+        atk2: { name: 'Retreat', range: 0, moveBuff: 1, type: 'self_move', desc: 'Gives 1 extra tile of movement.' },
+        ability: { name: 'Howl', range: 0, atkBuff: 10, duration: 2, type: 'team_buff', desc: 'Boosts allied cards\' attack by 10 to each move.' }
       },
-      passiveHint: 'Pack Agility: Earth beast crossing rough terrain without penalty.'
+      passiveHint: 'Ability: Howl — Boosts allied cards\' attack by 10 to each move.'
     },
 
     hydra: {
@@ -134,11 +134,11 @@
       },
       baseMove: 2,
       skills: {
-        atk1: { name: 'Venom Spit', range: 2, dmg: 20, poison: 5, type: 'target', desc: 'Spits acid (20 Dmg + 5 Poison / turn)' },
-        atk2: { name: 'Thrash AoE', range: 1, dmg: 18, type: 'adjacent_aoe', desc: 'Strikes all adjacent enemy beasts (18 Dmg)' },
-        ability: { name: 'Regrowth Surge', range: 0, heal: 20, type: 'self', desc: 'Regenerates severed heads (+20 HP)' }
+        atk1: { name: 'Venomous Bite', range: 1, dmg: 30, poison: 5, type: 'target', desc: 'Deals 30 damage. Target is poisoned (5 dmg/turn for 2 turns).' },
+        atk2: { name: 'Regrowth', range: 0, type: 'passive', desc: 'If Hydra is damaged, it regains 20 HP at beginning of next turn.' },
+        ability: { name: 'Swamp Regenerator', range: 0, type: 'passive', desc: 'Any allied card next to the hydra is healed 10 HP at beginning of next turn.' }
       },
-      passiveHint: 'Regrowth: Heals 20 HP at start of turn if damaged. Swamp Regen: Heals adjacent allies 10 HP.'
+      passiveHint: 'Regrowth: If damaged, regains 20 HP next turn. Swamp Regenerator: Adjacent allies heal 10 HP next turn.'
     }
   };
 
@@ -232,8 +232,22 @@
       // Ability buttons
       document.getElementById('btn-move').addEventListener('click', () => this.setActionMode('move'));
       document.getElementById('btn-atk1').addEventListener('click', () => this.setActionMode('atk1'));
-      document.getElementById('btn-atk2').addEventListener('click', () => this.setActionMode('atk2'));
-      document.getElementById('btn-ability').addEventListener('click', () => this.setActionMode('ability'));
+      document.getElementById('btn-atk2').addEventListener('click', () => {
+        const u = this.selectedUnit;
+        if (u && (u.skills.atk2.type === 'counter_stance' || u.skills.atk2.type === 'self_move' || u.skills.atk2.type === 'passive')) {
+          this.attemptAttack(u, 'atk2', u.x, u.y);
+        } else {
+          this.setActionMode('atk2');
+        }
+      });
+      document.getElementById('btn-ability').addEventListener('click', () => {
+        const u = this.selectedUnit;
+        if (u && (u.skills.ability.type === 'team_buff' || u.skills.ability.type === 'passive')) {
+          this.attemptAbility(u, u.x, u.y);
+        } else {
+          this.setActionMode('ability');
+        }
+      });
       document.getElementById('btn-end-turn').addEventListener('click', () => this.endTurn());
 
       // Header controls
@@ -254,6 +268,48 @@
         this.elLog.innerHTML = '<div class="log-entry system">Log cleared.</div>';
       });
 
+      // Mobile Drawer Controls
+      const cardPanel = document.getElementById('card-panel');
+      const logPanel = document.getElementById('log-panel');
+      const drawerBackdrop = document.getElementById('drawer-backdrop');
+      const btnToggleCard = document.getElementById('btn-toggle-card');
+      const btnToggleLog = document.getElementById('btn-toggle-log');
+      const btnCloseCard = document.getElementById('btn-close-card');
+      const btnCloseLog = document.getElementById('btn-close-log');
+
+      const closeAllDrawers = () => {
+        cardPanel?.classList.remove('open');
+        logPanel?.classList.remove('open');
+        drawerBackdrop?.classList.add('hidden');
+      };
+      this.closeMobileDrawers = closeAllDrawers;
+
+      if (btnToggleCard) {
+        btnToggleCard.addEventListener('click', () => {
+          const isOpen = cardPanel?.classList.contains('open');
+          closeAllDrawers();
+          if (!isOpen && cardPanel) {
+            cardPanel.classList.add('open');
+            drawerBackdrop?.classList.remove('hidden');
+          }
+        });
+      }
+
+      if (btnToggleLog) {
+        btnToggleLog.addEventListener('click', () => {
+          const isOpen = logPanel?.classList.contains('open');
+          closeAllDrawers();
+          if (!isOpen && logPanel) {
+            logPanel.classList.add('open');
+            drawerBackdrop?.classList.remove('hidden');
+          }
+        });
+      }
+
+      btnCloseCard?.addEventListener('click', closeAllDrawers);
+      btnCloseLog?.addEventListener('click', closeAllDrawers);
+      drawerBackdrop?.addEventListener('click', closeAllDrawers);
+
       // Keyboard shortcuts (Space = End Turn, 1..4 = Abilities)
       window.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' || e.key === ' ') {
@@ -263,9 +319,19 @@
         } else if (e.key === '2') {
           this.setActionMode('atk1');
         } else if (e.key === '3') {
-          this.setActionMode('atk2');
+          const u = this.selectedUnit;
+          if (u && (u.skills.atk2.type === 'counter_stance' || u.skills.atk2.type === 'self_move' || u.skills.atk2.type === 'passive')) {
+            this.attemptAttack(u, 'atk2', u.x, u.y);
+          } else {
+            this.setActionMode('atk2');
+          }
         } else if (e.key === '4') {
-          this.setActionMode('ability');
+          const u = this.selectedUnit;
+          if (u && (u.skills.ability.type === 'team_buff' || u.skills.ability.type === 'passive')) {
+            this.attemptAbility(u, u.x, u.y);
+          } else {
+            this.setActionMode('ability');
+          }
         }
       });
     }
@@ -333,6 +399,9 @@
       }
       if (unit.status.poisoned > 0) {
         buffContainer.innerHTML += `<span class="buff-badge debuff">🧪 Poisoned (${unit.status.poisoned})</span>`;
+      }
+      if (unit.status.fireOrb) {
+        buffContainer.innerHTML += `<span class="buff-badge buff">🔥 Fire Orb (Reflect 50% Dmg)</span>`;
       }
       if (unit.shield > 0) {
         buffContainer.innerHTML += `<span class="buff-badge buff">🛡️ Rock Shield (${unit.shield})</span>`;
@@ -455,12 +524,12 @@
             this.log(`Earth Golem draws strength from the stone wall (+1 Move)!`, 'system');
           }
 
-          // Check if landed on Fire Tile
+          // Check if landed on Fire Tile (Card: "Flame does 10 damage")
           if (hazardHere && hazardHere.type === 'fire' && unit.element !== 'fire') {
-            unit.hp = Math.max(0, unit.hp - 15);
+            unit.hp = Math.max(0, unit.hp - 10);
             window.sounds.playFire();
-            this.spawnFloatingText(unit.x, unit.y, '-15 FIRE', 'damage');
-            this.log(`${unit.name} stepped into fire taking 15 burn damage!`, 'attack');
+            this.spawnFloatingText(unit.x, unit.y, '-10 FIRE', 'damage');
+            this.log(`${unit.name} stepped into fire taking 10 flame damage!`, 'attack');
           }
 
           this.render();
@@ -598,14 +667,45 @@
 
       if (!isTargetValid) return;
 
-      // Special Rock Barrier Spawning (Earth Golem Move 2)
+      // Special Phoenix Move 2: FIRE ORB (Counter Stance: "Curls into a ball and returns half damage to attacker")
+      if (skill.type === 'counter_stance') {
+        unit.status.fireOrb = true;
+        window.sounds.playFire();
+        unit.animState = 'attack_aoe';
+        unit.hasActed = true;
+        this.spawnFloatingText(unit.x, unit.y, 'FIRE ORB ACTIVE!', 'status');
+        this.log(`🔥 ${unit.name} curls into a Fire Orb! Will return half damage to any attacker.`, 'system');
+        this.finishAction(unit);
+        return;
+      }
+
+      // Special Werewolf Move 2: RETREAT ("Gives 1 extra tile of movement")
+      if (skill.type === 'self_move') {
+        unit.movesLeft += (skill.moveBuff || 1);
+        window.sounds.playMove();
+        unit.animState = 'walk';
+        unit.hasActed = true;
+        this.spawnFloatingText(unit.x, unit.y, '+1 MOVE (RETREAT)', 'status');
+        this.log(`🐺 ${unit.name} uses Retreat! Gains 1 extra tile of movement.`, 'system');
+        this.finishAction(unit);
+        return;
+      }
+
+      // Special Hydra Move 2: REGROWTH (Passive Check)
+      if (skill.type === 'passive' && unit.id === 'hydra') {
+        this.spawnFloatingText(unit.x, unit.y, 'REGROWTH PASSIVE', 'heal');
+        this.log(`🐍 Hydra's Regrowth is passive: If damaged, it regains 20 HP at beginning of next turn.`, 'system');
+        return;
+      }
+
+      // Special Rock Barrier Spawning (Earth Golem Move 2: "Adds a stone wall in the tile directly in front")
       if (skill.type === 'spawn_barrier') {
         this.addHazard(targetX, targetY, 'rock_barrier', 99);
         window.sounds.playRock();
         unit.animState = 'attack_aoe';
         unit.hasActed = true;
         this.spawnFloatingText(targetX, targetY, 'STONE WALL!', 'status');
-        this.log(`${unit.name} raised a craggy Rock Barrier at (${targetX}, ${targetY})!`, 'barrier');
+        this.log(`🗿 ${unit.name} raised a Rock Barrier at (${targetX}, ${targetY}) that only Earth types can move on!`, 'barrier');
         this.finishAction(unit);
         return;
       }
@@ -617,7 +717,7 @@
       let damage = skill.dmg || 20;
       if (unit.status.howlBuff > 0) {
         damage += 10;
-        this.log(`Howl boost amplified damage by +10!`, 'system');
+        this.log(`🐺 Howl boost amplified damage by +10!`, 'system');
       }
 
       // Play Sound & Sprite Animation
@@ -635,30 +735,20 @@
       unit.animState = skill.type === 'aoe' ? 'attack_aoe' : 'attack';
       targetUnit.animState = 'hurt';
 
-      this.dealDamage(targetUnit, damage, unit.name);
+      this.dealDamage(targetUnit, damage, `${unit.name} (${skill.name})`, unit);
 
       // Crushing Grip: Disable hostile movement next turn!
       if (skill.immobilize) {
         targetUnit.status.immobilized = skill.immobilize;
         this.spawnFloatingText(targetUnit.x, targetUnit.y, 'IMMOBILIZED!', 'status');
-        this.log(`${targetUnit.name} is trapped in Crushing Grip! Movement disabled on next turn.`, 'attack');
+        this.log(`⛓️ ${targetUnit.name} is trapped in Crushing Grip! Movement disabled on its next turn.`, 'attack');
       }
 
-      // Poison Spit: Acid burn
+      // Venomous Bite: Acid poison (5 dmg/turn for 2 turns)
       if (skill.poison) {
         targetUnit.status.poisoned = 2;
-        this.spawnFloatingText(targetUnit.x, targetUnit.y, 'POISONED!', 'status');
-        this.log(`${targetUnit.name} was drenched in Hydra venom! Takes damage over 2 turns.`, 'attack');
-      }
-
-      // Splash AoE damage to adjacent units
-      if (skill.splash) {
-        const neighbors = this.getAdjacentUnits(targetX, targetY);
-        for (const n of neighbors) {
-          if (n !== targetUnit && n.team !== unit.team) {
-            this.dealDamage(n, skill.splash, `${unit.name} Splash`);
-          }
-        }
+        this.spawnFloatingText(targetUnit.x, targetUnit.y, 'POISONED (5/TURN)', 'status');
+        this.log(`🧪 ${targetUnit.name} was poisoned by Venomous Bite! Takes 5 damage per turn for 2 turns.`, 'attack');
       }
 
       unit.hasActed = true;
@@ -667,9 +757,8 @@
 
     attemptAbility(unit, targetX, targetY) {
       if (unit.hasActed) return;
-      const ability = unit.skills.ability;
 
-      // Werewolf Howl: Boosts all allied attacks by +10 for 2 turns
+      // Werewolf Ability: HOWL ("Boosts allied cards' attack by 10 to each move.")
       if (unit.id === 'werewolf') {
         window.sounds.playHowl();
         unit.animState = 'attack_aoe';
@@ -678,46 +767,38 @@
           a.status.howlBuff = 2;
           this.spawnFloatingText(a.x, a.y, 'HOWL BUFF (+10 ATK)', 'status');
         });
-        this.log(`Werewolf lets loose a piercing HOWL! All ally attacks boosted by +10 for 2 turns.`, 'heal');
-      }
-      // Werewolf Retreat (if mapped as ability or skill)
-      else if (ability.moveBuff) {
-        unit.movesLeft += ability.moveBuff;
-        window.sounds.playMove();
-        this.spawnFloatingText(unit.x, unit.y, '+1 MOVE RETREAT', 'status');
-        this.log(`${unit.name} springs backward with Retreat (+1 Move)!`, 'system');
-      }
-      // Hydra Regrowth Surge
-      else if (unit.id === 'hydra') {
-        window.sounds.playHeal();
-        unit.hp = Math.min(unit.maxHp, unit.hp + 20);
-        this.spawnFloatingText(unit.x, unit.y, '+20 REGROWTH', 'heal');
-        this.log(`Hydra regenerates severed heads (+20 HP)!`, 'heal');
-      }
-      // Earth Golem Terraform Fortify
-      else if (unit.id === 'earth_golem') {
-        window.sounds.playRock();
-        unit.shield += 30;
-        this.spawnFloatingText(unit.x, unit.y, '+30 STONE GUARD', 'status');
-        this.log(`Earth Golem fortifies itself with craggy stone (+30 Shield)!`, 'barrier');
-      }
-      // Phoenix Rebirth Flare
-      else if (unit.id === 'phoenix') {
-        window.sounds.playFire();
-        window.sounds.playHeal();
-        unit.hp = Math.min(unit.maxHp, unit.hp + 25);
-        this.spawnFloatingText(unit.x, unit.y, '+25 REBIRTH', 'heal');
-        // Burn adjacent enemies
-        const enemies = this.getAdjacentUnits(unit.x, unit.y).filter(e => e.team !== unit.team);
-        enemies.forEach(e => this.dealDamage(e, 15, 'Rebirth Flare'));
-        this.log(`Phoenix flares in Rebirth! Heals +25 HP and scorches surrounding foes.`, 'attack');
+        this.log(`🐺 Werewolf lets loose a piercing HOWL! Boosts allied cards' attack by 10 to each move.`, 'heal');
+        unit.hasActed = true;
+        this.finishAction(unit);
+        return;
       }
 
-      unit.hasActed = true;
-      this.finishAction(unit);
+      // Phoenix Ability: TRAILS OF FIRE
+      if (unit.id === 'phoenix') {
+        window.sounds.playFire();
+        this.spawnFloatingText(unit.x, unit.y, 'TRAILS OF FIRE', 'status');
+        this.log(`🔥 Phoenix Ability — Trails of Fire: Leaves tile in flame for 2 turns. Flame does 10 damage.`, 'system');
+        return;
+      }
+
+      // Earth Golem Ability: TERRAFORM
+      if (unit.id === 'earth_golem') {
+        window.sounds.playRock();
+        this.spawnFloatingText(unit.x, unit.y, 'TERRAFORM ACTIVE', 'status');
+        this.log(`🗿 Earth Golem Ability — Terraform: Gives an extra tile of movement when Earth Golem is on his own Rock Barriers.`, 'system');
+        return;
+      }
+
+      // Hydra Ability: SWAMP REGENERATOR
+      if (unit.id === 'hydra') {
+        window.sounds.playHeal();
+        this.spawnFloatingText(unit.x, unit.y, 'SWAMP REGEN ACTIVE', 'heal');
+        this.log(`🌱 Hydra Ability — Swamp Regenerator: Any allied card next to the hydra is healed 10 HP at the beginning of next turn.`, 'system');
+        return;
+      }
     }
 
-    dealDamage(target, amount, sourceName) {
+    dealDamage(target, amount, sourceName, attacker = null) {
       let remaining = amount;
       if (target.shield > 0) {
         const absorbed = Math.min(target.shield, remaining);
@@ -731,6 +812,19 @@
         target.status.tookDamageLastTurn = true;
         this.spawnFloatingText(target.x, target.y, `-${remaining}`, 'damage');
         this.log(`${target.name} takes ${remaining} damage from ${sourceName}! (HP: ${target.hp}/${target.maxHp})`, 'attack');
+
+        // Phoenix Card Move 2: FIRE ORB ("Curls into a ball and returns half damage to attacker")
+        if (target.status.fireOrb && attacker && attacker !== target && attacker.hp > 0) {
+          const returnedDmg = Math.max(1, Math.round(remaining / 2));
+          attacker.hp = Math.max(0, attacker.hp - returnedDmg);
+          attacker.status.tookDamageLastTurn = true;
+          window.sounds.playFire();
+          this.spawnFloatingText(attacker.x, attacker.y, `-${returnedDmg} REFLECT`, 'damage');
+          this.log(`🔥 Phoenix's Fire Orb returned ${returnedDmg} damage (half damage) to ${attacker.name}!`, 'attack');
+          if (attacker.hp === 0) {
+            this.eliminateUnit(attacker);
+          }
+        }
       }
 
       if (target.hp === 0) {
@@ -759,6 +853,9 @@
     }
 
     getValidAttackTargets(unit, skill) {
+      if (skill.range === 0 || skill.type === 'counter_stance' || skill.type === 'self_move' || skill.type === 'passive') {
+        return [{ x: unit.x, y: unit.y }];
+      }
       const targets = [];
       const range = skill.range || 1;
 
@@ -809,6 +906,19 @@
         // Reset moves and action
         u.movesLeft = u.baseMove;
         u.hasActed = false;
+
+        // Reset Fire Orb stance at start of turn
+        if (u.id === 'phoenix') {
+          u.status.fireOrb = false;
+        }
+
+        // Earth Golem Terraform: +1 Move if starting on a Rock Barrier
+        const hazardHere = this.getHazardAt(u.x, u.y);
+        if (u.id === 'earth_golem' && hazardHere && hazardHere.type === 'rock_barrier') {
+          u.movesLeft += 1;
+          this.spawnFloatingText(u.x, u.y, '+1 TERRAFORM MOVE', 'status');
+          this.log(`🗿 Terraform: Earth Golem starts on a Rock Barrier gaining +1 movement!`, 'system');
+        }
 
         // Process Poison Debuff
         if (u.status.poisoned > 0) {
@@ -959,9 +1069,37 @@
     executeAiAttack(u, nearest) {
       const dist = Math.abs(nearest.x - u.x) + Math.abs(nearest.y - u.y);
 
-      // Hydra Thrash if adjacent
-      if (u.id === 'hydra' && dist === 1) {
-        this.attemptAttack(u, 'atk2', nearest.x, nearest.y);
+      // Werewolf: Rip Apart (20 Dmg)
+      if (u.id === 'werewolf' && dist <= (u.skills.atk1.range || 1)) {
+        this.attemptAttack(u, 'atk1', nearest.x, nearest.y);
+        // If wounded, use Move 2: Retreat (+1 Move)
+        if (u.hp < 70 && !u.hasActed) {
+          this.attemptAttack(u, 'atk2', u.x, u.y);
+        }
+      }
+      // Hydra: Venomous Bite (30 Dmg + Poison)
+      else if (u.id === 'hydra' && dist <= (u.skills.atk1.range || 1)) {
+        this.attemptAttack(u, 'atk1', nearest.x, nearest.y);
+      }
+      // Earth Golem: Crushing Grip (20 Dmg + Immobilize) or Rock Barrier
+      else if (u.id === 'earth_golem') {
+        if (dist <= 1) {
+          this.attemptAttack(u, 'atk1', nearest.x, nearest.y);
+        } else {
+          const stepX = u.x + (nearest.x > u.x ? 1 : (nearest.x < u.x ? -1 : 0));
+          const stepY = u.y + (nearest.y > u.y ? 1 : (nearest.y < u.y ? -1 : 0));
+          if (!this.getUnitAt(stepX, stepY) && !this.getHazardAt(stepX, stepY)) {
+            this.attemptAttack(u, 'atk2', stepX, stepY);
+          }
+        }
+      }
+      // Phoenix: Flaming Talons (30 Dmg) or Fire Orb
+      else if (u.id === 'phoenix') {
+        if (dist <= 1) {
+          this.attemptAttack(u, 'atk1', nearest.x, nearest.y);
+        } else if (u.hp < 60) {
+          this.attemptAttack(u, 'atk2', u.x, u.y);
+        }
       }
       // Standard Skill 1 if in range
       else if (dist <= (u.skills.atk1.range || 1)) {
@@ -1129,7 +1267,12 @@
             </div>
           </div>
         `;
-        card.addEventListener('click', () => this.selectUnit(u));
+        card.addEventListener('click', () => {
+          this.selectUnit(u);
+          if (window.innerWidth <= 1024 && this.closeMobileDrawers) {
+            this.closeMobileDrawers();
+          }
+        });
         this.elRoster.appendChild(card);
       });
     }
