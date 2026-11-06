@@ -147,7 +147,7 @@
   // ---------------------------------------------------------------------------
   class BeastsGame {
     constructor() {
-      this.VERSION = '1.03';
+      this.VERSION = '1.04';
       this.COLS = 10;
       this.ROWS = 8;
       this.round = 1;
@@ -172,10 +172,9 @@
       if (verEl) verEl.textContent = `v${this.VERSION}`;
 
       this.initBoard();
-      this.initUnits();
       this.bindEvents();
-      this.render();
-      this.selectUnit(this.units[0]);
+      this.initDraft();
+      this.openDraftModal();
     }
 
     // Initialize 10x8 tile grid
@@ -193,17 +192,23 @@
       }
     }
 
-    // Spawn 4 beasts
-    initUnits() {
-      this.units = [
-        // Team 1: Solar (Player's Team) - Left column in central tiles
-        this.createUnitInstance('phoenix', 1, 0, 3),
-        this.createUnitInstance('earth_golem', 1, 0, 4),
+    // Spawn 6 beasts (3 for each team) from draft picks
+    initUnits(team1Picks = ['phoenix', 'earth_golem', 'hydra'], team2Picks = ['werewolf', 'hydra', 'earth_golem']) {
+      // 3 selections for each team:
+      // Player's team (Team 1) starts on the left column (X = 0) in central tiles (Y = 2, 3, 4)
+      // Hostile team (Team 2) starts on the far right column (X = 9) in central tiles (Y = 2, 3, 4)
+      const centralRows = [2, 3, 4];
+      this.units = [];
 
-        // Team 2: Lunar (Hostile Team) - Far right column in central tiles
-        this.createUnitInstance('werewolf', 2, 9, 3),
-        this.createUnitInstance('hydra', 2, 9, 4)
-      ];
+      team1Picks.forEach((tmplId, idx) => {
+        const y = centralRows[idx] !== undefined ? centralRows[idx] : 2 + idx;
+        this.units.push(this.createUnitInstance(tmplId, 1, 0, y));
+      });
+
+      team2Picks.forEach((tmplId, idx) => {
+        const y = centralRows[idx] !== undefined ? centralRows[idx] : 2 + idx;
+        this.units.push(this.createUnitInstance(tmplId, 2, 9, y));
+      });
     }
 
     createUnitInstance(templateId, team, x, y) {
@@ -426,7 +431,11 @@
 
       // Update beast switcher chips active state
       document.querySelectorAll('.beast-chip').forEach(chip => {
-        chip.classList.toggle('active', chip.dataset.unit === unit.id);
+        if (chip.dataset.instance) {
+          chip.classList.toggle('active', chip.dataset.instance === unit.instanceId);
+        } else {
+          chip.classList.toggle('active', chip.dataset.unit === unit.id);
+        }
       });
 
       // Populate buff badges
@@ -1267,16 +1276,285 @@
 
     resetMatch() {
       this.elWinnerModal.classList.add('hidden');
+      this.openDraftModal();
+    }
+
+    // -------------------------------------------------------------------------
+    // Mythical Beast Draft System (3 Selections Per Team)
+    // -------------------------------------------------------------------------
+    initDraft() {
+      this.draftPoolTemplates = ['phoenix', 'earth_golem', 'werewolf', 'hydra'];
+      this.draftState = {
+        active: false,
+        poolStock: { phoenix: 2, earth_golem: 2, werewolf: 2, hydra: 2 },
+        team1Picks: [],
+        team2Picks: [],
+        turnOrder: [],
+        currentStep: 0,
+        firstPickerTeam: 1,
+        isAiPicking: false
+      };
+
+      const startBtn = document.getElementById('btn-start-match');
+      if (startBtn) {
+        startBtn.addEventListener('click', () => this.finalizeDraftAndStartMatch());
+      }
+    }
+
+    openDraftModal() {
+      const modal = document.getElementById('draft-modal');
+      if (!modal) return;
+
+      // Randomly determine who picks first (50% Solar / Team 1, 50% Lunar / Team 2)
+      const firstPicker = Math.random() < 0.5 ? 1 : 2;
+      const turnOrder = firstPicker === 1
+        ? [1, 2, 1, 2, 1, 2]
+        : [2, 1, 2, 1, 2, 1];
+
+      this.draftState = {
+        active: true,
+        poolStock: { phoenix: 2, earth_golem: 2, werewolf: 2, hydra: 2 },
+        team1Picks: [],
+        team2Picks: [],
+        turnOrder: turnOrder,
+        currentStep: 0,
+        firstPickerTeam: firstPicker,
+        isAiPicking: false
+      };
+
+      // Reset slot visuals
+      for (let s = 0; s < 3; s++) {
+        const slot1 = document.getElementById(`slot-1-${s}`);
+        const slot2 = document.getElementById(`slot-2-${s}`);
+        if (slot1) {
+          slot1.className = 'draft-slot empty';
+          slot1.innerHTML = `<span class="slot-num">Slot ${s + 1}</span>`;
+        }
+        if (slot2) {
+          slot2.className = 'draft-slot empty';
+          slot2.innerHTML = `<span class="slot-num">Slot ${s + 1}</span>`;
+        }
+      }
+
+      const actionsBar = document.getElementById('draft-actions-bar');
+      if (actionsBar) actionsBar.style.display = 'none';
+
+      modal.classList.remove('hidden');
+
+      const firstTeamName = firstPicker === 1 ? 'Solar Team (Player)' : (this.mode === 'ai' ? 'Lunar Team (AI)' : 'Lunar Team');
+      this.log(`🪙 Draft initiated! Random Coin Toss awarded first pick to ${firstTeamName}.`, 'system');
+
+      this.renderDraftUI();
+      this.advanceDraftStep();
+    }
+
+    renderDraftUI() {
+      const state = this.draftState;
+      const currentTeam = state.turnOrder[state.currentStep] || 1;
+      const isComplete = state.currentStep >= 6;
+
+      // Update counters
+      const count1 = document.getElementById('tray-count-1');
+      const count2 = document.getElementById('tray-count-2');
+      if (count1) count1.textContent = `${state.team1Picks.length} / 3`;
+      if (count2) count2.textContent = `${state.team2Picks.length} / 3`;
+
+      // Update tray active picking indicator
+      const tray1 = document.getElementById('draft-tray-1');
+      const tray2 = document.getElementById('draft-tray-2');
+      if (tray1) tray1.classList.toggle('active-picker', !isComplete && currentTeam === 1);
+      if (tray2) tray2.classList.toggle('active-picker', !isComplete && currentTeam === 2);
+
+      // Update banner
+      const banner = document.getElementById('draft-banner');
+      const bannerText = document.getElementById('draft-turn-text');
+      if (banner && bannerText) {
+        banner.className = 'draft-banner';
+        if (isComplete) {
+          bannerText.textContent = '⚔️ DRAFT COMPLETE! PREPARING TABLETOP ARENA...';
+          banner.classList.add('team-1-active');
+        } else if (currentTeam === 1) {
+          bannerText.textContent = `☀️ SOLAR TEAM: Select a Beast Card (Pick ${state.team1Picks.length + 1} of 3)`;
+          banner.classList.add('team-1-active');
+        } else {
+          const t2Label = this.mode === 'ai' ? 'LUNAR TEAM (AI is deliberating...)' : 'LUNAR TEAM (Player 2 Pick)';
+          bannerText.textContent = `🌙 ${t2Label} (Pick ${state.team2Picks.length + 1} of 3)`;
+          banner.classList.add('team-2-active');
+        }
+      }
+
+      // Render Slots
+      state.team1Picks.forEach((tmplId, idx) => {
+        const slot = document.getElementById(`slot-1-${idx}`);
+        if (slot) {
+          const tmpl = BEAST_TEMPLATES[tmplId];
+          slot.className = 'draft-slot filled';
+          slot.innerHTML = `
+            <img src="${tmpl.cardImg}" alt="${tmpl.name}">
+            <div class="slot-name-badge">${tmpl.name}</div>
+          `;
+        }
+      });
+
+      state.team2Picks.forEach((tmplId, idx) => {
+        const slot = document.getElementById(`slot-2-${idx}`);
+        if (slot) {
+          const tmpl = BEAST_TEMPLATES[tmplId];
+          slot.className = 'draft-slot filled';
+          slot.innerHTML = `
+            <img src="${tmpl.cardImg}" alt="${tmpl.name}">
+            <div class="slot-name-badge">${tmpl.name}</div>
+          `;
+        }
+      });
+
+      // Render Cards Grid
+      const grid = document.getElementById('draft-cards-grid');
+      if (!grid) return;
+      grid.innerHTML = '';
+
+      const isHumanTurn = !isComplete && (currentTeam === 1 || this.mode === 'hotseat');
+
+      this.draftPoolTemplates.forEach(tmplId => {
+        const tmpl = BEAST_TEMPLATES[tmplId];
+        const stock = state.poolStock[tmplId];
+        const isSoldOut = stock <= 0;
+
+        const cardItem = document.createElement('div');
+        cardItem.className = `draft-card-item ${isSoldOut ? 'sold-out' : ''} ${!isHumanTurn ? 'disabled' : ''}`;
+        
+        let stockBadgeHTML = `<span class="draft-card-stock">${stock} Available</span>`;
+        if (stock === 1) stockBadgeHTML = `<span class="draft-card-stock low">1 Left</span>`;
+        else if (stock <= 0) stockBadgeHTML = `<span class="draft-card-stock empty">Sold Out</span>`;
+
+        cardItem.innerHTML = `
+          <img src="${tmpl.cardImg}" alt="${tmpl.name}">
+          <div class="draft-card-footer">
+            <div class="draft-card-name-row">
+              <span class="draft-card-title">${tmpl.name}</span>
+              <span class="draft-card-element element-tag ${tmpl.element}">${tmpl.element}</span>
+            </div>
+            ${stockBadgeHTML}
+          </div>
+        `;
+
+        cardItem.addEventListener('click', () => {
+          if (!state.active || isComplete || isSoldOut || !isHumanTurn) return;
+          this.handleDraftPick(tmplId);
+        });
+
+        grid.appendChild(cardItem);
+      });
+    }
+
+    handleDraftPick(tmplId) {
+      if (!this.draftState.active || this.draftState.currentStep >= 6) return;
+      if (this.draftState.poolStock[tmplId] <= 0) return;
+
+      const currentTeam = this.draftState.turnOrder[this.draftState.currentStep];
+      this.draftState.poolStock[tmplId]--;
+
+      if (currentTeam === 1) {
+        this.draftState.team1Picks.push(tmplId);
+      } else {
+        this.draftState.team2Picks.push(tmplId);
+      }
+
+      window.sounds.playClick();
+      this.draftState.currentStep++;
+      this.renderDraftUI();
+      this.advanceDraftStep();
+    }
+
+    advanceDraftStep() {
+      if (!this.draftState.active) return;
+
+      if (this.draftState.currentStep >= 6) {
+        this.draftState.active = false;
+        window.sounds.playRock();
+        const actionsBar = document.getElementById('draft-actions-bar');
+        if (actionsBar) actionsBar.style.display = 'flex';
+
+        setTimeout(() => {
+          this.finalizeDraftAndStartMatch();
+        }, 1100);
+        return;
+      }
+
+      const nextTeam = this.draftState.turnOrder[this.draftState.currentStep];
+
+      // If AI's turn to pick in Solo Mode
+      if (this.mode === 'ai' && nextTeam === 2) {
+        this.draftState.isAiPicking = true;
+        this.renderDraftUI();
+
+        setTimeout(() => {
+          if (!this.draftState.active) return;
+          const available = this.draftPoolTemplates.filter(id => this.draftState.poolStock[id] > 0);
+          if (available.length > 0) {
+            // Strategic AI pick: prefer distinct beasts
+            const unpicked = available.filter(id => !this.draftState.team2Picks.includes(id));
+            const pick = unpicked.length > 0 
+              ? unpicked[Math.floor(Math.random() * unpicked.length)] 
+              : available[Math.floor(Math.random() * available.length)];
+
+            this.handleDraftPick(pick);
+          }
+        }, 750);
+      } else {
+        this.renderDraftUI();
+      }
+    }
+
+    finalizeDraftAndStartMatch() {
+      const modal = document.getElementById('draft-modal');
+      if (modal) modal.classList.add('hidden');
+
       this.round = 1;
       this.currentTeam = 1;
       this.hazards = {};
       document.getElementById('round-num').textContent = '1';
       document.getElementById('team1-badge').classList.add('active');
       document.getElementById('team2-badge').classList.remove('active');
-      this.initUnits();
+
+      const team1Picks = this.draftState.team1Picks.length === 3 ? this.draftState.team1Picks : ['phoenix', 'earth_golem', 'hydra'];
+      const team2Picks = this.draftState.team2Picks.length === 3 ? this.draftState.team2Picks : ['werewolf', 'hydra', 'earth_golem'];
+
+      this.initUnits(team1Picks, team2Picks);
+
+      // Update header badges
+      const t1Names = team1Picks.map(id => BEAST_TEMPLATES[id].name).join(' & ');
+      const t2Names = team2Picks.map(id => BEAST_TEMPLATES[id].name).join(' & ');
+      const t1El = document.getElementById('team1-beasts');
+      const t2El = document.getElementById('team2-beasts');
+      if (t1El) t1El.textContent = t1Names;
+      if (t2El) t2El.textContent = t2Names;
+
       this.render();
       this.selectUnit(this.units[0]);
-      this.log(`Match restarted on Ancient Tabletop Arena (v${this.VERSION}).`, 'system');
+
+      this.log(`⚔️ Draft Complete! Solar Team [${t1Names}] vs Lunar Team [${t2Names}].`, 'system');
+    }
+
+    renderSwitcherChips() {
+      const container = document.getElementById('beast-switcher-chips');
+      if (!container) return;
+      container.innerHTML = '';
+
+      this.units.forEach(u => {
+        if (u.hp <= 0) return;
+        const btn = document.createElement('button');
+        btn.className = `beast-chip team-${u.team} ${this.selectedUnit === u ? 'active' : ''}`;
+        btn.dataset.instance = u.instanceId;
+        btn.dataset.unit = u.id;
+        const teamCrest = u.team === 1 ? '☀️' : '🌙';
+        btn.innerHTML = `${teamCrest} ${u.name}`;
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.selectUnit(u);
+        });
+        container.appendChild(btn);
+      });
     }
 
     // -------------------------------------------------------------------------
@@ -1286,6 +1564,7 @@
       this.renderHazards();
       this.renderUnits();
       this.renderRoster();
+      this.renderSwitcherChips();
       this.renderHighlights();
     }
 

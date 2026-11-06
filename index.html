@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -17,7 +17,7 @@
     <header class="game-header">
       <div class="logo-area">
         <h1 class="game-title">BEASTS</h1>
-        <span class="version-tag" id="game-version">v1.03</span>
+        <span class="version-tag" id="game-version">v1.04</span>
         <span class="subtitle">Tactical Tabletop Arena</span>
       </div>
 
@@ -26,7 +26,7 @@
           <span class="crest">☀️</span>
           <div class="team-info">
             <span class="team-label">TEAM 1 (SOLAR)</span>
-            <span class="team-beasts">Phoenix & Earth Golem</span>
+            <span class="team-beasts" id="team1-beasts">Phoenix & Earth Golem</span>
           </div>
         </div>
         <div class="turn-divider">VS</div>
@@ -34,7 +34,7 @@
           <span class="crest">🌙</span>
           <div class="team-info">
             <span class="team-label">TEAM 2 (LUNAR)</span>
-            <span class="team-beasts">Werewolf & Hydra</span>
+            <span class="team-beasts" id="team2-beasts">Werewolf & Hydra</span>
           </div>
         </div>
       </div>
@@ -173,13 +173,81 @@
           <button id="btn-clear-log" class="tiny-btn">Clear</button>
         </div>
         <div class="combat-log" id="combat-log">
-          <div class="log-entry system">Beasts Tactical Arena v1.03 initialized. Select your beast to begin.</div>
+          <div class="log-entry system">Beasts Tactical Arena v1.04 initialized. Select your beast to begin.</div>
         </div>
       </aside>
     </main>
 
     <!-- Mobile Drawer Backdrop -->
     <div class="drawer-backdrop hidden" id="drawer-backdrop"></div>
+
+    <!-- Team Draft Modal Overlay -->
+    <div class="modal-overlay hidden" id="draft-modal">
+      <div class="draft-modal-dialog">
+        <!-- Draft Header -->
+        <div class="draft-header">
+          <div class="draft-title-container">
+            <span class="draft-crest">⚔️</span>
+            <div>
+              <h2 class="draft-title">MYTHICAL BEAST DRAFT</h2>
+              <div class="draft-subtitle">Assemble your squad: 3 selections for each team</div>
+            </div>
+          </div>
+          <div class="draft-banner" id="draft-banner">
+            <span id="draft-turn-text">Flipping coin to determine first pick...</span>
+          </div>
+        </div>
+
+        <!-- Trays showing 3 slots for each team -->
+        <div class="draft-trays-container">
+          <div class="draft-team-tray team-1" id="draft-tray-1">
+            <div class="tray-title-row">
+              <span class="crest">☀️</span>
+              <span class="tray-name">SOLAR TEAM</span>
+              <span class="tray-counter" id="tray-count-1">0 / 3</span>
+            </div>
+            <div class="draft-slots-row" id="slots-team-1">
+              <div class="draft-slot empty" id="slot-1-0"><span class="slot-num">Slot 1</span></div>
+              <div class="draft-slot empty" id="slot-1-1"><span class="slot-num">Slot 2</span></div>
+              <div class="draft-slot empty" id="slot-1-2"><span class="slot-num">Slot 3</span></div>
+            </div>
+          </div>
+
+          <div class="draft-vs-divider">VS</div>
+
+          <div class="draft-team-tray team-2" id="draft-tray-2">
+            <div class="tray-title-row">
+              <span class="crest">🌙</span>
+              <span class="tray-name" id="tray-name-2">LUNAR TEAM (AI)</span>
+              <span class="tray-counter" id="tray-count-2">0 / 3</span>
+            </div>
+            <div class="draft-slots-row" id="slots-team-2">
+              <div class="draft-slot empty" id="slot-2-0"><span class="slot-num">Slot 1</span></div>
+              <div class="draft-slot empty" id="slot-2-1"><span class="slot-num">Slot 2</span></div>
+              <div class="draft-slot empty" id="slot-2-2"><span class="slot-num">Slot 3</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pool of Available Cards -->
+        <div class="draft-pool-container">
+          <div class="draft-pool-heading">
+            <span>SELECT A BEAST CARD PICTURE</span>
+            <span class="pool-instruction" id="pool-instruction">Click on a card picture to draft for your team</span>
+          </div>
+          <div class="draft-cards-grid" id="draft-cards-grid">
+            <!-- Dynamically populated with high-res Card pictures: Phoenix, Earth Golem, Werewolf, Hydra -->
+          </div>
+        </div>
+
+        <!-- Completion Actions -->
+        <div class="draft-actions-bar" id="draft-actions-bar" style="display: none;">
+          <button class="ui-btn primary-btn draft-start-btn" id="btn-start-match">
+            ⚔️ ENTER TABLETOP ARENA
+          </button>
+        </div>
+      </div>
+    </div>
 
     <!-- Winner Modal Overlay -->
     <div class="modal-overlay hidden" id="winner-modal">
