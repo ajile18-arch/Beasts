@@ -310,6 +310,18 @@
       btnCloseLog?.addEventListener('click', closeAllDrawers);
       drawerBackdrop?.addEventListener('click', closeAllDrawers);
 
+      // Option B: Quick beast switcher chips
+      document.querySelectorAll('.beast-chip').forEach(chip => {
+        chip.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const unitId = chip.dataset.unit;
+          const target = this.units.find(u => u.id === unitId);
+          if (target && target.hp > 0) {
+            this.selectUnit(target);
+          }
+        });
+      });
+
       // Keyboard shortcuts (Space = End Turn, 1..4 = Abilities)
       window.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' || e.key === ' ') {
@@ -387,6 +399,26 @@
       const elTag = document.getElementById('status-element');
       elTag.textContent = unit.element;
       elTag.className = `element-tag ${unit.element}`;
+
+      // Moves left indicator
+      const movesTag = document.getElementById('status-moves-tag');
+      if (movesTag) {
+        movesTag.textContent = `${unit.movesLeft} Moves`;
+        movesTag.className = unit.movesLeft > 0 ? 'moves-tag' : 'moves-tag spent';
+      }
+
+      // Move briefs (Option B)
+      const b1 = document.getElementById('brief-move1');
+      const b2 = document.getElementById('brief-move2');
+      const ba = document.getElementById('brief-ability');
+      if (b1 && unit.skills.atk1) b1.innerHTML = `<b>⚔️ ${unit.skills.atk1.name}:</b> ${unit.skills.atk1.desc}`;
+      if (b2 && unit.skills.atk2) b2.innerHTML = `<b>⚡ ${unit.skills.atk2.name}:</b> ${unit.skills.atk2.desc}`;
+      if (ba && unit.skills.ability) ba.innerHTML = `<b>🌟 ${unit.skills.ability.name}:</b> ${unit.skills.ability.desc}`;
+
+      // Update beast switcher chips active state
+      document.querySelectorAll('.beast-chip').forEach(chip => {
+        chip.classList.toggle('active', chip.dataset.unit === unit.id);
+      });
 
       // Populate buff badges
       const buffContainer = document.getElementById('status-buffs');

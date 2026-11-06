@@ -50,11 +50,11 @@
 
     <!-- Main Workspace Area -->
     <main class="main-layout">
-      <!-- Left Column: Card & Beast Dossier -->
+      <!-- Left Column / Mobile Top: Card & Beast Dossier (Option B) -->
       <aside class="side-panel card-panel" id="card-panel">
         <div class="panel-header">
           <h3>CARD DOSSIER</h3>
-          <span class="tip">Click any beast</span>
+          <span class="tip" id="card-dossier-tip">Active Beast Card</span>
           <button class="drawer-close-btn mobile-only-btn" id="btn-close-card" title="Close">✕</button>
         </div>
         <div class="card-display-container">
@@ -71,9 +71,21 @@
             <div class="status-header">
               <h4 id="status-name">Phoenix</h4>
               <span class="element-tag fire" id="status-element">Fire</span>
+              <span class="moves-tag" id="status-moves-tag">2 Moves</span>
+            </div>
+            <div class="status-moves-summary" id="status-moves-summary">
+              <div class="move-brief" id="brief-move1"><b>⚔️ Talons:</b> 30 Dmg</div>
+              <div class="move-brief" id="brief-move2"><b>⚡ Fire Orb:</b> 50% Reflect</div>
+              <div class="move-brief" id="brief-ability"><b>🌟 Trails:</b> 10 Dmg Hazard</div>
             </div>
             <div class="buff-tags" id="status-buffs">
               <!-- Dynamically populated with active buffs/debuffs -->
+            </div>
+            <div class="beast-switcher-chips" id="beast-switcher-chips">
+              <button class="beast-chip active" data-unit="phoenix">Phoenix</button>
+              <button class="beast-chip" data-unit="earth_golem">Golem</button>
+              <button class="beast-chip" data-unit="werewolf">Werewolf</button>
+              <button class="beast-chip" data-unit="hydra">Hydra</button>
             </div>
           </div>
         </div>

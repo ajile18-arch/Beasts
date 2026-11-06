@@ -416,6 +416,73 @@ body {
   color: #86efac;
 }
 
+.moves-tag {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: rgba(34, 197, 94, 0.15);
+  border: 1px solid #22c55e;
+  color: #86efac;
+}
+
+.moves-tag.spent {
+  background: rgba(148, 163, 184, 0.15);
+  border-color: #64748b;
+  color: #94a3b8;
+}
+
+.status-moves-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 8px;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.move-brief {
+  font-size: 11px;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.move-brief b {
+  color: var(--text-gold);
+  font-size: 10.5px;
+}
+
+.beast-switcher-chips {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.beast-chip {
+  padding: 3px 8px;
+  font-size: 10px;
+  font-family: var(--font-title);
+  font-weight: 700;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-bronze);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  touch-action: manipulation;
+}
+
+.beast-chip:hover, .beast-chip.active {
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.35), rgba(212, 175, 55, 0.1));
+  border-color: var(--border-gold);
+  color: #fff;
+  box-shadow: 0 0 8px rgba(212, 175, 55, 0.4);
+}
+
 /* --------------------------------------------------------------------------
    Center: Tabletop Board
    -------------------------------------------------------------------------- */
@@ -1329,24 +1396,191 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
     overflow: hidden;
   }
 
-  /* Drawers */
+  /* -------------------------------------------------------------------------
+     OPTION B: Compact Split-Screen Mobile Layout
+     Card Dossier stays permanently visible above the tactical board!
+     ------------------------------------------------------------------------- */
+  #btn-toggle-card {
+    display: none !important; /* Continuous card view, no drawer toggle needed */
+  }
+
+  /* Compact In-flow Card Strip */
   .side-panel.card-panel {
-    position: fixed;
-    top: 0;
-    left: 0;
+    position: relative;
+    top: auto;
+    left: auto;
+    bottom: auto;
+    width: 100%;
+    height: auto;
+    max-height: 150px;
+    z-index: 10;
+    transform: none !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.7);
+    padding: 6px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    background: #171a27;
+    border-radius: 8px;
+    border: 1px solid var(--border-bronze);
+    flex-shrink: 0;
+    overflow: hidden;
+  }
+
+  .card-panel .panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 2px;
+    border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+    margin-bottom: 2px;
+  }
+
+  .card-panel .panel-header h3 {
+    font-size: 11px;
+    letter-spacing: 1px;
+    margin: 0;
+  }
+
+  .card-panel .tip {
+    font-size: 9px;
+    color: var(--text-gold);
+  }
+
+  .card-panel .drawer-close-btn {
+    display: none !important;
+  }
+
+  .card-panel .card-display-container {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 8px;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .card-panel .card-frame {
+    width: 78px;
+    height: 104px;
+    min-width: 78px;
+    flex-shrink: 0;
+    position: relative;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1.5px solid var(--border-gold);
+    box-shadow: 0 0 8px rgba(0, 0, 0, 0.8);
+  }
+
+  .card-panel .card-frame img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .card-panel .card-hp-overlay {
+    position: absolute;
     bottom: 0;
-    width: min(340px, 88vw);
-    height: 100dvh;
-    z-index: 50;
-    transform: translateX(-105%);
-    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-    box-shadow: 10px 0 35px rgba(0, 0, 0, 0.85);
+    left: 0;
+    right: 0;
+    background: rgba(10, 10, 15, 0.9);
+    padding: 2px 3px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
   }
 
-  .side-panel.card-panel.open {
-    transform: translateX(0);
+  .card-panel .card-hp-overlay span {
+    font-size: 8px;
+    text-align: center;
+    line-height: 1;
   }
 
+  .card-panel .beast-live-status {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-width: 0;
+    padding: 1px 2px;
+    background: transparent;
+    border: none;
+    gap: 2px;
+  }
+
+  .card-panel .status-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .card-panel .status-header h4 {
+    font-size: 12px;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--text-gold);
+  }
+
+  .card-panel .element-tag {
+    font-size: 8.5px;
+    padding: 1px 5px;
+  }
+
+  .card-panel .moves-tag {
+    font-size: 8.5px;
+    padding: 1px 5px;
+  }
+
+  .card-panel .status-moves-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 3px 6px;
+    background: rgba(0, 0, 0, 0.35);
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  .card-panel .move-brief {
+    font-size: 9px;
+    line-height: 1.2;
+    color: #e2e8f0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .card-panel .move-brief b {
+    color: var(--text-gold);
+    font-size: 8.5px;
+  }
+
+  .card-panel .buff-tags {
+    min-height: auto;
+    gap: 4px;
+  }
+
+  .card-panel .buff-badge {
+    font-size: 8.5px;
+    padding: 1px 5px;
+  }
+
+  .card-panel .beast-switcher-chips {
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+    padding-bottom: 1px;
+  }
+
+  .card-panel .beast-chip {
+    padding: 2px 6px;
+    font-size: 8px;
+  }
+
+  /* Right Side Log Panel remains as slide-out drawer */
   .side-panel.log-panel {
     position: fixed;
     top: 0;
@@ -1362,11 +1596,6 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
 
   .side-panel.log-panel.open {
     transform: translateX(0);
-  }
-
-  .card-frame {
-    width: 220px;
-    height: 294px;
   }
 
   /* Board Area */
@@ -1514,6 +1743,35 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
     padding: 6px 8px;
   }
 
+  .side-panel.card-panel {
+    max-height: 138px;
+    padding: 4px 6px;
+    gap: 2px;
+  }
+
+  .card-panel .card-frame {
+    width: 66px;
+    height: 88px;
+    min-width: 66px;
+  }
+
+  .card-panel .status-header h4 {
+    font-size: 11px;
+  }
+
+  .card-panel .move-brief {
+    font-size: 8px;
+  }
+
+  .card-panel .move-brief b {
+    font-size: 8px;
+  }
+
+  .card-panel .beast-chip {
+    padding: 1px 5px;
+    font-size: 7.5px;
+  }
+
   .ability-buttons-group {
     grid-template-columns: repeat(2, 1fr) repeat(2, 1fr);
   }
@@ -1544,6 +1802,24 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
     flex-direction: row;
     height: calc(100dvh - 38px);
     padding: 4px;
+    gap: 6px;
+  }
+
+  .side-panel.card-panel {
+    width: 165px;
+    max-height: unset;
+    height: 100%;
+    padding: 6px;
+  }
+
+  .card-panel .card-display-container {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .card-panel .card-frame {
+    width: 100%;
+    height: 110px;
   }
 
   .board-container {
@@ -1563,7 +1839,7 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   }
 
   .action-dock {
-    width: 180px;
+    width: 175px;
     flex-direction: column;
     padding: 6px;
     overflow-y: auto;
