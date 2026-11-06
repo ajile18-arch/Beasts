@@ -695,17 +695,87 @@ body {
 
 .unit-hp-fill.low { background: #ef4444; }
 
-.unit-icons {
+/* Status Indicators Under the Sprite */
+.unit-status-under {
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
   gap: 3px;
+  width: 120%;
+  max-width: 120px;
+  pointer-events: none;
+  z-index: 10;
+  white-space: nowrap;
 }
 
-.unit-icon-badge {
-  font-size: 9px;
-  padding: 1px 3px;
-  background: rgba(0, 0, 0, 0.8);
-  border-radius: 3px;
-  border: 1px solid rgba(255, 255, 255, 0.3);
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 1px 4px;
+  border-radius: 4px;
+  font-size: 8px;
+  font-weight: 700;
+  font-family: 'Cinzel', system-ui, sans-serif;
+  line-height: 1.1;
+  letter-spacing: 0.2px;
+  text-transform: uppercase;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.9);
+}
+
+.status-pill.buff-howl {
+  background: linear-gradient(135deg, #78350f, #b45309);
+  border: 1px solid #fbbf24;
+  color: #fef08a;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+}
+
+.status-pill.debuff-immobilized {
+  background: linear-gradient(135deg, #1f2937, #374151);
+  border: 1px solid #9ca3af;
+  color: #f3f4f6;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+}
+
+.status-pill.debuff-poison {
+  background: linear-gradient(135deg, #3b0764, #581c87);
+  border: 1px solid #c084fc;
+  color: #f3e8ff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+}
+
+.status-pill.buff-reflect {
+  background: linear-gradient(135deg, #7c2d12, #c2410c);
+  border: 1px solid #fdba74;
+  color: #ffedd5;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+}
+
+.status-pill.buff-regen {
+  background: linear-gradient(135deg, #064e3b, #047857);
+  border: 1px solid #34d399;
+  color: #d1fae5;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+}
+
+.status-pill.buff-terraform {
+  background: linear-gradient(135deg, #451a03, #78350f);
+  border: 1px solid #d97706;
+  color: #fde68a;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+}
+
+.status-pill.buff-shield {
+  background: linear-gradient(135deg, #1e3a8a, #2563eb);
+  border: 1px solid #60a5fa;
+  color: #eff6ff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
 }
 
 /* Combat Animations */

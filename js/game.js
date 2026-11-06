@@ -1193,21 +1193,18 @@
           spriteSrc = u.sprites.defeated || u.sprites.idle_down;
         }
 
+        const statusUnderHTML = this.renderUnitStatusUnder(u);
+
         el.innerHTML = `
           <div class="unit-hud">
             <div class="unit-hp-bar">
               <div class="unit-hp-fill ${u.hp / u.maxHp < 0.3 ? 'low' : ''}" style="width: ${(u.hp / u.maxHp) * 100}%"></div>
             </div>
-            <div class="unit-icons">
-              ${u.status.howlBuff > 0 ? '<span class="unit-icon-badge">🐺</span>' : ''}
-              ${u.status.immobilized > 0 ? '<span class="unit-icon-badge">⛓️</span>' : ''}
-              ${u.status.poisoned > 0 ? '<span class="unit-icon-badge">🧪</span>' : ''}
-              ${u.shield > 0 ? '<span class="unit-icon-badge">🛡️</span>' : ''}
-            </div>
           </div>
           <div class="unit-sprite-box">
             <img src="${spriteSrc}" alt="${u.name}">
           </div>
+          ${statusUnderHTML}
         `;
 
         el.addEventListener('click', (e) => {
@@ -1217,6 +1214,49 @@
 
         this.elUnitsLayer.appendChild(el);
       });
+    }
+
+    renderUnitStatusUnder(u) {
+      const badges = [];
+
+      // Howl Buff (+10 ATK)
+      if (u.status.howlBuff > 0) {
+        badges.push(`<span class="status-pill buff-howl" title="Howl: +10 Attack Damage">🐺 +10</span>`);
+      }
+
+      // Immobilized / Crushing Grip (Cannot move)
+      if (u.status.immobilized > 0) {
+        badges.push(`<span class="status-pill debuff-immobilized" title="Immobilized: Movement Disabled">⛓️ ROOT</span>`);
+      }
+
+      // Poisoned (Venomous Bite)
+      if (u.status.poisoned > 0) {
+        badges.push(`<span class="status-pill debuff-poison" title="Poisoned: -5 HP per turn">☠️ -5</span>`);
+      }
+
+      // Fire Orb (50% damage reflection)
+      if (u.status.fireOrb) {
+        badges.push(`<span class="status-pill buff-reflect" title="Fire Orb: 50% Damage Reflection">🔮 REF</span>`);
+      }
+
+      // Hydra Regrowth pending
+      if (u.id === 'hydra' && u.status.tookDamageLastTurn && u.hp < u.maxHp) {
+        badges.push(`<span class="status-pill buff-regen" title="Regrowth: +20 HP Next Turn">🌿 +20</span>`);
+      }
+
+      // Earth Golem Terraform (standing on Rock Barrier)
+      const hazard = this.getHazardAt(u.x, u.y);
+      if (u.id === 'earth_golem' && hazard && hazard.type === 'rock_barrier') {
+        badges.push(`<span class="status-pill buff-terraform" title="Terraform: +1 Move on Barrier">⛰️ +1 MOV</span>`);
+      }
+
+      // Shield
+      if (u.shield > 0) {
+        badges.push(`<span class="status-pill buff-shield" title="Shielded">🛡️ ${u.shield}</span>`);
+      }
+
+      if (badges.length === 0) return '';
+      return `<div class="unit-status-under">${badges.join('')}</div>`;
     }
 
     renderHighlights() {
