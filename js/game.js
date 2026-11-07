@@ -1603,7 +1603,7 @@
       this.draftPoolTemplates = ['phoenix', 'earth_golem', 'werewolf', 'hydra', 'terra_mother', 'verdant_guardian'];
       this.draftState = {
         active: false,
-        poolStock: { phoenix: 2, earth_golem: 2, werewolf: 2, hydra: 2, terra_mother: 2, verdant_guardian: 2 },
+        poolStock: { phoenix: 1, earth_golem: 1, werewolf: 1, hydra: 1, terra_mother: 1, verdant_guardian: 1 },
         team1Picks: [],
         team2Picks: [],
         turnOrder: [],
@@ -1630,7 +1630,7 @@
 
       this.draftState = {
         active: true,
-        poolStock: { phoenix: 2, earth_golem: 2, werewolf: 2, hydra: 2, terra_mother: 2, verdant_guardian: 2 },
+        poolStock: { phoenix: 1, earth_golem: 1, werewolf: 1, hydra: 1, terra_mother: 1, verdant_guardian: 1 },
         team1Picks: [],
         team2Picks: [],
         turnOrder: turnOrder,
@@ -1740,9 +1740,8 @@
         const cardItem = document.createElement('div');
         cardItem.className = `draft-card-item ${isSoldOut ? 'sold-out' : ''} ${!isHumanTurn ? 'disabled' : ''}`;
         
-        let stockBadgeHTML = `<span class="draft-card-stock">${stock} Available</span>`;
-        if (stock === 1) stockBadgeHTML = `<span class="draft-card-stock low">1 Left</span>`;
-        else if (stock <= 0) stockBadgeHTML = `<span class="draft-card-stock empty">Sold Out</span>`;
+        let stockBadgeHTML = `<span class="draft-card-stock">Available</span>`;
+        if (isSoldOut) stockBadgeHTML = `<span class="draft-card-stock empty">Drafted</span>`;
 
         cardItem.innerHTML = `
           <img src="${tmpl.cardImg}" alt="${tmpl.name}">
