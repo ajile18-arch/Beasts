@@ -180,7 +180,7 @@
   // ---------------------------------------------------------------------------
   class BeastsGame {
     constructor() {
-      this.VERSION = '1.10';
+      this.VERSION = '1.11';
       this.COLS = 10;
       this.ROWS = 8;
       this.round = 1;
@@ -611,7 +611,7 @@
     }
 
     executeUnitMove(unit, path, onComplete) {
-      const stepInterval = 140;
+      const stepInterval = this.isAiThinking ? 280 : 140;
       let stepIdx = 0;
 
       const moveStep = () => {
@@ -1287,76 +1287,88 @@
       const stepAiUnit = () => {
         if (unitIdx >= aiUnits.length) {
           this.isAiThinking = false;
-          setTimeout(() => this.endTurn(), 400);
+          setTimeout(() => this.endTurn(), 1000);
           return;
         }
 
         const u = aiUnits[unitIdx];
         this.selectUnit(u);
+        this.render();
 
-        // Find nearest opponent
-        const opponents = this.units.filter(o => o.team === 1 && o.hp > 0);
-        if (opponents.length === 0) {
-          this.isAiThinking = false;
-          return;
-        }
-
-        let nearest = opponents[0];
-        let minDist = 999;
-        opponents.forEach(o => {
-          const d = Math.abs(o.x - u.x) + Math.abs(o.y - u.y);
-          if (d < minDist) {
-            minDist = d;
-            nearest = o;
+        // Pause briefly after selecting beast so the player can see who is active
+        setTimeout(() => {
+          if (u.hp <= 0) {
+            unitIdx++;
+            setTimeout(stepAiUnit, 800);
+            return;
           }
-        });
 
-        // 1. Check if Werewolf should Howl first
-        if (u.id === 'werewolf' && u.status.howlBuff === 0 && minDist <= 3) {
-          this.attemptAbility(u);
-        }
+          // Find nearest opponent
+          const opponents = this.units.filter(o => o.team === 1 && o.hp > 0);
+          if (opponents.length === 0) {
+            this.isAiThinking = false;
+            return;
+          }
 
-        // 2. Movement Phase: Move towards nearest opponent
-        const validMoves = this.getValidMoves(u);
-        if (validMoves.length > 0 && minDist > 1) {
-          // Pick tile that minimizes distance to nearest opponent
-          let bestMove = validMoves[0];
-          let bestDist = 999;
-          validMoves.forEach(m => {
-            const d = Math.abs(m.x - nearest.x) + Math.abs(m.y - nearest.y);
-            if (d < bestDist) {
-              bestDist = d;
-              bestMove = m;
+          let nearest = opponents[0];
+          let minDist = 999;
+          opponents.forEach(o => {
+            const d = Math.abs(o.x - u.x) + Math.abs(o.y - u.y);
+            if (d < minDist) {
+              minDist = d;
+              nearest = o;
             }
           });
 
-          const path = this.findPath(u.x, u.y, bestMove.x, bestMove.y, u);
-          if (path && path.length > 0) {
-            this.executeUnitMove(u, path, () => {
-              // 3. Attack Phase: After moving, attack if in range
-              setTimeout(() => {
-                this.executeAiAttack(u, nearest);
-                u.hasActed = true;
-                u.movesLeft = 0;
-                this.render();
-                unitIdx++;
-                setTimeout(stepAiUnit, 600);
-              }, 400);
-            });
-            return;
+          // 1. Check if Werewolf should Howl first
+          if (u.id === 'werewolf' && u.status.howlBuff === 0 && minDist <= 3) {
+            this.attemptAbility(u);
           }
-        }
 
-        // If didn't move, attack directly
-        this.executeAiAttack(u, nearest);
-        u.hasActed = true;
-        u.movesLeft = 0;
-        this.render();
-        unitIdx++;
-        setTimeout(stepAiUnit, 600);
+          // 2. Movement Phase: Move towards nearest opponent
+          const validMoves = this.getValidMoves(u);
+          if (validMoves.length > 0 && minDist > 1) {
+            // Pick tile that minimizes distance to nearest opponent
+            let bestMove = validMoves[0];
+            let bestDist = 999;
+            validMoves.forEach(m => {
+              const d = Math.abs(m.x - nearest.x) + Math.abs(m.y - nearest.y);
+              if (d < bestDist) {
+                bestDist = d;
+                bestMove = m;
+              }
+            });
+
+            const path = this.findPath(u.x, u.y, bestMove.x, bestMove.y, u);
+            if (path && path.length > 0) {
+              this.executeUnitMove(u, path, () => {
+                // 3. Attack Phase: After moving, pause so player sees landing, then attack if in range
+                setTimeout(() => {
+                  this.executeAiAttack(u, nearest);
+                  u.hasActed = true;
+                  u.movesLeft = 0;
+                  this.render();
+                  unitIdx++;
+                  setTimeout(stepAiUnit, 1200);
+                }, 800);
+              });
+              return;
+            }
+          }
+
+          // If didn't move, pause slightly then attack directly
+          setTimeout(() => {
+            this.executeAiAttack(u, nearest);
+            u.hasActed = true;
+            u.movesLeft = 0;
+            this.render();
+            unitIdx++;
+            setTimeout(stepAiUnit, 1200);
+          }, 600);
+        }, 700);
       };
 
-      setTimeout(stepAiUnit, 600);
+      setTimeout(stepAiUnit, 1000);
     }
 
     executeAiAttack(u, nearest) {
