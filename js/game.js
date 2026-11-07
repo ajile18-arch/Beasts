@@ -172,6 +172,39 @@
         ability: { name: 'Thorn of Life', range: 0, type: 'passive', desc: 'When Terra-Mother stays in the same place for 3 turns in a row, Thorns grow in a random tile next to or diagonal her.' }
       },
       passiveHint: 'Ram: Deals 25 damage and knocks hostiles ahead back 3 tiles after moving. Thorn of Life: Staying in place 3 turns grows Thorns.'
+    },
+
+    verdant_guardian: {
+      id: 'verdant_guardian',
+      name: 'Verdant Guardian',
+      element: 'plant',
+      stars: 2,
+      maxHp: 160,
+      cardImg: 'Cards/Verdant_Guardian_Card.png',
+      spriteBase: 'Sprites/Verdant_Guardian/Verdant_Guardian',
+      sprites: {
+        idle_down: 'Sprites/Verdant_Guardian/Verdant_Guardian_idle_down_256x256.png',
+        idle_up: 'Sprites/Verdant_Guardian/Verdant_Guardian_idle_up_256x256.png',
+        idle_left: 'Sprites/Verdant_Guardian/Verdant_Guardian_idle_left_256x256.png',
+        idle_right: 'Sprites/Verdant_Guardian/Verdant_Guardian_idle_right_256x256.png',
+        walk_down: 'Sprites/Verdant_Guardian/Verdant_Guardian_walk_down_256x256.png',
+        walk_up: 'Sprites/Verdant_Guardian/Verdant_Guardian_walk_up_256x256.png',
+        walk_left: 'Sprites/Verdant_Guardian/Verdant_Guardian_walk_left_256x256.png',
+        walk_right: 'Sprites/Verdant_Guardian/Verdant_Guardian_walk_right_256x256.png',
+        attack: 'Sprites/Verdant_Guardian/Verdant_Guardian_attack_branch_whip_256x256.png',
+        attack_left: 'Sprites/Verdant_Guardian/Verdant_Guardian_attack_swipe_left_256x256.png',
+        attack_right: 'Sprites/Verdant_Guardian/Verdant_Guardian_attack_swipe_right_256x256.png',
+        attack_aoe: 'Sprites/Verdant_Guardian/Verdant_Guardian_attack_thorn_bush_256x256.png',
+        hurt: 'Sprites/Verdant_Guardian/Verdant_Guardian_hurt_damaged_256x256.png',
+        defeated: 'Sprites/Verdant_Guardian/Verdant_Guardian_defeated_slumped_256x256.png'
+      },
+      baseMove: 2,
+      skills: {
+        atk1: { name: 'Branch Whip', range: 1, dmg: 20, type: 'target', desc: 'Deals 20 damage.' },
+        atk2: { name: 'Thorn Bush', range: 0, dmg: 10, type: 'aoe_hazard', desc: 'AOE attack that sprouts thorns in all tiles around it and does 10 damage to any it hits.' },
+        ability: { name: 'Sapling Strength', range: 0, type: 'passive', desc: 'At 1/4 health or below (<= 40 HP), moves attack strength is doubled.' }
+      },
+      passiveHint: 'Ability: Sapling Strength — At 1/4 health or below (<= 40 HP), moves attack strength is doubled.'
     }
   };
 
@@ -180,7 +213,7 @@
   // ---------------------------------------------------------------------------
   class BeastsGame {
     constructor() {
-      this.VERSION = '1.11';
+      this.VERSION = '1.15';
       this.COLS = 10;
       this.ROWS = 8;
       this.round = 1;
@@ -720,6 +753,20 @@
               this.spawnFloatingText(tm.x, tm.y, '+15 THORN LIFE', 'heal');
               this.log(`🌿 Thorn of Life restored 15 HP to Terra-Mother!`, 'system');
             });
+            if (unit.hp <= 0) {
+              this.handleUnitDefeat(unit);
+            }
+          }
+
+          // Check if landed on Thorn Bush Tile (Verdant Guardian Thorn Bush)
+          if (hazardHere && hazardHere.type === 'thorn_bush' && unit.element !== 'plant') {
+            unit.hp = Math.max(0, unit.hp - 10);
+            window.sounds.playHit();
+            this.spawnFloatingText(unit.x, unit.y, '-10 THORN BUSH', 'damage');
+            this.log(`${unit.name} stepped into a dense thorn bush taking 10 nature damage!`, 'attack');
+            if (unit.hp <= 0) {
+              this.handleUnitDefeat(unit);
+            }
           }
 
           this.render();
@@ -925,11 +972,69 @@
         return;
       }
 
+      // Special Verdant Guardian Move 2: THORN BUSH (AOE hazard attack)
+      if (skill.type === 'aoe_hazard' && unit.id === 'verdant_guardian') {
+        unit.animState = 'attack_aoe';
+        if (window.sounds.playWhip) window.sounds.playWhip();
+        else window.sounds.playHit();
+
+        const isSaplingActive = unit.hp <= Math.floor(unit.maxHp / 4);
+        let baseDmg = skill.dmg || 10;
+        if (isSaplingActive) {
+          baseDmg *= 2;
+          this.log(`🌿 Sapling Strength active! Thorn Bush damage doubled to ${baseDmg}!`, 'system');
+        }
+        if (unit.status.howlBuff > 0) {
+          baseDmg += 10;
+          this.log(`🐺 Howl boost amplified Thorn Bush by +10!`, 'system');
+        }
+
+        let enemiesHit = 0;
+        let thornsPlanted = 0;
+        const directions = [
+          { x: 0, y: -1 }, { x: 0, y: 1 }, { x: -1, y: 0 }, { x: 1, y: 0 },
+          { x: -1, y: -1 }, { x: 1, y: -1 }, { x: -1, y: 1 }, { x: 1, y: 1 }
+        ];
+
+        directions.forEach(d => {
+          const tx = unit.x + d.x;
+          const ty = unit.y + d.y;
+          if (tx >= 0 && tx < this.COLS && ty >= 0 && ty < this.ROWS) {
+            // Check enemy on tile
+            const targetUnit = this.getUnitAt(tx, ty);
+            if (targetUnit && targetUnit.team !== unit.team) {
+              enemiesHit++;
+              targetUnit.animState = 'hurt';
+              this.dealDamage(targetUnit, baseDmg, `${unit.name} (Thorn Bush)`, unit);
+            }
+            // Spawn Thorn Bush hazard if tile doesn't have another permanent barrier
+            const existingHazard = this.getHazardAt(tx, ty);
+            if (!existingHazard || existingHazard.type !== 'rock_barrier') {
+              this.addHazard(tx, ty, 'thorn_bush', 2);
+              thornsPlanted++;
+            }
+          }
+        });
+
+        this.spawnFloatingText(unit.x, unit.y, isSaplingActive ? 'THORN BUSH (x2 DMG!)' : 'THORN BUSH!', 'status');
+        this.log(`🌿 ${unit.name} unleashed Thorn Bush! Hit ${enemiesHit} enemies for ${baseDmg} damage and sprouted thorns across ${thornsPlanted} tiles.`, 'attack');
+        unit.hasActed = true;
+        this.finishAction(unit);
+        return;
+      }
+
       const targetUnit = this.getUnitAt(targetX, targetY);
       if (!targetUnit || targetUnit.team === unit.team) return;
 
       // Calculate Damage (+10 Howl buff if active)
       let damage = skill.dmg || 20;
+
+      // Verdant Guardian Passive: Sapling Strength (Double damage at <= 1/4 HP / <= 40 HP)
+      if (unit.id === 'verdant_guardian' && unit.hp <= Math.floor(unit.maxHp / 4)) {
+        damage *= 2;
+        this.log(`🌿 Sapling Strength active! Attack damage doubled to ${damage}!`, 'system');
+      }
+
       if (unit.status.howlBuff > 0) {
         damage += 10;
         this.log(`🐺 Howl boost amplified damage by +10!`, 'system');
@@ -941,6 +1046,10 @@
       else if (unit.id === 'werewolf') window.sounds.playHit();
       else if (unit.id === 'hydra') window.sounds.playPoison();
       else if (unit.id === 'terra_mother') window.sounds.playRock();
+      else if (unit.id === 'verdant_guardian') {
+        if (window.sounds.playWhip) window.sounds.playWhip();
+        else window.sounds.playHit();
+      }
 
       // Orient attacker towards target
       if (targetX > unit.x) unit.facing = 'right';
@@ -1018,6 +1127,14 @@
         window.sounds.playHeal();
         this.spawnFloatingText(unit.x, unit.y, 'THORN OF LIFE', 'heal');
         this.log(`🌹 Terra-Mother Ability — Thorn of Life: When staying in the same place for 3 turns in a row, Thorns grow in a random adjacent or diagonal tile.`, 'system');
+        return;
+      }
+
+      // Verdant Guardian Ability: SAPLING STRENGTH
+      if (unit.id === 'verdant_guardian') {
+        const isSaplingActive = unit.hp <= Math.floor(unit.maxHp / 4);
+        this.spawnFloatingText(unit.x, unit.y, isSaplingActive ? 'SAPLING STRENGTH ACTIVE!' : 'SAPLING STRENGTH (PASSIVE)', 'status');
+        this.log(`🌿 Verdant Guardian Ability — Sapling Strength: At 1/4 health or below (<= 40 HP), attack moves deal doubled damage. Current Status: ${isSaplingActive ? 'ACTIVE (x2 DMG)' : `Inactive (${unit.hp}/${unit.maxHp} HP)`}.`, 'system');
         return;
       }
     }
@@ -1115,7 +1232,7 @@
     }
 
     getValidAttackTargets(unit, skill) {
-      if (skill.range === 0 || skill.type === 'counter_stance' || skill.type === 'self_move' || skill.type === 'passive') {
+      if (skill.range === 0 || skill.type === 'counter_stance' || skill.type === 'self_move' || skill.type === 'passive' || skill.type === 'aoe_hazard') {
         return [{ x: unit.x, y: unit.y }];
       }
 
@@ -1285,10 +1402,10 @@
         }
       });
 
-      // Age hazards (Fire fades after 2 rounds, Rock Barrier is permanent or durable)
+      // Age hazards (Fire fades after 2 rounds, Thorn Bush fades after 2 rounds, Rock Barrier is permanent or durable)
       for (const key in this.hazards) {
         const h = this.hazards[key];
-        if (h.type === 'fire') {
+        if (h.type === 'fire' || h.type === 'thorn_bush') {
           h.duration--;
           if (h.duration <= 0) {
             delete this.hazards[key];
@@ -1443,6 +1560,17 @@
           this.attemptAttack(u, 'atk2', u.x, u.y);
         }
       }
+      // Verdant Guardian: Thorn Bush (AOE) or Branch Whip (20 Dmg)
+      else if (u.id === 'verdant_guardian') {
+        const enemiesAdj = this.getAdjacentUnits(u.x, u.y).filter(t => t.team !== u.team);
+        if (enemiesAdj.length >= 2) {
+          this.attemptAttack(u, 'atk2', u.x, u.y);
+        } else if (dist <= 1) {
+          this.attemptAttack(u, 'atk1', nearest.x, nearest.y);
+        } else if (enemiesAdj.length >= 1) {
+          this.attemptAttack(u, 'atk2', u.x, u.y);
+        }
+      }
       // Standard Skill 1 if in range
       else if (dist <= (u.skills.atk1.range || 1)) {
         this.attemptAttack(u, 'atk1', nearest.x, nearest.y);
@@ -1476,10 +1604,10 @@
     // Mythical Beast Draft System (3 Selections Per Team)
     // -------------------------------------------------------------------------
     initDraft() {
-      this.draftPoolTemplates = ['phoenix', 'earth_golem', 'werewolf', 'hydra', 'terra_mother'];
+      this.draftPoolTemplates = ['phoenix', 'earth_golem', 'werewolf', 'hydra', 'terra_mother', 'verdant_guardian'];
       this.draftState = {
         active: false,
-        poolStock: { phoenix: 2, earth_golem: 2, werewolf: 2, hydra: 2, terra_mother: 2 },
+        poolStock: { phoenix: 2, earth_golem: 2, werewolf: 2, hydra: 2, terra_mother: 2, verdant_guardian: 2 },
         team1Picks: [],
         team2Picks: [],
         turnOrder: [],
@@ -1506,7 +1634,7 @@
 
       this.draftState = {
         active: true,
-        poolStock: { phoenix: 2, earth_golem: 2, werewolf: 2, hydra: 2, terra_mother: 2 },
+        poolStock: { phoenix: 2, earth_golem: 2, werewolf: 2, hydra: 2, terra_mother: 2, verdant_guardian: 2 },
         team1Picks: [],
         team2Picks: [],
         turnOrder: turnOrder,
@@ -1779,6 +1907,8 @@
           img.src = 'Sprites/Effects/Rock_Barrier_Tile_256x256.png';
         } else if (h.type === 'thorns') {
           img.src = 'Sprites/Effects/Thorn_Tile_256x256.png';
+        } else if (h.type === 'thorn_bush') {
+          img.src = 'Sprites/Effects/Thorn_Bush_Tile_256x256.png';
         }
         el.appendChild(img);
         this.elHazardsLayer.appendChild(el);
@@ -1867,6 +1997,11 @@
       // Hydra Regrowth pending
       if (u.id === 'hydra' && u.status.tookDamageLastTurn && u.hp < u.maxHp) {
         badges.push(`<span class="status-pill buff-regen" title="Regrowth: +20 HP Next Turn">🌿 +20</span>`);
+      }
+
+      // Verdant Guardian Sapling Strength (active at <= 1/4 HP)
+      if (u.id === 'verdant_guardian' && u.hp <= Math.floor(u.maxHp / 4)) {
+        badges.push(`<span class="status-pill buff-sapling" title="Sapling Strength: Double Attack Damage (<=40 HP)">🌿 x2 ATK</span>`);
       }
 
       // Earth Golem Terraform (standing on Rock Barrier)
