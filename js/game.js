@@ -321,7 +321,7 @@
       document.getElementById('btn-atk2').addEventListener('click', () => {
         const u = this.selectedUnit;
         if (!u || this.isSkillPassive(u.skills.atk2)) return;
-        if (u.skills.atk2.type === 'counter_stance' || u.skills.atk2.type === 'self_move') {
+        if (u.skills.atk2.type === 'counter_stance' || u.skills.atk2.type === 'self_move' || u.skills.atk2.type === 'aoe_hazard') {
           this.attemptAttack(u, 'atk2', u.x, u.y);
         } else {
           this.setActionMode('atk2');
@@ -422,7 +422,7 @@
         } else if (e.key === '3') {
           const u = this.selectedUnit;
           if (u && !this.isSkillPassive(u.skills.atk2)) {
-            if (u.skills.atk2.type === 'counter_stance' || u.skills.atk2.type === 'self_move') {
+            if (u.skills.atk2.type === 'counter_stance' || u.skills.atk2.type === 'self_move' || u.skills.atk2.type === 'aoe_hazard') {
               this.attemptAttack(u, 'atk2', u.x, u.y);
             } else {
               this.setActionMode('atk2');
