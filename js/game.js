@@ -1,4 +1,4 @@
-/**
+﻿/**
  * BEASTS: Tactical Tabletop Arena - Game Engine
  */
 
@@ -213,7 +213,7 @@
   // ---------------------------------------------------------------------------
   class BeastsGame {
     constructor() {
-      this.VERSION = '1.15';
+      this.VERSION = '1.27';
       this.COLS = 10;
       this.ROWS = 8;
       this.round = 1;
@@ -240,7 +240,61 @@
       this.initBoard();
       this.bindEvents();
       this.initDraft();
+
+      // Start in the Open-World Courtyard by default
+      this.currentView = 'overworld'; // 'overworld' | 'arena'
+      if (window.MythosOverworld) {
+        this.overworld = new window.MythosOverworld((challenger) => {
+          this.enterMythosArena(challenger);
+        });
+      } else {
+        this.enterMythosArena();
+      }
+    }
+
+    // Switch from Overworld into the Mythos Tabletop Minigame
+    enterMythosArena(challenger = null) {
+      this.currentView = 'arena';
+      if (this.overworld) this.overworld.active = false;
+
+      document.getElementById('overworld-view')?.classList.add('hidden');
+      document.getElementById('overworld-toolbar')?.classList.add('hidden');
+      document.getElementById('arena-view')?.classList.remove('hidden');
+      document.getElementById('arena-turn-tracker')?.classList.remove('hidden');
+      document.querySelectorAll('.arena-only-ctrl').forEach(el => el.classList.remove('hidden'));
+
+      const sub = document.getElementById('header-subtitle');
+      if (sub) sub.textContent = challenger ? `Tabletop Duel vs. ${challenger.name}` : 'Tactical Tabletop Arena';
+
+      const switchBtn = document.getElementById('btn-switch-view');
+      if (switchBtn) switchBtn.innerHTML = '🗺️ Return to World';
+
       this.openDraftModal();
+    }
+
+    // Switch from Mythos Tabletop Minigame back to the Open World
+    returnToOverworld() {
+      this.currentView = 'overworld';
+      this.draftState.active = false;
+      document.getElementById('draft-modal')?.classList.add('hidden');
+      this.elWinnerModal?.classList.add('hidden');
+
+      document.getElementById('arena-view')?.classList.add('hidden');
+      document.getElementById('arena-turn-tracker')?.classList.add('hidden');
+      document.querySelectorAll('.arena-only-ctrl').forEach(el => el.classList.add('hidden'));
+
+      document.getElementById('overworld-view')?.classList.remove('hidden');
+      document.getElementById('overworld-toolbar')?.classList.remove('hidden');
+
+      const sub = document.getElementById('header-subtitle');
+      if (sub) sub.textContent = 'Open-World Card RPG';
+
+      const switchBtn = document.getElementById('btn-switch-view');
+      if (switchBtn) switchBtn.innerHTML = '🃏 Quick Duel';
+
+      if (this.overworld) {
+        this.overworld.active = true;
+      }
     }
 
     // Initialize 10x8 tile grid
@@ -352,6 +406,14 @@
 
       document.getElementById('btn-reset').addEventListener('click', () => this.resetMatch());
       document.getElementById('btn-rematch').addEventListener('click', () => this.resetMatch());
+      document.getElementById('btn-return-overworld')?.addEventListener('click', () => this.returnToOverworld());
+      document.getElementById('btn-switch-view')?.addEventListener('click', () => {
+        if (this.currentView === 'overworld') {
+          this.enterMythosArena();
+        } else {
+          this.returnToOverworld();
+        }
+      });
       document.getElementById('btn-clear-log').addEventListener('click', () => {
         this.elLog.innerHTML = '<div class="log-entry system">Log cleared.</div>';
       });
@@ -412,6 +474,7 @@
 
       // Keyboard shortcuts (Space = End Turn, 1..4 = Abilities)
       window.addEventListener('keydown', (e) => {
+        if (this.currentView !== 'arena' || (this.draftState && this.draftState.active)) return;
         if (e.key === 'Enter' || e.key === ' ') {
           this.endTurn();
         } else if (e.key === '1') {

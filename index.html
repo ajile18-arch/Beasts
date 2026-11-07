@@ -1,11 +1,11 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>Beasts - Tactical Tabletop Arena</title>
+  <title>Mythos - Open World & Tabletop Card Game</title>
   <link rel="stylesheet" href="css/style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -16,12 +16,12 @@
     <!-- Top Header Bar -->
     <header class="game-header">
       <div class="logo-area">
-        <h1 class="game-title">BEASTS</h1>
-        <span class="version-tag" id="game-version">v1.15</span>
-        <span class="subtitle">Tactical Tabletop Arena</span>
+        <h1 class="game-title">MYTHOS</h1>
+        <span class="version-tag" id="game-version">v1.27</span>
+        <span class="subtitle" id="header-subtitle">Open-World Card RPG</span>
       </div>
 
-      <div class="turn-tracker">
+      <div class="turn-tracker hidden" id="arena-turn-tracker">
         <div class="team-badge team-1 active" id="team1-badge">
           <span class="crest">☀️</span>
           <div class="team-info">
@@ -39,18 +39,72 @@
         </div>
       </div>
 
+      <!-- Overworld Style & Lighting Quick-Tweak Bar (Visible in Overworld) -->
+      <div class="overworld-toolbar" id="overworld-toolbar">
+        <span class="ow-location-pill" id="ow-location-pill">🏠 Living Room (Day 2 of Summer)</span>
+        <button id="btn-open-inventory" class="ui-btn primary-btn" style="padding: 4px 10px; font-size: 12px;" title="Open Backpack & Inventory (Key: I)">🎒 Inventory <span id="inv-badge-count" class="inv-badge-pill">0</span></button>
+        <button id="btn-open-creator" class="ui-btn secondary" style="padding: 4px 10px; font-size: 12px;" title="Customize Character or World Save">👤 Character</button>
+        <button id="btn-replay-intro" class="ui-btn secondary" style="padding: 4px 10px; font-size: 12px;" title="Replay the Living Room Opening & TV Commercial">🎬 Replay Intro</button>
+        <select id="ow-time-select" class="ow-select" title="Time of Day Shader">
+          <option value="day" selected>☀️ Summer Day</option>
+          <option value="sunset">🌅 Golden Hour</option>
+          <option value="night">🌙 Cozy Night</option>
+        </select>
+        <label class="ow-check-label" title="Toggle Dynamic Lighting & Bloom">
+          <input type="checkbox" id="ow-toggle-shaders" checked>
+          <span>✨ Shaders</span>
+        </label>
+        <label class="ow-check-label" title="Show 32x32 Tile Grid">
+          <input type="checkbox" id="ow-toggle-grid">
+          <span>📏 32-Grid</span>
+        </label>
+      </div>
+
       <div class="header-controls">
-        <div class="round-counter">Rnd <span id="round-num">1</span></div>
-        <button id="btn-toggle-card" class="ui-btn mobile-only-btn" title="View Active Beast">🃏 <span class="btn-lbl">Card</span></button>
-        <button id="btn-toggle-log" class="ui-btn mobile-only-btn" title="View Tactical Log & Roster">📜 <span class="btn-lbl">Log</span></button>
-        <button id="btn-mode" class="ui-btn secondary" title="Switch between Solo AI and 2P Hotseat"><span id="mode-label">Solo vs AI</span></button>
+        <button id="btn-switch-view" class="ui-btn primary-btn" title="Switch between Open World and Mythos Tabletop Arena">🃏 Quick Duel</button>
+        <div class="round-counter arena-only-ctrl hidden" id="arena-round-counter">Rnd <span id="round-num">1</span></div>
+        <button id="btn-toggle-card" class="ui-btn mobile-only-btn arena-only-ctrl hidden" title="View Active Beast">🃏 <span class="btn-lbl">Card</span></button>
+        <button id="btn-toggle-log" class="ui-btn mobile-only-btn arena-only-ctrl hidden" title="View Tactical Log & Roster">📜 <span class="btn-lbl">Log</span></button>
+        <button id="btn-mode" class="ui-btn secondary arena-only-ctrl hidden" title="Switch between Solo AI and 2P Hotseat"><span id="mode-label">Solo vs AI</span></button>
         <button id="btn-sound" class="ui-btn icon-btn" title="Toggle Sound">🔊</button>
-        <button id="btn-reset" class="ui-btn secondary" title="Restart Match">↺</button>
+        <button id="btn-reset" class="ui-btn secondary arena-only-ctrl hidden" title="Restart Match">↺</button>
       </div>
     </header>
 
-    <!-- Main Workspace Area -->
-    <main class="main-layout">
+    <!-- Open-World Pokémon-Style Top-Down Viewport -->
+    <section class="overworld-container" id="overworld-view">
+      <div class="overworld-stage" id="overworld-stage">
+        <canvas id="overworld-canvas" width="1024" height="768"></canvas>
+
+        <!-- Pokémon / Stardew Style Bottom Dialogue & Response Box -->
+        <div class="ow-dialog-bar hidden" id="ow-dialog-bar">
+          <div class="ow-dialog-main">
+            <div class="ow-speaker-tag" id="ow-speaker-tag">MIKE</div>
+            <div class="ow-dialog-text" id="ow-dialog-text">
+              "It's only day 2 of summer and we are already bored!"
+            </div>
+            <!-- 3 Player Response Options -->
+            <div class="ow-choices-list hidden" id="ow-choices-container"></div>
+          </div>
+
+          <div class="ow-dialog-actions" id="ow-dialog-actions">
+            <button class="ui-btn primary-btn ow-duel-btn hidden" id="ow-btn-next">
+              Continue ▸
+            </button>
+            <button class="ui-btn primary-btn ow-duel-btn hidden" id="ow-btn-challenge">
+              ⚔️ Play Mythos (Space)
+            </button>
+          </div>
+        </div>
+
+        <div class="ow-controls-hint">
+          Walk: <b>WASD / Arrow Keys</b> or <b>Click Tile</b> • Interact / Continue: <b>Space / Enter</b>
+        </div>
+      </div>
+    </section>
+
+    <!-- Main Workspace Area (Mythos Tabletop Minigame) -->
+    <main class="main-layout hidden" id="arena-view">
       <!-- Left Column / Mobile Top: Card & Beast (Option B) -->
       <aside class="side-panel card-panel" id="card-panel">
         <div class="card-display-container">
@@ -173,7 +227,7 @@
           <button id="btn-clear-log" class="tiny-btn">Clear</button>
         </div>
         <div class="combat-log" id="combat-log">
-          <div class="log-entry system">Beasts Tactical Arena v1.15 initialized. Select your beast to begin.</div>
+          <div class="log-entry system">Beasts Tactical Arena v1.27 initialized. Select your beast to begin.</div>
         </div>
       </aside>
     </main>
@@ -255,12 +309,241 @@
         <div class="modal-crest" id="winner-crest">🏆</div>
         <h2 id="winner-title">VICTORY!</h2>
         <p id="winner-message">Team Solar has eliminated all opposing beasts.</p>
-        <button class="ui-btn primary-btn" id="btn-rematch">Play Again</button>
+        <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+          <button class="ui-btn primary-btn" id="btn-rematch">⚔️ Rematch</button>
+          <button class="ui-btn secondary" id="btn-return-overworld">🗺️ Return to Overworld</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Intro / Title Screen Overlay -->
+    <div class="modal-overlay" id="intro-modal">
+      <div class="intro-modal-card">
+        <div class="intro-logo-badge">🃏⚔️</div>
+        <h1 class="intro-main-title">MYTHOS</h1>
+        <p class="intro-subtitle">Open-World Card Trading & Tabletop Tactics</p>
+
+        <!-- Saved World Card (Hidden if no save exists yet) -->
+        <div class="save-slot-card hidden" id="continue-world-card">
+          <div class="save-slot-left">
+            <canvas id="continue-avatar-canvas" width="56" height="68"></canvas>
+            <div id="continue-world-meta">
+              <div class="save-slot-title">Asher — Oakhaven</div>
+              <div class="save-slot-sub">Saved World</div>
+            </div>
+          </div>
+          <button class="ui-btn primary-btn" id="btn-continue-world">▶ Continue World</button>
+        </div>
+
+        <div class="intro-actions">
+          <button class="ui-btn primary-btn intro-new-btn" id="btn-new-world">✨ New World & Character Creator</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stardew Valley / Pokémon Style Character Creator Modal -->
+    <div class="modal-overlay hidden" id="creator-modal">
+      <div class="creator-modal-dialog">
+        <div class="creator-header">
+          <div>
+            <h2 class="creator-title">TRAVELER & WORLD CREATOR</h2>
+            <p class="creator-sub">Customize your pixel-art duelist and name your new world</p>
+          </div>
+          <button class="ui-btn secondary" id="btn-cc-random" title="Randomize Appearance">🎲 Randomize</button>
+        </div>
+
+        <div class="creator-body">
+          <!-- Left: Live 4x Pixel-Art Preview Stage -->
+          <div class="creator-preview-col">
+            <div class="creator-canvas-box">
+              <canvas id="cc-preview-canvas" width="160" height="180"></canvas>
+            </div>
+            <div class="creator-dir-row">
+              <button type="button" class="cc-dir-btn active" data-dir="down">⬇️ Front</button>
+              <button type="button" class="cc-dir-btn" data-dir="left">⬅️ Left</button>
+              <button type="button" class="cc-dir-btn" data-dir="right">➡️ Right</button>
+              <button type="button" class="cc-dir-btn" data-dir="up">⬆️ Back</button>
+            </div>
+            <label class="ow-check-label" style="margin-top: 4px;">
+              <input type="checkbox" id="cc-toggle-walk" checked>
+              <span>Preview Walk Cycle</span>
+            </label>
+          </div>
+
+          <!-- Right: Customization Options -->
+          <div class="creator-options-col">
+            <div class="cc-inputs-row">
+              <div class="cc-field">
+                <label for="cc-player-name">Duelist Name</label>
+                <input type="text" id="cc-player-name" maxlength="16" value="Asher" placeholder="Enter name...">
+              </div>
+              <div class="cc-field">
+                <label for="cc-world-name">World / Town Name</label>
+                <input type="text" id="cc-world-name" maxlength="18" value="Oakhaven" placeholder="Enter world name...">
+              </div>
+            </div>
+
+            <div class="cc-group">
+              <span class="cc-label">Skin Tone</span>
+              <div class="cc-swatch-row" id="cc-skin-swatches"></div>
+            </div>
+
+            <div class="cc-group">
+              <span class="cc-label">Hairstyle</span>
+              <div class="cc-pill-row" id="cc-hair-styles"></div>
+            </div>
+
+            <div class="cc-group">
+              <span class="cc-label">Hair Color</span>
+              <div class="cc-swatch-row" id="cc-hair-colors"></div>
+            </div>
+
+            <div class="cc-group">
+              <span class="cc-label">Eye Color</span>
+              <div class="cc-swatch-row" id="cc-eye-colors"></div>
+            </div>
+
+            <div class="cc-group">
+              <span class="cc-label">Outfit Style</span>
+              <div class="cc-pill-row" id="cc-outfit-styles"></div>
+            </div>
+
+            <div class="cc-group">
+              <span class="cc-label">Outfit Color</span>
+              <div class="cc-swatch-row" id="cc-outfit-colors"></div>
+            </div>
+
+            <div class="cc-group">
+              <span class="cc-label">Pants Color</span>
+              <div class="cc-swatch-row" id="cc-pants-colors"></div>
+            </div>
+
+            <div class="cc-group">
+              <span class="cc-label">Headgear / Hat</span>
+              <div class="cc-pill-row" id="cc-hat-styles"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="creator-footer">
+          <button type="button" class="ui-btn secondary" id="btn-cc-back">← Title Screen</button>
+          <button type="button" class="ui-btn primary-btn creator-start-btn" id="btn-cc-start">✨ Save & Enter World</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Player Inventory & Backpack Modal -->
+    <div class="modal-overlay hidden" id="inventory-modal">
+      <div class="inventory-modal-dialog">
+        <div class="inventory-header">
+          <div class="inventory-title-group">
+            <span class="inventory-icon-badge">🎒</span>
+            <div>
+              <h2 class="inventory-title">DUELIST BACKPACK & INVENTORY</h2>
+              <p class="inventory-sub">Manage your unopened booster packs, cards, and wallet</p>
+            </div>
+          </div>
+          <div class="inventory-wallet-pill" id="inv-wallet-display">💵 $0</div>
+        </div>
+
+        <div class="inventory-body">
+          <div class="inventory-grid" id="inventory-items-grid">
+            <!-- Dynamically populated with inventory items or empty slots -->
+          </div>
+
+          <div class="inventory-detail-card" id="inventory-detail-panel">
+            <div class="inv-detail-art" id="inv-detail-art">📦</div>
+            <div class="inv-detail-info">
+              <div class="inv-detail-header">
+                <h3 id="inv-detail-name">Select an Item</h3>
+                <span class="inv-detail-qty hidden" id="inv-detail-qty">x1</span>
+              </div>
+              <p id="inv-detail-desc">Your backpack is currently empty. Explore the neighborhood and visit the Mythos Card Shop to pick up your first Booster Pack!</p>
+              <div class="inv-detail-actions hidden" id="inv-detail-actions">
+                <button type="button" class="ui-btn primary-btn inv-open-pack-btn" id="btn-inv-open-pack">
+                  ✨ Open Booster Pack
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="inventory-footer">
+          <span class="inventory-shortcut-hint">Shortcut: Press <b>I</b> or <b>B</b> to toggle Inventory</span>
+          <button type="button" class="ui-btn primary-btn" id="btn-close-inventory">Done</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Theatrical & Suspenseful Booster Pack Opening Stage Modal -->
+    <div class="modal-overlay hidden" id="pack-opening-modal">
+      <div class="pack-stage-container" id="pack-stage-container">
+        <!-- Ambient Celestial Rays & Floating Runic Particles -->
+        <div class="pack-ambient-rays" id="pack-ambient-rays"></div>
+        <div class="pack-flash-bang hidden" id="pack-flash-bang"></div>
+
+        <!-- Stage Header -->
+        <div class="pack-stage-header">
+          <div class="pack-stage-badge">✨ MYTHOS BASE SET • 1ST EDITION BOOSTER ✨</div>
+          <h2 class="pack-stage-title" id="pack-stage-title">BREAK THE CELESTIAL SEAL</h2>
+          <p class="pack-stage-subtitle" id="pack-stage-subtitle">
+            Click the sealed Booster Pack <b>3 times</b> to charge the Ouroboros runes and tear open the foil!
+          </p>
+        </div>
+
+        <!-- Phase 1: Sealed Foil Pack Ritual Stage -->
+        <div class="pack-sealed-zone" id="pack-sealed-zone">
+          <div class="pack-energy-ring" id="pack-energy-ring"></div>
+
+          <div class="sealed-booster-wrapper" id="sealed-booster-wrapper" title="Click to charge & tear open!">
+            <!-- Top Foil Tear Strip -->
+            <div class="pack-foil-top-strip" id="pack-foil-top-strip">
+              <span class="pack-crimp-label">★ MYTHOS TCG • 5 CARDS INSIDE ★</span>
+              <div class="pack-tear-line"></div>
+            </div>
+
+            <!-- Main Booster Pack Body using the Cleaned Mythos Card Back Art! -->
+            <div class="pack-foil-body" id="pack-foil-body">
+              <img src="Cards/Mythos_Card_Back.png" alt="Mythos Base Pack" class="pack-foil-art-img">
+              <div class="pack-foil-sheen"></div>
+              <div class="pack-foil-badge-overlay">
+                <span>BASE SET BOOSTER</span>
+              </div>
+            </div>
+
+            <!-- Bottom Foil Crimp -->
+            <div class="pack-foil-bottom-crimp"></div>
+          </div>
+
+          <!-- 3-Step Runic Seal Charge Meter -->
+          <div class="pack-seal-meter" id="pack-seal-meter">
+            <div class="seal-pip" id="seal-pip-1">🔥</div>
+            <div class="seal-pip" id="seal-pip-2">💧</div>
+            <div class="seal-pip" id="seal-pip-3">⚡</div>
+          </div>
+        </div>
+
+        <!-- Phase 2: 5 Face-Down Pulled Cards (Using Mythos_Card_Back.png) -->
+        <div class="pack-cards-reveal-row hidden" id="pack-cards-reveal-row">
+          <!-- Dynamically populated with 5 3D flip cards -->
+        </div>
+
+        <!-- Stage Footer Controls -->
+        <div class="pack-stage-footer">
+          <button type="button" class="ui-btn secondary hidden" id="btn-pack-reveal-all">
+            ✨ Flip All Remaining Cards
+          </button>
+          <button type="button" class="ui-btn primary-btn pack-collect-btn hidden" id="btn-pack-collect">
+            🎒 Collect All 5 Cards into Inventory
+          </button>
+        </div>
       </div>
     </div>
   </div>
 
   <script src="js/audio.js"></script>
+  <script src="js/character_sprites.js"></script>
+  <script src="js/overworld.js"></script>
   <script src="js/game.js"></script>
 </body>
 </html>

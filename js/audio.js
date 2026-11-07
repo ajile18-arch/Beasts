@@ -236,6 +236,198 @@ class SoundController {
     osc.start();
     osc.stop(this.ctx.currentTime + 0.12);
   }
+
+  // Loud TV Static Snap + Heroic Mythos Commercial Fanfare
+  playTvCommercial() {
+    if (!this.enabled) return;
+    this.init();
+    const now = this.ctx.currentTime;
+
+    // 1. Loud CRT static burst
+    const bufferSize = Math.floor(this.ctx.sampleRate * 0.22);
+    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = (Math.random() * 2 - 1) * 0.85;
+    }
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = buffer;
+    const nGain = this.ctx.createGain();
+    nGain.gain.setValueAtTime(0.45, now);
+    nGain.gain.exponentialRampToValueAtTime(0.01, now + 0.22);
+    noise.connect(nGain);
+    nGain.connect(this.ctx.destination);
+    noise.start(now);
+
+    // 2. Brass-like Commercial Fanfare Notes (G4 -> C5 -> E5 -> G5!)
+    const fanfare = [
+      { f: 392.00, t: 0.18, d: 0.14 },
+      { f: 523.25, t: 0.32, d: 0.14 },
+      { f: 659.25, t: 0.46, d: 0.16 },
+      { f: 783.99, t: 0.62, d: 0.55 }
+    ];
+    fanfare.forEach(({ f, t, d }) => {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(f, now + t);
+
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(1800, now + t);
+
+      gain.gain.setValueAtTime(0.01, now + t);
+      gain.gain.linearRampToValueAtTime(0.28, now + t + 0.03);
+      gain.gain.exponentialRampToValueAtTime(0.005, now + t + d);
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now + t);
+      osc.stop(now + t + d);
+    });
+  }
+
+  // Suspenseful Ascending Runic Drone while Charging / Ripping a Mythos Booster Pack
+  playPackSuspense() {
+    if (!this.enabled) return;
+    this.init();
+    const now = this.ctx.currentTime;
+
+    const osc1 = this.ctx.createOscillator();
+    const osc2 = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc1.type = 'sine';
+    osc2.type = 'triangle';
+
+    osc1.frequency.setValueAtTime(110, now);
+    osc1.frequency.exponentialRampToValueAtTime(330, now + 0.65);
+    osc2.frequency.setValueAtTime(164.81, now);
+    osc2.frequency.exponentialRampToValueAtTime(493.88, now + 0.65);
+
+    gain.gain.setValueAtTime(0.02, now);
+    gain.gain.linearRampToValueAtTime(0.24, now + 0.5);
+    gain.gain.exponentialRampToValueAtTime(0.005, now + 0.68);
+
+    osc1.connect(gain);
+    osc2.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc1.start(now);
+    osc2.start(now);
+    osc1.stop(now + 0.68);
+    osc2.stop(now + 0.68);
+  }
+
+  // Foil Ripping Crunch + Celestial Shockwave Boom when tearing open a Booster Pack!
+  playPackRip() {
+    if (!this.enabled) return;
+    this.init();
+    const now = this.ctx.currentTime;
+
+    // 1. Metallic Foil Tear (Bandpass white noise sweep)
+    const bufferSize = Math.floor(this.ctx.sampleRate * 0.42);
+    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = (Math.random() * 2 - 1) * Math.sin((i / bufferSize) * Math.PI);
+    }
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = buffer;
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(900, now);
+    filter.frequency.exponentialRampToValueAtTime(4800, now + 0.38);
+    filter.Q.setValueAtTime(2.2, now);
+
+    const nGain = this.ctx.createGain();
+    nGain.gain.setValueAtTime(0.55, now);
+    nGain.gain.exponentialRampToValueAtTime(0.01, now + 0.42);
+
+    noise.connect(filter);
+    filter.connect(nGain);
+    nGain.connect(this.ctx.destination);
+    noise.start(now);
+
+    // 2. Deep Sub-Bass Impact Boom + Magical Shimmer Chime
+    const sub = this.ctx.createOscillator();
+    const subGain = this.ctx.createGain();
+    sub.type = 'sine';
+    sub.frequency.setValueAtTime(140, now + 0.18);
+    sub.frequency.exponentialRampToValueAtTime(36, now + 0.85);
+    subGain.gain.setValueAtTime(0.5, now + 0.18);
+    subGain.gain.exponentialRampToValueAtTime(0.005, now + 0.85);
+    sub.connect(subGain);
+    subGain.connect(this.ctx.destination);
+    sub.start(now + 0.18);
+    sub.stop(now + 0.85);
+
+    const sparkles = [523.25, 659.25, 783.99, 1046.50, 1318.51];
+    sparkles.forEach((f, idx) => {
+      const osc = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(f, now + 0.22 + idx * 0.055);
+      g.gain.setValueAtTime(0.18, now + 0.22 + idx * 0.055);
+      g.gain.exponentialRampToValueAtTime(0.003, now + 0.65 + idx * 0.055);
+      osc.connect(g);
+      g.connect(this.ctx.destination);
+      osc.start(now + 0.22 + idx * 0.055);
+      osc.stop(now + 0.65 + idx * 0.055);
+    });
+  }
+
+  // Dramatic 3D Card Flip & Rarity Reveal (isMythic = 4-Star Holographic Pull!)
+  playCardFlipReveal(isMythic = false) {
+    if (!this.enabled) return;
+    this.init();
+    const now = this.ctx.currentTime;
+
+    // Crisp card whoosh
+    const whooshOsc = this.ctx.createOscillator();
+    const whooshGain = this.ctx.createGain();
+    whooshOsc.type = 'triangle';
+    whooshOsc.frequency.setValueAtTime(220, now);
+    whooshOsc.frequency.exponentialRampToValueAtTime(680, now + 0.14);
+    whooshGain.gain.setValueAtTime(0.22, now);
+    whooshGain.gain.exponentialRampToValueAtTime(0.005, now + 0.15);
+    whooshOsc.connect(whooshGain);
+    whooshGain.connect(this.ctx.destination);
+    whooshOsc.start(now);
+    whooshOsc.stop(now + 0.15);
+
+    if (isMythic) {
+      // Heroic 4-Star Mythic Gold Fanfare!
+      const chord = [523.25, 659.25, 783.99, 1046.50, 1567.98];
+      chord.forEach((freq, i) => {
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        osc.type = i % 2 === 0 ? 'triangle' : 'sine';
+        osc.frequency.setValueAtTime(freq, now + 0.12 + i * 0.06);
+        g.gain.setValueAtTime(0.22, now + 0.12 + i * 0.06);
+        g.gain.exponentialRampToValueAtTime(0.004, now + 0.95 + i * 0.06);
+        osc.connect(g);
+        g.connect(this.ctx.destination);
+        osc.start(now + 0.12 + i * 0.06);
+        osc.stop(now + 0.95 + i * 0.06);
+      });
+    } else {
+      // Clean Rare 2-Star Crystal Chime
+      const notes = [440, 554.37, 659.25];
+      notes.forEach((freq, i) => {
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, now + 0.10 + i * 0.05);
+        g.gain.setValueAtTime(0.18, now + 0.10 + i * 0.05);
+        g.gain.exponentialRampToValueAtTime(0.004, now + 0.48 + i * 0.05);
+        osc.connect(g);
+        g.connect(this.ctx.destination);
+        osc.start(now + 0.10 + i * 0.05);
+        osc.stop(now + 0.48 + i * 0.05);
+      });
+    }
+  }
 }
 
 const sounds = new SoundController();
