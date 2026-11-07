@@ -180,7 +180,7 @@
   // ---------------------------------------------------------------------------
   class BeastsGame {
     constructor() {
-      this.VERSION = '1.07';
+      this.VERSION = '1.08';
       this.COLS = 10;
       this.ROWS = 8;
       this.round = 1;
