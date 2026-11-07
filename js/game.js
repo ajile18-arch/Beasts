@@ -272,13 +272,23 @@
     // -------------------------------------------------------------------------
     // Event Listeners & UI Binding
     // -------------------------------------------------------------------------
+    isSkillPassive(skill) {
+      if (!skill) return false;
+      return skill.type === 'passive' || skill.type === 'passive_ram';
+    }
+
     bindEvents() {
       // Ability buttons
       document.getElementById('btn-move').addEventListener('click', () => this.setActionMode('move'));
-      document.getElementById('btn-atk1').addEventListener('click', () => this.setActionMode('atk1'));
+      document.getElementById('btn-atk1').addEventListener('click', () => {
+        const u = this.selectedUnit;
+        if (u && this.isSkillPassive(u.skills.atk1)) return;
+        this.setActionMode('atk1');
+      });
       document.getElementById('btn-atk2').addEventListener('click', () => {
         const u = this.selectedUnit;
-        if (u && (u.skills.atk2.type === 'counter_stance' || u.skills.atk2.type === 'self_move' || u.skills.atk2.type === 'passive' || u.skills.atk2.type === 'passive_ram')) {
+        if (!u || this.isSkillPassive(u.skills.atk2)) return;
+        if (u.skills.atk2.type === 'counter_stance' || u.skills.atk2.type === 'self_move') {
           this.attemptAttack(u, 'atk2', u.x, u.y);
         } else {
           this.setActionMode('atk2');
@@ -286,7 +296,8 @@
       });
       document.getElementById('btn-ability').addEventListener('click', () => {
         const u = this.selectedUnit;
-        if (u && (u.skills.ability.type === 'team_buff' || u.skills.ability.type === 'passive')) {
+        if (!u || this.isSkillPassive(u.skills.ability)) return;
+        if (u.skills.ability.type === 'team_buff') {
           this.attemptAbility(u, u.x, u.y);
         } else {
           this.setActionMode('ability');
@@ -373,20 +384,25 @@
         } else if (e.key === '1') {
           this.setActionMode('move');
         } else if (e.key === '2') {
-          this.setActionMode('atk1');
+          const u = this.selectedUnit;
+          if (u && !this.isSkillPassive(u.skills.atk1)) this.setActionMode('atk1');
         } else if (e.key === '3') {
           const u = this.selectedUnit;
-          if (u && (u.skills.atk2.type === 'counter_stance' || u.skills.atk2.type === 'self_move' || u.skills.atk2.type === 'passive' || u.skills.atk2.type === 'passive_ram')) {
-            this.attemptAttack(u, 'atk2', u.x, u.y);
-          } else {
-            this.setActionMode('atk2');
+          if (u && !this.isSkillPassive(u.skills.atk2)) {
+            if (u.skills.atk2.type === 'counter_stance' || u.skills.atk2.type === 'self_move') {
+              this.attemptAttack(u, 'atk2', u.x, u.y);
+            } else {
+              this.setActionMode('atk2');
+            }
           }
         } else if (e.key === '4') {
           const u = this.selectedUnit;
-          if (u && (u.skills.ability.type === 'team_buff' || u.skills.ability.type === 'passive')) {
-            this.attemptAbility(u, u.x, u.y);
-          } else {
-            this.setActionMode('ability');
+          if (u && !this.isSkillPassive(u.skills.ability)) {
+            if (u.skills.ability.type === 'team_buff') {
+              this.attemptAbility(u, u.x, u.y);
+            } else {
+              this.setActionMode('ability');
+            }
           }
         }
       });
@@ -535,10 +551,23 @@
       const btnAtk2 = document.getElementById('btn-atk2');
       const btnAbility = document.getElementById('btn-ability');
 
+      const atk1Passive = u ? this.isSkillPassive(u.skills.atk1) : false;
+      const atk2Passive = u ? this.isSkillPassive(u.skills.atk2) : false;
+      const abilityPassive = u ? this.isSkillPassive(u.skills.ability) : false;
+
       btnMove.disabled = !isMyTurn || u.movesLeft <= 0 || u.status.immobilized > 0;
-      btnAtk1.disabled = !isMyTurn || u.hasActed;
-      btnAtk2.disabled = !isMyTurn || u.hasActed;
-      btnAbility.disabled = !isMyTurn || u.hasActed;
+      btnAtk1.disabled = !isMyTurn || u.hasActed || atk1Passive;
+      btnAtk2.disabled = !isMyTurn || u.hasActed || atk2Passive;
+      btnAbility.disabled = !isMyTurn || u.hasActed || abilityPassive;
+
+      btnAtk1.classList.toggle('is-passive', atk1Passive);
+      btnAtk2.classList.toggle('is-passive', atk2Passive);
+      btnAbility.classList.toggle('is-passive', abilityPassive);
+
+      // Tooltips indicating passive or active
+      btnAtk1.title = atk1Passive ? `${u.skills.atk1.name} (Passive - Triggers automatically)` : '';
+      btnAtk2.title = atk2Passive ? `${u.skills.atk2.name} (Passive - Triggers automatically)` : '';
+      btnAbility.title = abilityPassive ? `${u.skills.ability.name} (Passive - Triggers automatically)` : '';
 
       // Toggle active visual state
       btnMove.classList.toggle('active', this.actionMode === 'move');

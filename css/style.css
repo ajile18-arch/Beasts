@@ -1168,6 +1168,19 @@ body {
   filter: grayscale(0.8);
 }
 
+.ability-btn.is-passive {
+  opacity: 0.55;
+  cursor: not-allowed;
+  border-style: dashed;
+  border-color: rgba(212, 175, 55, 0.4);
+}
+
+.ability-btn.is-passive:hover {
+  transform: none;
+  box-shadow: none;
+  background: linear-gradient(180deg, #2b3042 0%, #191c28 100%);
+}
+
 .ability-btn .btn-icon {
   font-size: 18px;
 }
