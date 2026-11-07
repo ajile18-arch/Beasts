@@ -1,4 +1,4 @@
-﻿/**
+/**
  * BEASTS: Tactical Tabletop Arena - Game Engine
  */
 
@@ -134,7 +134,7 @@
       },
       baseMove: 2,
       skills: {
-        atk1: { name: 'Venomous Bite', range: 1, dmg: 30, poison: 5, type: 'target', desc: 'Deals 30 damage. Target is poisoned (5 dmg/turn for 2 turns).' },
+        atk1: { name: 'Venomous Bite', range: 1, dmg: 20, poison: 5, type: 'target', desc: 'Deals 20 damage. Target is poisoned (5 dmg/turn for 2 turns).' },
         atk2: { name: 'Regrowth', range: 0, type: 'passive', desc: 'If Hydra is damaged, it regains 20 HP at beginning of next turn.' },
         ability: { name: 'Swamp Regenerator', range: 0, type: 'passive', desc: 'Any allied card next to the hydra is healed 10 HP at beginning of next turn.' }
       },
@@ -1382,7 +1382,7 @@
           this.attemptAttack(u, 'atk2', u.x, u.y);
         }
       }
-      // Hydra: Venomous Bite (30 Dmg + Poison)
+      // Hydra: Venomous Bite (20 Dmg + Poison)
       else if (u.id === 'hydra' && dist <= (u.skills.atk1.range || 1)) {
         this.attemptAttack(u, 'atk1', nearest.x, nearest.y);
       }
