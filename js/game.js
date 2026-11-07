@@ -168,10 +168,10 @@
       baseMove: 2,
       skills: {
         atk1: { name: 'Root Crush', range: 1, dmg: 35, type: 'target', desc: 'Deals 35 damage.' },
-        atk2: { name: 'Ram', range: 0, dmg: 25, type: 'passive_ram', desc: 'Deals 25 damage. After Terra-Mother moves, hostiles in front of her are knocked back 3 tiles.' },
+        atk2: { name: 'Ram', range: 0, dmg: 25, type: 'passive_ram', desc: 'Deals 25 damage. After Terra-Mother moves, hostiles in front of her are knocked back 2 tiles.' },
         ability: { name: 'Thorn of Life', range: 0, type: 'passive', desc: 'When Terra-Mother stays in the same place for 3 turns in a row, Thorns grow in a random tile next to or diagonal her.' }
       },
-      passiveHint: 'Ram: Deals 25 damage and knocks hostiles ahead back 3 tiles after moving. Thorn of Life: Staying in place 3 turns grows Thorns.'
+      passiveHint: 'Ram: Deals 25 damage and knocks hostiles ahead back 2 tiles after moving. Thorn of Life: Staying in place 3 turns grows Thorns.'
     },
 
     verdant_guardian: {
@@ -683,7 +683,7 @@
           unit.hasMovedThisTurn = true;
           unit.stationaryTurns = 0;
 
-          // Terra-Mother Ram: After Terra-Mother moves, hostiles in front of her are knocked back 3 tiles!
+          // Terra-Mother Ram: After Terra-Mother moves, hostiles in front of her are knocked back 2 tiles!
           if (unit.id === 'terra_mother' && path.length > 0) {
             const dx = unit.facing === 'right' ? 1 : (unit.facing === 'left' ? -1 : 0);
             const dy = unit.facing === 'down' ? 1 : (unit.facing === 'up' ? -1 : 0);
@@ -694,7 +694,7 @@
               let currX = target.x;
               let currY = target.y;
               let pushedTiles = 0;
-              for (let k = 1; k <= 3; k++) {
+              for (let k = 1; k <= 2; k++) {
                 const nx = currX + dx;
                 const ny = currY + dy;
                 if (nx < 0 || nx >= this.COLS || ny < 0 || ny >= this.ROWS) break;
@@ -951,7 +951,7 @@
       // Special Terra-Mother Move 2: RAM (Passive Check)
       if (skill.type === 'passive_ram') {
         this.spawnFloatingText(unit.x, unit.y, 'RAM PASSIVE', 'status');
-        this.log(`💥 Terra-Mother's Ram is passive: After moving, hostiles in front of her are knocked back 3 tiles!`, 'system');
+        this.log(`💥 Terra-Mother's Ram is passive: After moving, hostiles in front of her are knocked back 2 tiles!`, 'system');
         return;
       }
 
