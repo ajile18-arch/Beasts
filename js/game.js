@@ -168,10 +168,10 @@
       baseMove: 2,
       skills: {
         atk1: { name: 'Root Crush', range: 1, dmg: 35, type: 'target', desc: 'Deals 35 damage.' },
-        atk2: { name: 'Ram', range: 0, type: 'passive_ram', desc: 'After Terra-Mother moves, hostiles in front of her are knocked back 3 tiles.' },
+        atk2: { name: 'Ram', range: 0, dmg: 25, type: 'passive_ram', desc: 'Deals 25 damage. After Terra-Mother moves, hostiles in front of her are knocked back 3 tiles.' },
         ability: { name: 'Thorn of Life', range: 0, type: 'passive', desc: 'When Terra-Mother stays in the same place for 3 turns in a row, Thorns grow in a random tile next to or diagonal her.' }
       },
-      passiveHint: 'Ram: After moving, hostiles ahead are knocked back 3 tiles. Thorn of Life: Staying in place 3 turns grows Thorns.'
+      passiveHint: 'Ram: Deals 25 damage and knocks hostiles ahead back 3 tiles after moving. Thorn of Life: Staying in place 3 turns grows Thorns.'
     }
   };
 
@@ -676,8 +676,16 @@
                 target.x = currX;
                 target.y = currY;
                 window.sounds.playRock();
-                this.spawnFloatingText(target.x, target.y, `RAMMED! -${pushedTiles} TILES`, 'status');
-                this.log(`💥 Ram: Terra-Mother rammed ${target.name}, knocking them back ${pushedTiles} tiles!`, 'attack');
+                // Apply 25 Ram damage
+                const ramDmg = 25;
+                target.hp = Math.max(0, target.hp - ramDmg);
+                target.animState = 'hurt';
+                target.status.tookDamageLastTurn = true;
+                this.spawnFloatingText(target.x, target.y, `-${ramDmg} RAMMED!`, 'damage');
+                this.log(`💥 Ram: Terra-Mother rammed ${target.name} for 25 damage, knocking them back ${pushedTiles} tiles! (${target.hp}/${target.maxHp} HP)`, 'attack');
+                if (target.hp <= 0) {
+                  this.handleUnitDefeat(target);
+                }
                 this.renderUnits();
               }
             }
