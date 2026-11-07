@@ -135,10 +135,10 @@
       baseMove: 2,
       skills: {
         atk1: { name: 'Venomous Bite', range: 1, dmg: 20, poison: 5, type: 'target', desc: 'Deals 20 damage. Target is poisoned (5 dmg/turn for 2 turns).' },
-        atk2: { name: 'Regrowth', range: 0, type: 'passive', desc: 'If Hydra is damaged, it regains 20 HP at beginning of next turn.' },
+        atk2: { name: 'Regrowth', range: 0, type: 'passive', desc: 'If Hydra is damaged, it regains 10 HP at beginning of next turn.' },
         ability: { name: 'Swamp Regenerator', range: 0, type: 'passive', desc: 'Any allied card next to the hydra is healed 10 HP at beginning of next turn.' }
       },
-      passiveHint: 'Regrowth: If damaged, regains 20 HP next turn. Swamp Regenerator: Adjacent allies heal 10 HP next turn.'
+      passiveHint: 'Regrowth: If damaged, regains 10 HP next turn. Swamp Regenerator: Adjacent allies heal 10 HP next turn.'
     },
 
     terra_mother: {
@@ -944,7 +944,7 @@
       // Special Hydra Move 2: REGROWTH (Passive Check)
       if (skill.type === 'passive' && unit.id === 'hydra') {
         this.spawnFloatingText(unit.x, unit.y, 'REGROWTH PASSIVE', 'heal');
-        this.log(`🐍 Hydra's Regrowth is passive: If damaged, it regains 20 HP at beginning of next turn.`, 'system');
+        this.log(`🐍 Hydra's Regrowth is passive: If damaged, it regains 10 HP at beginning of next turn.`, 'system');
         return;
       }
 
@@ -1377,12 +1377,12 @@
         }
 
         // Hydra Passives:
-        // 1. Regrowth: If Hydra is damaged, it regains 20 HP at the beginning of next turn!
+        // 1. Regrowth: If Hydra is damaged, it regains 10 HP at the beginning of next turn!
         if (u.id === 'hydra' && u.status.tookDamageLastTurn && u.hp < u.maxHp) {
-          u.hp = Math.min(u.maxHp, u.hp + 20);
+          u.hp = Math.min(u.maxHp, u.hp + 10);
           window.sounds.playHeal();
-          this.spawnFloatingText(u.x, u.y, '+20 REGROWTH', 'heal');
-          this.log(`Hydra Regrowth triggered: regained 20 HP! (${u.hp}/${u.maxHp})`, 'heal');
+          this.spawnFloatingText(u.x, u.y, '+10 REGROWTH', 'heal');
+          this.log(`Hydra Regrowth triggered: regained 10 HP! (${u.hp}/${u.maxHp})`, 'heal');
           u.status.tookDamageLastTurn = false;
         }
 
@@ -1991,7 +1991,7 @@
 
       // Hydra Regrowth pending
       if (u.id === 'hydra' && u.status.tookDamageLastTurn && u.hp < u.maxHp) {
-        badges.push(`<span class="status-pill buff-regen" title="Regrowth: +20 HP Next Turn">🌿 +20</span>`);
+        badges.push(`<span class="status-pill buff-regen" title="Regrowth: +10 HP Next Turn">🌿 +10</span>`);
       }
 
       // Verdant Guardian Sapling Strength (active at <= 1/4 HP)
