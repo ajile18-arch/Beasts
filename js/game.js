@@ -201,7 +201,7 @@
       baseMove: 2,
       skills: {
         atk1: { name: 'Branch Whip', range: 1, dmg: 20, type: 'target', desc: 'Deals 20 damage.' },
-        atk2: { name: 'Thorn Bush', range: 0, dmg: 10, type: 'aoe_hazard', desc: 'AOE attack that sprouts thorns in all tiles around it and does 10 damage to any it hits.' },
+        atk2: { name: 'Thorn Bush', range: 0, dmg: 10, type: 'aoe_hazard', desc: 'AOE burst that hits all adjacent enemy beasts for 10 damage.' },
         ability: { name: 'Sapling Strength', range: 0, type: 'passive', desc: 'At 1/4 health or below (<= 40 HP), moves attack strength is doubled.' }
       },
       passiveHint: 'Ability: Sapling Strength — At 1/4 health or below (<= 40 HP), moves attack strength is doubled.'
@@ -972,7 +972,7 @@
         return;
       }
 
-      // Special Verdant Guardian Move 2: THORN BUSH (AOE hazard attack)
+      // Special Verdant Guardian Move 2: THORN BUSH (Instant AOE attack on adjacent enemies)
       if (skill.type === 'aoe_hazard' && unit.id === 'verdant_guardian') {
         unit.animState = 'attack_aoe';
         if (window.sounds.playWhip) window.sounds.playWhip();
@@ -990,7 +990,6 @@
         }
 
         let enemiesHit = 0;
-        let thornsPlanted = 0;
         const directions = [
           { x: 0, y: -1 }, { x: 0, y: 1 }, { x: -1, y: 0 }, { x: 1, y: 0 },
           { x: -1, y: -1 }, { x: 1, y: -1 }, { x: -1, y: 1 }, { x: 1, y: 1 }
@@ -1000,24 +999,21 @@
           const tx = unit.x + d.x;
           const ty = unit.y + d.y;
           if (tx >= 0 && tx < this.COLS && ty >= 0 && ty < this.ROWS) {
-            // Check enemy on tile
+            // Spawn temporary visual burst (does not persist across turns)
+            this.spawnThornBurst(tx, ty);
+
+            // Strike ONLY enemy beasts
             const targetUnit = this.getUnitAt(tx, ty);
             if (targetUnit && targetUnit.team !== unit.team) {
               enemiesHit++;
               targetUnit.animState = 'hurt';
               this.dealDamage(targetUnit, baseDmg, `${unit.name} (Thorn Bush)`, unit);
             }
-            // Spawn Thorn Bush hazard if tile doesn't have another permanent barrier
-            const existingHazard = this.getHazardAt(tx, ty);
-            if (!existingHazard || existingHazard.type !== 'rock_barrier') {
-              this.addHazard(tx, ty, 'thorn_bush', 2);
-              thornsPlanted++;
-            }
           }
         });
 
         this.spawnFloatingText(unit.x, unit.y, isSaplingActive ? 'THORN BUSH (x2 DMG!)' : 'THORN BUSH!', 'status');
-        this.log(`🌿 ${unit.name} unleashed Thorn Bush! Hit ${enemiesHit} enemies for ${baseDmg} damage and sprouted thorns across ${thornsPlanted} tiles.`, 'attack');
+        this.log(`🌿 ${unit.name} unleashed Thorn Bush! Hit ${enemiesHit} opposing enemies for ${baseDmg} nature damage.`, 'attack');
         unit.hasActed = true;
         this.finishAction(unit);
         return;
@@ -1402,10 +1398,10 @@
         }
       });
 
-      // Age hazards (Fire fades after 2 rounds, Thorn Bush fades after 2 rounds, Rock Barrier is permanent or durable)
+      // Age hazards (Fire fades after 2 rounds, Rock Barrier is permanent or durable)
       for (const key in this.hazards) {
         const h = this.hazards[key];
-        if (h.type === 'fire' || h.type === 'thorn_bush') {
+        if (h.type === 'fire') {
           h.duration--;
           if (h.duration <= 0) {
             delete this.hazards[key];
@@ -2118,6 +2114,18 @@
       el.style.top = `${y * 12.5 + 4}%`;
       this.elFxLayer.appendChild(el);
       setTimeout(() => el.remove(), 1200);
+    }
+
+    spawnThornBurst(x, y) {
+      const el = document.createElement('div');
+      el.className = 'thorn-bush-burst';
+      el.style.left = `${x * 10}%`;
+      el.style.top = `${y * 12.5}%`;
+      const img = document.createElement('img');
+      img.src = 'Sprites/Effects/Thorn_Bush_Tile_256x256.png';
+      el.appendChild(img);
+      this.elFxLayer.appendChild(el);
+      setTimeout(() => el.remove(), 800);
     }
 
     log(message, type = 'system') {
