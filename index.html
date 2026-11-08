@@ -17,7 +17,7 @@
     <header class="game-header">
       <div class="logo-area">
         <h1 class="game-title">MYTHOS</h1>
-        <span class="version-tag" id="game-version">v1.35</span>
+        <span class="version-tag" id="game-version">v1.36</span>
         <span class="subtitle" id="header-subtitle">Open-World Card RPG</span>
       </div>
 
@@ -74,7 +74,7 @@
 
     <!-- Open-World Pokémon-Style Top-Down Viewport -->
     <section class="overworld-container" id="overworld-view">
-      <!-- Mobile Quick Access HUD Bar (Visible on mobile & tablets) -->
+      <!-- Mobile Quick Access HUD Bar (Visible on mobile portrait) -->
       <div class="ow-mobile-header-bar" id="ow-mobile-header-bar">
         <div class="ow-mobile-loc-tag" id="ow-mobile-loc-tag">🏠 Living Room • $0</div>
         <div class="ow-mobile-nav-buttons">
@@ -93,32 +93,19 @@
         </div>
       </div>
 
+      <!-- Left Black Space Wing in Landscape (Holds D-Pad) -->
+      <div class="ow-side-wing ow-left-wing" id="ow-left-wing">
+        <div class="ow-dpad" id="ow-dpad">
+          <button class="dpad-btn dpad-up" data-dir="up" aria-label="Walk Up">▲</button>
+          <button class="dpad-btn dpad-left" data-dir="left" aria-label="Walk Left">◀</button>
+          <div class="dpad-center"></div>
+          <button class="dpad-btn dpad-right" data-dir="right" aria-label="Walk Right">▶</button>
+          <button class="dpad-btn dpad-down" data-dir="down" aria-label="Walk Down">▼</button>
+        </div>
+      </div>
+
       <div class="overworld-stage" id="overworld-stage">
         <canvas id="overworld-canvas" width="1024" height="768"></canvas>
-
-        <!-- Mobile Touch Virtual Gamepad (D-Pad & Action Buttons) -->
-        <div class="ow-touch-controls" id="ow-touch-controls">
-          <!-- Retro Directional Pad -->
-          <div class="ow-dpad" id="ow-dpad">
-            <button class="dpad-btn dpad-up" data-dir="up" aria-label="Walk Up">▲</button>
-            <button class="dpad-btn dpad-left" data-dir="left" aria-label="Walk Left">◀</button>
-            <div class="dpad-center"></div>
-            <button class="dpad-btn dpad-right" data-dir="right" aria-label="Walk Right">▶</button>
-            <button class="dpad-btn dpad-down" data-dir="down" aria-label="Walk Down">▼</button>
-          </div>
-
-          <!-- Mobile Action Buttons -->
-          <div class="ow-action-buttons" id="ow-action-buttons">
-            <button class="ow-action-btn ow-btn-b" id="ow-btn-b" aria-label="Backpack Inventory">
-              <span class="btn-letter">B</span>
-              <span class="btn-subtext">🎒 PACK</span>
-            </button>
-            <button class="ow-action-btn ow-btn-a" id="ow-btn-a" aria-label="Action / Interact">
-              <span class="btn-letter">A</span>
-              <span class="btn-subtext" id="ow-btn-a-label">TALK</span>
-            </button>
-          </div>
-        </div>
 
         <!-- Pokémon / Stardew Style Bottom Dialogue & Response Box -->
         <div class="ow-dialog-bar hidden" id="ow-dialog-bar">
@@ -143,6 +130,35 @@
 
         <div class="ow-controls-hint">
           Walk: <b>WASD / Arrow Keys</b> or <b>Click Tile</b> • Interact / Continue: <b>Space / Enter</b>
+        </div>
+      </div>
+
+      <!-- Right Black Space Wing in Landscape (Holds Action Buttons & Quick Nav) -->
+      <div class="ow-side-wing ow-right-wing" id="ow-right-wing">
+        <div class="ow-landscape-quick-nav" id="ow-landscape-quick-nav">
+          <button id="btn-ls-inventory" class="ow-wing-btn" title="Backpack Inventory">
+            🎒 <span id="ls-inv-badge" class="inv-badge-pill">0</span>
+          </button>
+          <button id="btn-ls-binder" class="ow-wing-btn locked" title="Old Card Binder">
+            📖 <span id="ls-binder-badge" class="inv-badge-pill">0</span>
+          </button>
+          <button id="btn-ls-creator" class="ow-wing-btn" title="Character Profile">
+            👤
+          </button>
+          <button id="btn-ls-sound" class="ow-wing-btn" title="Toggle Sound">
+            🔊
+          </button>
+        </div>
+
+        <div class="ow-action-buttons" id="ow-action-buttons">
+          <button class="ow-action-btn ow-btn-b" id="ow-btn-b" aria-label="Backpack Inventory">
+            <span class="btn-letter">B</span>
+            <span class="btn-subtext">🎒 PACK</span>
+          </button>
+          <button class="ow-action-btn ow-btn-a" id="ow-btn-a" aria-label="Action / Interact">
+            <span class="btn-letter">A</span>
+            <span class="btn-subtext" id="ow-btn-a-label">TALK</span>
+          </button>
         </div>
       </div>
     </section>
@@ -271,7 +287,7 @@
           <button id="btn-clear-log" class="tiny-btn">Clear</button>
         </div>
         <div class="combat-log" id="combat-log">
-          <div class="log-entry system">Beasts Tactical Arena v1.35 initialized. Select your beast to begin.</div>
+          <div class="log-entry system">Beasts Tactical Arena v1.36 initialized. Select your beast to begin.</div>
         </div>
       </aside>
     </main>

@@ -2067,18 +2067,20 @@
     }
 
     initTouchControls() {
-      const touchContainer = document.getElementById('ow-touch-controls');
+      const leftWing = document.getElementById('ow-left-wing');
+      const rightWing = document.getElementById('ow-right-wing');
       const dpad = document.getElementById('ow-dpad');
       const btnA = document.getElementById('ow-btn-a');
       const btnB = document.getElementById('ow-btn-b');
       const dpadToggleBtn = document.getElementById('btn-mob-dpad-toggle');
 
-      if (!touchContainer) return;
+      if (!dpad && !btnA) return;
 
       // Auto-detect mobile / touch device or viewport <= 820px
       const isMobileOrTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (window.innerWidth <= 820);
       if (isMobileOrTouch) {
-        touchContainer.classList.remove('hidden');
+        leftWing?.classList.remove('hidden');
+        rightWing?.classList.remove('hidden');
         dpadToggleBtn?.classList.add('active');
       }
 
@@ -2086,7 +2088,8 @@
       if (dpadToggleBtn) {
         dpadToggleBtn.addEventListener('click', () => {
           if (window.sounds?.playClick) window.sounds.playClick();
-          const isHidden = touchContainer.classList.toggle('hidden');
+          const isHidden = leftWing ? leftWing.classList.toggle('hidden') : false;
+          rightWing?.classList.toggle('hidden', isHidden);
           dpadToggleBtn.classList.toggle('active', !isHidden);
         });
       }
@@ -2212,6 +2215,27 @@
       if (mobCreatorBtn) {
         mobCreatorBtn.addEventListener('click', () => this.openCharacterCreator(false));
       }
+
+      // Landscape Wing Quick Nav buttons
+      const lsInvBtn = document.getElementById('btn-ls-inventory');
+      if (lsInvBtn) {
+        lsInvBtn.addEventListener('click', () => this.toggleInventoryModal());
+      }
+
+      const lsBinderBtn = document.getElementById('btn-ls-binder');
+      if (lsBinderBtn) {
+        lsBinderBtn.addEventListener('click', () => this.toggleBinderModal());
+      }
+
+      const lsCreatorBtn = document.getElementById('btn-ls-creator');
+      if (lsCreatorBtn) {
+        lsCreatorBtn.addEventListener('click', () => this.openCharacterCreator(false));
+      }
+
+      const lsSoundBtn = document.getElementById('btn-ls-sound');
+      if (lsSoundBtn) {
+        lsSoundBtn.addEventListener('click', () => document.getElementById('btn-sound')?.click());
+      }
     }
 
     // -------------------------------------------------------------------------
@@ -2318,6 +2342,22 @@
       if (mobBinderBtn) {
         mobBinderBtn.classList.toggle('locked', !this.hasOldCardBinder);
         mobBinderBtn.title = this.hasOldCardBinder ? 'Open Old Card Binder' : 'Old Card Binder (Locked)';
+      }
+
+      // Sync Landscape Wing Badges
+      const lsInvBadge = document.getElementById('ls-inv-badge');
+      const lsBinderBadge = document.getElementById('ls-binder-badge');
+      const lsBinderBtn = document.getElementById('btn-ls-binder');
+
+      if (lsInvBadge) {
+        lsInvBadge.textContent = String(this.getTotalInventoryCount());
+      }
+      if (lsBinderBadge) {
+        lsBinderBadge.textContent = String(this.getSlottedBinderCount());
+      }
+      if (lsBinderBtn) {
+        lsBinderBtn.classList.toggle('locked', !this.hasOldCardBinder);
+        lsBinderBtn.title = this.hasOldCardBinder ? 'Open Old Card Binder' : 'Old Card Binder (Locked)';
       }
     }
 

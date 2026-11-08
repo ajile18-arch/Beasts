@@ -2712,8 +2712,55 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
 }
 
 /* --------------------------------------------------------------------------
-   Mobile Virtual Gamepad (D-Pad & Action Buttons)
+   Mobile Virtual Gamepad (D-Pad & Action Buttons) & Side Wings
    -------------------------------------------------------------------------- */
+.ow-side-wing {
+  display: none;
+  box-sizing: border-box;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.ow-side-wing.hidden {
+  display: none !important;
+}
+
+/* Landscape Top Shortcuts in Right Wing */
+.ow-landscape-quick-nav {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.ow-wing-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(212, 175, 55, 0.45);
+  color: #f1f5f9;
+  border-radius: 8px;
+  padding: 6px 9px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ow-wing-btn:active {
+  background: rgba(212, 175, 55, 0.35);
+  border-color: #ffd700;
+  transform: scale(0.93);
+}
+
+.ow-wing-btn.locked {
+  opacity: 0.5;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
 .ow-touch-controls {
   position: absolute;
   inset: 0;
@@ -4951,104 +4998,311 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
 /* ==========================================================================
    Mobile-Optimized Overworld Viewport, Layout & Touch Controls
    ========================================================================== */
-@media (max-width: 820px) {
-  /* In overworld mode on mobile/tablet, hide the desktop toolbar from the header */
+/* ==========================================================================
+   Mobile-Optimized Overworld Viewport: Full Height & Landscape Black Wings
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. LANDSCAPE ORIENTATION (Phones & Tablets held horizontally)
+   - Screen stretches to fill 100% of mobile height
+   - D-Pad placed in the left black pillarbox space
+   - Action buttons placed in the right black pillarbox space
+   -------------------------------------------------------------------------- */
+@media (orientation: landscape) and (max-height: 720px), (orientation: landscape) and (max-width: 1024px) {
+  body {
+    height: 100dvh !important;
+    overflow: hidden !important;
+  }
+
+  #app {
+    height: 100dvh !important;
+    overflow: hidden !important;
+  }
+
+  /* Hide top website header to give 100% of vertical screen height to the game */
+  .game-header {
+    display: none !important;
+  }
+
   .overworld-toolbar {
     display: none !important;
   }
 
-  /* Show the mobile quick-access HUD bar inside the overworld view */
   .ow-mobile-header-bar {
-    display: flex;
-  }
-
-  /* Maximize overworld viewing area on mobile screens */
-  .overworld-container {
-    padding: 4px 4px 6px 4px;
-    flex-direction: column;
-    justify-content: flex-start;
-    align-items: center;
-    background: #090b10;
-  }
-
-  .overworld-stage {
-    width: 100%;
-    max-width: 100%;
-    border-radius: 8px;
-    border-width: 1.5px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.9);
-  }
-
-  #overworld-canvas {
-    width: 100%;
-    height: auto;
-    max-height: calc(100dvh - 110px);
-    image-rendering: pixelated;
-    image-rendering: crisp-edges;
-    touch-action: none;
-    aspect-ratio: 16 / 12;
-  }
-
-  /* Compact & Touch-Friendly Bottom Dialogue Box */
-  .ow-dialog-bar {
-    width: calc(100% - 12px);
-    bottom: 6px;
-    left: 50%;
-    transform: translateX(-50%);
-    padding: 10px 12px;
-    gap: 8px;
-    border-width: 2px;
-    border-radius: 10px;
-    z-index: 35;
-    background: rgba(14, 18, 28, 0.98);
-  }
-
-  .ow-dialog-bar.top-position {
-    top: 6px;
-    bottom: auto;
-  }
-
-  .ow-speaker-tag {
-    font-size: 10px;
-    padding: 1px 8px;
-  }
-
-  .ow-dialog-text {
-    font-size: 13px;
-    line-height: 1.4;
-  }
-
-  .ow-choices-list {
-    gap: 5px;
-    margin-top: 4px;
-  }
-
-  .ow-choice-btn {
-    padding: 10px 12px;
-    font-size: 12.5px;
-    min-height: 42px;
-    display: flex;
-    align-items: center;
-    -webkit-tap-highlight-color: transparent;
-  }
-
-  .ow-dialog-actions {
-    flex-shrink: 0;
-  }
-
-  .ow-duel-btn {
-    padding: 9px 12px;
-    font-size: 12px;
-    min-height: 42px;
-    white-space: normal;
-    text-align: center;
-  }
-
-  /* Hide keyboard hints on mobile devices */
-  .ow-controls-hint {
     display: none !important;
   }
 
+  /* Full-bleed 3-column container: Left Wing | Center Canvas | Right Wing */
+  .overworld-container {
+    width: 100vw !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    background: #000000 !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+  }
+
+  /* LEFT BLACK PILLARBOX SPACE: Dedicated area for D-Pad */
+  .ow-side-wing.ow-left-wing {
+    display: flex !important;
+    flex: 1 1 0% !important;
+    min-width: 90px !important;
+    height: 100% !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: #000000 !important;
+    z-index: 30 !important;
+    position: relative !important;
+    padding: 8px !important;
+  }
+
+  /* CENTER OVERWORLD STAGE: Stretches to fill 100% of mobile height */
+  .overworld-stage {
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    width: auto !important;
+    flex: 0 0 auto !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    position: relative !important;
+    border-radius: 0 !important;
+    border-top: none !important;
+    border-bottom: none !important;
+    border-left: 2px solid rgba(212, 175, 55, 0.45) !important;
+    border-right: 2px solid rgba(212, 175, 55, 0.45) !important;
+    background: #000000 !important;
+    box-shadow: 0 0 30px rgba(0, 0, 0, 0.95) !important;
+  }
+
+  /* OVERWORLD CANVAS: 100% full mobile screen height */
+  #overworld-canvas {
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    width: auto !important;
+    aspect-ratio: 4 / 3 !important;
+    object-fit: contain !important;
+    display: block !important;
+    image-rendering: pixelated !important;
+    touch-action: none !important;
+  }
+
+  /* RIGHT BLACK PILLARBOX SPACE: Dedicated area for Action Buttons & Nav */
+  .ow-side-wing.ow-right-wing {
+    display: flex !important;
+    flex: 1 1 0% !important;
+    min-width: 90px !important;
+    height: 100% !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: #000000 !important;
+    z-index: 30 !important;
+    gap: 12px !important;
+    position: relative !important;
+    padding: 8px !important;
+  }
+
+  .ow-landscape-quick-nav {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    margin-bottom: 6px !important;
+  }
+
+  /* Dialogue box centered within 4:3 canvas stage */
+  .ow-dialog-bar {
+    width: min(92%, 460px) !important;
+    bottom: 6px !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    padding: 8px 12px !important;
+    gap: 8px !important;
+    border-width: 2px !important;
+    border-radius: 10px !important;
+    z-index: 40 !important;
+    background: rgba(14, 18, 28, 0.98) !important;
+  }
+
+  .ow-dialog-bar.top-position {
+    top: 6px !important;
+    bottom: auto !important;
+  }
+
+  .ow-speaker-tag {
+    font-size: 10px !important;
+    padding: 1px 8px !important;
+  }
+
+  .ow-dialog-text {
+    font-size: 12.5px !important;
+    line-height: 1.35 !important;
+  }
+
+  .ow-choice-btn {
+    padding: 8px 10px !important;
+    font-size: 12px !important;
+    min-height: 38px !important;
+  }
+
+  .ow-duel-btn {
+    padding: 8px 10px !important;
+    font-size: 11.5px !important;
+    min-height: 38px !important;
+  }
+
+  .ow-controls-hint {
+    display: none !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   2. PORTRAIT ORIENTATION (Phones & Tablets held vertically)
+   - Screen fills available height
+   - D-Pad at bottom-left, Action Buttons at bottom-right
+   -------------------------------------------------------------------------- */
+@media (orientation: portrait) and (max-width: 820px) {
+  .overworld-toolbar {
+    display: none !important;
+  }
+
+  .game-header {
+    height: 48px !important;
+    padding: 0 8px !important;
+  }
+
+  .ow-mobile-header-bar {
+    display: flex !important;
+    width: calc(100% - 8px) !important;
+    margin: 0 auto 4px auto !important;
+    flex-shrink: 0 !important;
+  }
+
+  .overworld-container {
+    width: 100vw !important;
+    height: calc(100dvh - 48px) !important;
+    max-height: calc(100dvh - 48px) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    background: #090b10 !important;
+    padding: 2px 0 4px 0 !important;
+    position: relative !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+  }
+
+  .overworld-stage {
+    flex: 1 1 auto !important;
+    width: 100% !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    position: relative !important;
+    border-radius: 8px !important;
+    background: #000000 !important;
+    overflow: hidden !important;
+  }
+
+  #overworld-canvas {
+    width: 100% !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    aspect-ratio: 4 / 3 !important;
+    object-fit: contain !important;
+    image-rendering: pixelated !important;
+    touch-action: none !important;
+  }
+
+  .ow-landscape-quick-nav {
+    display: none !important;
+  }
+
+  /* Wings float at bottom corners in portrait mode */
+  .ow-side-wing {
+    display: flex !important;
+    position: absolute !important;
+    bottom: 8px !important;
+    z-index: 25 !important;
+    background: transparent !important;
+    pointer-events: none !important;
+  }
+
+  .ow-side-wing > * {
+    pointer-events: auto !important;
+  }
+
+  .ow-side-wing.ow-left-wing {
+    left: 8px !important;
+  }
+
+  .ow-side-wing.ow-right-wing {
+    right: 8px !important;
+  }
+
+  .ow-dialog-bar {
+    width: calc(100% - 12px) !important;
+    bottom: 6px !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    padding: 10px 12px !important;
+    gap: 8px !important;
+    border-width: 2px !important;
+    border-radius: 10px !important;
+    z-index: 35 !important;
+    background: rgba(14, 18, 28, 0.98) !important;
+  }
+
+  .ow-dialog-bar.top-position {
+    top: 6px !important;
+    bottom: auto !important;
+  }
+
+  .ow-speaker-tag {
+    font-size: 10px !important;
+    padding: 1px 8px !important;
+  }
+
+  .ow-dialog-text {
+    font-size: 13px !important;
+    line-height: 1.4 !important;
+  }
+
+  .ow-choices-list {
+    gap: 5px !important;
+    margin-top: 4px !important;
+  }
+
+  .ow-choice-btn {
+    padding: 10px 12px !important;
+    font-size: 12.5px !important;
+    min-height: 42px !important;
+    display: flex !important;
+    align-items: center !important;
+  }
+
+  .ow-duel-btn {
+    padding: 9px 12px !important;
+    font-size: 12px !important;
+    min-height: 42px !important;
+  }
+
+  .ow-controls-hint {
+    display: none !important;
+  }
+}
+
+/* Modals & Compact Components for Handheld Screens */
+@media (max-width: 820px), (max-height: 600px) {
   /* Compact 3x3 Binder Layout on Mobile */
   .binder-grid {
     grid-template-columns: repeat(3, 1fr) !important;
@@ -5092,97 +5346,92 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   }
 }
 
-/* Small Handset Screens (<= 480px) */
-@media (max-width: 480px) {
+/* Very Small Screens / Compact Phone Scaling */
+@media (max-width: 480px), (max-height: 440px) {
   .ow-mobile-header-bar {
-    padding: 4px 6px;
-    gap: 4px;
+    padding: 4px 6px !important;
+    gap: 4px !important;
   }
 
   .ow-mobile-loc-tag {
-    font-size: 11px;
-    max-width: 44%;
+    font-size: 11px !important;
+    max-width: 44% !important;
   }
 
   .ow-mob-nav-btn {
-    padding: 4px 6px;
-    font-size: 10px;
+    padding: 4px 6px !important;
+    font-size: 10px !important;
   }
 
   .ow-mob-nav-btn .mob-btn-text {
-    display: none; /* Show icon only for ultra-clean fit */
-  }
-
-  /* Proportional D-Pad and Buttons for small phones */
-  .ow-touch-controls {
-    padding: 8px 6px;
+    display: none !important;
   }
 
   .ow-dpad {
-    width: 116px;
-    height: 116px;
+    width: 114px !important;
+    height: 114px !important;
   }
 
   .dpad-center {
-    left: 38px;
-    top: 38px;
-    width: 40px;
-    height: 40px;
+    left: 38px !important;
+    top: 38px !important;
+    width: 38px !important;
+    height: 38px !important;
   }
 
   .dpad-btn {
-    font-size: 13px;
+    font-size: 13px !important;
   }
 
   .dpad-up {
-    left: 38px;
-    width: 40px;
-    height: 40px;
+    left: 38px !important;
+    width: 38px !important;
+    height: 38px !important;
   }
 
   .dpad-down {
-    left: 38px;
-    width: 40px;
-    height: 40px;
+    left: 38px !important;
+    width: 38px !important;
+    height: 38px !important;
   }
 
   .dpad-left {
-    top: 38px;
-    width: 40px;
-    height: 40px;
+    top: 38px !important;
+    width: 38px !important;
+    height: 38px !important;
   }
 
   .dpad-right {
-    top: 38px;
-    width: 40px;
-    height: 40px;
+    top: 38px !important;
+    width: 38px !important;
+    height: 38px !important;
   }
 
   .ow-btn-a {
-    width: 56px;
-    height: 56px;
+    width: 58px !important;
+    height: 58px !important;
   }
 
   .ow-btn-a .btn-letter {
-    font-size: 17px;
+    font-size: 18px !important;
   }
 
   .ow-btn-a .btn-subtext {
-    font-size: 7.5px;
+    font-size: 7.5px !important;
   }
 
   .ow-btn-b {
-    width: 44px;
-    height: 44px;
-    margin-bottom: 8px;
+    width: 46px !important;
+    height: 46px !important;
+    margin-bottom: 8px !important;
   }
 
   .ow-btn-b .btn-letter {
-    font-size: 14px;
+    font-size: 14px !important;
   }
 
   .ow-btn-b .btn-subtext {
-    font-size: 6.5px;
+    font-size: 6.5px !important;
   }
 }
 
