@@ -205,6 +205,39 @@
         ability: { name: 'Sapling Strength', range: 0, type: 'passive', desc: 'At 1/4 health or below (<= 40 HP), moves attack strength is doubled.' }
       },
       passiveHint: 'Ability: Sapling Strength — At 1/4 health or below (<= 40 HP), moves attack strength is doubled.'
+    },
+
+    dwarf_warden: {
+      id: 'dwarf_warden',
+      name: 'Dwarf Warden',
+      element: 'earth',
+      stars: 4,
+      maxHp: 140,
+      cardImg: 'Cards/Dwarf_Warden_Card.png',
+      spriteBase: 'Sprites/Dwarf_Warden/Dwarf_Warden',
+      sprites: {
+        idle_down: 'Sprites/Dwarf_Warden/Dwarf_Warden_idle_down_256x256.png',
+        idle_up: 'Sprites/Dwarf_Warden/Dwarf_Warden_idle_up_256x256.png',
+        idle_left: 'Sprites/Dwarf_Warden/Dwarf_Warden_idle_left_256x256.png',
+        idle_right: 'Sprites/Dwarf_Warden/Dwarf_Warden_idle_right_256x256.png',
+        walk_down: 'Sprites/Dwarf_Warden/Dwarf_Warden_walk_down_256x256.png',
+        walk_up: 'Sprites/Dwarf_Warden/Dwarf_Warden_walk_up_256x256.png',
+        walk_left: 'Sprites/Dwarf_Warden/Dwarf_Warden_walk_left_256x256.png',
+        walk_right: 'Sprites/Dwarf_Warden/Dwarf_Warden_walk_right_256x256.png',
+        attack: 'Sprites/Dwarf_Warden/Dwarf_Warden_attack_hammer_throw_256x256.png',
+        attack_left: 'Sprites/Dwarf_Warden/Dwarf_Warden_attack_left_256x256.png',
+        attack_right: 'Sprites/Dwarf_Warden/Dwarf_Warden_attack_right_256x256.png',
+        attack_aoe: 'Sprites/Dwarf_Warden/Dwarf_Warden_defend_bullwark_256x256.png',
+        hurt: 'Sprites/Dwarf_Warden/Dwarf_Warden_hurt_damaged_256x256.png',
+        defeated: 'Sprites/Dwarf_Warden/Dwarf_Warden_defeated_256x256.png'
+      },
+      baseMove: 2,
+      skills: {
+        atk1: { name: 'Hammer Throw', range: 2, dmg: 25, type: 'line_pierce', desc: 'Damages the 2 tiles in front of Dwarf Warden for 25 damage each.' },
+        atk2: { name: 'Bullwark', range: 0, cooldown: 5, type: 'bullwark_stance', desc: 'Fully negates an incoming attack. (5 turn cooldown)' },
+        ability: { name: 'Endurance', range: 0, type: 'passive', desc: 'Passive. After turn 10, Dwarf Warden takes half damage from all incoming attacks.' }
+      },
+      passiveHint: 'Ability: Endurance — After turn 10, takes half damage from all attacks. Bullwark: Fully negates next incoming attack (5 turn cd).'
     }
   };
 
@@ -216,7 +249,7 @@
   // ---------------------------------------------------------------------------
   class BeastsGame {
     constructor() {
-      this.VERSION = '1.36';
+      this.VERSION = '1.41';
       this.COLS = 10;
       this.ROWS = 8;
       this.round = 1;
@@ -289,7 +322,7 @@
 
       if (challenger && allPlayerBeasts.length >= 3) {
         const playerTeam = allPlayerBeasts.slice(0, 3);
-        const remainingPool = ['phoenix', 'earth_golem', 'werewolf', 'hydra', 'terra_mother', 'verdant_guardian']
+        const remainingPool = ['phoenix', 'earth_golem', 'werewolf', 'hydra', 'terra_mother', 'verdant_guardian', 'dwarf_warden']
           .filter(id => !playerTeam.includes(id));
         const friendTeam = remainingPool.length === 3 ? remainingPool : ['werewolf', 'hydra', 'earth_golem'];
 
@@ -384,7 +417,9 @@
           immobilized: 0,
           howlBuff: 0,
           poisoned: 0,
-          tookDamageLastTurn: false
+          tookDamageLastTurn: false,
+          bullwark: false,
+          bullwarkCooldown: 0
         }
       };
     }
@@ -408,7 +443,7 @@
       document.getElementById('btn-atk2').addEventListener('click', () => {
         const u = this.selectedUnit;
         if (!u || this.isSkillPassive(u.skills.atk2)) return;
-        if (u.skills.atk2.type === 'counter_stance' || u.skills.atk2.type === 'self_move' || u.skills.atk2.type === 'aoe_hazard') {
+        if (u.skills.atk2.type === 'counter_stance' || u.skills.atk2.type === 'self_move' || u.skills.atk2.type === 'aoe_hazard' || u.skills.atk2.type === 'bullwark_stance') {
           this.attemptAttack(u, 'atk2', u.x, u.y);
         } else {
           this.setActionMode('atk2');
@@ -518,7 +553,7 @@
         } else if (e.key === '3') {
           const u = this.selectedUnit;
           if (u && !this.isSkillPassive(u.skills.atk2)) {
-            if (u.skills.atk2.type === 'counter_stance' || u.skills.atk2.type === 'self_move' || u.skills.atk2.type === 'aoe_hazard') {
+            if (u.skills.atk2.type === 'counter_stance' || u.skills.atk2.type === 'self_move' || u.skills.atk2.type === 'aoe_hazard' || u.skills.atk2.type === 'bullwark_stance') {
               this.attemptAttack(u, 'atk2', u.x, u.y);
             } else {
               this.setActionMode('atk2');
@@ -636,6 +671,14 @@
       if (unit.shield > 0) {
         buffContainer.innerHTML += `<span class="buff-badge buff">🛡️ Rock Shield (${unit.shield})</span>`;
       }
+      if (unit.status.bullwark) {
+        buffContainer.innerHTML += `<span class="buff-badge buff">🛡️ Bullwark (Active)</span>`;
+      } else if (unit.status.bullwarkCooldown > 0) {
+        buffContainer.innerHTML += `<span class="buff-badge debuff">⏳ Bullwark (${unit.status.bullwarkCooldown}t cd)</span>`;
+      }
+      if (unit.id === 'dwarf_warden' && this.round > 10) {
+        buffContainer.innerHTML += `<span class="buff-badge buff">💪 Endurance (50% Dmg Reduction)</span>`;
+      }
       if (buffContainer.innerHTML === '') {
         buffContainer.innerHTML = '<span style="font-size: 11px; color: var(--text-muted);">No active effects</span>';
       }
@@ -688,6 +731,16 @@
       btnAtk1.disabled = !isMyTurn || u.hasActed || atk1Passive;
       btnAtk2.disabled = !isMyTurn || u.hasActed || atk2Passive;
       btnAbility.disabled = !isMyTurn || u.hasActed || abilityPassive;
+
+      if (u && u.id === 'dwarf_warden') {
+        if (u.status.bullwarkCooldown > 0) {
+          btnAtk2.disabled = true;
+          btnAtk2.title = `Bullwark on cooldown (${u.status.bullwarkCooldown} turns remaining)`;
+        } else if (u.status.bullwark) {
+          btnAtk2.disabled = true;
+          btnAtk2.title = 'Bullwark is currently active';
+        }
+      }
 
       btnAtk1.classList.toggle('is-passive', atk1Passive);
       btnAtk2.classList.toggle('is-passive', atk2Passive);
@@ -1051,6 +1104,73 @@
         return;
       }
 
+      // Special Dwarf Warden Move 2: BULLWARK ("Fully negates an incoming attack. (5 turn cooldown)")
+      if (skill.type === 'bullwark_stance') {
+        if (unit.status.bullwark) {
+          this.spawnFloatingText(unit.x, unit.y, 'ALREADY ACTIVE!', 'status');
+          return;
+        }
+        if (unit.status.bullwarkCooldown > 0) {
+          this.spawnFloatingText(unit.x, unit.y, `COOLDOWN (${unit.status.bullwarkCooldown}t)`, 'status');
+          return;
+        }
+
+        unit.status.bullwark = true;
+        unit.status.bullwarkCooldown = skill.cooldown || 5;
+        window.sounds.playRock();
+        unit.animState = 'attack_aoe';
+        unit.hasActed = true;
+        this.spawnFloatingText(unit.x, unit.y, 'BULLWARK ACTIVE!', 'status');
+        this.log(`🛡️ ${unit.name} braces behind his runic shield with Bullwark! Next incoming attack will be fully negated (5-turn cooldown).`, 'barrier');
+        this.finishAction(unit);
+        return;
+      }
+
+      // Special Dwarf Warden Move 1: HAMMER THROW ("Damages the 2 tiles in front of Dwarf Warden for 25 damage each.")
+      if (skill.type === 'line_pierce') {
+        let dx = 0;
+        let dy = 0;
+        if (targetX > unit.x) dx = 1;
+        else if (targetX < unit.x) dx = -1;
+        else if (targetY > unit.y) dy = 1;
+        else if (targetY < unit.y) dy = -1;
+
+        if (dx === 1) unit.facing = 'right';
+        else if (dx === -1) unit.facing = 'left';
+        else if (dy === 1) unit.facing = 'down';
+        else if (dy === -1) unit.facing = 'up';
+
+        unit.animState = 'attack';
+        window.sounds.playRock();
+
+        let damage = skill.dmg || 25;
+        if (unit.status.howlBuff > 0) {
+          damage += 10;
+          this.log(`🐺 Howl boost amplified Hammer Throw by +10!`, 'system');
+        }
+
+        let enemiesHit = 0;
+        for (let step = 1; step <= (skill.range || 2); step++) {
+          const tx = unit.x + dx * step;
+          const ty = unit.y + dy * step;
+          if (tx >= 0 && tx < this.COLS && ty >= 0 && ty < this.ROWS) {
+            this.spawnFloatingText(tx, ty, '🔨', 'status');
+            const targetUnit = this.getUnitAt(tx, ty);
+            if (targetUnit && targetUnit.team !== unit.team && targetUnit.hp > 0) {
+              enemiesHit++;
+              targetUnit.animState = 'hurt';
+              this.dealDamage(targetUnit, damage, `${unit.name} (Hammer Throw)`, unit);
+            }
+          }
+        }
+
+        this.spawnFloatingText(unit.x, unit.y, 'HAMMER THROW!', 'status');
+        this.log(`🔨 ${unit.name} hurled his warhammer! Pierced 2 tiles dealing ${damage} damage each (Hit ${enemiesHit} enemies).`, 'attack');
+        unit.hasActed = true;
+        this.finishAction(unit);
+        return;
+      }
+
       // Special Rock Barrier Spawning (Earth Golem Move 2: "Adds a stone wall in any cardinal or diagonal direction")
       if (skill.type === 'spawn_barrier') {
         if (targetX > unit.x) unit.facing = 'right';
@@ -1229,10 +1349,37 @@
         this.log(`🌿 Verdant Guardian Ability — Sapling Strength: At 1/4 health or below (<= 40 HP), attack moves deal doubled damage. Current Status: ${isSaplingActive ? 'ACTIVE (x2 DMG)' : `Inactive (${unit.hp}/${unit.maxHp} HP)`}.`, 'system');
         return;
       }
+
+      // Dwarf Warden Ability: ENDURANCE (Passive. After turn 10 he takes 1/2 damage)
+      if (unit.id === 'dwarf_warden') {
+        const isEnduranceActive = this.round > 10;
+        this.spawnFloatingText(unit.x, unit.y, isEnduranceActive ? 'ENDURANCE ACTIVE (1/2 DMG)' : 'ENDURANCE (AFTER TURN 10)', 'status');
+        this.log(`💪 Dwarf Warden Ability — Endurance: Passive. After turn 10, takes half damage from all incoming attacks. Current Round: ${this.round} (${isEnduranceActive ? 'ACTIVE: 1/2 Damage' : 'Activates in Round 11'}).`, 'system');
+        return;
+      }
     }
 
     dealDamage(target, amount, sourceName, attacker = null) {
+      // Dwarf Warden Bullwark: Fully negate an incoming attack!
+      if (target.id === 'dwarf_warden' && target.status.bullwark) {
+        target.status.bullwark = false;
+        target.animState = 'attack_aoe';
+        window.sounds.playRock();
+        this.spawnFloatingText(target.x, target.y, 'BULLWARK NEGATED!', 'status');
+        this.log(`🛡️ Bullwark! Dwarf Warden completely negated the incoming ${amount} damage from ${sourceName}!`, 'barrier');
+        this.renderUnits();
+        this.updateCardDossier(target);
+        return;
+      }
+
       let remaining = amount;
+
+      // Dwarf Warden Ability: Endurance (After turn 10 he takes 1/2 damage)
+      if (target.id === 'dwarf_warden' && this.round > 10) {
+        const originalDmg = remaining;
+        remaining = Math.ceil(remaining / 2);
+        this.log(`💪 Endurance active! ${target.name} halved incoming damage from ${originalDmg} to ${remaining}!`, 'system');
+      }
       if (target.shield > 0) {
         const absorbed = Math.min(target.shield, remaining);
         target.shield -= absorbed;
@@ -1324,8 +1471,42 @@
     }
 
     getValidAttackTargets(unit, skill) {
-      if (skill.range === 0 || skill.type === 'counter_stance' || skill.type === 'self_move' || skill.type === 'passive' || skill.type === 'aoe_hazard') {
+      if (skill.range === 0 || skill.type === 'counter_stance' || skill.type === 'self_move' || skill.type === 'passive' || skill.type === 'aoe_hazard' || skill.type === 'bullwark_stance') {
         return [{ x: unit.x, y: unit.y }];
+      }
+
+      // Hammer Throw (Dwarf Warden Move 1): Straight-line piercing attack in 4 cardinal directions
+      if (skill.type === 'line_pierce') {
+        const lineTargets = [];
+        const directions = [
+          { x: 0, y: -1 }, // Up
+          { x: 0, y: 1 },  // Down
+          { x: -1, y: 0 }, // Left
+          { x: 1, y: 0 }   // Right
+        ];
+        directions.forEach(d => {
+          let hasEnemy = false;
+          for (let step = 1; step <= (skill.range || 2); step++) {
+            const tx = unit.x + d.x * step;
+            const ty = unit.y + d.y * step;
+            if (tx >= 0 && tx < this.COLS && ty >= 0 && ty < this.ROWS) {
+              const uAt = this.getUnitAt(tx, ty);
+              if (uAt && uAt.team !== unit.team && uAt.hp > 0) {
+                hasEnemy = true;
+              }
+            }
+          }
+          if (hasEnemy) {
+            for (let step = 1; step <= (skill.range || 2); step++) {
+              const tx = unit.x + d.x * step;
+              const ty = unit.y + d.y * step;
+              if (tx >= 0 && tx < this.COLS && ty >= 0 && ty < this.ROWS) {
+                lineTargets.push({ x: tx, y: ty });
+              }
+            }
+          }
+        });
+        return lineTargets;
       }
 
       // Rock Barrier (Earth Golem Move 2):
@@ -1470,6 +1651,14 @@
         // Decrement Howl Buff
         if (u.status.howlBuff > 0) {
           u.status.howlBuff--;
+        }
+
+        // Decrement Bullwark Cooldown for Dwarf Warden
+        if (u.status.bullwarkCooldown > 0) {
+          u.status.bullwarkCooldown--;
+          if (u.status.bullwarkCooldown === 0) {
+            this.log(`🛡️ Bullwark is ready to use again for ${u.name}!`, 'system');
+          }
         }
 
         // Hydra Passives:
@@ -1663,6 +1852,15 @@
           this.attemptAttack(u, 'atk2', u.x, u.y);
         }
       }
+      // Dwarf Warden: Hammer Throw (2 tiles cardinal) or Bullwark stance
+      else if (u.id === 'dwarf_warden') {
+        const isCardinal = (nearest.x === u.x || nearest.y === u.y);
+        if (isCardinal && dist <= 2) {
+          this.attemptAttack(u, 'atk1', nearest.x, nearest.y);
+        } else if (!u.status.bullwark && u.status.bullwarkCooldown === 0 && dist <= 3) {
+          this.attemptAttack(u, 'atk2', u.x, u.y);
+        }
+      }
       // Standard Skill 1 if in range
       else if (dist <= (u.skills.atk1.range || 1)) {
         this.attemptAttack(u, 'atk1', nearest.x, nearest.y);
@@ -1713,10 +1911,10 @@
     // Mythical Beast Draft System (3 Selections Per Team)
     // -------------------------------------------------------------------------
     initDraft() {
-      this.draftPoolTemplates = ['phoenix', 'earth_golem', 'werewolf', 'hydra', 'terra_mother', 'verdant_guardian'];
+      this.draftPoolTemplates = ['phoenix', 'earth_golem', 'werewolf', 'hydra', 'terra_mother', 'verdant_guardian', 'dwarf_warden'];
       this.draftState = {
         active: false,
-        poolStock: { phoenix: 1, earth_golem: 1, werewolf: 1, hydra: 1, terra_mother: 1, verdant_guardian: 1 },
+        poolStock: { phoenix: 1, earth_golem: 1, werewolf: 1, hydra: 1, terra_mother: 1, verdant_guardian: 1, dwarf_warden: 1 },
         team1Picks: [],
         team2Picks: [],
         turnOrder: [],
@@ -1743,7 +1941,7 @@
 
       this.draftState = {
         active: true,
-        poolStock: { phoenix: 1, earth_golem: 1, werewolf: 1, hydra: 1, terra_mother: 1, verdant_guardian: 1 },
+        poolStock: { phoenix: 1, earth_golem: 1, werewolf: 1, hydra: 1, terra_mother: 1, verdant_guardian: 1, dwarf_warden: 1 },
         team1Picks: [],
         team2Picks: [],
         turnOrder: turnOrder,
@@ -2121,6 +2319,16 @@
       // Shield
       if (u.shield > 0) {
         badges.push(`<span class="status-pill buff-shield" title="Shielded">🛡️ ${u.shield}</span>`);
+      }
+
+      // Dwarf Warden Bullwark (Negates incoming attack)
+      if (u.status.bullwark) {
+        badges.push(`<span class="status-pill buff-shield" title="Bullwark: Negates Next Incoming Attack">🛡️ BLK</span>`);
+      }
+
+      // Dwarf Warden Endurance (50% damage reduction after turn 10)
+      if (u.id === 'dwarf_warden' && this.round > 10) {
+        badges.push(`<span class="status-pill buff-shield" title="Endurance: 50% Damage Reduction (Round > 10)">💪 1/2</span>`);
       }
 
       if (badges.length === 0) return '';

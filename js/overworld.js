@@ -256,6 +256,17 @@
           badgeLabel: '🍃 PLANT ELEMENT • 160 HP',
           cardImg: 'Cards/Verdant_Guardian_Card.png',
           desc: '<b>Verdant Guardian (Plant • 160 HP)</b> — Base Set Mythos Card. Moves: <b>Branch Whip</b> (20 Dmg), <b>Thorn Bush</b> (10 Dmg AOE), &amp; <b>Sapling Strength</b> (2× Dmg at ≤1/4 HP).'
+        },
+        {
+          id: 'card_dwarf_warden',
+          beastId: 'dwarf_warden',
+          name: 'Dwarf Warden (Mythos Card)',
+          shortName: 'Dwarf Warden',
+          element: 'Earth',
+          stars: 4,
+          badgeLabel: '🪨 EARTH ELEMENT • 140 HP',
+          cardImg: 'Cards/Dwarf_Warden_Card.png',
+          desc: '<b>Dwarf Warden (Earth • 140 HP)</b> — Base Set Mythos Card. Moves: <b>Hammer Throw</b> (25 Dmg front 2 tiles), <b>Bullwark</b> (Negates incoming attack, 5t cd), &amp; <b>Endurance</b> (Halves damage after turn 10).'
         }
       ];
     }
@@ -427,6 +438,27 @@
             ability: { name: 'Sapling Strength', type: 'Crisis Power Doubler', desc: 'When weakened to 1/4 health or below (≤ 40 HP), primordial sapling fury activates, doubling the damage of all moves!' }
           },
           elementLore: 'An ancient sentient ironwood tree. Endures heavy enemy fire with 160 HP and doubles its offensive potency when pushed to the brink of defeat.'
+        },
+        dwarf_warden: {
+          id: 'dwarf_warden',
+          name: 'Dwarf Warden',
+          element: 'earth',
+          stars: 4,
+          maxHp: 140,
+          baseMove: 2,
+          cardImg: 'Cards/Dwarf_Warden_Card.png',
+          sprites: {
+            idle: 'Sprites/Dwarf_Warden/Dwarf_Warden_idle_down_256x256.png',
+            attack: 'Sprites/Dwarf_Warden/Dwarf_Warden_attack_hammer_throw_256x256.png',
+            walk: 'Sprites/Dwarf_Warden/Dwarf_Warden_walk_down_256x256.png',
+            aoe: 'Sprites/Dwarf_Warden/Dwarf_Warden_defend_bullwark_256x256.png'
+          },
+          skills: {
+            atk1: { name: 'Hammer Throw', range: 2, dmg: 25, type: 'Line Pierce', desc: 'Hurls an enchanted dwarven warhammer that penetrates the 2 tiles directly ahead, dealing 25 damage to each enemy beast.' },
+            atk2: { name: 'Bullwark', range: 0, cooldown: 5, type: 'Defensive Stance', desc: 'Raises an impervious runic bulwark, completely negating the next incoming hostile attack (5-turn cooldown).' },
+            ability: { name: 'Endurance', type: 'Late-Game Damage Halver', desc: 'Ancient subterranean grit. After turn 10, Dwarf Warden takes half damage from all incoming hostile strikes.' }
+          },
+          elementLore: 'A battle-hardened guardian of the subterranean mountain holds. Combines penetrating hammer throws with impenetrable runic shields and late-battle damage reduction.'
         }
       };
 
@@ -1012,24 +1044,28 @@
         isRipping: false,
         cardsDealt: false,
         pulledCards: this.rollThreePackCards(),
+        currentCardIndex: 0,
         flippedIndices: new Set(),
         collected: false
       };
 
       const modal = document.getElementById('pack-opening-modal');
+      const badgeEl = document.getElementById('pack-stage-badge');
       const titleEl = document.getElementById('pack-stage-title');
       const subEl = document.getElementById('pack-stage-subtitle');
       const sealedZone = document.getElementById('pack-sealed-zone');
       const wrapper = document.getElementById('sealed-booster-wrapper');
       const ring = document.getElementById('pack-energy-ring');
       const cardsRow = document.getElementById('pack-cards-reveal-row');
-      const revealAllBtn = document.getElementById('btn-pack-reveal-all');
+      const nextBtn = document.getElementById('btn-pack-next-card');
+      const viewAllBtn = document.getElementById('btn-pack-view-all');
       const collectBtn = document.getElementById('btn-pack-collect');
       const flashBang = document.getElementById('pack-flash-bang');
 
       if (!modal || !wrapper || !sealedZone || !cardsRow) return;
 
       // Reset stage UI to Phase 1 (Sealed Booster Pack)
+      if (badgeEl) badgeEl.textContent = '✨ MYTHOS BASE SET • 1ST EDITION BOOSTER ✨';
       if (titleEl) titleEl.textContent = 'BREAK THE SEAL OF MYTHOS';
       if (subEl) {
         subEl.innerHTML = 'Click the sealed Booster Pack <b>3 times</b> to charge <b>The Seal of Mythos</b> and tear open the foil!';
@@ -1042,8 +1078,9 @@
       });
 
       cardsRow.innerHTML = '';
-      cardsRow.classList.add('hidden');
-      revealAllBtn?.classList.add('hidden');
+      cardsRow.className = 'pack-cards-reveal-row hidden';
+      nextBtn?.classList.add('hidden');
+      viewAllBtn?.classList.add('hidden');
       collectBtn?.classList.add('hidden');
       flashBang?.classList.add('hidden');
 
@@ -1089,6 +1126,9 @@
         const flashBang = document.getElementById('pack-flash-bang');
         if (flashBang) {
           flashBang.classList.remove('hidden');
+          setTimeout(() => {
+            flashBang.classList.add('hidden');
+          }, 780);
         }
 
         // Consume 1 Unopened Booster Pack from Inventory right as the seal is broken!
@@ -1102,63 +1142,83 @@
         }
 
         setTimeout(() => {
-          this.dealThreeFaceDownCards();
+          this.presentSinglePackCard(0);
         }, 560);
       }
     }
 
-    dealThreeFaceDownCards() {
+    // -------------------------------------------------------------------------
+    // Phase 2: Show Each Card 1 At A Time Before Moving To The Next
+    // -------------------------------------------------------------------------
+    presentSinglePackCard(idx) {
       const st = this.packOpeningState;
       if (!st) return;
       st.cardsDealt = true;
+      st.currentCardIndex = idx;
 
       const sealedZone = document.getElementById('pack-sealed-zone');
       const cardsRow = document.getElementById('pack-cards-reveal-row');
+      const badgeEl = document.getElementById('pack-stage-badge');
       const titleEl = document.getElementById('pack-stage-title');
       const subEl = document.getElementById('pack-stage-subtitle');
-      const revealAllBtn = document.getElementById('btn-pack-reveal-all');
+      const nextBtn = document.getElementById('btn-pack-next-card');
+      const viewAllBtn = document.getElementById('btn-pack-view-all');
+      const collectBtn = document.getElementById('btn-pack-collect');
+      const flashBang = document.getElementById('pack-flash-bang');
 
+      flashBang?.classList.add('hidden');
       sealedZone?.classList.add('hidden');
-      if (titleEl) titleEl.textContent = '3 MYTHOS CARDS PULLED!';
+      nextBtn?.classList.add('hidden');
+      viewAllBtn?.classList.add('hidden');
+      collectBtn?.classList.add('hidden');
+
+      const card = st.pulledCards[idx];
+      const isFinal = (idx === st.pulledCards.length - 1);
+
+      if (badgeEl) {
+        badgeEl.textContent = `✨ MYTHOS BASE SET • CARD ${idx + 1} OF ${st.pulledCards.length} ✨`;
+      }
+      if (titleEl) {
+        titleEl.textContent = isFinal ? '✨ FINAL CARD OF THE PACK ✨' : `CARD ${idx + 1} OF ${st.pulledCards.length}`;
+      }
       if (subEl) {
-        subEl.innerHTML = 'Hover over each card to feel its energy — Click each card to flip and reveal your pull!';
+        subEl.innerHTML = 'Hover or tap to feel its energy — <b>Click the card to unseal & reveal!</b>';
       }
 
       if (!cardsRow) return;
       cardsRow.innerHTML = '';
+      cardsRow.className = 'pack-cards-reveal-row single-card-mode';
       cardsRow.classList.remove('hidden');
-      revealAllBtn?.classList.remove('hidden');
 
-      st.pulledCards.forEach((card, idx) => {
-        const slot = document.createElement('div');
-        slot.className = 'pack-card-slot rarity-mythic';
-        slot.style.animationDelay = `${idx * 0.14}s`;
+      const slot = document.createElement('div');
+      slot.className = 'pack-card-slot single-pack-card rarity-mythic';
+      slot.id = 'active-pack-card';
 
-        slot.innerHTML = `
-          <div class="pack-card-inner">
-            <!-- Face-Down Back using Cleaned Mythos_Card_Back.png -->
-            <div class="pack-card-face pack-card-back">
-              <img src="Cards/Mythos_Card_Back.png" alt="Mythos Card Back">
-              <div class="pack-card-back-prompt">✨ CLICK TO REVEAL</div>
-            </div>
-            <!-- Face-Up Revealed Beast Card -->
-            <div class="pack-card-face pack-card-front">
-              <span class="pack-card-rarity-banner mythic">${card.badgeLabel}</span>
-              <img src="${card.cardImg}" alt="${card.name}">
-              <div class="pack-card-holo-glint"></div>
-            </div>
+      slot.innerHTML = `
+        <div class="pack-card-inner">
+          <!-- Face-Down Back using Cleaned Mythos_Card_Back.png -->
+          <div class="pack-card-face pack-card-back">
+            <img src="Cards/Mythos_Card_Back.png" alt="Mythos Card Back">
+            <div class="pack-card-back-prompt">✨ CLICK TO REVEAL</div>
           </div>
-        `;
+          <!-- Face-Up Revealed Beast Card -->
+          <div class="pack-card-face pack-card-front">
+            <span class="pack-card-rarity-banner mythic">${card.badgeLabel}</span>
+            <img src="${card.cardImg}" alt="${card.name}">
+            <div class="pack-card-holo-glint"></div>
+          </div>
+        </div>
+      `;
 
-        slot.addEventListener('click', () => {
-          this.flipPackCard(idx, slot);
-        });
-
-        cardsRow.appendChild(slot);
+      slot.addEventListener('click', () => {
+        this.flipCurrentPackCard(idx, slot);
       });
+
+      cardsRow.appendChild(slot);
+      this.updateMobileActionLabel();
     }
 
-    flipPackCard(idx, slotEl) {
+    flipCurrentPackCard(idx, slotEl) {
       const st = this.packOpeningState;
       if (!st || !st.cardsDealt || st.flippedIndices.has(idx)) return;
 
@@ -1170,35 +1230,113 @@
         window.sounds.playCardFlipReveal(true);
       }
 
+      const badgeEl = document.getElementById('pack-stage-badge');
       const titleEl = document.getElementById('pack-stage-title');
       const subEl = document.getElementById('pack-stage-subtitle');
+      const nextBtn = document.getElementById('btn-pack-next-card');
+      const viewAllBtn = document.getElementById('btn-pack-view-all');
+      const collectBtn = document.getElementById('btn-pack-collect');
+
+      if (badgeEl) {
+        badgeEl.textContent = `✨ CARD ${idx + 1} REVEALED • ${card.badgeLabel} ✨`;
+      }
       if (titleEl) {
-        titleEl.textContent = `✨ CARD REVEALED: ${card.shortName.toUpperCase()}!!`;
+        titleEl.textContent = `✨ ${card.shortName.toUpperCase()} REVEALED! ✨`;
       }
       if (subEl) {
-        subEl.innerHTML = card.desc;
+        subEl.innerHTML = `<b>${card.name}</b> • <span class="element-tag ${card.element}">${card.element.toUpperCase()}</span> • ${card.stars}★<br><span style="font-size: 12.5px; color: var(--text-muted);">${card.desc}</span>`;
       }
 
-      // Check if all 3 cards have now been flipped!
-      if (st.flippedIndices.size >= st.pulledCards.length) {
-        const revealAllBtn = document.getElementById('btn-pack-reveal-all');
-        const collectBtn = document.getElementById('btn-pack-collect');
-        revealAllBtn?.classList.add('hidden');
-        collectBtn?.classList.remove('hidden');
+      // Check if there are more cards to open in this pack
+      if (idx < st.pulledCards.length - 1) {
+        if (nextBtn) {
+          nextBtn.textContent = `Next Card ▸ (Open Card ${idx + 2} of ${st.pulledCards.length})`;
+          nextBtn.classList.remove('hidden');
+        }
+      } else {
+        // All 3 cards have been opened!
+        if (viewAllBtn) {
+          viewAllBtn.classList.remove('hidden');
+        }
+        if (collectBtn) {
+          collectBtn.classList.remove('hidden');
+        }
       }
+      this.updateMobileActionLabel();
+    }
+
+    advanceToNextPackCard() {
+      const st = this.packOpeningState;
+      if (!st || st.currentCardIndex >= st.pulledCards.length - 1) return;
+
+      if (window.sounds?.playClick) {
+        window.sounds.playClick();
+      }
+
+      const activeSlot = document.getElementById('active-pack-card');
+      if (activeSlot) {
+        activeSlot.classList.add('sliding-out');
+        setTimeout(() => {
+          this.presentSinglePackCard(st.currentCardIndex + 1);
+        }, 220);
+      } else {
+        this.presentSinglePackCard(st.currentCardIndex + 1);
+      }
+    }
+
+    showPackSummaryAllCards() {
+      const st = this.packOpeningState;
+      if (!st) return;
+
+      if (window.sounds?.playClick) {
+        window.sounds.playClick();
+      }
+
+      const badgeEl = document.getElementById('pack-stage-badge');
+      const titleEl = document.getElementById('pack-stage-title');
+      const subEl = document.getElementById('pack-stage-subtitle');
+      const nextBtn = document.getElementById('btn-pack-next-card');
+      const viewAllBtn = document.getElementById('btn-pack-view-all');
+      const collectBtn = document.getElementById('btn-pack-collect');
+      const cardsRow = document.getElementById('pack-cards-reveal-row');
+
+      if (badgeEl) badgeEl.textContent = '✨ BOOSTER PACK COMPLETE ✨';
+      if (titleEl) titleEl.textContent = '✨ ALL 3 CARDS PULLED! ✨';
+      if (subEl) subEl.innerHTML = 'All 3 Mythos Cards unsealed! Collect them to add them to your backpack inventory:';
+
+      nextBtn?.classList.add('hidden');
+      viewAllBtn?.classList.add('hidden');
+      collectBtn?.classList.remove('hidden');
+
+      if (!cardsRow) return;
+      cardsRow.innerHTML = '';
+      cardsRow.className = 'pack-cards-reveal-row summary-mode';
+
+      st.pulledCards.forEach((card, idx) => {
+        const slot = document.createElement('div');
+        slot.className = 'pack-card-slot flipped rarity-mythic';
+        slot.style.animationDelay = `${idx * 0.12}s`;
+        slot.innerHTML = `
+          <div class="pack-card-inner">
+            <div class="pack-card-face pack-card-front">
+              <span class="pack-card-rarity-banner mythic">${card.badgeLabel}</span>
+              <img src="${card.cardImg}" alt="${card.name}">
+              <div class="pack-card-holo-glint"></div>
+            </div>
+          </div>
+        `;
+        cardsRow.appendChild(slot);
+      });
+      this.updateMobileActionLabel();
     }
 
     revealAllRemainingPackCards() {
       const st = this.packOpeningState;
       if (!st || !st.cardsDealt) return;
-      const slots = document.querySelectorAll('#pack-cards-reveal-row .pack-card-slot');
-      slots.forEach((slotEl, idx) => {
-        if (!st.flippedIndices.has(idx)) {
-          setTimeout(() => {
-            this.flipPackCard(idx, slotEl);
-          }, idx * 180);
-        }
-      });
+      const activeSlot = document.getElementById('active-pack-card');
+      if (activeSlot && !st.flippedIndices.has(st.currentCardIndex)) {
+        this.flipCurrentPackCard(st.currentCardIndex, activeSlot);
+      }
     }
 
     collectPulledCardsToInventory() {
@@ -1976,6 +2114,26 @@
       const labelEl = document.getElementById('ow-btn-a-label');
       if (!labelEl) return;
 
+      // Pack Opening Stage controls
+      const packModal = document.getElementById('pack-opening-modal');
+      if (packModal && !packModal.classList.contains('hidden')) {
+        const st = this.packOpeningState;
+        btnA?.classList.add('dialogue-mode');
+        if (st && !st.cardsDealt && !st.isRipping) {
+          labelEl.textContent = 'RIP ⚡';
+        } else if (st && st.cardsDealt) {
+          const activeCard = document.getElementById('active-pack-card');
+          if (activeCard && !activeCard.classList.contains('flipped')) {
+            labelEl.textContent = 'FLIP ✨';
+          } else if (st.currentCardIndex < st.pulledCards.length - 1) {
+            labelEl.textContent = 'NEXT ▸';
+          } else {
+            labelEl.textContent = 'PACK 🎒';
+          }
+        }
+        return;
+      }
+
       const dialogBar = document.getElementById('ow-dialog-bar');
       const isDialogVisible = dialogBar && !dialogBar.classList.contains('hidden');
 
@@ -2016,6 +2174,33 @@
       if (window.sounds?.playClick) window.sounds.playClick();
       if (window.navigator?.vibrate) {
         try { window.navigator.vibrate(12); } catch (_) {}
+      }
+
+      // Check Pack Opening Stage
+      const packModal = document.getElementById('pack-opening-modal');
+      if (packModal && !packModal.classList.contains('hidden')) {
+        const st = this.packOpeningState;
+        if (st && !st.cardsDealt && !st.isRipping) {
+          this.handleSealedPackClick();
+          return;
+        } else if (st && st.cardsDealt) {
+          const activeCard = document.getElementById('active-pack-card');
+          if (activeCard && !activeCard.classList.contains('flipped')) {
+            activeCard.click();
+            return;
+          }
+          const nextBtn = document.getElementById('btn-pack-next-card');
+          if (nextBtn && !nextBtn.classList.contains('hidden')) {
+            nextBtn.click();
+            return;
+          }
+          const collectBtn = document.getElementById('btn-pack-collect');
+          if (collectBtn && !collectBtn.classList.contains('hidden')) {
+            collectBtn.click();
+            return;
+          }
+        }
+        return;
       }
 
       const dialogBar = document.getElementById('ow-dialog-bar');
@@ -2481,6 +2666,16 @@
         sealedBoosterEl.addEventListener('click', () => this.handleSealedPackClick());
       }
 
+      const nextCardBtn = document.getElementById('btn-pack-next-card');
+      if (nextCardBtn) {
+        nextCardBtn.addEventListener('click', () => this.advanceToNextPackCard());
+      }
+
+      const viewAllBtn = document.getElementById('btn-pack-view-all');
+      if (viewAllBtn) {
+        viewAllBtn.addEventListener('click', () => this.showPackSummaryAllCards());
+      }
+
       const revealAllBtn = document.getElementById('btn-pack-reveal-all');
       if (revealAllBtn) {
         revealAllBtn.addEventListener('click', () => this.revealAllRemainingPackCards());
@@ -2704,7 +2899,7 @@
 
         const k = e.key.toLowerCase();
 
-        // If the theatrical Pack Opening Stage is active, Space/Enter charges the pack or flips/collects cards!
+        // If the theatrical Pack Opening Stage is active, Space/Enter charges the pack or flips/advances/collects cards!
         const packModal = document.getElementById('pack-opening-modal');
         if (packModal && !packModal.classList.contains('hidden')) {
           if (k === ' ' || k === 'enter') {
@@ -2712,10 +2907,21 @@
             const st = this.packOpeningState;
             if (st && !st.cardsDealt && !st.isRipping) {
               this.handleSealedPackClick();
-            } else if (st && st.cardsDealt && st.flippedIndices.size < st.pulledCards.length) {
-              this.revealAllRemainingPackCards();
-            } else if (st && st.cardsDealt && st.flippedIndices.size >= st.pulledCards.length) {
-              this.collectPulledCardsToInventory();
+            } else if (st && st.cardsDealt) {
+              const activeCard = document.getElementById('active-pack-card');
+              if (activeCard && !activeCard.classList.contains('flipped')) {
+                activeCard.click();
+              } else {
+                const nextBtn = document.getElementById('btn-pack-next-card');
+                if (nextBtn && !nextBtn.classList.contains('hidden')) {
+                  nextBtn.click();
+                } else {
+                  const collectBtn = document.getElementById('btn-pack-collect');
+                  if (collectBtn && !collectBtn.classList.contains('hidden')) {
+                    collectBtn.click();
+                  }
+                }
+              }
             }
           }
           return;

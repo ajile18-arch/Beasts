@@ -17,7 +17,7 @@
     <header class="game-header">
       <div class="logo-area">
         <h1 class="game-title">MYTHOS</h1>
-        <span class="version-tag" id="game-version">v1.36</span>
+        <span class="version-tag" id="game-version">v1.41</span>
         <span class="subtitle" id="header-subtitle">Open-World Card RPG</span>
       </div>
 
@@ -87,27 +87,23 @@
           <button id="btn-mob-creator" class="ow-mob-nav-btn" title="Character Profile">
             👤 <span class="mob-btn-text">Hero</span>
           </button>
-          <button id="btn-mob-dpad-toggle" class="ow-mob-nav-btn active" title="Toggle On-Screen Virtual Controls">
+          <button id="btn-mob-dpad-toggle" class="ow-mob-nav-btn hidden" title="Toggle On-Screen Virtual Controls">
             🎮 <span class="mob-btn-text">Pad</span>
           </button>
         </div>
       </div>
 
-      <!-- Left Black Space Wing in Landscape (Holds D-Pad) -->
-      <div class="ow-side-wing ow-left-wing" id="ow-left-wing">
-        <div class="ow-dpad" id="ow-dpad">
-          <button class="dpad-btn dpad-up" data-dir="up" aria-label="Walk Up">▲</button>
-          <button class="dpad-btn dpad-left" data-dir="left" aria-label="Walk Left">◀</button>
-          <div class="dpad-center"></div>
-          <button class="dpad-btn dpad-right" data-dir="right" aria-label="Walk Right">▶</button>
-          <button class="dpad-btn dpad-down" data-dir="down" aria-label="Walk Down">▼</button>
+      <!-- Top: Game Map Stage -->
+      <div class="overworld-stage" id="overworld-stage">
+        <canvas id="overworld-canvas" width="1024" height="768"></canvas>
+        <div class="ow-controls-hint">
+          Walk: <b>WASD / Arrow Keys</b> or <b>Click Tile</b> • Interact / Continue: <b>Space / Enter</b>
         </div>
       </div>
 
-      <div class="overworld-stage" id="overworld-stage">
-        <canvas id="overworld-canvas" width="1024" height="768"></canvas>
-
-        <!-- Pokémon / Stardew Style Bottom Dialogue & Response Box -->
+      <!-- Bottom: Black Open Space Beneath the Game Map for Text Boxes, Options & Controls -->
+      <div class="ow-bottom-deck" id="ow-bottom-deck">
+        <!-- Pokémon / Stardew Style Dialogue & Response Choices Box (Displays in black space beneath map) -->
         <div class="ow-dialog-bar hidden" id="ow-dialog-bar">
           <div class="ow-dialog-main">
             <div class="ow-speaker-tag" id="ow-speaker-tag">MIKE</div>
@@ -128,37 +124,28 @@
           </div>
         </div>
 
-        <div class="ow-controls-hint">
-          Walk: <b>WASD / Arrow Keys</b> or <b>Click Tile</b> • Interact / Continue: <b>Space / Enter</b>
-        </div>
-      </div>
+        <!-- Touch Controls Deck in the Black Open Space -->
+        <div class="ow-controls-deck" id="ow-controls-deck">
+          <!-- Virtual D-Pad (Removed from screen) -->
+          <div class="ow-dpad hidden" id="ow-dpad">
+            <button class="dpad-btn dpad-up" data-dir="up" aria-label="Walk Up">▲</button>
+            <button class="dpad-btn dpad-left" data-dir="left" aria-label="Walk Left">◀</button>
+            <div class="dpad-center"></div>
+            <button class="dpad-btn dpad-right" data-dir="right" aria-label="Walk Right">▶</button>
+            <button class="dpad-btn dpad-down" data-dir="down" aria-label="Walk Down">▼</button>
+          </div>
 
-      <!-- Right Black Space Wing in Landscape (Holds Action Buttons & Quick Nav) -->
-      <div class="ow-side-wing ow-right-wing" id="ow-right-wing">
-        <div class="ow-landscape-quick-nav" id="ow-landscape-quick-nav">
-          <button id="btn-ls-inventory" class="ow-wing-btn" title="Backpack Inventory">
-            🎒 <span id="ls-inv-badge" class="inv-badge-pill">0</span>
-          </button>
-          <button id="btn-ls-binder" class="ow-wing-btn locked" title="Old Card Binder">
-            📖 <span id="ls-binder-badge" class="inv-badge-pill">0</span>
-          </button>
-          <button id="btn-ls-creator" class="ow-wing-btn" title="Character Profile">
-            👤
-          </button>
-          <button id="btn-ls-sound" class="ow-wing-btn" title="Toggle Sound">
-            🔊
-          </button>
-        </div>
-
-        <div class="ow-action-buttons" id="ow-action-buttons">
-          <button class="ow-action-btn ow-btn-b" id="ow-btn-b" aria-label="Backpack Inventory">
-            <span class="btn-letter">B</span>
-            <span class="btn-subtext">🎒 PACK</span>
-          </button>
-          <button class="ow-action-btn ow-btn-a" id="ow-btn-a" aria-label="Action / Interact">
-            <span class="btn-letter">A</span>
-            <span class="btn-subtext" id="ow-btn-a-label">TALK</span>
-          </button>
+          <!-- Action Buttons -->
+          <div class="ow-action-buttons" id="ow-action-buttons">
+            <button class="ow-action-btn ow-btn-b" id="ow-btn-b" aria-label="Backpack Inventory">
+              <span class="btn-letter">B</span>
+              <span class="btn-subtext">🎒 PACK</span>
+            </button>
+            <button class="ow-action-btn ow-btn-a" id="ow-btn-a" aria-label="Action / Interact">
+              <span class="btn-letter">A</span>
+              <span class="btn-subtext" id="ow-btn-a-label">TALK</span>
+            </button>
+          </div>
         </div>
       </div>
     </section>
@@ -287,7 +274,7 @@
           <button id="btn-clear-log" class="tiny-btn">Clear</button>
         </div>
         <div class="combat-log" id="combat-log">
-          <div class="log-entry system">Beasts Tactical Arena v1.36 initialized. Select your beast to begin.</div>
+          <div class="log-entry system">Beasts Tactical Arena v1.41 initialized. Select your beast to begin.</div>
         </div>
       </aside>
     </main>
@@ -765,7 +752,7 @@
 
         <!-- Stage Header -->
         <div class="pack-stage-header">
-          <div class="pack-stage-badge">✨ MYTHOS BASE SET • 1ST EDITION BOOSTER ✨</div>
+          <div class="pack-stage-badge" id="pack-stage-badge">✨ MYTHOS BASE SET • 1ST EDITION BOOSTER ✨</div>
           <h2 class="pack-stage-title" id="pack-stage-title">BREAK THE SEAL OF MYTHOS</h2>
           <p class="pack-stage-subtitle" id="pack-stage-subtitle">
             Click the sealed Booster Pack <b>3 times</b> to charge <b>The Seal of Mythos</b> and tear open the foil!
@@ -804,15 +791,18 @@
           </div>
         </div>
 
-        <!-- Phase 2: 3 Face-Down Pulled Cards (Using Mythos_Card_Back.png) -->
+        <!-- Phase 2: Pulled Card Reveal Stage (1 Card at a Time) -->
         <div class="pack-cards-reveal-row hidden" id="pack-cards-reveal-row">
-          <!-- Dynamically populated with 3 3D flip cards -->
+          <!-- Dynamically populated with 1 card at a time -->
         </div>
 
         <!-- Stage Footer Controls -->
         <div class="pack-stage-footer">
-          <button type="button" class="ui-btn secondary hidden" id="btn-pack-reveal-all">
-            ✨ Flip All Remaining Cards
+          <button type="button" class="ui-btn primary-btn pack-next-btn hidden" id="btn-pack-next-card">
+            Next Card ▸ (2 of 3)
+          </button>
+          <button type="button" class="ui-btn secondary hidden" id="btn-pack-view-all">
+            👀 View All 3 Cards
           </button>
           <button type="button" class="ui-btn primary-btn pack-collect-btn hidden" id="btn-pack-collect">
             🎒 Collect All 3 Cards into Inventory
