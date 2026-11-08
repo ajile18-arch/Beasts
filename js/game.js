@@ -208,12 +208,15 @@
     }
   };
 
+  // Expose BEAST_TEMPLATES globally for overworld, binder & creature inspect systems
+  window.BEAST_TEMPLATES = BEAST_TEMPLATES;
+
   // ---------------------------------------------------------------------------
   // Game State Engine
   // ---------------------------------------------------------------------------
   class BeastsGame {
     constructor() {
-      this.VERSION = '1.27';
+      this.VERSION = '1.35';
       this.COLS = 10;
       this.ROWS = 8;
       this.round = 1;
@@ -224,6 +227,7 @@
       this.selectedUnit = null;
       this.actionMode = null; // 'move', 'atk1', 'atk2', 'ability'
       this.isAiThinking = false;
+      this.currentChallenger = null;
 
       // DOM Elements
       this.elCellsLayer = document.getElementById('cells-layer');
@@ -255,6 +259,7 @@
     // Switch from Overworld into the Mythos Tabletop Minigame
     enterMythosArena(challenger = null) {
       this.currentView = 'arena';
+      this.currentChallenger = challenger;
       if (this.overworld) this.overworld.active = false;
 
       document.getElementById('overworld-view')?.classList.add('hidden');
@@ -269,7 +274,33 @@
       const switchBtn = document.getElementById('btn-switch-view');
       if (switchBtn) switchBtn.innerHTML = '🗺️ Return to World';
 
-      this.openDraftModal();
+      // If challenged by Mike or AJ after opening your booster pack, use the 3 cards you pulled in your inventory or binder!
+      const invCards = (this.overworld?.inventory || [])
+        .filter(i => i.type === 'mythos_card' && (i.beastId || i.id.startsWith('card_')))
+        .map(i => i.beastId || i.id.replace('card_', ''))
+        .filter(id => BEAST_TEMPLATES[id]);
+
+      const binderCards = (this.overworld?.binderSlots || [])
+        .filter(c => c && (c.beastId || (c.id && c.id.startsWith('card_'))))
+        .map(c => c.beastId || c.id.replace('card_', ''))
+        .filter(id => BEAST_TEMPLATES[id]);
+
+      const allPlayerBeasts = Array.from(new Set([...invCards, ...binderCards]));
+
+      if (challenger && allPlayerBeasts.length >= 3) {
+        const playerTeam = allPlayerBeasts.slice(0, 3);
+        const remainingPool = ['phoenix', 'earth_golem', 'werewolf', 'hydra', 'terra_mother', 'verdant_guardian']
+          .filter(id => !playerTeam.includes(id));
+        const friendTeam = remainingPool.length === 3 ? remainingPool : ['werewolf', 'hydra', 'earth_golem'];
+
+        this.draftState.active = false;
+        this.draftState.team1Picks = playerTeam;
+        this.draftState.team2Picks = friendTeam;
+        this.finalizeDraftAndStartMatch();
+        this.log(`🃏 ${challenger.name} challenged you at ${challenger.name}'s House using the 3 cards from your Booster Packs!`, 'system');
+      } else {
+        this.openDraftModal();
+      }
     }
 
     // Switch from Mythos Tabletop Minigame back to the Open World
@@ -294,7 +325,9 @@
 
       if (this.overworld) {
         this.overworld.active = true;
+        this.overworld.onReturnFromBattle(this.currentChallenger);
       }
+      this.currentChallenger = null;
     }
 
     // Initialize 10x8 tile grid
@@ -1644,11 +1677,28 @@
       const team2Alive = this.units.some(u => u.team === 2 && u.hp > 0);
 
       if (!team1Alive || !team2Alive) {
-        const winner = team1Alive ? 'Team 1 (Solar)' : 'Team 2 (Lunar)';
-        const crest = team1Alive ? '☀️' : '🌙';
+        const isPlayerVictory = team1Alive;
+        const winner = isPlayerVictory ? 'Team 1 (Solar)' : 'Team 2 (Lunar)';
+        const crest = isPlayerVictory ? '☀️' : '🌙';
         document.getElementById('winner-crest').textContent = crest;
         document.getElementById('winner-title').textContent = `${winner.toUpperCase()} VICTORIOUS!`;
-        document.getElementById('winner-message').textContent = `All opposing mythical beasts were defeated in Round ${this.round}.`;
+
+        if (isPlayerVictory && this.currentChallenger) {
+          const fName = this.currentChallenger.name || 'Your Friend';
+          document.getElementById('winner-message').innerHTML = `
+            All of <b>${fName}'s</b> mythical beasts were defeated in Round ${this.round}!<br>
+            <div style="margin-top: 14px; padding: 12px 16px; background: rgba(59, 130, 246, 0.22); border: 2px solid #60a5fa; border-radius: 12px; color: #93c5fd; text-align: center;">
+              🎁 <b>REWARD EARNED: "Old Card Binder"</b><br>
+              <span style="font-size: 13px; color: #f8fafc;">${fName} surrendered his well-loved 9-pocket card binder to you! Return to the overworld to claim it!</span>
+            </div>
+          `;
+          if (this.overworld) {
+            this.overworld.grantOldCardBinder(this.currentChallenger);
+          }
+        } else {
+          document.getElementById('winner-message').textContent = `All opposing mythical beasts were defeated in Round ${this.round}.`;
+        }
+
         this.elWinnerModal.classList.remove('hidden');
         this.log(`🏆 VICTORY: ${winner} has won the match!`, 'system');
       }

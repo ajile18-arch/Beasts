@@ -17,7 +17,7 @@
     <header class="game-header">
       <div class="logo-area">
         <h1 class="game-title">MYTHOS</h1>
-        <span class="version-tag" id="game-version">v1.27</span>
+        <span class="version-tag" id="game-version">v1.35</span>
         <span class="subtitle" id="header-subtitle">Open-World Card RPG</span>
       </div>
 
@@ -43,6 +43,7 @@
       <div class="overworld-toolbar" id="overworld-toolbar">
         <span class="ow-location-pill" id="ow-location-pill">🏠 Living Room (Day 2 of Summer)</span>
         <button id="btn-open-inventory" class="ui-btn primary-btn" style="padding: 4px 10px; font-size: 12px;" title="Open Backpack & Inventory (Key: I)">🎒 Inventory <span id="inv-badge-count" class="inv-badge-pill">0</span></button>
+        <button id="btn-open-binder" class="ui-btn primary-btn binder-toolbar-btn locked" style="padding: 4px 10px; font-size: 12px; background: linear-gradient(135deg, #1e3a8a, #2563eb); border-color: #60a5fa;" title="Old Card Binder (Locked — Defeat Friend to Unlock)">📖 Old Card Binder <span id="binder-badge-count" class="inv-badge-pill">0</span></button>
         <button id="btn-open-creator" class="ui-btn secondary" style="padding: 4px 10px; font-size: 12px;" title="Customize Character or World Save">👤 Character</button>
         <button id="btn-replay-intro" class="ui-btn secondary" style="padding: 4px 10px; font-size: 12px;" title="Replay the Living Room Opening & TV Commercial">🎬 Replay Intro</button>
         <select id="ow-time-select" class="ow-select" title="Time of Day Shader">
@@ -73,8 +74,51 @@
 
     <!-- Open-World Pokémon-Style Top-Down Viewport -->
     <section class="overworld-container" id="overworld-view">
+      <!-- Mobile Quick Access HUD Bar (Visible on mobile & tablets) -->
+      <div class="ow-mobile-header-bar" id="ow-mobile-header-bar">
+        <div class="ow-mobile-loc-tag" id="ow-mobile-loc-tag">🏠 Living Room • $0</div>
+        <div class="ow-mobile-nav-buttons">
+          <button id="btn-mob-inventory" class="ow-mob-nav-btn" title="Backpack / Inventory">
+            🎒 <span class="mob-btn-text">Pack</span> <span id="mob-inv-badge" class="inv-badge-pill">0</span>
+          </button>
+          <button id="btn-mob-binder" class="ow-mob-nav-btn locked" title="Old Card Binder">
+            📖 <span class="mob-btn-text">Binder</span> <span id="mob-binder-badge" class="inv-badge-pill">0</span>
+          </button>
+          <button id="btn-mob-creator" class="ow-mob-nav-btn" title="Character Profile">
+            👤 <span class="mob-btn-text">Hero</span>
+          </button>
+          <button id="btn-mob-dpad-toggle" class="ow-mob-nav-btn active" title="Toggle On-Screen Virtual Controls">
+            🎮 <span class="mob-btn-text">Pad</span>
+          </button>
+        </div>
+      </div>
+
       <div class="overworld-stage" id="overworld-stage">
         <canvas id="overworld-canvas" width="1024" height="768"></canvas>
+
+        <!-- Mobile Touch Virtual Gamepad (D-Pad & Action Buttons) -->
+        <div class="ow-touch-controls" id="ow-touch-controls">
+          <!-- Retro Directional Pad -->
+          <div class="ow-dpad" id="ow-dpad">
+            <button class="dpad-btn dpad-up" data-dir="up" aria-label="Walk Up">▲</button>
+            <button class="dpad-btn dpad-left" data-dir="left" aria-label="Walk Left">◀</button>
+            <div class="dpad-center"></div>
+            <button class="dpad-btn dpad-right" data-dir="right" aria-label="Walk Right">▶</button>
+            <button class="dpad-btn dpad-down" data-dir="down" aria-label="Walk Down">▼</button>
+          </div>
+
+          <!-- Mobile Action Buttons -->
+          <div class="ow-action-buttons" id="ow-action-buttons">
+            <button class="ow-action-btn ow-btn-b" id="ow-btn-b" aria-label="Backpack Inventory">
+              <span class="btn-letter">B</span>
+              <span class="btn-subtext">🎒 PACK</span>
+            </button>
+            <button class="ow-action-btn ow-btn-a" id="ow-btn-a" aria-label="Action / Interact">
+              <span class="btn-letter">A</span>
+              <span class="btn-subtext" id="ow-btn-a-label">TALK</span>
+            </button>
+          </div>
+        </div>
 
         <!-- Pokémon / Stardew Style Bottom Dialogue & Response Box -->
         <div class="ow-dialog-bar hidden" id="ow-dialog-bar">
@@ -227,7 +271,7 @@
           <button id="btn-clear-log" class="tiny-btn">Clear</button>
         </div>
         <div class="combat-log" id="combat-log">
-          <div class="log-entry system">Beasts Tactical Arena v1.27 initialized. Select your beast to begin.</div>
+          <div class="log-entry system">Beasts Tactical Arena v1.35 initialized. Select your beast to begin.</div>
         </div>
       </aside>
     </main>
@@ -442,6 +486,7 @@
               <h2 class="inventory-title">DUELIST BACKPACK & INVENTORY</h2>
               <p class="inventory-sub">Manage your unopened booster packs, cards, and wallet</p>
             </div>
+            <button type="button" class="ui-btn secondary" id="btn-inv-to-binder" style="padding: 4px 10px; font-size: 11px; margin-left: 8px;">📖 Open Binder ▸</button>
           </div>
           <div class="inventory-wallet-pill" id="inv-wallet-display">💵 $0</div>
         </div>
@@ -458,10 +503,16 @@
                 <h3 id="inv-detail-name">Select an Item</h3>
                 <span class="inv-detail-qty hidden" id="inv-detail-qty">x1</span>
               </div>
-              <p id="inv-detail-desc">Your backpack is currently empty. Explore the neighborhood and visit the Mythos Card Shop to pick up your first Booster Pack!</p>
+              <p id="inv-detail-desc">Your backpack is currently empty. Explore the neighborhood and visit Leo's Card Shop to pick up your first Booster Pack!</p>
               <div class="inv-detail-actions hidden" id="inv-detail-actions">
-                <button type="button" class="ui-btn primary-btn inv-open-pack-btn" id="btn-inv-open-pack">
+                <button type="button" class="ui-btn primary-btn inv-open-pack-btn hidden" id="btn-inv-open-pack">
                   ✨ Open Booster Pack
+                </button>
+                <button type="button" class="ui-btn primary-btn inv-binder-btn hidden" id="btn-inv-put-binder">
+                  📖 Put in Binder
+                </button>
+                <button type="button" class="ui-btn secondary inv-inspect-btn hidden" id="btn-inv-inspect">
+                  🔍 Inspect Creature
                 </button>
               </div>
             </div>
@@ -469,8 +520,222 @@
         </div>
 
         <div class="inventory-footer">
-          <span class="inventory-shortcut-hint">Shortcut: Press <b>I</b> or <b>B</b> to toggle Inventory</span>
+          <span class="inventory-shortcut-hint">Shortcut: Press <b>I</b> for Backpack • <b>B</b> for Old Card Binder</span>
           <button type="button" class="ui-btn primary-btn" id="btn-close-inventory">Done</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mythos Collector Card Binder Modal (9-Pocket Protective Sleeves) -->
+    <div class="modal-overlay hidden" id="binder-modal">
+      <div class="binder-modal-dialog">
+        <!-- Binder Spine Rings & Leather Cover Shell -->
+        <div class="binder-rings-spine" aria-hidden="true">
+          <span class="binder-ring"></span>
+          <span class="binder-ring"></span>
+          <span class="binder-ring"></span>
+        </div>
+
+        <div class="binder-content-sheet">
+          <div class="binder-header">
+            <div class="binder-title-group">
+              <span class="binder-icon-badge">📖</span>
+              <div>
+                <h2 class="binder-title" id="binder-main-title">OLD CARD BINDER</h2>
+                <p class="binder-sub" id="binder-sub-title">A well-loved 9-pocket trading card binder received from your friend • Click any card to inspect moves, types, and abilities</p>
+              </div>
+            </div>
+            <div class="binder-header-actions">
+              <span class="binder-counter-pill" id="binder-counter-pill">3 / 9 Sleeves Filled</span>
+              <button type="button" class="ui-btn secondary" id="btn-binder-to-inv" style="padding: 4px 10px; font-size: 11px;">🎒 Backpack</button>
+              <button type="button" class="drawer-close-btn" id="btn-close-binder" title="Close Binder">✕</button>
+            </div>
+          </div>
+
+          <!-- 9-Pocket Card Sleeves Grid (3x3 Collector Sheet) -->
+          <div class="binder-grid" id="binder-slots-grid">
+            <!-- Dynamically populated with 9 sleeve slots -->
+          </div>
+
+          <div class="binder-footer">
+            <div class="binder-hint">
+              💡 <b>Tip:</b> Click any inserted card to enter <b>Creature Inspect Mode</b> with high-res standalone art, moves, and abilities.
+            </div>
+            <button type="button" class="ui-btn primary-btn" id="btn-binder-done">Done</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Binder Card Inserter Picker Modal (Choose a card from Inventory) -->
+    <div class="modal-overlay hidden" id="binder-picker-modal">
+      <div class="binder-picker-dialog">
+        <div class="binder-picker-header">
+          <div class="binder-picker-title">
+            <span>📥 INSERT CARD INTO OLD CARD BINDER</span>
+            <span class="binder-picker-target" id="binder-picker-target-label">Sleeve #1</span>
+          </div>
+          <button type="button" class="drawer-close-btn" id="btn-close-binder-picker">✕</button>
+        </div>
+        <p class="binder-picker-sub">Select an unslotted Mythos card from your backpack to slip into this clear protective pocket:</p>
+        <div class="binder-picker-grid" id="binder-picker-cards-grid">
+          <!-- Dynamically populated with available inventory cards -->
+        </div>
+        <div class="binder-picker-footer">
+          <button type="button" class="ui-btn secondary" id="btn-cancel-binder-picker">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Creature Inspect Mode Modal (Full-Screen High-Res Creature Showcase) -->
+    <div class="modal-overlay hidden" id="creature-inspect-modal">
+      <div class="inspect-modal-dialog">
+        <!-- Ambient Elemental Radial Rays -->
+        <div class="inspect-ambient-fx" id="inspect-ambient-fx"></div>
+
+        <div class="inspect-header">
+          <div class="inspect-title-group">
+            <span class="inspect-element-crest" id="inspect-element-crest">🔥</span>
+            <div>
+              <div class="inspect-badge-row">
+                <span class="inspect-mode-pill">⚡ CREATURE INSPECT MODE</span>
+                <span class="inspect-type-tag" id="inspect-element-tag">FIRE ELEMENT</span>
+              </div>
+              <h2 class="inspect-name" id="inspect-creature-name">PHOENIX</h2>
+            </div>
+          </div>
+          <button type="button" class="ui-btn secondary" id="btn-close-inspect">← Back to Old Card Binder</button>
+        </div>
+
+        <div class="inspect-body">
+          <!-- Left Column: Very Large Standalone Creature Picture (NOT IN CARD FORM!) -->
+          <div class="inspect-visual-column">
+            <div class="inspect-pedestal-stage" id="inspect-pedestal-stage">
+              <!-- Animated Elemental Magic Aura Circle on Floor -->
+              <div class="inspect-magic-circle" id="inspect-magic-circle"></div>
+              <div class="inspect-creature-shadow"></div>
+
+              <!-- Very Large Standalone Creature Sprite Image (NOT in card form!) -->
+              <div class="inspect-creature-img-frame">
+                <img id="inspect-creature-img" src="Sprites/Phoenix/Phoenix_idle_down_256x256.png" alt="Creature Showcase" class="inspect-creature-img">
+              </div>
+            </div>
+
+            <!-- Interactive Pose Selector Controls -->
+            <div class="inspect-pose-selector">
+              <span class="pose-label">POSE PREVIEW:</span>
+              <div class="pose-buttons" id="inspect-pose-buttons">
+                <button type="button" class="pose-btn active" data-pose="idle">🧘 Idle</button>
+                <button type="button" class="pose-btn" data-pose="attack">⚔️ Attack</button>
+                <button type="button" class="pose-btn" data-pose="walk">🏃 Stride</button>
+                <button type="button" class="pose-btn" data-pose="aoe">🌟 Special</button>
+              </div>
+            </div>
+
+            <!-- Core Beast Combat Stats Strip -->
+            <div class="inspect-stats-strip">
+              <div class="inspect-stat-pill hp">
+                <span class="icon">❤️</span>
+                <div class="stat-text">
+                  <span class="stat-lbl">MAX HEALTH</span>
+                  <span class="stat-val" id="inspect-hp-val">120 HP</span>
+                </div>
+              </div>
+              <div class="inspect-stat-pill move">
+                <span class="icon">👣</span>
+                <div class="stat-text">
+                  <span class="stat-lbl">SPEED / MOVE</span>
+                  <span class="stat-val" id="inspect-move-val">3 Tiles / Turn</span>
+                </div>
+              </div>
+              <div class="inspect-stat-pill rarity">
+                <span class="icon">⭐</span>
+                <div class="stat-text">
+                  <span class="stat-lbl">BASE SET STARS</span>
+                  <span class="stat-val" id="inspect-stars-val">★★★★</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Column: Tactical Moves, Types & Abilities Breakdown -->
+          <div class="inspect-details-column">
+            <!-- Type & Element Mastery Box -->
+            <div class="inspect-card-section">
+              <div class="section-title-row">
+                <span class="section-icon">🌐</span>
+                <h3 class="section-title">ELEMENTAL TYPE & ARCHETYPE</h3>
+              </div>
+              <div class="element-detail-box" id="inspect-element-box">
+                <div class="element-name" id="inspect-element-full">🔥 Fire Element Beast</div>
+                <p class="element-desc" id="inspect-element-desc">
+                  Harnesses pure solar flame to incinerate adversaries and control battlefield tiles with lingering blazing fire hazards.
+                </p>
+              </div>
+            </div>
+
+            <!-- Tactical Moves (Attacks 1 & 2) -->
+            <div class="inspect-card-section">
+              <div class="section-title-row">
+                <span class="section-icon">⚔️</span>
+                <h3 class="section-title">TACTICAL MOVES</h3>
+              </div>
+              <div class="moves-list">
+                <!-- Attack 1 -->
+                <div class="move-inspect-card" id="inspect-move1-card">
+                  <div class="move-card-header">
+                    <span class="move-badge atk1">ATTACK 1</span>
+                    <h4 class="move-name" id="inspect-move1-name">Flaming Talons</h4>
+                    <span class="move-stat-badge dmg" id="inspect-move1-dmg">30 DMG</span>
+                    <span class="move-stat-badge range" id="inspect-move1-range">Range: 1</span>
+                  </div>
+                  <p class="move-desc" id="inspect-move1-desc">
+                    Strikes the target with searing, razor-sharp solar talons for 30 fire damage.
+                  </p>
+                </div>
+
+                <!-- Attack 2 -->
+                <div class="move-inspect-card" id="inspect-move2-card">
+                  <div class="move-card-header">
+                    <span class="move-badge atk2">ATTACK 2</span>
+                    <h4 class="move-name" id="inspect-move2-name">Fire Orb</h4>
+                    <span class="move-stat-badge stance" id="inspect-move2-dmg">Counter Stance</span>
+                    <span class="move-stat-badge range" id="inspect-move2-range">Range: 0</span>
+                  </div>
+                  <p class="move-desc" id="inspect-move2-desc">
+                    Curls into an incandescent sphere of flame, reflecting 50% of incoming damage back onto the attacker.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Passive / Unique Ability -->
+            <div class="inspect-card-section">
+              <div class="section-title-row">
+                <span class="section-icon">✨</span>
+                <h3 class="section-title">SPECIAL & PASSIVE ABILITIES</h3>
+              </div>
+              <div class="ability-inspect-card" id="inspect-ability-card">
+                <div class="ability-card-header">
+                  <span class="ability-badge">PASSIVE AURA</span>
+                  <h4 class="ability-name" id="inspect-ability-name">Trails of Fire</h4>
+                </div>
+                <p class="ability-desc" id="inspect-ability-desc">
+                  Leaves every traversed grid tile engulfed in roaring flames for 2 turns. Hostile creatures stepping on or ending their turn in a flame tile take 10 fire damage.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer Action Buttons: Remove from Old Card Binder to Inventory -->
+        <div class="inspect-footer">
+          <button type="button" class="ui-btn secondary" id="btn-inspect-back-bottom">
+            ← Back to Old Card Binder
+          </button>
+          <button type="button" class="ui-btn primary-btn inspect-remove-btn" id="btn-inspect-remove-from-binder">
+            📤 Remove Card from Old Card Binder (Place in Inventory)
+          </button>
         </div>
       </div>
     </div>
@@ -485,9 +750,9 @@
         <!-- Stage Header -->
         <div class="pack-stage-header">
           <div class="pack-stage-badge">✨ MYTHOS BASE SET • 1ST EDITION BOOSTER ✨</div>
-          <h2 class="pack-stage-title" id="pack-stage-title">BREAK THE CELESTIAL SEAL</h2>
+          <h2 class="pack-stage-title" id="pack-stage-title">BREAK THE SEAL OF MYTHOS</h2>
           <p class="pack-stage-subtitle" id="pack-stage-subtitle">
-            Click the sealed Booster Pack <b>3 times</b> to charge the Ouroboros runes and tear open the foil!
+            Click the sealed Booster Pack <b>3 times</b> to charge <b>The Seal of Mythos</b> and tear open the foil!
           </p>
         </div>
 
@@ -498,7 +763,7 @@
           <div class="sealed-booster-wrapper" id="sealed-booster-wrapper" title="Click to charge & tear open!">
             <!-- Top Foil Tear Strip -->
             <div class="pack-foil-top-strip" id="pack-foil-top-strip">
-              <span class="pack-crimp-label">★ MYTHOS TCG • 5 CARDS INSIDE ★</span>
+              <span class="pack-crimp-label">★ MYTHOS TCG • 3 CARDS INSIDE ★</span>
               <div class="pack-tear-line"></div>
             </div>
 
@@ -523,9 +788,9 @@
           </div>
         </div>
 
-        <!-- Phase 2: 5 Face-Down Pulled Cards (Using Mythos_Card_Back.png) -->
+        <!-- Phase 2: 3 Face-Down Pulled Cards (Using Mythos_Card_Back.png) -->
         <div class="pack-cards-reveal-row hidden" id="pack-cards-reveal-row">
-          <!-- Dynamically populated with 5 3D flip cards -->
+          <!-- Dynamically populated with 3 3D flip cards -->
         </div>
 
         <!-- Stage Footer Controls -->
@@ -534,7 +799,7 @@
             ✨ Flip All Remaining Cards
           </button>
           <button type="button" class="ui-btn primary-btn pack-collect-btn hidden" id="btn-pack-collect">
-            🎒 Collect All 5 Cards into Inventory
+            🎒 Collect All 3 Cards into Inventory
           </button>
         </div>
       </div>

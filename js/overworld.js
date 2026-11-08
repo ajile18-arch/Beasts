@@ -48,8 +48,22 @@
       this.gold = this.worldSave?.gold ?? 0;
       this.hasMomBoosterMoney = this.worldSave?.hasMomBoosterMoney ?? false;
       this.hasBoughtCardShopPacks = this.worldSave?.hasBoughtCardShopPacks ?? false;
+      this.hasOpenedStarterPack = this.worldSave?.hasOpenedStarterPack ?? false;
+      this.friendWaitingAtHouse = this.worldSave?.friendWaitingAtHouse ?? false;
+      this.hasOldCardBinder = this.worldSave?.hasOldCardBinder ?? false;
+      this.friendDefeatedRewardPending = false;
       this.inventory = Array.isArray(this.worldSave?.inventory) ? [...this.worldSave.inventory] : [];
       this.selectedInventoryItemId = null;
+
+      // 9-Pocket Trading Card Binder
+      this.binderSlots = Array.isArray(this.worldSave?.binderSlots)
+        ? [...this.worldSave.binderSlots]
+        : Array(9).fill(null);
+      while (this.binderSlots.length < 9) this.binderSlots.push(null);
+      this.inspectingCard = null;
+      this.inspectingSlotIndex = null;
+      this.inspectingPose = 'idle';
+      this.binderPickerTargetIndex = null;
 
       this.playerSprite = new CS.CharacterSpriteSheet(this.draftAppearance);
       this.shopkeeperNpc = this.createShopkeeperNpc();
@@ -82,6 +96,8 @@
       this.tick = 0;
       this.nearInteractable = null;
 
+      this.touchBeacon = null;
+
       this.canvas = document.getElementById('overworld-canvas');
       this.ctx = this.canvas ? this.canvas.getContext('2d') : null;
 
@@ -89,6 +105,7 @@
         this.canvas.width = this.COLS * this.TILE;
         this.canvas.height = this.ROWS * this.TILE;
         this.bindEvents();
+        this.initTouchControls();
         this.initIntroAndCreatorUI();
         this.loop();
       }
@@ -181,10 +198,9 @@
           shortName: 'Phoenix',
           element: 'Fire',
           stars: 4,
-          rarity: 'mythic',
-          rarityLabel: '★★★★ MYTHIC HOLO',
+          badgeLabel: '🔥 FIRE ELEMENT • 120 HP',
           cardImg: 'Cards/Phoenix_Card.png',
-          desc: '<b>Phoenix (★★★★ Fire • 120 HP)</b> — Base Set Holographic Card. Moves: <b>Flaming Talons</b> (30 Dmg), <b>Fire Orb</b> (50% Reflect), &amp; <b>Trails of Fire</b> (10 Dmg Flame Hazard).'
+          desc: '<b>Phoenix (Fire • 120 HP)</b> — Base Set Mythos Card. Moves: <b>Flaming Talons</b> (30 Dmg), <b>Fire Orb</b> (50% Reflect), &amp; <b>Trails of Fire</b> (10 Dmg Flame Hazard).'
         },
         {
           id: 'card_earth_golem',
@@ -193,10 +209,9 @@
           shortName: 'Earth Golem',
           element: 'Earth',
           stars: 4,
-          rarity: 'mythic',
-          rarityLabel: '★★★★ MYTHIC HOLO',
+          badgeLabel: '🪨 EARTH ELEMENT • 200 HP',
           cardImg: 'Cards/Earth_Golem_Card.png',
-          desc: '<b>Earth Golem (★★★★ Earth • 200 HP)</b> — Base Set Holographic Card. Moves: <b>Crushing Grip</b> (20 Dmg + Immobilize), <b>Rock Barrier</b>, &amp; <b>Terraform</b>.'
+          desc: '<b>Earth Golem (Earth • 200 HP)</b> — Base Set Mythos Card. Moves: <b>Crushing Grip</b> (20 Dmg + Immobilize), <b>Rock Barrier</b>, &amp; <b>Terraform</b>.'
         },
         {
           id: 'card_hydra',
@@ -205,10 +220,9 @@
           shortName: 'Hydra',
           element: 'Poison',
           stars: 4,
-          rarity: 'mythic',
-          rarityLabel: '★★★★ MYTHIC HOLO',
+          badgeLabel: '🐍 POISON ELEMENT • 120 HP',
           cardImg: 'Cards/Hydra_Card.png',
-          desc: '<b>Hydra (★★★★ Poison • 120 HP)</b> — Base Set Holographic Card. Moves: <b>Venomous Bite</b> (20 Dmg + Poison), <b>Regrowth</b> (+10 HP/turn), &amp; <b>Swamp Regenerator</b>.'
+          desc: '<b>Hydra (Poison • 120 HP)</b> — Base Set Mythos Card. Moves: <b>Venomous Bite</b> (20 Dmg + Poison), <b>Regrowth</b> (+10 HP/turn), &amp; <b>Swamp Regenerator</b>.'
         },
         {
           id: 'card_terra_mother',
@@ -217,10 +231,9 @@
           shortName: 'Terra-Mother',
           element: 'Earth',
           stars: 4,
-          rarity: 'mythic',
-          rarityLabel: '★★★★ MYTHIC HOLO',
+          badgeLabel: '🌿 EARTH ELEMENT • 100 HP',
           cardImg: 'Cards/Terra_Mother_Card.png',
-          desc: '<b>Terra-Mother (★★★★ Earth • 100 HP)</b> — Base Set Holographic Card. Moves: <b>Root Crush</b> (35 Dmg), <b>Ram</b> (25 Dmg + 2-tile knockback), &amp; <b>Thorn of Life</b>.'
+          desc: '<b>Terra-Mother (Earth • 100 HP)</b> — Base Set Mythos Card. Moves: <b>Root Crush</b> (35 Dmg), <b>Ram</b> (25 Dmg + 2-tile knockback), &amp; <b>Thorn of Life</b>.'
         },
         {
           id: 'card_werewolf',
@@ -229,10 +242,9 @@
           shortName: 'Werewolf',
           element: 'Earth',
           stars: 2,
-          rarity: 'rare',
-          rarityLabel: '★★ RARE FOIL',
+          badgeLabel: '🐺 EARTH ELEMENT • 100 HP',
           cardImg: 'Cards/Werewolf_Card.png',
-          desc: '<b>Werewolf (★★ Earth • 100 HP)</b> — Base Set Card. Moves: <b>Rip Apart</b> (20 Dmg), <b>Retreat</b> (+1 Move), &amp; <b>Howl</b> (+10 Team Attack Buff).'
+          desc: '<b>Werewolf (Earth • 100 HP)</b> — Base Set Mythos Card. Moves: <b>Rip Apart</b> (20 Dmg), <b>Retreat</b> (+1 Move), &amp; <b>Howl</b> (+10 Team Attack Buff).'
         },
         {
           id: 'card_verdant_guardian',
@@ -241,10 +253,9 @@
           shortName: 'Verdant Guardian',
           element: 'Plant',
           stars: 2,
-          rarity: 'rare',
-          rarityLabel: '★★ RARE FOIL',
+          badgeLabel: '🍃 PLANT ELEMENT • 160 HP',
           cardImg: 'Cards/Verdant_Guardian_Card.png',
-          desc: '<b>Verdant Guardian (★★ Plant • 160 HP)</b> — Base Set Card. Moves: <b>Branch Whip</b> (20 Dmg), <b>Thorn Bush</b> (10 Dmg AOE), &amp; <b>Sapling Strength</b> (2× Dmg at ≤1/4 HP).'
+          desc: '<b>Verdant Guardian (Plant • 160 HP)</b> — Base Set Mythos Card. Moves: <b>Branch Whip</b> (20 Dmg), <b>Thorn Bush</b> (10 Dmg AOE), &amp; <b>Sapling Strength</b> (2× Dmg at ≤1/4 HP).'
         }
       ];
     }
@@ -256,7 +267,11 @@
       } else {
         this.inventory.push({
           id: itemDef.id,
+          beastId: itemDef.beastId || itemDef.id.replace('card_', ''),
           name: itemDef.name,
+          shortName: itemDef.shortName || itemDef.name,
+          element: itemDef.element || 'Fire',
+          stars: itemDef.stars || 4,
           qty: itemDef.qty || 1,
           icon: itemDef.icon || '🃏',
           cardImg: itemDef.cardImg || null,
@@ -268,12 +283,159 @@
       this.selectedInventoryItemId = itemDef.id;
       this.saveWorldData(this.draftAppearance);
       this.renderInventoryModal();
+      this.updateHUDSaveInfo();
     }
 
     getTotalInventoryCount() {
       return (this.inventory || []).reduce((sum, item) => sum + (item.qty || 0), 0);
     }
 
+    getSlottedBinderCount() {
+      return (this.binderSlots || []).filter(s => Boolean(s)).length;
+    }
+
+    // -------------------------------------------------------------------------
+    // Mythos Creature Catalog & High-Res Standalone Beast Database
+    // -------------------------------------------------------------------------
+    getCreatureData(beastId) {
+      if (!beastId) return null;
+      const cleanId = String(beastId).toLowerCase().replace('card_', '').trim();
+
+      const catalog = {
+        phoenix: {
+          id: 'phoenix',
+          name: 'Phoenix',
+          element: 'fire',
+          stars: 4,
+          maxHp: 120,
+          baseMove: 3,
+          cardImg: 'Cards/Phoenix_Card.png',
+          sprites: {
+            idle: 'Sprites/Phoenix/Phoenix_idle_down_256x256.png',
+            attack: 'Sprites/Phoenix/Phoenix_attack_flapping_256x256.png',
+            walk: 'Sprites/Phoenix/Phoenix_fly_down_256x256.png',
+            aoe: 'Sprites/Phoenix/Phoenix_attack_aoe_256x256.png'
+          },
+          skills: {
+            atk1: { name: 'Flaming Talons', range: 1, dmg: 30, type: 'Target Attack', desc: 'Rakes the foe with searing solar talons, inflicting 30 fire damage.' },
+            atk2: { name: 'Fire Orb', range: 0, dmg: '50% Reflect', type: 'Counter Stance', desc: 'Curls into a blazing sphere of incandescent flame, returning 50% of incoming attack damage back to the attacker.' },
+            ability: { name: 'Trails of Fire', type: 'Passive Grid Hazard', desc: 'Leaves every traversed grid tile engulfed in roaring flames for 2 turns. Hostile creatures stepping on or ending their turn in a flame tile suffer 10 fire damage.' }
+          },
+          elementLore: 'A noble solar avian of legendary power. Commands supreme mastery of fire hazards, burning movement lanes, and punishing counter-strikes.'
+        },
+        earth_golem: {
+          id: 'earth_golem',
+          name: 'Earth Golem',
+          element: 'earth',
+          stars: 4,
+          maxHp: 200,
+          baseMove: 2,
+          cardImg: 'Cards/Earth_Golem_Card.png',
+          sprites: {
+            idle: 'Sprites/Earth_Golem/Earth_Golem_idle_down_256x256.png',
+            attack: 'Sprites/Earth_Golem/Earth_Golem_attack_crushing_grip_256x256.png',
+            walk: 'Sprites/Earth_Golem/Earth_Golem_walk_down_256x256.png',
+            aoe: 'Sprites/Earth_Golem/Earth_Golem_attack_rock_barrier_256x256.png'
+          },
+          skills: {
+            atk1: { name: 'Crushing Grip', range: 1, dmg: 20, type: 'Immobilize', desc: 'Squeezes the opponent with colossal granite pressure for 20 damage and disables all enemy movement on their next turn.' },
+            atk2: { name: 'Rock Barrier', range: 1, dmg: 'Stone Redoubt', type: 'Spawn Barrier', desc: 'Erects solid stone barrier walls on adjacent tiles (passable only by Earth elementals).' },
+            ability: { name: 'Terraform', type: 'Passive Mobility Buff', desc: 'Draws seismic energy from stone fortifications, granting an extra +1 tile of movement whenever traversing Rock Barriers.' }
+          },
+          elementLore: 'A monolithic titan crafted from primeval bedrock. Boasts unmatched 200 HP resilience, battlefield lockdown, and terrain shaping.'
+        },
+        werewolf: {
+          id: 'werewolf',
+          name: 'Werewolf',
+          element: 'earth',
+          stars: 2,
+          maxHp: 100,
+          baseMove: 3,
+          cardImg: 'Cards/Werewolf_Card.png',
+          sprites: {
+            idle: 'Sprites/Werewolf/Werewolf_idle_down_256x256.png',
+            attack: 'Sprites/Werewolf/Werewolf_attack_claw_256x256.png',
+            walk: 'Sprites/Werewolf/Werewolf_walk_down_256x256.png',
+            aoe: 'Sprites/Werewolf/Werewolf_attack_howl_256x256.png'
+          },
+          skills: {
+            atk1: { name: 'Rip Apart', range: 1, dmg: 20, type: 'Melee Strike', desc: 'Savagely slashes the opponent with vicious claws, dealing 20 damage.' },
+            atk2: { name: 'Retreat', range: 0, dmg: '+1 Speed', type: 'Self Move Buff', desc: 'Leaps with predatory reflex, instantly granting 1 extra tile of movement this turn.' },
+            ability: { name: 'Howl', type: 'Active Team Buff', desc: 'Unleashes an intimidating battle cry that boosts all allied cards\' attack damage by +10 to every move for 2 turns.' }
+          },
+          elementLore: 'A ferocious hunter of the wild woods. Specializes in rapid movement bursts, hit-and-run tactics, and team-wide damage buffs.'
+        },
+        hydra: {
+          id: 'hydra',
+          name: 'Hydra',
+          element: 'poison',
+          stars: 4,
+          maxHp: 120,
+          baseMove: 2,
+          cardImg: 'Cards/Hydra_Card.png',
+          sprites: {
+            idle: 'Sprites/Hydra/Hydra_idle_down_256x256.png',
+            attack: 'Sprites/Hydra/Hydra_attack_venom_spit_256x256.png',
+            walk: 'Sprites/Hydra/Hydra_slither_down_256x256.png',
+            aoe: 'Sprites/Hydra/Hydra_attack_thrash_aoe_256x256.png'
+          },
+          skills: {
+            atk1: { name: 'Venomous Bite', range: 1, dmg: 20, type: 'Poison DOT', desc: 'Bites target with corrosive venom for 20 damage and inflicts poison (5 damage per turn for 2 turns).' },
+            atk2: { name: 'Regrowth', range: 0, dmg: '+10 Heal', type: 'Passive Regeneration', desc: 'If the Hydra sustains any damage in a round, it regenerates +10 HP at the beginning of the next turn.' },
+            ability: { name: 'Swamp Regenerator', type: 'Passive Healing Aura', desc: 'Radiates life-giving swamp vitality, restoring +10 HP at the beginning of each turn to any allied beast stationed on adjacent tiles.' }
+          },
+          elementLore: 'A multi-headed reptilian horror of the murky bayou. Inflicts lethal lingering poison while continuously rejuvenating itself and nearby allies.'
+        },
+        terra_mother: {
+          id: 'terra_mother',
+          name: 'Terra-Mother',
+          element: 'earth',
+          stars: 4,
+          maxHp: 100,
+          baseMove: 2,
+          cardImg: 'Cards/Terra_Mother_Card.png',
+          sprites: {
+            idle: 'Sprites/Terra_Mother/Terra_Mother_idle_down_256x256.png',
+            attack: 'Sprites/Terra_Mother/Terra_Mother_attack_root_crush_256x256.png',
+            walk: 'Sprites/Terra_Mother/Terra_Mother_walk_down_256x256.png',
+            aoe: 'Sprites/Terra_Mother/Terra_Mother_attack_ancient_saplings_256x256.png'
+          },
+          skills: {
+            atk1: { name: 'Root Crush', range: 1, dmg: 35, type: 'Target Attack', desc: 'Summons subterranean primeval roots to crush the target for a devastating 35 damage.' },
+            atk2: { name: 'Ram', range: 0, dmg: 25, type: 'Knockback', desc: 'Charges forward with immense mass for 25 damage, knocking hostiles directly ahead back 2 tiles.' },
+            ability: { name: 'Thorn of Life', type: 'Passive Area Trap', desc: 'When staying stationed in the same tile for 3 consecutive turns, sharp thorns automatically sprout in a random adjacent tile.' }
+          },
+          elementLore: 'Ancient matriarch of forest ecology. Wields immense single-target crushing power, battlefield displacement, and organic thorn traps.'
+        },
+        verdant_guardian: {
+          id: 'verdant_guardian',
+          name: 'Verdant Guardian',
+          element: 'plant',
+          stars: 2,
+          maxHp: 160,
+          baseMove: 2,
+          cardImg: 'Cards/Verdant_Guardian_Card.png',
+          sprites: {
+            idle: 'Sprites/Verdant_Guardian/Verdant_Guardian_idle_down_256x256.png',
+            attack: 'Sprites/Verdant_Guardian/Verdant_Guardian_attack_branch_whip_256x256.png',
+            walk: 'Sprites/Verdant_Guardian/Verdant_Guardian_walk_down_256x256.png',
+            aoe: 'Sprites/Verdant_Guardian/Verdant_Guardian_attack_thorn_bush_256x256.png'
+          },
+          skills: {
+            atk1: { name: 'Branch Whip', range: 1, dmg: 20, type: 'Target Attack', desc: 'Strikes enemy with heavy oak branches, dealing 20 plant damage.' },
+            atk2: { name: 'Thorn Bush', range: 0, dmg: 10, type: 'AOE Burst', desc: 'Releases a sudden 360-degree burst of razor thorns, dealing 10 damage to all adjacent enemy beasts.' },
+            ability: { name: 'Sapling Strength', type: 'Crisis Power Doubler', desc: 'When weakened to 1/4 health or below (≤ 40 HP), primordial sapling fury activates, doubling the damage of all moves!' }
+          },
+          elementLore: 'An ancient sentient ironwood tree. Endures heavy enemy fire with 160 HP and doubles its offensive potency when pushed to the brink of defeat.'
+        }
+      };
+
+      return catalog[cleanId] || null;
+    }
+
+    // -------------------------------------------------------------------------
+    // Player Backpack & Inventory Modal
+    // -------------------------------------------------------------------------
     toggleInventoryModal(forceOpen) {
       const modal = document.getElementById('inventory-modal');
       if (!modal) return;
@@ -297,6 +459,8 @@
       const descEl = document.getElementById('inv-detail-desc');
       const actionsEl = document.getElementById('inv-detail-actions');
       const openPackBtn = document.getElementById('btn-inv-open-pack');
+      const putBinderBtn = document.getElementById('btn-inv-put-binder');
+      const inspectBtn = document.getElementById('btn-inv-inspect');
 
       const totalCount = this.getTotalInventoryCount();
       if (badgeEl) badgeEl.textContent = String(totalCount);
@@ -359,17 +523,53 @@
               <img src="${selectedItem.cardImg || 'Cards/Mythos_Card_Back.png'}" alt="${selectedItem.name}">
             </div>
           `;
-          if (actionsEl && openPackBtn) {
-            actionsEl.classList.remove('hidden');
+          if (actionsEl) actionsEl.classList.remove('hidden');
+          if (openPackBtn) {
+            openPackBtn.classList.remove('hidden');
             openPackBtn.onclick = () => this.startBoosterPackOpening(selectedItem.id);
           }
+          putBinderBtn?.classList.add('hidden');
+          inspectBtn?.classList.add('hidden');
         } else if (selectedItem.type === 'mythos_card' && selectedItem.cardImg) {
           artEl.innerHTML = `
             <div class="inv-card-art-thumb" style="width: 58px; height: 76px;">
               <img src="${selectedItem.cardImg}" alt="${selectedItem.name}">
             </div>
           `;
-          actionsEl?.classList.add('hidden');
+          if (actionsEl) actionsEl.classList.remove('hidden');
+          openPackBtn?.classList.add('hidden');
+          if (putBinderBtn) {
+            if (this.hasOldCardBinder) {
+              putBinderBtn.classList.remove('hidden');
+              putBinderBtn.onclick = () => {
+                this.insertCardIntoBinder(selectedItem.id);
+                this.toggleInventoryModal(false);
+                this.toggleBinderModal(true);
+              };
+            } else {
+              putBinderBtn.classList.add('hidden');
+            }
+          }
+          if (inspectBtn) {
+            inspectBtn.classList.remove('hidden');
+            inspectBtn.onclick = () => {
+              this.toggleInventoryModal(false);
+              this.openCreatureInspect(selectedItem, null);
+            };
+          }
+        } else if (selectedItem.id === 'old_card_binder') {
+          artEl.innerHTML = `<span style="font-size: 38px;">📖</span>`;
+          if (actionsEl) actionsEl.classList.remove('hidden');
+          openPackBtn?.classList.add('hidden');
+          putBinderBtn?.classList.add('hidden');
+          if (inspectBtn) {
+            inspectBtn.classList.remove('hidden');
+            inspectBtn.textContent = '📖 Open Old Card Binder';
+            inspectBtn.onclick = () => {
+              this.toggleInventoryModal(false);
+              this.toggleBinderModal(true);
+            };
+          }
         } else {
           artEl.textContent = selectedItem.icon || '📦';
           actionsEl?.classList.add('hidden');
@@ -383,25 +583,420 @@
         nameEl.textContent = 'Backpack Empty';
         qtyEl.classList.add('hidden');
         actionsEl?.classList.add('hidden');
-        descEl.textContent = 'Your backpack has no items yet. Ask Mom for $20 and head to the Mythos Card Shop on the far east block of the south road to buy your first Booster Pack!';
+        descEl.textContent = "Your backpack has no items yet. Ask Mom for $20 and head to Leo's Card Shop on the far east block of the south road to buy your first Booster Pack!";
       }
     }
 
     // -------------------------------------------------------------------------
-    // Theatrical & Suspenseful Booster Pack Opening Ritual
+    // OLD CARD BINDER (9 Protective Card Pocket Sleeves - Awarded Upon Friend Defeat)
     // -------------------------------------------------------------------------
-    rollFivePackCards() {
+    grantOldCardBinder(challenger) {
+      this.hasOldCardBinder = true;
+      this.friendDefeatedRewardPending = true;
+
+      // Add "Old Card Binder" to inventory backpack if not already present
+      if (!this.inventory.some(i => i.id === 'old_card_binder')) {
+        this.inventory.unshift({
+          id: 'old_card_binder',
+          name: 'Old Card Binder',
+          qty: 1,
+          icon: '📖',
+          type: 'binder_item',
+          desc: '<b>Old Card Binder</b> — A well-loved 9-pocket collector card binder awarded to you by your friend after you defeated him in battle. Holds 9 cards in clear protective sleeves and unlocks <b>Creature Inspect Mode</b> to analyze moves, types, and abilities!'
+        });
+      }
+
+      this.saveWorldData(this.draftAppearance);
+      this.updateHUDSaveInfo();
+    }
+
+    onReturnFromBattle(challenger) {
+      if (this.friendDefeatedRewardPending) {
+        this.friendDefeatedRewardPending = false;
+        const fName = challenger?.name || this.friendName || 'Mike';
+
+        // Friend stands facing player with celebratory gift bubble
+        this.storyState = 'friend_defeated_celebration';
+        if (this.npcs[0]) {
+          this.npcs[0].bubble = '🎁';
+          this.npcs[0].dir = 'right';
+        }
+
+        if (window.sounds?.playVictory) {
+          window.sounds.playVictory();
+        }
+
+        this.renderDialogueUI();
+      }
+    }
+
+    toggleBinderModal(forceOpen) {
+      if (!this.hasOldCardBinder) {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        alert(`🔒 The Old Card Binder is locked!\n\nBattle and defeat ${this.friendName || 'your friend'} in Mythos at his house to win his "Old Card Binder"!`);
+        return;
+      }
+      const modal = document.getElementById('binder-modal');
+      if (!modal) return;
+      const shouldOpen = forceOpen !== undefined ? forceOpen : modal.classList.contains('hidden');
+      if (window.sounds?.playClick) window.sounds.playClick();
+      if (shouldOpen) {
+        this.renderBinderModal();
+        modal.classList.remove('hidden');
+      } else {
+        modal.classList.add('hidden');
+      }
+    }
+
+    renderBinderModal() {
+      const gridEl = document.getElementById('binder-slots-grid');
+      const counterPill = document.getElementById('binder-counter-pill');
+      const binderBadgeEl = document.getElementById('binder-badge-count');
+
+      const slottedCount = this.getSlottedBinderCount();
+      if (counterPill) {
+        counterPill.textContent = `${slottedCount} / 9 Sleeves Filled`;
+      }
+      if (binderBadgeEl) {
+        binderBadgeEl.textContent = String(slottedCount);
+      }
+      if (!gridEl) return;
+
+      gridEl.innerHTML = '';
+
+      for (let i = 0; i < 9; i++) {
+        const card = this.binderSlots[i];
+        const slotEl = document.createElement('div');
+
+        if (card) {
+          slotEl.className = 'binder-slot slotted';
+          slotEl.innerHTML = `
+            <div class="binder-card-thumb-wrap">
+              <img src="${card.cardImg}" alt="${card.name}" class="binder-card-thumb-img">
+            </div>
+            <div class="binder-card-info-row">
+              <span class="binder-card-name">${card.shortName || card.name}</span>
+              <span class="binder-card-element-pill ${card.element?.toLowerCase() || 'fire'}">${card.element || 'Beast'}</span>
+            </div>
+            <div class="binder-slot-hover-bar">
+              <button type="button" class="binder-slot-btn inspect">🔍 Inspect</button>
+              <button type="button" class="binder-slot-btn remove">📤 To Inventory</button>
+            </div>
+          `;
+
+          // Clicking anywhere on the card or the inspect button opens Creature Inspect Mode!
+          slotEl.addEventListener('click', (ev) => {
+            if (ev.target.closest('.binder-slot-btn.remove')) return;
+            if (window.sounds?.playClick) window.sounds.playClick();
+            this.openCreatureInspect(card, i);
+          });
+
+          const removeBtn = slotEl.querySelector('.binder-slot-btn.remove');
+          if (removeBtn) {
+            removeBtn.addEventListener('click', (ev) => {
+              ev.stopPropagation();
+              this.removeCardFromBinder(i);
+            });
+          }
+        } else {
+          slotEl.className = 'binder-slot empty';
+          slotEl.innerHTML = `
+            <div class="binder-empty-btn">
+              <span style="font-size: 20px;">➕</span>
+              <span>Insert Card</span>
+            </div>
+            <span style="font-size: 10px; color: var(--text-muted); margin-top: 4px;">Sleeve #${i + 1}</span>
+          `;
+
+          slotEl.addEventListener('click', () => {
+            if (window.sounds?.playClick) window.sounds.playClick();
+            this.openBinderCardPicker(i);
+          });
+        }
+
+        gridEl.appendChild(slotEl);
+      }
+    }
+
+    // Binder Card Picker Modal (Select card from backpack to insert into sleeve)
+    openBinderCardPicker(targetSlotIndex) {
+      this.binderPickerTargetIndex = targetSlotIndex;
+      const modal = document.getElementById('binder-picker-modal');
+      const targetLabel = document.getElementById('binder-picker-target-label');
+      const grid = document.getElementById('binder-picker-cards-grid');
+
+      if (!modal || !grid) return;
+
+      if (targetLabel) {
+        targetLabel.textContent = `Sleeve #${targetSlotIndex + 1}`;
+      }
+
+      grid.innerHTML = '';
+      const cardItems = (this.inventory || []).filter(item => item.type === 'mythos_card' && item.qty > 0);
+
+      if (cardItems.length === 0) {
+        grid.innerHTML = `
+          <div style="color: var(--text-muted); padding: 24px; text-align: center; grid-column: 1 / -1; font-size: 13px;">
+            🎒 No unslotted Mythos cards in your backpack!<br>
+            <span style="font-size: 11px; opacity: 0.8;">Open more Booster Packs at Leo's Card Shop or remove cards from your binder to insert here.</span>
+          </div>
+        `;
+      } else {
+        cardItems.forEach(cardItem => {
+          const opt = document.createElement('div');
+          opt.className = 'picker-card-option';
+          opt.innerHTML = `
+            <div class="picker-card-thumb">
+              <img src="${cardItem.cardImg}" alt="${cardItem.name}">
+            </div>
+            <div class="picker-card-name">${cardItem.shortName || cardItem.name}</div>
+            <span style="font-size: 10px; color: #fde047;">(x${cardItem.qty} in bag)</span>
+          `;
+          opt.addEventListener('click', () => {
+            this.insertCardIntoBinder(cardItem.id, this.binderPickerTargetIndex);
+          });
+          grid.appendChild(opt);
+        });
+      }
+
+      modal.classList.remove('hidden');
+    }
+
+    closeBinderCardPicker() {
+      const modal = document.getElementById('binder-picker-modal');
+      modal?.classList.add('hidden');
+      this.binderPickerTargetIndex = null;
+    }
+
+    // Insert a single card from Inventory into a designated binder slot
+    insertCardIntoBinder(cardId, targetSlotIndex = null) {
+      let destIndex = targetSlotIndex;
+      if (destIndex === null || destIndex === undefined || destIndex < 0 || destIndex >= 9) {
+        destIndex = this.binderSlots.findIndex(s => !s);
+      }
+      if (destIndex === -1) {
+        alert('All 9 binder sleeves are full! Remove a card to make room.');
+        return;
+      }
+
+      const invIndex = this.inventory.findIndex(i => i.id === cardId && i.qty > 0);
+      if (invIndex === -1) return;
+
+      const item = this.inventory[invIndex];
+
+      // Remove 1 quantity from inventory
+      item.qty -= 1;
+      if (item.qty <= 0) {
+        this.inventory.splice(invIndex, 1);
+      }
+
+      // Slip into binder sleeve
+      this.binderSlots[destIndex] = {
+        id: item.id,
+        beastId: item.beastId || item.id.replace('card_', ''),
+        name: item.name,
+        shortName: item.shortName || item.name,
+        element: item.element || 'Fire',
+        stars: item.stars || 4,
+        cardImg: item.cardImg,
+        desc: item.desc || ''
+      };
+
+      if (window.sounds?.playCardFlipReveal) {
+        window.sounds.playCardFlipReveal(false);
+      } else if (window.sounds?.playClick) {
+        window.sounds.playClick();
+      }
+
+      this.saveWorldData(this.draftAppearance);
+      this.closeBinderCardPicker();
+      this.renderBinderModal();
+      this.renderInventoryModal();
+      this.updateHUDSaveInfo();
+    }
+
+    // Remove a single card from the binder and return it to backpack inventory
+    removeCardFromBinder(slotIndex) {
+      if (slotIndex < 0 || slotIndex >= 9) return;
+      const card = this.binderSlots[slotIndex];
+      if (!card) return;
+
+      this.binderSlots[slotIndex] = null;
+
+      // Add back into player's inventory
+      this.addInventoryItem({
+        id: card.id,
+        beastId: card.beastId,
+        name: card.name,
+        shortName: card.shortName,
+        element: card.element,
+        stars: card.stars,
+        qty: 1,
+        icon: '🃏',
+        cardImg: card.cardImg,
+        type: 'mythos_card',
+        desc: card.desc
+      });
+
+      if (window.sounds?.playClick) window.sounds.playClick();
+
+      this.saveWorldData(this.draftAppearance);
+      this.renderBinderModal();
+      this.renderInventoryModal();
+      this.updateHUDSaveInfo();
+    }
+
+    // -------------------------------------------------------------------------
+    // CREATURE INSPECT MODE (Very Large Standalone Creature Picture, Moves & Abilities)
+    // -------------------------------------------------------------------------
+    openCreatureInspect(card, slotIndex = null) {
+      if (!card) return;
+      this.inspectingCard = card;
+      this.inspectingSlotIndex = slotIndex;
+      this.inspectingPose = 'idle';
+
+      const beast = this.getCreatureData(card.beastId || card.id);
+      if (!beast) return;
+
+      const modal = document.getElementById('creature-inspect-modal');
+      const crestEl = document.getElementById('inspect-element-crest');
+      const tagEl = document.getElementById('inspect-element-tag');
+      const nameEl = document.getElementById('inspect-creature-name');
+      const circleEl = document.getElementById('inspect-magic-circle');
+      const hpVal = document.getElementById('inspect-hp-val');
+      const moveVal = document.getElementById('inspect-move-val');
+      const starsVal = document.getElementById('inspect-stars-val');
+
+      const elBoxName = document.getElementById('inspect-element-full');
+      const elBoxDesc = document.getElementById('inspect-element-desc');
+
+      const m1Name = document.getElementById('inspect-move1-name');
+      const m1Dmg = document.getElementById('inspect-move1-dmg');
+      const m1Range = document.getElementById('inspect-move1-range');
+      const m1Desc = document.getElementById('inspect-move1-desc');
+
+      const m2Name = document.getElementById('inspect-move2-name');
+      const m2Dmg = document.getElementById('inspect-move2-dmg');
+      const m2Range = document.getElementById('inspect-move2-range');
+      const m2Desc = document.getElementById('inspect-move2-desc');
+
+      const abName = document.getElementById('inspect-ability-name');
+      const abDesc = document.getElementById('inspect-ability-desc');
+
+      const removeBtn = document.getElementById('btn-inspect-remove-from-binder');
+
+      const elIcons = { fire: '🔥', earth: '🪨', poison: '🐍', plant: '🍃' };
+      const elColors = { fire: '#ef4444', earth: '#eab308', poison: '#a855f7', plant: '#22c55e' };
+      const elKey = beast.element.toLowerCase();
+
+      if (crestEl) crestEl.textContent = elIcons[elKey] || '✨';
+      if (tagEl) {
+        tagEl.textContent = `${beast.element.toUpperCase()} ELEMENT`;
+        tagEl.style.borderColor = elColors[elKey] || '#fbbf24';
+        tagEl.style.color = elColors[elKey] || '#fbbf24';
+      }
+      if (nameEl) nameEl.textContent = beast.name.toUpperCase();
+      if (circleEl) {
+        circleEl.style.borderColor = elColors[elKey] || '#fbbf24';
+        circleEl.style.boxShadow = `0 0 24px ${elColors[elKey] || '#fbbf24'}, inset 0 0 16px ${elColors[elKey] || '#fbbf24'}`;
+      }
+
+      if (hpVal) hpVal.textContent = `${beast.maxHp} HP`;
+      if (moveVal) moveVal.textContent = `${beast.baseMove} Tiles / Turn`;
+      if (starsVal) starsVal.textContent = '★'.repeat(beast.stars || 4);
+
+      if (elBoxName) elBoxName.innerHTML = `${elIcons[elKey] || '✨'} ${beast.element.toUpperCase()} ELEMENT BEAST`;
+      if (elBoxDesc) elBoxDesc.textContent = beast.elementLore || '';
+
+      // Moves
+      const atk1 = beast.skills.atk1 || {};
+      const atk2 = beast.skills.atk2 || {};
+      const ability = beast.skills.ability || {};
+
+      if (m1Name) m1Name.textContent = atk1.name || 'Attack 1';
+      if (m1Dmg) m1Dmg.textContent = typeof atk1.dmg === 'number' ? `${atk1.dmg} DMG` : (atk1.dmg || 'Special');
+      if (m1Range) m1Range.textContent = `Range: ${atk1.range ?? 1}`;
+      if (m1Desc) m1Desc.textContent = atk1.desc || '';
+
+      if (m2Name) m2Name.textContent = atk2.name || 'Attack 2';
+      if (m2Dmg) m2Dmg.textContent = typeof atk2.dmg === 'number' ? `${atk2.dmg} DMG` : (atk2.dmg || atk2.type || 'Special');
+      if (m2Range) m2Range.textContent = `Range: ${atk2.range ?? 0}`;
+      if (m2Desc) m2Desc.textContent = atk2.desc || '';
+
+      // Ability
+      if (abName) abName.textContent = ability.name || 'Special Ability';
+      if (abDesc) abDesc.textContent = ability.desc || '';
+
+      // Large standalone creature picture (NOT IN CARD FORM!)
+      this.updateInspectCreatureImage();
+
+      // Configure Remove from Binder button
+      if (removeBtn) {
+        if (slotIndex !== null && slotIndex !== undefined) {
+          removeBtn.classList.remove('hidden');
+          removeBtn.innerHTML = `📤 Remove from Sleeve #${slotIndex + 1} to Inventory`;
+          removeBtn.onclick = () => {
+            this.removeCardFromBinder(slotIndex);
+            this.closeCreatureInspect();
+          };
+        } else {
+          removeBtn.classList.remove('hidden');
+          removeBtn.innerHTML = `📖 Place Card into Binder Sleeve`;
+          removeBtn.onclick = () => {
+            this.insertCardIntoBinder(card.id);
+            this.closeCreatureInspect();
+            this.toggleBinderModal(true);
+          };
+        }
+      }
+
+      if (modal) modal.classList.remove('hidden');
+    }
+
+    setInspectPose(pose) {
+      this.inspectingPose = pose;
+      document.querySelectorAll('#inspect-pose-buttons .pose-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.pose === pose);
+      });
+      this.updateInspectCreatureImage();
+      if (window.sounds?.playClick) window.sounds.playClick();
+    }
+
+    updateInspectCreatureImage() {
+      const imgEl = document.getElementById('inspect-creature-img');
+      if (!imgEl || !this.inspectingCard) return;
+
+      const beast = this.getCreatureData(this.inspectingCard.beastId || this.inspectingCard.id);
+      if (!beast || !beast.sprites) return;
+
+      const poseKey = this.inspectingPose || 'idle';
+      const spritePath = beast.sprites[poseKey] || beast.sprites.idle || beast.sprites.idle_down;
+      if (spritePath) {
+        imgEl.src = spritePath;
+        imgEl.alt = `${beast.name} Standalone Artwork (${poseKey})`;
+      }
+    }
+
+    closeCreatureInspect() {
+      const modal = document.getElementById('creature-inspect-modal');
+      modal?.classList.add('hidden');
+      this.inspectingCard = null;
+      this.inspectingSlotIndex = null;
+      this.renderBinderModal();
+    }
+
+    // -------------------------------------------------------------------------
+    // Theatrical & Suspenseful Booster Pack Opening Ritual (3 Cards Per Pack)
+    // -------------------------------------------------------------------------
+    rollThreePackCards() {
       const catalog = this.getBaseSetCardCatalog();
-      // Shuffle a copy of the 6 Base Set cards and draw 5 distinct cards so every pack feels super rewarding!
+      // Shuffle a copy of the Base Set catalog and draw 3 cards for this Booster Pack
       const pool = [...catalog];
       for (let i = pool.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [pool[i], pool[j]] = [pool[j], pool[i]];
       }
-      const drawn = pool.slice(0, 5);
-      // Sort so the 2-star Rare cards are on the left and the 4-star Mythic Holo cards build up to the grand finale on the right!
-      drawn.sort((a, b) => a.stars - b.stars);
-      return drawn;
+      return pool.slice(0, 3);
     }
 
     startBoosterPackOpening(packItemId = 'unopened_base_pack') {
@@ -416,7 +1011,7 @@
         chargeClicks: 0,
         isRipping: false,
         cardsDealt: false,
-        pulledCards: this.rollFivePackCards(),
+        pulledCards: this.rollThreePackCards(),
         flippedIndices: new Set(),
         collected: false
       };
@@ -435,9 +1030,9 @@
       if (!modal || !wrapper || !sealedZone || !cardsRow) return;
 
       // Reset stage UI to Phase 1 (Sealed Booster Pack)
-      if (titleEl) titleEl.textContent = 'BREAK THE CELESTIAL SEAL';
+      if (titleEl) titleEl.textContent = 'BREAK THE SEAL OF MYTHOS';
       if (subEl) {
-        subEl.innerHTML = 'Click the sealed Booster Pack <b>3 times</b> to charge the Ouroboros runes and tear open the foil!';
+        subEl.innerHTML = 'Click the sealed Booster Pack <b>3 times</b> to charge <b>The Seal of Mythos</b> and tear open the foil!';
       }
       sealedZone.classList.remove('hidden');
       wrapper.className = 'sealed-booster-wrapper';
@@ -474,7 +1069,7 @@
         if (window.sounds?.playPackSuspense) window.sounds.playPackSuspense();
         wrapper?.classList.add('charge-shake-1');
         ring?.classList.add('charge-1');
-        if (titleEl) titleEl.textContent = 'THE OUROBOROS SEAL AWAKENS...';
+        if (titleEl) titleEl.textContent = 'THE SEAL OF MYTHOS AWAKENS...';
         if (subEl) subEl.innerHTML = 'Golden runes are glowing beneath the foil! Click <b>2 more times</b> to unseal!';
       } else if (st.chargeClicks === 2) {
         if (window.sounds?.playPackSuspense) window.sounds.playPackSuspense();
@@ -482,8 +1077,8 @@
         wrapper?.classList.add('charge-shake-2');
         ring?.classList.remove('charge-1');
         ring?.classList.add('charge-2');
-        if (titleEl) titleEl.textContent = 'MAXIMUM CELESTIAL RESONANCE!!';
-        if (subEl) subEl.innerHTML = 'The pack is trembling with Mythic energy! Click <b>1 final time</b> to RIP IT OPEN!';
+        if (titleEl) titleEl.textContent = 'THE SEAL OF MYTHOS SURGES!!';
+        if (subEl) subEl.innerHTML = 'The pack is trembling with elemental energy! Click <b>1 final time</b> to RIP IT OPEN!';
       } else if (st.chargeClicks >= 3) {
         // RIP OPEN THE FOIL PACK!
         st.isRipping = true;
@@ -507,12 +1102,12 @@
         }
 
         setTimeout(() => {
-          this.dealFiveFaceDownCards();
+          this.dealThreeFaceDownCards();
         }, 560);
       }
     }
 
-    dealFiveFaceDownCards() {
+    dealThreeFaceDownCards() {
       const st = this.packOpeningState;
       if (!st) return;
       st.cardsDealt = true;
@@ -524,9 +1119,9 @@
       const revealAllBtn = document.getElementById('btn-pack-reveal-all');
 
       sealedZone?.classList.add('hidden');
-      if (titleEl) titleEl.textContent = '5 MYTHOS CARDS PULLED!';
+      if (titleEl) titleEl.textContent = '3 MYTHOS CARDS PULLED!';
       if (subEl) {
-        subEl.innerHTML = 'Hover over each card to feel its <b>Rarity Aura</b> (Blue = Rare, Gold = 4★ Mythic) — Click each card to flip and reveal!';
+        subEl.innerHTML = 'Hover over each card to feel its energy — Click each card to flip and reveal your pull!';
       }
 
       if (!cardsRow) return;
@@ -536,8 +1131,8 @@
 
       st.pulledCards.forEach((card, idx) => {
         const slot = document.createElement('div');
-        slot.className = `pack-card-slot rarity-${card.rarity}`;
-        slot.style.animationDelay = `${idx * 0.11}s`;
+        slot.className = 'pack-card-slot rarity-mythic';
+        slot.style.animationDelay = `${idx * 0.14}s`;
 
         slot.innerHTML = `
           <div class="pack-card-inner">
@@ -548,7 +1143,7 @@
             </div>
             <!-- Face-Up Revealed Beast Card -->
             <div class="pack-card-face pack-card-front">
-              <span class="pack-card-rarity-banner ${card.rarity}">${card.rarityLabel}</span>
+              <span class="pack-card-rarity-banner mythic">${card.badgeLabel}</span>
               <img src="${card.cardImg}" alt="${card.name}">
               <div class="pack-card-holo-glint"></div>
             </div>
@@ -571,23 +1166,20 @@
       const card = st.pulledCards[idx];
       slotEl.classList.add('flipped');
 
-      const isMythic = card.rarity === 'mythic';
       if (window.sounds?.playCardFlipReveal) {
-        window.sounds.playCardFlipReveal(isMythic);
+        window.sounds.playCardFlipReveal(true);
       }
 
       const titleEl = document.getElementById('pack-stage-title');
       const subEl = document.getElementById('pack-stage-subtitle');
       if (titleEl) {
-        titleEl.textContent = isMythic
-          ? `🔥 MYTHIC PULL: ${card.shortName.toUpperCase()} (${card.stars}★)!!`
-          : `✨ REVEALED: ${card.shortName.toUpperCase()} (${card.stars}★)!`;
+        titleEl.textContent = `✨ CARD REVEALED: ${card.shortName.toUpperCase()}!!`;
       }
       if (subEl) {
         subEl.innerHTML = card.desc;
       }
 
-      // Check if all 5 cards have now been flipped!
+      // Check if all 3 cards have now been flipped!
       if (st.flippedIndices.size >= st.pulledCards.length) {
         const revealAllBtn = document.getElementById('btn-pack-reveal-all');
         const collectBtn = document.getElementById('btn-pack-collect');
@@ -604,7 +1196,7 @@
         if (!st.flippedIndices.has(idx)) {
           setTimeout(() => {
             this.flipPackCard(idx, slotEl);
-          }, idx * 160);
+          }, idx * 180);
         }
       });
     }
@@ -618,25 +1210,38 @@
         window.sounds.playVictory();
       }
 
-      // Add each of the 5 pulled Mythos Cards directly into the Player's Inventory!
+      // Add each of the 3 pulled Mythos Cards directly into the Player's Inventory!
       st.pulledCards.forEach(card => {
         this.addInventoryItem({
           id: card.id,
+          beastId: card.beastId,
           name: card.name,
+          shortName: card.shortName,
+          element: card.element,
+          stars: card.stars,
           qty: 1,
           icon: '🃏',
           cardImg: card.cardImg,
-          rarity: card.rarity,
           type: 'mythos_card',
           desc: card.desc
         });
       });
 
+      this.hasOpenedStarterPack = true;
+      this.storyState = 'friend_challenges_after_pack';
+      this.excitedBounceTicks = 110;
+      if (this.npcs[0]) {
+        this.npcs[0].bubble = '⚔️';
+        this.npcs[0].dir = 'left';
+      }
+      if (this.shopkeeperNpc) {
+        this.shopkeeperNpc.bubble = '🤩';
+      }
+      this.saveWorldData(this.draftAppearance);
+
       const modal = document.getElementById('pack-opening-modal');
       modal?.classList.add('hidden');
 
-      // Open the Inventory Modal so the player immediately sees their newly collected cards in their Backpack!
-      this.toggleInventoryModal(true);
       this.renderDialogueUI();
     }
 
@@ -652,11 +1257,17 @@
       this.gold = 0;
       this.hasMomBoosterMoney = false;
       this.hasBoughtCardShopPacks = false;
+      this.hasOpenedStarterPack = false;
+      this.friendWaitingAtHouse = false;
+      this.hasOldCardBinder = false;
+      this.friendDefeatedRewardPending = false;
       this.inventory = [];
       this.selectedInventoryItemId = null;
+      this.binderSlots = Array(9).fill(null);
       this.npcs = [this.createFriendNpc(this.friendName)];
       this.saveWorldData(this.draftAppearance);
       this.renderInventoryModal();
+      this.renderBinderModal();
 
       this.storyState = 'intro_bored';
       this.tvOn = false;
@@ -739,6 +1350,31 @@
       } else if (this.storyState === 'shop_bought_packs') {
         this.storyState = 'free_roam';
         this.renderDialogueUI();
+      } else if (this.storyState === 'must_open_pack_before_leaving') {
+        const hasUnopenedPack = (this.inventory || []).some(i => i.id === 'unopened_base_pack' && i.qty > 0);
+        if (hasUnopenedPack) {
+          this.startBoosterPackOpening('unopened_base_pack');
+        } else {
+          this.storyState = 'free_roam';
+          this.renderDialogueUI();
+        }
+      } else if (this.storyState === 'friend_challenges_after_pack') {
+        this.storyState = 'free_roam';
+        const friend = this.npcs[0];
+        if (friend) {
+          friend.following = false;
+          friend.leavingForHouse = true;
+          friend.bubble = '🏃';
+          friend.targetX = 9.8;
+          friend.targetY = 10.45;
+        }
+        this.renderDialogueUI();
+      } else if (this.storyState === 'friend_defeated_celebration') {
+        this.storyState = 'free_roam';
+        if (this.npcs[0]) {
+          this.npcs[0].bubble = '⚔️';
+        }
+        this.renderDialogueUI();
       }
     }
 
@@ -767,7 +1403,7 @@
         icon: '🃏',
         cardImg: 'Cards/Mythos_Card_Back.png',
         type: 'booster_pack',
-        desc: `<b>Unopened Mythos Base Set Booster Pack (1st Edition)</b> — A factory-sealed foil booster pack featuring the celestial Ouroboros seal and <b>5 Mythos Game Cards</b> inside. Click <b>✨ Open Booster Pack</b> below to break the seal! <i>(Purchased at the Card Shop with ${this.friendName}, who got the other pack!)</i>`
+        desc: `<b>Unopened Mythos Base Set Booster Pack (1st Edition)</b> — A factory-sealed foil booster pack featuring <b>The Seal of Mythos</b> and <b>3 Mythos Game Cards</b> inside. Click <b>✨ Open Booster Pack</b> below to break the seal! <i>(Purchased at Leo's Card Shop with ${this.friendName}, who got the other pack!)</i>`
       });
 
       if (this.shopkeeperNpc) {
@@ -815,6 +1451,7 @@
 
       if (!bar || !speakerEl || !textEl || !choicesEl || !nextBtn || !challengeBtn) return;
 
+      bar.classList.remove('top-position');
       const friendName = this.npcs[0].name;
       const playerName = this.draftAppearance?.name || 'Asher';
 
@@ -858,7 +1495,7 @@
         bar.classList.remove('tv-broadcast');
         speakerEl.textContent = `${playerName.toUpperCase()} & ${friendName.toUpperCase()} (EXCITED!!)`;
         speakerEl.className = 'ow-speaker-tag friend';
-        textEl.innerHTML = `<b>${friendName}:</b> "NO WAY!! Did you see those Beasts?! <b>MYTHOS</b> looks incredible — we HAVE to get Booster Packs right now!"<br><b>${playerName}:</b> "Totally!! If we can get enough money for <b>2 Booster Packs</b> at the Card Store, we can both build a deck!"`;
+        textEl.innerHTML = `<b>${friendName}:</b> "NO WAY!! Did you see those Beasts?! <b>MYTHOS</b> looks incredible — we HAVE to get Booster Packs right now!"<br><b>${playerName}:</b> "Totally!! If we can get enough money for <b>2 Booster Packs</b> at <b>Leo's Card Shop</b>, we can both build a deck!"`;
 
         choicesEl.classList.add('hidden');
         nextBtn.textContent = 'Hear Front Door Open ▸';
@@ -867,6 +1504,7 @@
       } else if (this.storyState === 'mom_enters') {
         bar.classList.remove('hidden');
         bar.classList.remove('tv-broadcast');
+        bar.classList.add('top-position');
         speakerEl.textContent = '💼 MOM (HOME FROM WORK)';
         speakerEl.className = 'ow-speaker-tag friend';
         textEl.innerHTML = `<i>*Click—creak!*</i> Your mother steps inside from work and sets down her bag.<br><b>Mom:</b> "Phew, what a busy shift! Hey ${playerName}, hi ${friendName} — I could hear the TV all the way from the porch! What are you two so hyped about?"`;
@@ -878,9 +1516,10 @@
       } else if (this.storyState === 'mom_gave_money') {
         bar.classList.remove('hidden');
         bar.classList.remove('tv-broadcast');
+        bar.classList.add('top-position');
         speakerEl.textContent = '💝 MOM (+$20 ADDED TO INVENTORY)';
         speakerEl.className = 'ow-speaker-tag friend';
-        textEl.innerHTML = `<b>Mom:</b> "Two <b>MYTHOS Booster Packs</b> so you and ${friendName} can play together? Better than being bored on Day 2 of summer! Here's <b>$20</b> — head down the road to the Card Store and pick out your packs!"`;
+        textEl.innerHTML = `<b>Mom:</b> "Two <b>MYTHOS Booster Packs</b> so you and ${friendName} can play together? Better than being bored on Day 2 of summer! Here's <b>$20</b> — head down the road to <b>Leo's Card Shop</b> and pick out your packs!"`;
 
         choicesEl.classList.add('hidden');
         nextBtn.textContent = 'Awesome, Thanks Mom! ▸';
@@ -891,15 +1530,116 @@
         bar.classList.remove('tv-broadcast');
         speakerEl.textContent = `🃏 SHOPKEEPER LEO & ${friendName.toUpperCase()} (PACKS ACQUIRED!!)`;
         speakerEl.className = 'ow-speaker-tag tv';
-        textEl.innerHTML = `<b>Shopkeeper Leo:</b> "Two <b>1st-Edition MYTHOS Base Set Booster Packs</b> coming right up! One for you, ${playerName}, and one for ${friendName}! May you both pull legendary Beasts!"<br><b>🎒 Inventory Updated:</b> <b>1× Unopened Mythos Base Card Pack</b> added to your Backpack (press <b>I</b> or click <b>🎒 Inventory</b> to inspect)!`;
+        textEl.innerHTML = `<b>Shopkeeper Leo:</b> "Two <b>1st-Edition MYTHOS Base Set Booster Packs</b> coming right up! One for you, ${playerName}, and one for ${friendName}! Go ahead and rip your pack open right here in <b>Leo's Card Shop</b>!"<br><b>🎒 Inventory Updated:</b> <b>1× Unopened Mythos Base Card Pack</b> added to your Backpack!`;
 
-        choicesEl.classList.add('hidden');
-        nextBtn.textContent = 'Awesome!! Check Backpack (I) ▸';
+        choicesEl.innerHTML = '';
+        const openNowBtn = document.createElement('button');
+        openNowBtn.type = 'button';
+        openNowBtn.className = 'ow-choice-btn';
+        openNowBtn.innerHTML = `✨ "Let's open my <b>Mythos Base Card Pack</b> right now!"`;
+        openNowBtn.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          this.startBoosterPackOpening('unopened_base_pack');
+        });
+        choicesEl.appendChild(openNowBtn);
+        choicesEl.classList.remove('hidden');
+
+        nextBtn.textContent = 'Continue ▸';
+        nextBtn.classList.remove('hidden');
+        challengeBtn.classList.add('hidden');
+      } else if (this.storyState === 'must_open_pack_before_leaving') {
+        bar.classList.remove('hidden');
+        bar.classList.remove('tv-broadcast');
+        speakerEl.textContent = `🃏 ${friendName.toUpperCase()} & SHOPKEEPER LEO`;
+        speakerEl.className = 'ow-speaker-tag tv';
+        textEl.innerHTML = `<b>${friendName}:</b> "Whoa, hold up ${playerName}! Don't leave <b>Leo's Card Shop</b> without opening the <b>Mythos Base Card Pack</b> you just got from Leo!"<br><b>Shopkeeper Leo:</b> "That's the best part! Break <b>The Seal of Mythos</b> and see which 3 cards you pulled before you head out!"`;
+
+        choicesEl.innerHTML = '';
+        const openBtn = document.createElement('button');
+        openBtn.type = 'button';
+        openBtn.className = 'ow-choice-btn';
+        openBtn.innerHTML = `✨ "You're right! Let's open my <b>Mythos Base Card Pack</b> right now!"`;
+        openBtn.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          this.startBoosterPackOpening('unopened_base_pack');
+        });
+        choicesEl.appendChild(openBtn);
+        choicesEl.classList.remove('hidden');
+
+        nextBtn.textContent = '✨ Open Booster Pack ▸';
+        nextBtn.classList.remove('hidden');
+        challengeBtn.classList.add('hidden');
+      } else if (this.storyState === 'friend_challenges_after_pack') {
+        bar.classList.remove('hidden');
+        bar.classList.remove('tv-broadcast');
+        speakerEl.textContent = `⚔️ ${friendName.toUpperCase()} (CHALLENGES YOU TO A BATTLE!!)`;
+        speakerEl.className = 'ow-speaker-tag friend';
+        const pulledList = (this.inventory || [])
+          .filter(i => i.type === 'mythos_card')
+          .map(i => `<b>${i.name.replace(' (Mythos Card)', '')}</b>`)
+          .join(', ');
+        textEl.innerHTML = `<b>${friendName}:</b> "NO WAY!! You pulled ${pulledList || '3 awesome cards'}?! I just opened my pack from Leo too! I'm heading back to <b>my house</b> right now to set up the tabletop board — come meet me there for a <b>MYTHOS Battle</b> whenever you're ready!"`;
+
+        choicesEl.innerHTML = '';
+        const acceptBtn = document.createElement('button');
+        acceptBtn.type = 'button';
+        acceptBtn.className = 'ow-choice-btn';
+        acceptBtn.innerHTML = `⚔️ "You're on, ${friendName}! Head to <b>${friendName}'s House</b> and I'll meet you there for our battle!"`;
+        acceptBtn.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          this.advanceStoryStep();
+        });
+        const viewCardsBtn = document.createElement('button');
+        viewCardsBtn.type = 'button';
+        viewCardsBtn.className = 'ow-choice-btn';
+        viewCardsBtn.innerHTML = `🎒 Inspect My 3 Pulled Cards in Inventory (I)`;
+        viewCardsBtn.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          this.toggleInventoryModal(true);
+        });
+        choicesEl.appendChild(acceptBtn);
+        choicesEl.appendChild(viewCardsBtn);
+        choicesEl.classList.remove('hidden');
+
+        nextBtn.textContent = "Let's Go! ▸";
+        nextBtn.classList.remove('hidden');
+        challengeBtn.classList.add('hidden');
+      } else if (this.storyState === 'friend_defeated_celebration') {
+        bar.classList.remove('hidden');
+        bar.classList.remove('tv-broadcast');
+        speakerEl.textContent = `🎁 ${friendName.toUpperCase()} — DEFEATED IN MYTHOS BATTLE!`;
+        speakerEl.className = 'ow-speaker-tag friend';
+        textEl.innerHTML = `<b>${friendName}:</b> "Whoa, ${playerName}... that was unbelievable!! You completely wiped out my team! A promise is a promise — here is my brother's <b>Old Card Binder</b>! It has 9 protective sleeves to keep your cards safe and inspect their moves, types, and abilities anytime you want!"`;
+
+        choicesEl.innerHTML = '';
+        const openBinderBtn = document.createElement('button');
+        openBinderBtn.type = 'button';
+        openBinderBtn.className = 'ow-choice-btn';
+        openBinderBtn.innerHTML = `📖 Open the <b>Old Card Binder</b> (Press B)`;
+        openBinderBtn.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          this.advanceStoryStep();
+          this.toggleBinderModal(true);
+        });
+        const thankBtn = document.createElement('button');
+        thankBtn.type = 'button';
+        thankBtn.className = 'ow-choice-btn';
+        thankBtn.innerHTML = `🤝 "Thanks, ${friendName}! That was an epic battle!"`;
+        thankBtn.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          this.advanceStoryStep();
+        });
+        choicesEl.appendChild(openBinderBtn);
+        choicesEl.appendChild(thankBtn);
+        choicesEl.classList.remove('hidden');
+
+        nextBtn.textContent = 'Claim Reward ▸';
         nextBtn.classList.remove('hidden');
         challengeBtn.classList.add('hidden');
       } else {
         this.updateFreeRoamPrompt();
       }
+      this.updateMobileActionLabel();
     }
 
     updateFreeRoamPrompt() {
@@ -912,40 +1652,51 @@
       const challengeBtn = document.getElementById('ow-btn-challenge');
       if (!bar) return;
 
+      bar.classList.remove('top-position');
       choicesEl?.classList.add('hidden');
       nextBtn?.classList.add('hidden');
 
       if (this.currentArea === 'interior') {
+        this.lastShopPromptKey = null;
         const friend = this.npcs[0];
         const mom = this.npcs.find(n => n.id === 'mom');
         const distToMom = mom ? Math.hypot(this.player.x - mom.x, this.player.y - mom.y) : 999;
-        const distToFriend = Math.hypot(this.player.x - friend.x, this.player.y - friend.y);
+        const distToFriend = (friend && !this.friendWaitingAtHouse) ? Math.hypot(this.player.x - friend.x, this.player.y - friend.y) : 999;
         const distToTv = Math.hypot(this.player.x - 7.3, this.player.y - 4.3);
 
         if (mom && distToMom < 1.85) {
           this.nearInteractable = mom;
           bar.classList.remove('hidden');
           bar.classList.remove('tv-broadcast');
+          bar.classList.add('top-position');
           speakerEl.textContent = '💼 MOM';
           speakerEl.className = 'ow-speaker-tag friend';
           if (!this.hasMomBoosterMoney) {
             textEl.textContent = `"Hey sweetheart! You and ${friend.name} look like you're about to burst with excitement. Did you want to ask me something?"`;
             challengeBtn.textContent = '💵 Ask Mom for 2 Booster Packs ($20)';
             challengeBtn.classList.remove('hidden');
+          } else if (this.hasOpenedStarterPack) {
+            textEl.textContent = `"You pulled 3 MYTHOS cards from Leo's Card Shop? Have fun battling ${friend.name} next door at his house!"`;
+            challengeBtn.classList.add('hidden');
           } else {
-            textEl.textContent = `"Have fun at the Card Store down the road! Make sure you and ${friend.name} each get a MYTHOS Booster Pack with that $20!"`;
+            textEl.textContent = `"Have fun at Leo's Card Shop down the road! Make sure you and ${friend.name} each get a MYTHOS Booster Pack with that $20!"`;
             challengeBtn.classList.add('hidden');
           }
         } else if (distToFriend < 1.8) {
           this.nearInteractable = friend;
           bar.classList.remove('hidden');
           bar.classList.remove('tv-broadcast');
+          if (this.player.y >= 7.5 || friend.y >= 7.5) {
+            bar.classList.add('top-position');
+          }
           speakerEl.textContent = friend.name.toUpperCase();
           speakerEl.className = 'ow-speaker-tag friend';
           if (!this.hasMomBoosterMoney) {
-            textEl.textContent = `"Dude, your Mom just got home from work! Go ask her if we can get enough money to buy 2 MYTHOS Booster Packs at the Card Store!"`;
+            textEl.textContent = `"Dude, your Mom just got home from work! Go ask her if we can get enough money to buy 2 MYTHOS Booster Packs at Leo's Card Shop!"`;
+          } else if (this.hasOpenedStarterPack) {
+            textEl.textContent = `"We both pulled 3 awesome cards from Leo's Card Shop! Let's head next door to my house so we can battle!"`;
           } else {
-            textEl.textContent = `"YES!! Your Mom gave us $20 for 2 Booster Packs! Let's head out the front door, walk south, and follow the road east to the Card Store!"`;
+            textEl.textContent = `"YES!! Your Mom gave us $20 for 2 Booster Packs! Let's head out the front door, walk south, and follow the road east to Leo's Card Shop!"`;
           }
           challengeBtn.classList.add('hidden');
         } else if (distToTv < 1.6) {
@@ -954,9 +1705,68 @@
           bar.classList.add('tv-broadcast');
           speakerEl.textContent = '📺 LIVING ROOM TV';
           speakerEl.className = 'ow-speaker-tag tv';
-          textEl.innerHTML = `<i>"🔥 MYTHOS BOOSTER PACKS: Just $10 a pack at your local Card Store! Collect Phoenix, Earth Golem, Hydra, Werewolf & more!"</i>`;
+          textEl.innerHTML = `<i>"🔥 MYTHOS BOOSTER PACKS: Just $10 a pack at Leo's Card Shop! Collect Phoenix, Earth Golem, Hydra, Werewolf & more!"</i>`;
           challengeBtn.classList.add('hidden');
         } else {
+          this.nearInteractable = null;
+          bar.classList.add('hidden');
+        }
+      } else if (this.currentArea === 'friend_interior') {
+        const fName = this.friendName || 'Mike';
+        const pName = this.draftAppearance?.name || 'Asher';
+        const friend = this.npcs[0];
+        const distToFriend = friend ? Math.hypot(this.player.x - friend.x, this.player.y - friend.y) : 999;
+        const distToTable = Math.hypot(this.player.x - 5.5, this.player.y - 6.8);
+
+        if (distToFriend < 2.2 || distToTable < 1.85) {
+          this.nearInteractable = { id: 'friend_duel', name: fName };
+          bar.classList.remove('hidden');
+          bar.classList.remove('tv-broadcast');
+          speakerEl.textContent = `⚔️ ${fName.toUpperCase()} — READY TO BATTLE AT ${fName.toUpperCase()}'S HOUSE!`;
+          speakerEl.className = 'ow-speaker-tag friend';
+
+          const friendDuelKey = `friend_interior_duel_${fName}_${pName}_${this.hasOldCardBinder}`;
+          if (this.lastShopPromptKey !== friendDuelKey) {
+            this.lastShopPromptKey = friendDuelKey;
+            choicesEl.innerHTML = '';
+            if (this.hasOldCardBinder) {
+              textEl.innerHTML = `<b>${fName}:</b> "That was such an awesome match, ${pName}! How is that <b>Old Card Binder</b> working out for you? You can slot up to 9 cards into it, inspect their standalone art, and test new builds in battle! Want a rematch?!"`;
+              const binderBtn = document.createElement('button');
+              binderBtn.type = 'button';
+              binderBtn.className = 'ow-choice-btn';
+              binderBtn.innerHTML = `📖 Open the <b>Old Card Binder</b> (Press B)`;
+              binderBtn.addEventListener('click', (ev) => {
+                ev.stopPropagation();
+                this.toggleBinderModal(true);
+              });
+              const rematchBtn = document.createElement('button');
+              rematchBtn.type = 'button';
+              rematchBtn.className = 'ow-choice-btn';
+              rematchBtn.innerHTML = `⚔️ "I'm ready for a rematch, ${fName}! Let's battle!"`;
+              rematchBtn.addEventListener('click', (ev) => {
+                ev.stopPropagation();
+                this.triggerDuel();
+              });
+              choicesEl.appendChild(binderBtn);
+              choicesEl.appendChild(rematchBtn);
+            } else {
+              textEl.innerHTML = `<b>${fName}:</b> "Welcome to my house, ${pName}!! I've got the <b>MYTHOS Tabletop Arena</b> set up right here on my table with the 3 cards I pulled from Leo's pack! Defeat me and I'll give you my brother's <b>Old Card Binder</b>! Ready to battle?!"`;
+              const duelBtn = document.createElement('button');
+              duelBtn.type = 'button';
+              duelBtn.className = 'ow-choice-btn';
+              duelBtn.innerHTML = `⚔️ "I'm ready, ${fName}! Let's battle in <b>MYTHOS</b>!"`;
+              duelBtn.addEventListener('click', (ev) => {
+                ev.stopPropagation();
+                this.triggerDuel();
+              });
+              choicesEl.appendChild(duelBtn);
+            }
+          }
+          choicesEl.classList.remove('hidden');
+          challengeBtn.textContent = this.hasOldCardBinder ? `⚔️ Rematch ${fName}!` : `⚔️ Battle ${fName}!`;
+          challengeBtn.classList.remove('hidden');
+        } else {
+          this.lastShopPromptKey = null;
           this.nearInteractable = null;
           bar.classList.add('hidden');
         }
@@ -973,60 +1783,94 @@
           this.nearInteractable = { id: 'shopkeeper', name: 'Shopkeeper Leo' };
           bar.classList.remove('hidden');
           bar.classList.remove('tv-broadcast');
-          speakerEl.textContent = '🃏 SHOPKEEPER LEO (EXCITED!!)';
+          speakerEl.textContent = "🃏 SHOPKEEPER LEO — LEO'S CARD SHOP";
           speakerEl.className = 'ow-speaker-tag tv';
 
           if (!this.hasBoughtCardShopPacks) {
-            textEl.innerHTML = `"Welcome to the Card Shop, ${pName} and ${fName}!! Have you seen the new <b>MYTHOS</b> game?! It's unbelievable — elemental Beasts, tactical grid movement, and high-impact abilities! Every duelist in town is losing their minds over the Base Set!"`;
-            choicesEl.innerHTML = '';
-            const buyBtn = document.createElement('button');
-            buyBtn.type = 'button';
-            buyBtn.className = 'ow-choice-btn';
-            if ((this.gold || 0) >= 20) {
-              buyBtn.innerHTML = `💬 "We saw the commercial! Can we buy <b>2 MYTHOS Base Set Booster Packs ($20)</b> — one for me and one for ${fName}?"`;
-              buyBtn.addEventListener('click', () => this.buyTwoBoosterPacks());
-            } else {
-              buyBtn.innerHTML = `💬 "We want to buy 2 Booster Packs ($20), one for me and one for ${fName}! <i>(Need $20 — ask Mom at home first!)</i>"`;
-              buyBtn.addEventListener('click', () => {
-                if (window.sounds?.playClick) window.sounds.playClick();
-              });
+            const hasMoney = (this.gold || 0) >= 20;
+            const shopKey = `keeper_buy_${hasMoney}_${pName}_${fName}`;
+            if (this.lastShopPromptKey !== shopKey) {
+              this.lastShopPromptKey = shopKey;
+              textEl.innerHTML = `"Welcome to <b>Leo's Card Shop</b>, ${pName} and ${fName}!! Have you seen the new <b>MYTHOS</b> game?! It's unbelievable — elemental Beasts, tactical grid movement, and high-impact abilities! Every duelist in town is losing their minds over the Base Set!"`;
+              choicesEl.innerHTML = '';
+              const buyBtn = document.createElement('button');
+              buyBtn.type = 'button';
+              buyBtn.className = 'ow-choice-btn';
+              if (hasMoney) {
+                buyBtn.innerHTML = `💬 "We saw the commercial! Can we buy <b>2 MYTHOS Base Set Booster Packs ($20)</b> — one for me and one for ${fName}?"`;
+                buyBtn.addEventListener('click', (ev) => {
+                  ev.stopPropagation();
+                  this.buyTwoBoosterPacks();
+                });
+              } else {
+                buyBtn.innerHTML = `💬 "We want to buy 2 Booster Packs ($20), one for me and one for ${fName}! <i>(Need $20 — ask Mom at home first!)</i>"`;
+                buyBtn.addEventListener('click', (ev) => {
+                  ev.stopPropagation();
+                  if (window.sounds?.playClick) window.sounds.playClick();
+                });
+              }
+              choicesEl.appendChild(buyBtn);
             }
-            choicesEl.appendChild(buyBtn);
             choicesEl.classList.remove('hidden');
-            challengeBtn.classList.add('hidden');
+            challengeBtn.textContent = hasMoney ? '💵 Buy 2 Packs ($20)' : '💵 Need $20';
+            challengeBtn.classList.toggle('hidden', !hasMoney);
           } else {
             const hasUnopenedPack = (this.inventory || []).some(i => i.id === 'unopened_base_pack' && i.qty > 0);
-            if (hasUnopenedPack) {
-              textEl.innerHTML = `"I still can't get over how awesome <b>MYTHOS</b> is! You and ${fName} each have your own <b>Unopened Base Set Booster Pack</b> — open your <b>🎒 Inventory (I)</b> or click below to rip yours open right now!"`;
-              challengeBtn.textContent = '✨ Rip Open Booster Pack!';
+            const boughtKey = `keeper_bought_${hasUnopenedPack}_${fName}`;
+            if (this.lastShopPromptKey !== boughtKey) {
+              this.lastShopPromptKey = boughtKey;
+              choicesEl.innerHTML = '';
+              if (hasUnopenedPack) {
+                textEl.innerHTML = `"I still can't get over how awesome <b>MYTHOS</b> is! You and ${fName} each have your own <b>Unopened Base Set Booster Pack</b> — click below or open your <b>🎒 Inventory (I)</b> to break <b>The Seal of Mythos</b> right here in <b>Leo's Card Shop</b>!"`;
+                const openPackChoice = document.createElement('button');
+                openPackChoice.type = 'button';
+                openPackChoice.className = 'ow-choice-btn';
+                openPackChoice.innerHTML = `✨ "Let's open my <b>Mythos Base Card Pack</b> right now!"`;
+                openPackChoice.addEventListener('click', (ev) => {
+                  ev.stopPropagation();
+                  this.startBoosterPackOpening('unopened_base_pack');
+                });
+                choicesEl.appendChild(openPackChoice);
+                choicesEl.classList.remove('hidden');
+              } else {
+                textEl.innerHTML = `"Whoa, those 3 <b>MYTHOS Base Set Cards</b> you pulled from your Booster Pack are incredible!! Good luck in your Mythos Battle against ${fName} at his house!"`;
+                choicesEl.classList.add('hidden');
+              }
             } else {
-              textEl.innerHTML = `"Whoa, those 5 <b>MYTHOS Base Set Cards</b> you pulled from your Booster Pack are incredible!! Check your <b>🎒 Inventory (I)</b> anytime to inspect your cards!"`;
-              challengeBtn.textContent = '🎒 Open Inventory (I)';
+              choicesEl.classList.toggle('hidden', !hasUnopenedPack);
             }
+            challengeBtn.textContent = hasUnopenedPack ? '✨ Rip Open Booster Pack!' : '🎒 Open Inventory (I)';
             challengeBtn.classList.remove('hidden');
           }
         } else if (distToCase < 1.55) {
+          this.lastShopPromptKey = null;
           this.nearInteractable = { id: 'booster_display', name: 'Booster Pack Display Shelf' };
           bar.classList.remove('hidden');
           bar.classList.remove('tv-broadcast');
           speakerEl.textContent = '✨ 1ST-EDITION MYTHOS DISPLAY RACK';
           speakerEl.className = 'ow-speaker-tag friend';
-          textEl.innerHTML = `Rows of gleaming foil <b>MYTHOS Base Set Booster Packs</b> ($10 each) and collector starter boxes line the carved wooden shelves.`;
+          textEl.innerHTML = `Rows of gleaming foil <b>MYTHOS Base Set Booster Packs</b> ($10 each, 3 Cards per pack) and collector starter boxes line the shelves of <b>Leo's Card Shop</b>.`;
           challengeBtn.classList.add('hidden');
         } else if (distToTable < 1.55) {
+          this.lastShopPromptKey = null;
           this.nearInteractable = { id: 'duel_table', name: 'In-Store Duel Table' };
           bar.classList.remove('hidden');
           bar.classList.remove('tv-broadcast');
           speakerEl.textContent = '⚔️ IN-STORE MYTHOS DUEL TABLE';
           speakerEl.className = 'ow-speaker-tag friend';
-          textEl.innerHTML = `<b>${fName}:</b> "${this.hasBoughtCardShopPacks ? 'Whoa, they have an official Mythos tabletop mat set up right here in the shop!' : 'Look at this tabletop mat! Let\'s talk to the Shopkeeper at the counter and grab our 2 Booster Packs first!'}"`;
+          if (this.hasOpenedStarterPack) {
+            textEl.innerHTML = `<b>Shopkeeper Leo:</b> "${fName} just ran ahead to <b>${fName}'s House</b> to set up his tabletop board! Head out the door and walk up to his house whenever you're ready to battle him!"`;
+          } else {
+            textEl.innerHTML = `<b>${fName}:</b> "${this.hasBoughtCardShopPacks ? 'Whoa, Leo has an official Mythos tabletop mat set up! Open your Booster Pack first so we can see what 3 cards you got!' : 'Look at this tabletop mat! Let\'s talk to Shopkeeper Leo at the counter and grab our 2 Booster Packs first!'}"`;
+          }
           challengeBtn.classList.add('hidden');
         } else {
+          this.lastShopPromptKey = null;
           this.nearInteractable = null;
           bar.classList.add('hidden');
         }
       } else {
-        // Exterior Neighborhood & Far-East Block Card Shop Avenue Prompt (Zoomed-out view)
+        // Exterior Neighborhood & Far-East Block Leo's Card Shop Avenue Prompt (Zoomed-out view)
         const pName = this.draftAppearance?.name || 'Asher';
         const fName = this.friendName || 'Mike';
         const wName = this.draftAppearance?.worldName || 'Oakhaven';
@@ -1039,30 +1883,36 @@
         const distCardShopDoor = Math.hypot(this.player.x - 13.65, this.player.y - 9.25);
 
         if (distCardShopDoor < 1.15) {
-          this.nearInteractable = { id: 'card_shop', name: 'Mythos Card Shop' };
+          this.lastShopPromptKey = null;
+          this.nearInteractable = { id: 'card_shop', name: "Leo's Card Shop" };
           bar.classList.remove('hidden');
           bar.classList.remove('tv-broadcast');
-          speakerEl.textContent = `🃏 ${wName.toUpperCase()} CARD SHOP — "MYTHOS EMPORIUM"`;
+          speakerEl.textContent = `🃏 LEO'S CARD SHOP`;
           speakerEl.className = 'ow-speaker-tag tv';
-          textEl.innerHTML = `<b>${fName}:</b> "We made it to the Card Shop on the far east block!! Walk right up through the front doors to head inside!"`;
+          textEl.innerHTML = this.hasOpenedStarterPack
+            ? `<b>Leo's Card Shop</b> — ${fName} already headed back to <b>${fName}'s House</b> on the north residential road to wait for your Mythos Battle!`
+            : `<b>${fName}:</b> "We made it to <b>Leo's Card Shop</b> on the far east block!! Walk right up through the front doors to head inside!"`;
           challengeBtn.classList.add('hidden');
         } else if (distEastSign < 1.0) {
+          this.lastShopPromptKey = null;
           this.nearInteractable = { id: 'east_sign', name: 'East Block Sign' };
           bar.classList.remove('hidden');
           bar.classList.remove('tv-broadcast');
           speakerEl.textContent = `🪧 EAST MARKET BLOCK`;
           speakerEl.className = 'ow-speaker-tag friend';
-          textEl.innerHTML = `<b>◄ West:</b> ${wName} Connector Ave &nbsp;|&nbsp; <b>► East Block:</b> MYTHOS Card Shop`;
+          textEl.innerHTML = `<b>◄ West:</b> ${wName} Connector Ave &nbsp;|&nbsp; <b>► East Block:</b> Leo's Card Shop`;
           challengeBtn.classList.add('hidden');
         } else if (distFriendMailbox < 1.0) {
+          this.lastShopPromptKey = null;
           this.nearInteractable = { id: 'friend_mailbox', name: `${fName}'s Mailbox` };
           bar.classList.remove('hidden');
           bar.classList.remove('tv-broadcast');
           speakerEl.textContent = `📬 MAILBOX — 104 ${wName.toUpperCase()} LANE`;
           speakerEl.className = 'ow-speaker-tag friend';
-          textEl.innerHTML = `<b>"${fName}'s House"</b> — Hand-painted on the wooden post. Inside is a flyer for the <b>MYTHOS Summer Launch Event</b>!`;
+          textEl.innerHTML = `<b>"${fName}'s House"</b> — Hand-painted on the wooden post. ${this.hasOpenedStarterPack ? `<b>${fName}</b> is waiting inside his house for your Mythos Battle!` : `Inside is a flyer for the <b>MYTHOS Summer Launch Event at Leo's Card Shop</b>!`}`;
           challengeBtn.classList.add('hidden');
         } else if (distPlayerMailbox < 1.0) {
+          this.lastShopPromptKey = null;
           this.nearInteractable = { id: 'player_mailbox', name: `${pName}'s Mailbox` };
           bar.classList.remove('hidden');
           bar.classList.remove('tv-broadcast');
@@ -1070,26 +1920,297 @@
           speakerEl.className = 'ow-speaker-tag friend';
           textEl.innerHTML = `<b>"${pName}'s House"</b> — Your family mailbox. No new mail since morning.`;
           challengeBtn.classList.add('hidden');
-        } else if (distFriendDoor < 0.95) {
+        } else if (distFriendDoor < 1.1) {
           this.nearInteractable = { id: 'friend_door', name: `${fName}'s Front Door` };
           bar.classList.remove('hidden');
           bar.classList.remove('tv-broadcast');
           speakerEl.textContent = `🚪 ${fName.toUpperCase()}'S HOUSE`;
           speakerEl.className = 'ow-speaker-tag friend';
-          textEl.textContent = `${fName}: "We don't need anything from my house right now — let's follow the road south and walk two blocks east to the Card Shop!"`;
-          challengeBtn.classList.add('hidden');
+          if (this.hasOpenedStarterPack) {
+            const doorKey = `friend_door_ready_${fName}`;
+            if (this.lastShopPromptKey !== doorKey) {
+              this.lastShopPromptKey = doorKey;
+              textEl.innerHTML = `<b>${fName} (from inside):</b> "Come on in, ${pName}!! Walk through the front door to my table or click below to start our <b>MYTHOS Battle</b> right now!"`;
+              choicesEl.innerHTML = '';
+              const battleDoorBtn = document.createElement('button');
+              battleDoorBtn.type = 'button';
+              battleDoorBtn.className = 'ow-choice-btn';
+              battleDoorBtn.innerHTML = `⚔️ "I'm ready, ${fName}! Let's battle in <b>MYTHOS</b>!"`;
+              battleDoorBtn.addEventListener('click', (ev) => {
+                ev.stopPropagation();
+                this.triggerDuel();
+              });
+              choicesEl.appendChild(battleDoorBtn);
+            }
+            choicesEl.classList.remove('hidden');
+            challengeBtn.textContent = `⚔️ Battle ${fName}!`;
+            challengeBtn.classList.remove('hidden');
+          } else {
+            this.lastShopPromptKey = null;
+            textEl.textContent = `${fName}: "We don't need anything from my house right now — let's follow the road south and walk two blocks east to Leo's Card Shop!"`;
+            challengeBtn.classList.add('hidden');
+          }
         } else if (distRoadSign < 1.05) {
+          this.lastShopPromptKey = null;
           this.nearInteractable = { id: 'road_sign', name: 'Crossroads Sign' };
           bar.classList.remove('hidden');
           bar.classList.remove('tv-broadcast');
           speakerEl.textContent = `🪧 ${wName.toUpperCase()} CROSSROADS`;
           speakerEl.className = 'ow-speaker-tag friend';
-          textEl.innerHTML = `<b>◄ West / East ►:</b> ${wName} Residential Lane &nbsp;|&nbsp; <b>▼ South to East Market Block:</b> MYTHOS Card Shop`;
+          textEl.innerHTML = `<b>◄ West / East ►:</b> ${wName} Residential Lane &nbsp;|&nbsp; <b>▼ South to East Market Block:</b> Leo's Card Shop`;
           challengeBtn.classList.add('hidden');
         } else {
+          this.lastShopPromptKey = null;
           this.nearInteractable = null;
           bar.classList.add('hidden');
         }
+      }
+      this.updateMobileActionLabel();
+    }
+
+    // -------------------------------------------------------------------------
+    // Mobile Touch Virtual Gamepad & Dynamic Context Action Logic
+    // -------------------------------------------------------------------------
+    updateMobileActionLabel() {
+      const btnA = document.getElementById('ow-btn-a');
+      const labelEl = document.getElementById('ow-btn-a-label');
+      if (!labelEl) return;
+
+      const dialogBar = document.getElementById('ow-dialog-bar');
+      const isDialogVisible = dialogBar && !dialogBar.classList.contains('hidden');
+
+      if (isDialogVisible) {
+        labelEl.textContent = 'NEXT ▸';
+        btnA?.classList.add('dialogue-mode');
+        return;
+      }
+
+      btnA?.classList.remove('dialogue-mode');
+
+      if (!this.nearInteractable) {
+        labelEl.textContent = 'TALK';
+        return;
+      }
+
+      const id = this.nearInteractable.id;
+      if (id === 'tv') {
+        labelEl.textContent = 'WATCH 📺';
+      } else if (id === 'mom') {
+        labelEl.textContent = this.hasMomBoosterMoney ? 'TALK 💬' : 'ASK 💵';
+      } else if (id === 'shopkeeper') {
+        labelEl.textContent = !this.hasBoughtCardShopPacks ? 'BUY 🃏' : 'TALK 💬';
+      } else if (id === 'friend_duel' || id === 'best_friend') {
+        labelEl.textContent = 'DUEL ⚔️';
+      } else if (id === 'friend_door') {
+        labelEl.textContent = this.hasOpenedStarterPack ? 'DUEL ⚔️' : 'DOOR 🚪';
+      } else if (id === 'booster_display') {
+        labelEl.textContent = 'VIEW ✨';
+      } else if (id === 'card_shop') {
+        labelEl.textContent = 'ENTER 🚪';
+      } else {
+        labelEl.textContent = 'CHECK 💬';
+      }
+    }
+
+    triggerActionButtonA() {
+      if (window.sounds?.playClick) window.sounds.playClick();
+      if (window.navigator?.vibrate) {
+        try { window.navigator.vibrate(12); } catch (_) {}
+      }
+
+      const dialogBar = document.getElementById('ow-dialog-bar');
+      const isDialogVisible = dialogBar && !dialogBar.classList.contains('hidden');
+
+      if (isDialogVisible) {
+        const challengeBtn = document.getElementById('ow-btn-challenge');
+        if (challengeBtn && !challengeBtn.classList.contains('hidden')) {
+          challengeBtn.click();
+          return;
+        }
+        const nextBtn = document.getElementById('ow-btn-next');
+        if (nextBtn && !nextBtn.classList.contains('hidden')) {
+          nextBtn.click();
+          return;
+        }
+        const choices = document.querySelectorAll('#ow-choices-container .ow-choice-btn');
+        if (choices.length > 0) {
+          choices[0].click();
+          return;
+        }
+        this.advanceStoryStep();
+        return;
+      }
+
+      if (this.storyState === 'free_roam') {
+        if (this.nearInteractable) {
+          const id = this.nearInteractable.id;
+          if (id === 'tv') {
+            this.storyState = 'tv_commercial';
+            this.renderDialogueUI();
+          } else if (id === 'mom') {
+            if (!this.hasMomBoosterMoney) {
+              this.askMomForBoosterMoney();
+            } else {
+              this.renderDialogueUI();
+            }
+          } else if (id === 'shopkeeper') {
+            if (!this.hasBoughtCardShopPacks && (this.gold || 0) >= 20) {
+              this.buyTwoBoosterPacks();
+            } else {
+              this.renderDialogueUI();
+            }
+          } else if (id === 'friend_duel' || id === 'best_friend' || id === 'friend_door') {
+            this.triggerDuel();
+          }
+        }
+      }
+    }
+
+    initTouchControls() {
+      const touchContainer = document.getElementById('ow-touch-controls');
+      const dpad = document.getElementById('ow-dpad');
+      const btnA = document.getElementById('ow-btn-a');
+      const btnB = document.getElementById('ow-btn-b');
+      const dpadToggleBtn = document.getElementById('btn-mob-dpad-toggle');
+
+      if (!touchContainer) return;
+
+      // Auto-detect mobile / touch device or viewport <= 820px
+      const isMobileOrTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (window.innerWidth <= 820);
+      if (isMobileOrTouch) {
+        touchContainer.classList.remove('hidden');
+        dpadToggleBtn?.classList.add('active');
+      }
+
+      // Toggle virtual gamepad button
+      if (dpadToggleBtn) {
+        dpadToggleBtn.addEventListener('click', () => {
+          if (window.sounds?.playClick) window.sounds.playClick();
+          const isHidden = touchContainer.classList.toggle('hidden');
+          dpadToggleBtn.classList.toggle('active', !isHidden);
+        });
+      }
+
+      // Virtual D-Pad Touch / Pointer Tracking
+      if (dpad) {
+        let activePointerId = null;
+        let currentDir = null;
+
+        const setDir = (dir) => {
+          if (currentDir === dir) return;
+          this.keys['arrowup'] = false;
+          this.keys['arrowdown'] = false;
+          this.keys['arrowleft'] = false;
+          this.keys['arrowright'] = false;
+          currentDir = dir;
+
+          dpad.querySelectorAll('.dpad-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.dir === dir);
+          });
+
+          if (dir === 'up') this.keys['arrowup'] = true;
+          else if (dir === 'down') this.keys['arrowdown'] = true;
+          else if (dir === 'left') this.keys['arrowleft'] = true;
+          else if (dir === 'right') this.keys['arrowright'] = true;
+        };
+
+        const clearDir = () => {
+          setDir(null);
+          activePointerId = null;
+        };
+
+        const updateFromCoords = (clientX, clientY) => {
+          const rect = dpad.getBoundingClientRect();
+          const cx = rect.left + rect.width / 2;
+          const cy = rect.top + rect.height / 2;
+          const dx = clientX - cx;
+          const dy = clientY - cy;
+          const dist = Math.hypot(dx, dy);
+
+          if (dist < 12) {
+            setDir(null); // deadzone
+            return;
+          }
+
+          const angle = Math.atan2(dy, dx) * (180 / Math.PI); // -180..180
+          if (angle >= -45 && angle <= 45) {
+            setDir('right');
+          } else if (angle > 45 && angle < 135) {
+            setDir('down');
+          } else if (angle >= 135 || angle <= -135) {
+            setDir('left');
+          } else {
+            setDir('up');
+          }
+        };
+
+        dpad.addEventListener('pointerdown', (e) => {
+          e.preventDefault();
+          activePointerId = e.pointerId;
+          try { dpad.setPointerCapture(e.pointerId); } catch (_) {}
+          updateFromCoords(e.clientX, e.clientY);
+          if (window.navigator?.vibrate) {
+            try { window.navigator.vibrate(10); } catch (_) {}
+          }
+        });
+
+        dpad.addEventListener('pointermove', (e) => {
+          if (e.pointerId === activePointerId) {
+            e.preventDefault();
+            updateFromCoords(e.clientX, e.clientY);
+          }
+        });
+
+        dpad.addEventListener('pointerup', (e) => {
+          if (e.pointerId === activePointerId) {
+            e.preventDefault();
+            clearDir();
+          }
+        });
+
+        dpad.addEventListener('pointercancel', (e) => {
+          if (e.pointerId === activePointerId) {
+            clearDir();
+          }
+        });
+      }
+
+      // Action Button A (Interact / Dialogue / Choice)
+      if (btnA) {
+        btnA.addEventListener('pointerdown', (e) => {
+          e.preventDefault();
+          btnA.classList.add('active');
+          this.triggerActionButtonA();
+        });
+        btnA.addEventListener('pointerup', () => btnA.classList.remove('active'));
+        btnA.addEventListener('pointercancel', () => btnA.classList.remove('active'));
+      }
+
+      // Action Button B (Quick Inventory / Backpack)
+      if (btnB) {
+        btnB.addEventListener('pointerdown', (e) => {
+          e.preventDefault();
+          btnB.classList.add('active');
+          this.toggleInventoryModal();
+        });
+        btnB.addEventListener('pointerup', () => btnB.classList.remove('active'));
+        btnB.addEventListener('pointercancel', () => btnB.classList.remove('active'));
+      }
+
+      // Mobile Quick Access HUD Bar buttons
+      const mobInvBtn = document.getElementById('btn-mob-inventory');
+      if (mobInvBtn) {
+        mobInvBtn.addEventListener('click', () => this.toggleInventoryModal());
+      }
+
+      const mobBinderBtn = document.getElementById('btn-mob-binder');
+      if (mobBinderBtn) {
+        mobBinderBtn.addEventListener('click', () => this.toggleBinderModal());
+      }
+
+      const mobCreatorBtn = document.getElementById('btn-mob-creator');
+      if (mobCreatorBtn) {
+        mobCreatorBtn.addEventListener('click', () => this.openCharacterCreator(false));
       }
     }
 
@@ -1113,7 +2234,11 @@
         gold: this.gold ?? 0,
         hasMomBoosterMoney: this.hasMomBoosterMoney ?? false,
         hasBoughtCardShopPacks: this.hasBoughtCardShopPacks ?? false,
+        hasOpenedStarterPack: this.hasOpenedStarterPack ?? false,
+        friendWaitingAtHouse: this.friendWaitingAtHouse ?? false,
+        hasOldCardBinder: this.hasOldCardBinder ?? false,
         inventory: Array.isArray(this.inventory) ? [...this.inventory] : [],
+        binderSlots: Array.isArray(this.binderSlots) ? [...this.binderSlots] : Array(9).fill(null),
         wins: this.worldSave?.wins ?? 0,
         updatedAt: new Date().toLocaleDateString()
       };
@@ -1129,8 +2254,24 @@
     updateHUDSaveInfo() {
       const locPill = document.getElementById('ow-location-pill');
       const badgeEl = document.getElementById('inv-badge-count');
+      const binderBadgeEl = document.getElementById('binder-badge-count');
       if (badgeEl) {
         badgeEl.textContent = String(this.getTotalInventoryCount());
+      }
+      if (binderBadgeEl) {
+        binderBadgeEl.textContent = String(this.getSlottedBinderCount());
+      }
+      const openBinderBtn = document.getElementById('btn-open-binder');
+      if (openBinderBtn) {
+        if (this.hasOldCardBinder) {
+          openBinderBtn.classList.remove('locked');
+          openBinderBtn.title = 'Open Old Card Binder (Key: B)';
+          openBinderBtn.innerHTML = `📖 Old Card Binder <span id="binder-badge-count" class="inv-badge-pill">${this.getSlottedBinderCount()}</span>`;
+        } else {
+          openBinderBtn.classList.add('locked');
+          openBinderBtn.title = `Defeat ${this.friendName || 'your friend'} in battle to earn the Old Card Binder!`;
+          openBinderBtn.innerHTML = `🔒 Old Card Binder`;
+        }
       }
       if (locPill) {
         const pName = this.draftAppearance?.name || 'Asher';
@@ -1138,8 +2279,10 @@
         let areaLabel = `🌲 ${wName}`;
         if (this.currentArea === 'interior') {
           areaLabel = `🏠 ${pName}'s House`;
+        } else if (this.currentArea === 'friend_interior') {
+          areaLabel = `🏠 ${this.friendName}'s House`;
         } else if (this.currentArea === 'card_shop_interior') {
-          areaLabel = `🃏 ${wName} Card Shop`;
+          areaLabel = `🃏 Leo's Card Shop`;
         }
         const packCount = (this.inventory || [])
           .filter(i => i.type === 'booster_pack')
@@ -1150,6 +2293,31 @@
         const packSummary = packCount > 0 ? ` • 📦 ${packCount} Pack${packCount > 1 ? 's' : ''}` : '';
         const cardSummary = cardCount > 0 ? ` • 🃏 ${cardCount} Card${cardCount > 1 ? 's' : ''}` : '';
         locPill.textContent = `${areaLabel} • Friend: ${this.friendName} • 🎒 $${this.gold || 0}${packSummary}${cardSummary}`;
+      }
+
+      // Sync Mobile HUD Elements
+      const mobLocTag = document.getElementById('ow-mobile-loc-tag');
+      const mobInvBadge = document.getElementById('mob-inv-badge');
+      const mobBinderBadge = document.getElementById('mob-binder-badge');
+      const mobBinderBtn = document.getElementById('btn-mob-binder');
+
+      if (mobLocTag) {
+        let shortArea = '🌲 Town';
+        if (this.currentArea === 'interior') shortArea = '🏠 Home';
+        else if (this.currentArea === 'friend_interior') shortArea = `🏠 ${this.friendName}'s`;
+        else if (this.currentArea === 'card_shop_interior') shortArea = `🃏 Leo's Shop`;
+        mobLocTag.textContent = `${shortArea} • 🎒 $${this.gold || 0}`;
+      }
+
+      if (mobInvBadge) {
+        mobInvBadge.textContent = String(this.getTotalInventoryCount());
+      }
+      if (mobBinderBadge) {
+        mobBinderBadge.textContent = String(this.getSlottedBinderCount());
+      }
+      if (mobBinderBtn) {
+        mobBinderBtn.classList.toggle('locked', !this.hasOldCardBinder);
+        mobBinderBtn.title = this.hasOldCardBinder ? 'Open Old Card Binder' : 'Old Card Binder (Locked)';
       }
     }
 
@@ -1207,6 +2375,66 @@
       if (closeInvBtn) {
         closeInvBtn.addEventListener('click', () => this.toggleInventoryModal(false));
       }
+
+      // Card Binder Button Handlers
+      const openBinderBtn = document.getElementById('btn-open-binder');
+      if (openBinderBtn) {
+        openBinderBtn.addEventListener('click', () => this.toggleBinderModal(true));
+      }
+
+      const closeBinderBtn = document.getElementById('btn-close-binder');
+      if (closeBinderBtn) {
+        closeBinderBtn.addEventListener('click', () => this.toggleBinderModal(false));
+      }
+
+      const binderDoneBtn = document.getElementById('btn-binder-done');
+      if (binderDoneBtn) {
+        binderDoneBtn.addEventListener('click', () => this.toggleBinderModal(false));
+      }
+
+      const binderToInvBtn = document.getElementById('btn-binder-to-inv');
+      if (binderToInvBtn) {
+        binderToInvBtn.addEventListener('click', () => {
+          this.toggleBinderModal(false);
+          this.toggleInventoryModal(true);
+        });
+      }
+
+      const invToBinderBtn = document.getElementById('btn-inv-to-binder');
+      if (invToBinderBtn) {
+        invToBinderBtn.addEventListener('click', () => {
+          this.toggleInventoryModal(false);
+          this.toggleBinderModal(true);
+        });
+      }
+
+      const closePickerBtn = document.getElementById('btn-close-binder-picker');
+      if (closePickerBtn) {
+        closePickerBtn.addEventListener('click', () => this.closeBinderCardPicker());
+      }
+
+      const cancelPickerBtn = document.getElementById('btn-cancel-binder-picker');
+      if (cancelPickerBtn) {
+        cancelPickerBtn.addEventListener('click', () => this.closeBinderCardPicker());
+      }
+
+      const closeInspectBtn = document.getElementById('btn-close-inspect');
+      if (closeInspectBtn) {
+        closeInspectBtn.addEventListener('click', () => this.closeCreatureInspect());
+      }
+
+      const backInspectBtn = document.getElementById('btn-inspect-back-bottom');
+      if (backInspectBtn) {
+        backInspectBtn.addEventListener('click', () => this.closeCreatureInspect());
+      }
+
+      document.querySelectorAll('#inspect-pose-buttons .pose-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          this.setInspectPose(btn.dataset.pose);
+        });
+      });
+
+      this.renderBinderModal();
 
       const sealedBoosterEl = document.getElementById('sealed-booster-wrapper');
       if (sealedBoosterEl) {
@@ -1453,12 +2681,35 @@
           return;
         }
 
-        if (k === 'i' || k === 'b') {
+        if (k === 'i') {
           e.preventDefault();
           this.toggleInventoryModal();
           return;
         }
+        if (k === 'b') {
+          e.preventDefault();
+          this.toggleBinderModal();
+          return;
+        }
         if (k === 'escape') {
+          const inspectModal = document.getElementById('creature-inspect-modal');
+          if (inspectModal && !inspectModal.classList.contains('hidden')) {
+            e.preventDefault();
+            this.closeCreatureInspect();
+            return;
+          }
+          const pickerModal = document.getElementById('binder-picker-modal');
+          if (pickerModal && !pickerModal.classList.contains('hidden')) {
+            e.preventDefault();
+            this.closeBinderCardPicker();
+            return;
+          }
+          const binderModal = document.getElementById('binder-modal');
+          if (binderModal && !binderModal.classList.contains('hidden')) {
+            e.preventDefault();
+            this.toggleBinderModal(false);
+            return;
+          }
           const invModal = document.getElementById('inventory-modal');
           if (invModal && !invModal.classList.contains('hidden')) {
             e.preventDefault();
@@ -1473,7 +2724,7 @@
           return;
         }
 
-        if (['tv_commercial', 'both_excited', 'mom_enters', 'mom_gave_money', 'shop_bought_packs'].includes(this.storyState) && (k === ' ' || k === 'enter')) {
+        if (['tv_commercial', 'both_excited', 'mom_enters', 'mom_gave_money', 'shop_bought_packs', 'must_open_pack_before_leaving', 'friend_challenges_after_pack', 'friend_defeated_celebration'].includes(this.storyState) && (k === ' ' || k === 'enter')) {
           e.preventDefault();
           this.advanceStoryStep();
           return;
@@ -1496,8 +2747,15 @@
             if (!this.hasBoughtCardShopPacks && (this.gold || 0) >= 20) {
               this.buyTwoBoosterPacks();
             } else if (this.hasBoughtCardShopPacks) {
-              this.toggleInventoryModal(true);
+              const hasUnopenedPack = (this.inventory || []).some(i => i.id === 'unopened_base_pack' && i.qty > 0);
+              if (hasUnopenedPack) {
+                this.startBoosterPackOpening('unopened_base_pack');
+              } else {
+                this.toggleInventoryModal(true);
+              }
             }
+          } else if (this.nearInteractable.id === 'friend_duel' || (this.nearInteractable.id === 'friend_door' && this.hasOpenedStarterPack)) {
+            this.triggerDuel();
           } else if (window.sounds?.playClick) {
             window.sounds.playClick();
           }
@@ -1508,17 +2766,20 @@
         this.keys[e.key.toLowerCase()] = false;
       });
 
-      this.canvas.addEventListener('click', (e) => {
+      const handleCanvasTap = (clientX, clientY) => {
         if (!this.active) return;
         if (this.storyState !== 'free_roam') return;
 
         const rect = this.canvas.getBoundingClientRect();
         const scaleX = this.canvas.width / rect.width;
         const scaleY = this.canvas.height / rect.height;
-        const cx = (e.clientX - rect.left) * scaleX;
-        const cy = (e.clientY - rect.top) * scaleY;
+        const cx = (clientX - rect.left) * scaleX;
+        const cy = (clientY - rect.top) * scaleY;
         const tx = cx / this.TILE;
         const ty = cy / this.TILE;
+
+        // Visual golden destination beacon on touch/click
+        this.touchBeacon = { x: tx, y: ty, tick: 0 };
 
         const mom = this.npcs.find(n => n.id === 'mom');
         if (this.currentArea === 'interior' && mom && !this.hasMomBoosterMoney && Math.hypot(tx - mom.x, ty - mom.y) < 1.2 && Math.hypot(this.player.x - mom.x, this.player.y - mom.y) < 2.0) {
@@ -1534,8 +2795,24 @@
           }
         }
 
+        const friend = this.npcs[0];
+        if (this.currentArea === 'friend_interior' && friend && Math.hypot(tx - friend.x, ty - friend.y) < 1.5 && Math.hypot(this.player.x - friend.x, this.player.y - friend.y) < 2.4) {
+          this.triggerDuel();
+          return;
+        }
+
         this.player.targetX = tx;
         this.player.targetY = ty;
+      };
+
+      this.canvas.addEventListener('click', (e) => {
+        handleCanvasTap(e.clientX, e.clientY);
+      });
+
+      this.canvas.addEventListener('pointerdown', (e) => {
+        if (e.pointerType === 'touch') {
+          handleCanvasTap(e.clientX, e.clientY);
+        }
       });
 
       const timeSel = document.getElementById('ow-time-select');
@@ -1580,6 +2857,8 @@
                 this.toggleInventoryModal(true);
               }
             }
+          } else if (this.nearInteractable?.id === 'friend_duel' || (this.nearInteractable?.id === 'friend_door' && this.hasOpenedStarterPack)) {
+            this.triggerDuel();
           }
         });
       }
@@ -1611,6 +2890,20 @@
         // NPC collision (only Mom blocks movement when Mike/AJ is following you!)
         for (const n of this.npcs) {
           if (n.following) continue;
+          if (Math.hypot(tx - n.x, ty - n.y) < 0.65) return true;
+        }
+        return false;
+      } else if (this.currentArea === 'friend_interior') {
+        // Cutaway room floor bounds
+        if (tx < 2.2 || tx > 13.8 || ty < 4.15 || ty > 10.35) return true;
+        // North-Wall Collector Shelf & Stone Fireplace Hearth (x: 2.2..11.4, y: 4.1..4.85)
+        if (tx <= 11.4 && ty < 4.85) return true;
+        // Right-side Bed (x: 11.4..13.8, y: 4.1..6.6)
+        if (tx > 11.35 && ty < 6.6) return true;
+        // Left/Center-Left Round Mythos Duel Table & Chairs (center at x: 5.5, y: 6.8)
+        if (Math.hypot(tx - 5.5, ty - 6.8) < 1.18) return true;
+        for (const n of this.npcs) {
+          if (n.id !== 'best_friend') continue;
           if (Math.hypot(tx - n.x, ty - n.y) < 0.65) return true;
         }
         return false;
@@ -1690,14 +2983,14 @@
       if (this.excitedBounceTicks > 0) this.excitedBounceTicks--;
       if (this.areaTransitionCooldown > 0) this.areaTransitionCooldown--;
 
-      // Animate scripted NPCs (e.g., Mom walking inside from the front doorstep after work!)
+      // Animate scripted NPCs (e.g., Mom walking inside after work, or Mike/AJ leaving Leo's Card Shop for his house!)
       for (const n of this.npcs) {
         if (n.targetX !== undefined && n.targetX !== null && n.targetY !== undefined && n.targetY !== null) {
           const ndx = n.targetX - n.x;
           const ndy = n.targetY - n.y;
           const dist = Math.hypot(ndx, ndy);
           if (dist > 0.08) {
-            const spd = 0.055;
+            const spd = n.leavingForHouse ? 0.085 : 0.055;
             n.x += (ndx / dist) * spd;
             n.y += (ndy / dist) * spd;
             n.walkTick = (n.walkTick || 0) + 0.16;
@@ -1712,16 +3005,24 @@
             n.targetX = null;
             n.targetY = null;
             n.walkTick = 0;
-            n.dir = 'right';
+            if (n.leavingForHouse) {
+              n.leavingForHouse = false;
+              n.following = false;
+              this.friendWaitingAtHouse = true;
+              this.saveWorldData(this.draftAppearance);
+            } else {
+              n.dir = 'right';
+            }
           }
         }
       }
 
-      if (['intro_bored', 'tv_commercial', 'both_excited', 'mom_enters', 'mom_gave_money', 'shop_bought_packs'].includes(this.storyState)) {
+      if (['intro_bored', 'tv_commercial', 'both_excited', 'mom_enters', 'mom_gave_money', 'shop_bought_packs', 'must_open_pack_before_leaving', 'friend_challenges_after_pack'].includes(this.storyState)) {
         this.player.moving = false;
-        this.player.walkTick = (this.storyState === 'both_excited' || this.storyState === 'shop_bought_packs') ? (this.tick * 0.25) : 0;
+        const isBouncing = ['both_excited', 'shop_bought_packs', 'friend_challenges_after_pack'].includes(this.storyState);
+        this.player.walkTick = isBouncing ? (this.tick * 0.25) : 0;
         if (this.npcs[0]) {
-          this.npcs[0].walkTick = (this.storyState === 'both_excited' || this.storyState === 'shop_bought_packs') ? (this.tick * 0.25) : 0;
+          this.npcs[0].walkTick = isBouncing ? (this.tick * 0.25) : 0;
         }
         return;
       }
@@ -1759,8 +3060,8 @@
         if (!this.isBlocked(nx, this.player.y)) this.player.x = nx;
         if (!this.isBlocked(this.player.x, ny)) this.player.y = ny;
 
-        // If player walks toward the front door inside, Mike/AJ automatically starts following you out!
-        if (this.currentArea === 'interior' && this.player.y > 8.4 && this.npcs[0]) {
+        // If player walks toward the front door inside (before opening starter pack), Mike/AJ automatically starts following you out!
+        if (this.currentArea === 'interior' && !this.hasOpenedStarterPack && this.player.y > 8.4 && this.npcs[0]) {
           this.npcs[0].following = true;
         }
       } else {
@@ -1768,9 +3069,9 @@
         this.player.walkTick = 0;
       }
 
-      // Companion Follow AI: Mike or AJ follows right behind you as you leave the house, explore outside, and visit the Card Shop!
+      // Companion Follow AI: Mike or AJ follows right behind you until you open your initial card pack and he leaves for his house!
       const friend = this.npcs[0];
-      if (friend && (friend.following || this.currentArea === 'exterior' || this.currentArea === 'card_shop_interior')) {
+      if (friend && !this.hasOpenedStarterPack && !this.friendWaitingAtHouse && !friend.leavingForHouse && this.currentArea !== 'friend_interior' && (friend.following || this.currentArea === 'exterior' || this.currentArea === 'card_shop_interior')) {
         const fdx = this.player.x - friend.x;
         const fdy = this.player.y - friend.y;
         const fdist = Math.hypot(fdx, fdy);
@@ -1791,10 +3092,10 @@
         }
       }
 
-      // Check Doorway Transitions between House Interior, Zoomed-Out Neighborhood Exterior, and Card Shop Interior!
+      // Check Doorway Transitions between House Interior, Friend's House, Zoomed-Out Neighborhood Exterior, and Leo's Card Shop!
       if (this.areaTransitionCooldown === 0) {
         if (this.currentArea === 'interior' && this.player.x >= 9.0 && this.player.x <= 10.6 && this.player.y >= 10.05) {
-          // Step out onto your Left Cottage's Front Wooden Porch Steps — Mike/AJ follows you out!
+          // Step out onto your Left Cottage's Front Wooden Porch Steps
           if (window.sounds?.playMove) window.sounds.playMove();
           this.currentArea = 'exterior';
           this.player.x = 1.98;
@@ -1803,7 +3104,7 @@
           this.player.targetX = null;
           this.player.targetY = null;
 
-          if (friend) {
+          if (friend && !this.hasOpenedStarterPack && !this.friendWaitingAtHouse) {
             friend.following = true;
             friend.x = 1.98;
             friend.y = 3.05;
@@ -1814,7 +3115,7 @@
           this.areaTransitionCooldown = 25;
           this.updateHUDSaveInfo();
         } else if (this.currentArea === 'exterior' && this.player.x >= 1.65 && this.player.x <= 2.3 && this.player.y <= 2.75) {
-          // Step back inside your House through the Screen Door — Mike/AJ follows you back in!
+          // Step back inside your House through the Screen Door
           if (window.sounds?.playMove) window.sounds.playMove();
           this.currentArea = 'interior';
           this.player.x = 9.8;
@@ -1823,7 +3124,7 @@
           this.player.targetX = null;
           this.player.targetY = null;
 
-          if (friend) {
+          if (friend && !this.hasOpenedStarterPack && !this.friendWaitingAtHouse) {
             friend.x = 10.6;
             friend.y = 9.5;
             friend.dir = 'up';
@@ -1831,8 +3132,47 @@
 
           this.areaTransitionCooldown = 25;
           this.updateHUDSaveInfo();
+        } else if (this.currentArea === 'exterior' && this.hasOpenedStarterPack && this.player.x >= 9.7 && this.player.x <= 10.35 && this.player.y <= 2.85) {
+          // Step inside Mike's / AJ's House for your Mythos Battle!
+          if (window.sounds?.playMove) window.sounds.playMove();
+          this.currentArea = 'friend_interior';
+          this.player.x = 9.8;
+          this.player.y = 9.3;
+          this.player.dir = 'up';
+          this.player.targetX = null;
+          this.player.targetY = null;
+
+          if (friend) {
+            friend.following = false;
+            friend.leavingForHouse = false;
+            this.friendWaitingAtHouse = true;
+            friend.x = 4.1;
+            friend.y = 6.8;
+            friend.dir = 'right';
+            friend.bubble = '⚔️';
+          }
+
+          this.areaTransitionCooldown = 25;
+          this.updateHUDSaveInfo();
+        } else if (this.currentArea === 'friend_interior' && this.player.x >= 9.0 && this.player.x <= 10.6 && this.player.y >= 10.05) {
+          // Step out of Mike's / AJ's House back onto the Upper Residential Road — Mike/AJ stays at his house!
+          if (window.sounds?.playMove) window.sounds.playMove();
+          this.currentArea = 'exterior';
+          this.player.x = 10.05;
+          this.player.y = 3.48;
+          this.player.dir = 'down';
+          this.player.targetX = null;
+          this.player.targetY = null;
+
+          if (friend) {
+            friend.following = false;
+            this.friendWaitingAtHouse = true;
+          }
+
+          this.areaTransitionCooldown = 25;
+          this.updateHUDSaveInfo();
         } else if (this.currentArea === 'exterior' && this.player.x >= 13.25 && this.player.x <= 14.05 && this.player.y <= 9.05 && this.player.y >= 8.3) {
-          // Step inside the MYTHOS Card Shop on the Far-East Block!
+          // Step inside Leo's Card Shop on the Far-East Block!
           if (window.sounds?.playMove) window.sounds.playMove();
           this.currentArea = 'card_shop_interior';
           this.player.x = 9.8;
@@ -1841,7 +3181,7 @@
           this.player.targetX = null;
           this.player.targetY = null;
 
-          if (friend) {
+          if (friend && !this.hasOpenedStarterPack && !this.friendWaitingAtHouse) {
             friend.following = true;
             friend.x = 10.7;
             friend.y = 9.4;
@@ -1855,25 +3195,48 @@
           this.areaTransitionCooldown = 25;
           this.updateHUDSaveInfo();
         } else if (this.currentArea === 'card_shop_interior' && this.player.x >= 9.0 && this.player.x <= 10.6 && this.player.y >= 10.05) {
-          // Step out of the MYTHOS Card Shop back onto the Far-East Block of the South Road!
-          if (window.sounds?.playMove) window.sounds.playMove();
-          this.currentArea = 'exterior';
-          this.player.x = 13.65;
-          this.player.y = 9.45;
-          this.player.dir = 'down';
-          this.player.targetX = null;
-          this.player.targetY = null;
+          // If the player received their Booster Pack from Leo and attempts to leave Leo's Card Shop without opening it,
+          // stop them at the door and trigger a dialogue to open the card pack!
+          const hasUnopenedPack = (this.inventory || []).some(i => i.id === 'unopened_base_pack' && i.qty > 0);
+          if (this.hasBoughtCardShopPacks && (hasUnopenedPack || !this.hasOpenedStarterPack)) {
+            if (window.sounds?.playClick) window.sounds.playClick();
+            this.player.y = 9.6;
+            this.player.dir = 'up';
+            this.player.targetX = null;
+            this.player.targetY = null;
+            this.keys = {};
+            this.storyState = 'must_open_pack_before_leaving';
+            this.areaTransitionCooldown = 20;
+            this.renderDialogueUI();
+          } else {
+            // Step out of Leo's Card Shop back onto the Far-East Block of the South Road!
+            if (window.sounds?.playMove) window.sounds.playMove();
+            this.currentArea = 'exterior';
+            this.player.x = 13.65;
+            this.player.y = 9.45;
+            this.player.dir = 'down';
+            this.player.targetX = null;
+            this.player.targetY = null;
 
-          if (friend) {
-            friend.following = true;
-            friend.x = 13.65;
-            friend.y = 9.05;
-            friend.dir = 'down';
-            friend.bubble = null;
+            if (friend) {
+              if (this.hasOpenedStarterPack) {
+                friend.following = false;
+                friend.leavingForHouse = false;
+                friend.targetX = null;
+                friend.targetY = null;
+                this.friendWaitingAtHouse = true;
+              } else {
+                friend.following = true;
+                friend.x = 13.65;
+                friend.y = 9.05;
+                friend.dir = 'down';
+                friend.bubble = null;
+              }
+            }
+
+            this.areaTransitionCooldown = 25;
+            this.updateHUDSaveInfo();
           }
-
-          this.areaTransitionCooldown = 25;
-          this.updateHUDSaveInfo();
         }
       }
 
@@ -2347,13 +3710,572 @@
       ctx.fillStyle = '#a37653';
       ctx.beginPath(); ctx.ellipse(tbX, tbY, 68, 50, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
 
-      // Stacked Books / Mythos Starter Decks on the Round Table (matching reference!)
+      // Stacked Books / Mythos Starter Decks on the Round Table
       ctx.fillStyle = '#6e2b3b';
       ctx.fillRect(tbX + 12, tbY - 16, 26, 28);
       ctx.strokeRect(tbX + 12, tbY - 16, 26, 28);
       ctx.fillStyle = '#f1f5f9';
       ctx.fillRect(tbX + 14, tbY + 4, 22, 6);
       ctx.strokeRect(tbX + 14, tbY + 4, 22, 6);
+    }
+
+    // =========================================================================
+    // FRIEND'S HOUSE INTERIOR (Distinct Mirrored Architecture, Stone Fireplace,
+    // Sage-Celadon Plaster Walls, Cherry Wood Planks, Right-Side Bed & Gaming Nook,
+    // and Left-Side Crimson Duelist Arena Rug & Mythos Battle Table!)
+    // =========================================================================
+    renderFriendHouseInterior() {
+      const ctx = this.ctx;
+      const S = this.TILE; // 64px
+      const W = this.canvas.width;
+      const H = this.canvas.height;
+      const fName = this.friendName || 'Mike';
+      const isAJ = fName === 'AJ';
+
+      // 1. Deep Twilight-Slate Cutaway Void Background (#4b6478)
+      ctx.fillStyle = '#4b6478';
+      ctx.fillRect(0, 0, W, H);
+
+      // Room coordinates (matching the cutaway architectural shell)
+      const rx = 1.5 * S;        // 96
+      const ry = 0.8 * S;        // 51.2
+      const rw = 13.0 * S;       // 832
+      const rh = 9.9 * S;        // 633.6
+      const floorTop = 3.85 * S; // 246.4
+
+      const drawChamferedRect = (x, y, w, h, c) => {
+        ctx.beginPath();
+        ctx.moveTo(x + c, y);
+        ctx.lineTo(x + w - c, y);
+        ctx.lineTo(x + w, y + c);
+        ctx.lineTo(x + w, y + h - c);
+        ctx.lineTo(x + w - c, y + h);
+        ctx.lineTo(x + c, y + h);
+        ctx.lineTo(x, y + h - c);
+        ctx.lineTo(x, y + c);
+        ctx.closePath();
+      };
+
+      // 2. Rich Warm Cherry / Mahogany Wood Plank Floor (#734432 / #683c2b)
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(rx + 42, floorTop - 24);
+      ctx.lineTo(rx + rw - 42, floorTop - 24);
+      ctx.lineTo(rx + rw, floorTop + 16);
+      ctx.lineTo(rx + rw, ry + rh - 24);
+      ctx.lineTo(rx + rw - 28, ry + rh);
+      ctx.lineTo(rx + 28, ry + rh);
+      ctx.lineTo(rx, ry + rh - 24);
+      ctx.lineTo(rx, floorTop + 16);
+      ctx.closePath();
+      ctx.clip();
+
+      ctx.fillStyle = '#734432';
+      ctx.fillRect(rx, floorTop - 30, rw, rh);
+
+      const plankH = 36;
+      for (let y = floorTop - 20, row = 0; y < ry + rh; y += plankH, row++) {
+        ctx.fillStyle = row % 2 === 0 ? '#754634' : '#693d2c';
+        ctx.fillRect(rx, y, rw, plankH);
+
+        // Subtle cherry wood grain streaks
+        ctx.fillStyle = '#593122';
+        ctx.fillRect(rx + 40, y + 10, rw - 80, 2);
+        ctx.fillRect(rx + 90, y + 23, rw - 160, 2);
+
+        // Dark mahogany plank seam
+        ctx.fillStyle = '#3d2015';
+        ctx.fillRect(rx, y + plankH - 2, rw, 2);
+
+        // Staggered vertical plank joints
+        const shift = (row * 150) % 220;
+        for (let x = rx + 60 + shift; x < rx + rw - 40; x += 220) {
+          ctx.fillRect(x, y, 2, plankH);
+        }
+      }
+
+      // Bottom Espresso Wooden Threshold Border
+      ctx.fillStyle = '#4a2a1d';
+      ctx.fillRect(rx, ry + rh - 18, rw, 18);
+      ctx.strokeStyle = '#29150d';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(rx, ry + rh - 18, rw, 18);
+
+      // 3. Large Crimson & Gold Chamfered Duelist Arena Rug on Left/Center-Left Floor!
+      const rugX = rx + 48;
+      const rugY = floorTop + 26;
+      const rugW = 390;
+      const rugH = 348;
+      const ch = 26;
+
+      ctx.fillStyle = '#581c28'; // Deep Crimson-Burgundy
+      drawChamferedRect(rugX, rugY, rugW, rugH, ch);
+      ctx.fill();
+      ctx.strokeStyle = '#2e0d14';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      // Ornate Gold Duelist Inner Border & Center Emblem Ring
+      ctx.strokeStyle = '#d97706';
+      ctx.lineWidth = 2.5;
+      drawChamferedRect(rugX + 12, rugY + 12, rugW - 24, rugH - 24, ch - 5);
+      ctx.stroke();
+
+      ctx.strokeStyle = 'rgba(251, 191, 36, 0.28)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(rugX + rugW / 2, rugY + rugH / 2, 74, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Secondary Cozy Navy Runner Rug by the Right-Side Bed & Gaming Nook
+      const bRugX = rx + rw - 245;
+      const bRugY = floorTop + 58;
+      ctx.fillStyle = '#1e3a5f';
+      drawChamferedRect(bRugX, bRugY, 175, 220, 16);
+      ctx.fill();
+      ctx.strokeStyle = '#0f233d';
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 1.5;
+      drawChamferedRect(bRugX + 8, bRugY + 8, 159, 204, 12);
+      ctx.stroke();
+
+      ctx.restore();
+
+      // 4. Cool Sage-Celadon Plaster North Wall (#c7d4c0, matching Mike/AJ's Sage Exterior!)
+      ctx.fillStyle = '#c7d4c0';
+      ctx.beginPath();
+      ctx.moveTo(rx + 28, ry + 56);
+      ctx.lineTo(rx + 68, ry + 30);
+      ctx.lineTo(rx + rw - 68, ry + 30);
+      ctx.lineTo(rx + rw - 28, ry + 56);
+      ctx.lineTo(rx + rw - 28, floorTop + 14);
+      ctx.lineTo(rx + rw - 68, floorTop - 12);
+      ctx.lineTo(rx + 68, floorTop - 12);
+      ctx.lineTo(rx + 28, floorTop + 14);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = '#2d3b32';
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+
+      // Wainscoting Wood Paneling along the lower half of the North Wall
+      const wainTop = floorTop - 68;
+      ctx.fillStyle = '#5c3d28';
+      ctx.beginPath();
+      ctx.moveTo(rx + 28, wainTop + 26);
+      ctx.lineTo(rx + 68, wainTop);
+      ctx.lineTo(rx + rw - 68, wainTop);
+      ctx.lineTo(rx + rw - 28, wainTop + 26);
+      ctx.lineTo(rx + rw - 28, floorTop + 14);
+      ctx.lineTo(rx + rw - 68, floorTop - 12);
+      ctx.lineTo(rx + 68, floorTop - 12);
+      ctx.lineTo(rx + 28, floorTop + 14);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = '#362114';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Recessed Wainscoting Vertical Panel Ribs across North Wall
+      for (let px = rx + 82; px < rx + rw - 95; px += 46) {
+        ctx.strokeStyle = '#422818';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(px, wainTop + 8, 34, 40);
+      }
+
+      // Angled Wing Wall vertical corner lines
+      ctx.strokeStyle = '#8fa387';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(rx + 68, ry + 30); ctx.lineTo(rx + 68, floorTop - 12);
+      ctx.moveTo(rx + rw - 68, ry + 30); ctx.lineTo(rx + rw - 68, floorTop - 12);
+      ctx.stroke();
+
+      // Dark Espresso Baseboard along north wall and wing walls
+      ctx.fillStyle = '#3d2516';
+      ctx.beginPath();
+      ctx.moveTo(rx + 28, floorTop + 2);
+      ctx.lineTo(rx + 68, floorTop - 24);
+      ctx.lineTo(rx + rw - 68, floorTop - 24);
+      ctx.lineTo(rx + rw - 28, floorTop + 2);
+      ctx.lineTo(rx + rw - 28, floorTop + 14);
+      ctx.lineTo(rx + rw - 68, floorTop - 12);
+      ctx.lineTo(rx + 68, floorTop - 12);
+      ctx.lineTo(rx + 28, floorTop + 14);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = '#24140b';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // 5. Deep Walnut Top-Cap Wall Molding & Side Cutaway Pillars (#4f3524)
+      ctx.fillStyle = '#593b28';
+      ctx.beginPath();
+      ctx.moveTo(rx, floorTop + 180);
+      ctx.lineTo(rx, ry + 26);
+      ctx.lineTo(rx + 36, ry);
+      ctx.lineTo(rx + rw - 36, ry);
+      ctx.lineTo(rx + rw, ry + 26);
+      ctx.lineTo(rx + rw, floorTop + 180);
+      ctx.lineTo(rx + rw - 28, floorTop + 180);
+      ctx.lineTo(rx + rw - 28, ry + 48);
+      ctx.lineTo(rx + rw - 64, ry + 28);
+      ctx.lineTo(rx + 64, ry + 28);
+      ctx.lineTo(rx + 28, ry + 48);
+      ctx.lineTo(rx + 28, floorTop + 180);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = '#29180e';
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+
+      // Lower Sage Plaster Side-Wall Cutaway Pillars (Left & Right bottom walls)
+      [rx, rx + rw - 28].forEach(px => {
+        ctx.fillStyle = '#c7d4c0';
+        ctx.fillRect(px, floorTop + 180, 28, ry + rh - (floorTop + 180) - 18);
+        ctx.strokeStyle = '#29180e';
+        ctx.strokeRect(px, floorTop + 180, 28, ry + rh - (floorTop + 180) - 18);
+        ctx.fillStyle = '#d7e3d0';
+        ctx.strokeStyle = '#8fa387';
+        ctx.fillRect(px + 4, floorTop + 245, 20, 14);
+        ctx.strokeRect(px + 4, floorTop + 245, 20, 14);
+      });
+
+      // 6. Bottom Stone Doorstep Threshold + Two Dark Post Blocks (exit to Outside!)
+      const doorX = 9.3 * S;
+      const doorY = ry + rh - 22;
+      ctx.fillStyle = '#1c1610';
+      ctx.fillRect(doorX - 18, doorY - 6, 18, 20);
+      ctx.fillRect(doorX + 86, doorY - 6, 18, 20);
+      ctx.fillStyle = '#64748b';
+      ctx.beginPath();
+      ctx.roundRect(doorX, doorY + 4, 86, 22, 4);
+      ctx.fill();
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillRect(doorX + 6, doorY + 8, 74, 10);
+
+      // 7. Left North Wall: Framed Mythos Collector Banner + Trophy & Card Display Cabinet!
+      // Framed Crimson & Gold "SOLAR PHOENIX" Collector Poster on Far-Left North Wall
+      const pstX = rx + 76;
+      const pstY = ry + 48;
+      const pstW = 72;
+      const pstH = 92;
+      ctx.fillStyle = '#3b2314';
+      ctx.fillRect(pstX, pstY, pstW, pstH);
+      ctx.strokeStyle = '#fbbf24';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(pstX, pstY, pstW, pstH);
+      const pGrad = ctx.createLinearGradient(pstX, pstY, pstX, pstY + pstH);
+      pGrad.addColorStop(0, '#7c2d12');
+      pGrad.addColorStop(0.5, '#b91c1c');
+      pGrad.addColorStop(1, '#1e1b4b');
+      ctx.fillStyle = pGrad;
+      ctx.fillRect(pstX + 5, pstY + 5, pstW - 10, pstH - 10);
+      // Golden Phoenix Silhouette Emblem inside Poster
+      ctx.fillStyle = '#facc15';
+      ctx.beginPath();
+      ctx.moveTo(pstX + pstW / 2, pstY + 18);
+      ctx.lineTo(pstX + pstW - 14, pstY + 34);
+      ctx.lineTo(pstX + pstW / 2 + 6, pstY + 46);
+      ctx.lineTo(pstX + pstW / 2, pstY + 64);
+      ctx.lineTo(pstX + pstW / 2 - 6, pstY + 46);
+      ctx.lineTo(pstX + 14, pstY + 34);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#fde047';
+      ctx.font = 'bold 8px Cinzel, serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('MYTHOS', pstX + pstW / 2, pstY + pstH - 11);
+
+      // Wide Collector Trophy & Deck Showcase Shelf next to Poster
+      const shX = pstX + pstW + 18;
+      const shY = ry + 64;
+      const shW = 148;
+      const shH = 142;
+      ctx.fillStyle = '#5c3a24';
+      ctx.fillRect(shX, shY, shW, shH);
+      ctx.strokeStyle = '#29160c';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(shX, shY, shW, shH);
+      // Top crown cap
+      ctx.fillStyle = '#73482d';
+      ctx.fillRect(shX - 3, shY, shW + 6, 18);
+      ctx.strokeRect(shX - 3, shY, shW + 6, 18);
+
+      // Golden Championship Trophy sitting atop the collector shelf!
+      ctx.fillStyle = '#fbbf24';
+      ctx.beginPath();
+      ctx.arc(shX + shW / 2, shY - 12, 10, 0, Math.PI);
+      ctx.fill();
+      ctx.fillRect(shX + shW / 2 - 3, shY - 6, 6, 6);
+      ctx.fillStyle = '#78350f';
+      ctx.fillRect(shX + shW / 2 - 10, shY - 4, 20, 4);
+
+      // 3 Display Shelves holding Graded Card Slabs, Deck Boxes & Beast Figurines
+      const deckColors = ['#ef4444', '#38bdf8', '#eab308', '#a855f7', '#22c55e'];
+      for (let s = 0; s < 3; s++) {
+        const sy = shY + 24 + s * 36;
+        ctx.fillStyle = '#331d10';
+        ctx.fillRect(shX + 8, sy, shW - 16, 28);
+        for (let c = 0; c < 5; c++) {
+          ctx.fillStyle = deckColors[(c + s * 2) % deckColors.length];
+          ctx.fillRect(shX + 14 + c * 25, sy + 6, 16, 20);
+          ctx.strokeStyle = '#fde047';
+          ctx.lineWidth = 1.2;
+          ctx.strokeRect(shX + 14 + c * 25, sy + 6, 16, 20);
+        }
+      }
+
+      // 8. Center-Left North Wall: Arched Diamond-Lattice Leaded Window
+      const winX = shX + shW + 26;
+      const winY = ry + 52;
+      const winW = 68;
+      const winH = 94;
+
+      ctx.strokeStyle = '#29180e';
+      ctx.lineWidth = 2;
+      ctx.fillStyle = '#5c3a24';
+      ctx.beginPath();
+      ctx.arc(winX + winW / 2, winY + 34, winW / 2, Math.PI, 0);
+      ctx.lineTo(winX + winW, winY + winH);
+      ctx.lineTo(winX, winY + winH);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(winX + winW / 2, winY + 36, winW / 2 - 8, Math.PI, 0);
+      ctx.lineTo(winX + winW - 8, winY + winH - 10);
+      ctx.lineTo(winX + 8, winY + winH - 10);
+      ctx.closePath();
+      ctx.clip();
+
+      ctx.fillStyle = this.settings.timeOfDay === 'night' ? '#1e293b' : '#bae6fd';
+      ctx.fillRect(winX, winY, winW, winH);
+      ctx.strokeStyle = '#472d1b';
+      ctx.lineWidth = 2;
+      for (let d = -winH; d < winW + winH; d += 16) {
+        ctx.beginPath();
+        ctx.moveTo(winX + d, winY);
+        ctx.lineTo(winX + d + winH, winY + winH);
+        ctx.moveTo(winX + d, winY + winH);
+        ctx.lineTo(winX + d + winH, winY);
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      // 9. Center-Right North Wall: Rustic Stone Fireplace & Chimney Hearth (Matching Exterior Chimney!)
+      const fpX = winX + winW + 28;
+      const fpY = ry + 32;
+      const fpW = 142;
+      const fpH = 182;
+
+      // Stone Chimney Breast & Ashlar Masonry Blocks
+      ctx.fillStyle = '#64748b';
+      ctx.fillRect(fpX, fpY, fpW, fpH);
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 2.5;
+      ctx.strokeRect(fpX, fpY, fpW, fpH);
+
+      // Individual Cobblestone / Ashlar Bricks on the Chimney Breast
+      const stoneShades = ['#78879c', '#58677a', '#6c7c91', '#8494a8'];
+      for (let sr = 0; sr < 6; sr++) {
+        const sy = fpY + 6 + sr * 24;
+        const offset = (sr % 2) * 18;
+        for (let sc = 0; sc < 4; sc++) {
+          const sx = fpX + 6 + offset + sc * 34;
+          if (sx + 28 <= fpX + fpW - 4) {
+            ctx.fillStyle = stoneShades[(sr + sc) % stoneShades.length];
+            ctx.fillRect(sx, sy, 28, 18);
+            ctx.strokeStyle = '#334155';
+            ctx.lineWidth = 1.2;
+            ctx.strokeRect(sx, sy, 28, 18);
+          }
+        }
+      }
+
+      // Carved Walnut Fireplace Mantelpiece & Mounted Mythos Crossed-Swords Shield Crest above Mantel!
+      ctx.fillStyle = '#5c3a24';
+      ctx.fillRect(fpX - 8, fpY + 76, fpW + 16, 16);
+      ctx.strokeStyle = '#24140b';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(fpX - 8, fpY + 76, fpW + 16, 16);
+
+      // Mounted Heraldic Shield Above Mantel
+      const shCx = fpX + fpW / 2;
+      const shCy = fpY + 42;
+      ctx.fillStyle = '#991b1b';
+      ctx.beginPath();
+      ctx.moveTo(shCx - 18, shCy - 18);
+      ctx.lineTo(shCx + 18, shCy - 18);
+      ctx.lineTo(shCx + 18, shCy + 2);
+      ctx.lineTo(shCx, shCy + 22);
+      ctx.lineTo(shCx - 18, shCy + 2);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = '#fbbf24';
+      ctx.lineWidth = 2.2;
+      ctx.stroke();
+
+      // Stone Hearth Slab protruding onto floor
+      ctx.fillStyle = '#475569';
+      ctx.fillRect(fpX - 10, fpY + fpH - 8, fpW + 20, 22);
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(fpX - 10, fpY + fpH - 8, fpW + 20, 22);
+
+      // Arched Dark Firebox Opening + Animated Crackling Flames!
+      const fbX = fpX + 26;
+      const fbY = fpY + 102;
+      const fbW = fpW - 52;
+      const fbH = 74;
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath();
+      ctx.arc(fbX + fbW / 2, fbY + 28, fbW / 2, Math.PI, 0);
+      ctx.lineTo(fbX + fbW, fbY + fbH);
+      ctx.lineTo(fbX, fbY + fbH);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = '#334155';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Charred Firewood Logs & Flickering Orange/Gold Hearth Fire
+      ctx.fillStyle = '#451a03';
+      ctx.fillRect(fbX + 14, fbY + fbH - 14, fbW - 28, 8);
+      const fPulse = Math.sin(this.tick * 0.24) * 5;
+      const fPulse2 = Math.cos(this.tick * 0.31) * 4;
+      ctx.fillStyle = '#ea580c';
+      ctx.beginPath();
+      ctx.moveTo(fbX + 16, fbY + fbH - 10);
+      ctx.quadraticCurveTo(fbX + fbW * 0.35, fbY + 20 + fPulse, fbX + fbW / 2, fbY + 16 - fPulse);
+      ctx.quadraticCurveTo(fbX + fbW * 0.7, fbY + 22 - fPulse2, fbX + fbW - 16, fbY + fbH - 10);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = '#facc15';
+      ctx.beginPath();
+      ctx.moveTo(fbX + 26, fbY + fbH - 10);
+      ctx.quadraticCurveTo(fbX + fbW / 2, fbY + 28 + fPulse2, fbX + fbW - 26, fbY + fbH - 10);
+      ctx.closePath();
+      ctx.fill();
+
+      // 10. Far-Right Corner: Mike/AJ's Bed & Nightstand (Mirrored Opposite from Player's Left-Side Bed!)
+      const bedW = 108;
+      const bedH = 176;
+      const bedX = rx + rw - bedW - 58;
+      const bedY = ry + 114;
+
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      ctx.fillRect(bedX + 4, bedY + 8, bedW, bedH);
+
+      // Dark Walnut Headboard & Corner Posts
+      ctx.fillStyle = '#5c3a24';
+      ctx.strokeStyle = '#24140b';
+      ctx.lineWidth = 2;
+      ctx.fillRect(bedX, bedY, bedW, 34);
+      ctx.strokeRect(bedX, bedY, bedW, 34);
+      ctx.fillStyle = '#73482d';
+      ctx.fillRect(bedX, bedY - 6, 16, 26);
+      ctx.strokeRect(bedX, bedY - 6, 16, 26);
+      ctx.fillRect(bedX + bedW - 16, bedY - 6, 16, 26);
+      ctx.strokeRect(bedX + bedW - 16, bedY - 6, 16, 26);
+
+      // Mattress & Crisp Pillow
+      ctx.fillStyle = '#e2e8f0';
+      ctx.fillRect(bedX + 4, bedY + 26, bedW - 8, 36);
+      ctx.strokeRect(bedX + 4, bedY + 26, bedW - 8, 36);
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.roundRect(bedX + 18, bedY + 16, bedW - 36, 30, 6);
+      ctx.fill();
+      ctx.stroke();
+
+      // Bold Crimson-Red (Mike) or Emerald-Green (AJ) Quilted Duvet with Gold Stripe!
+      ctx.fillStyle = isAJ ? '#15803d' : '#b91c1c';
+      ctx.fillRect(bedX + 4, bedY + 56, bedW - 8, 92);
+      ctx.strokeRect(bedX + 4, bedY + 56, bedW - 8, 92);
+      ctx.fillStyle = isAJ ? '#16a34a' : '#dc2626';
+      ctx.fillRect(bedX + 8, bedY + 60, bedW - 16, 80);
+      // Gold horizontal racing stripe across blanket
+      ctx.fillStyle = '#fbbf24';
+      ctx.fillRect(bedX + 6, bedY + 92, bedW - 12, 12);
+
+      // Footboard & Lower Posts
+      ctx.fillStyle = '#5c3a24';
+      ctx.fillRect(bedX, bedY + 144, bedW, 32);
+      ctx.strokeRect(bedX, bedY + 144, bedW, 32);
+      ctx.fillStyle = '#73482d';
+      ctx.fillRect(bedX, bedY + 136, 16, 40);
+      ctx.strokeRect(bedX, bedY + 136, 16, 40);
+      ctx.fillRect(bedX + bedW - 16, bedY + 136, 16, 40);
+      ctx.strokeRect(bedX + bedW - 16, bedY + 136, 16, 40);
+
+      // 11. Left/Center-Left Floor: Mike/AJ's Round Wooden Mythos Duel Table & Two Crimson-Cushioned Chairs!
+      const tbX = 5.5 * S;
+      const tbY = 6.8 * S;
+
+      // Left & Right Wooden Chairs with Crimson-Gold Duelist Cushions
+      [tbX - 98, tbX + 64].forEach((chX, idx) => {
+        const chY = tbY - 22;
+        ctx.fillStyle = 'rgba(0,0,0,0.32)';
+        ctx.fillRect(chX + 3, chY + 6, 34, 48);
+        ctx.fillStyle = '#5c3a24';
+        ctx.strokeStyle = '#24140b';
+        ctx.lineWidth = 2;
+        ctx.fillRect(chX, chY + 16, 34, 32);
+        ctx.strokeRect(chX, chY + 16, 34, 32);
+        // Crimson seat cushion (#991b1b)
+        ctx.fillStyle = '#991b1b';
+        ctx.fillRect(chX + 4, chY + 18, 26, 20);
+        ctx.strokeRect(chX + 4, chY + 18, 26, 20);
+        // Tall Chair Backrest post on outer edge
+        const backX = idx === 0 ? chX : chX + 26;
+        ctx.fillStyle = '#73482d';
+        ctx.fillRect(backX, chY - 12, 8, 56);
+        ctx.strokeRect(backX, chY - 12, 8, 56);
+      });
+
+      // Duel Table Shadow & Legs
+      ctx.fillStyle = 'rgba(0,0,0,0.4)';
+      ctx.beginPath(); ctx.ellipse(tbX, tbY + 16, 72, 54, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#4a2c1a';
+      ctx.fillRect(tbX - 48, tbY + 26, 10, 26);
+      ctx.strokeRect(tbX - 48, tbY + 26, 10, 26);
+      ctx.fillRect(tbX + 38, tbY + 26, 10, 26);
+      ctx.strokeRect(tbX + 38, tbY + 26, 10, 26);
+
+      // Dark Walnut Duel Table Top Bevel & Surface
+      ctx.fillStyle = '#5c3a24';
+      ctx.beginPath(); ctx.ellipse(tbX, tbY + 5, 72, 52, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#7c4f32';
+      ctx.beginPath(); ctx.ellipse(tbX, tbY, 72, 52, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+      // Official Mythos Two-Player Tabletop Battle Playmat & 6 Pulled Cards Laid Out Ready for Battle!
+      ctx.fillStyle = '#1e1b4b';
+      ctx.strokeStyle = '#fbbf24';
+      ctx.lineWidth = 1.8;
+      ctx.fillRect(tbX - 42, tbY - 24, 84, 48);
+      ctx.strokeRect(tbX - 42, tbY - 24, 84, 48);
+      // Center Arena Divider Line
+      ctx.beginPath();
+      ctx.moveTo(tbX, tbY - 24);
+      ctx.lineTo(tbX, tbY + 24);
+      ctx.stroke();
+
+      // 3 Friend Cards (Left) & 3 Player Cards (Right) laid out on the playmat!
+      [-15, -3, 9].forEach(ryOff => {
+        ctx.fillStyle = '#f59e0b';
+        ctx.fillRect(tbX - 32, tbY + ryOff, 14, 9);
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillRect(tbX + 18, tbY + ryOff, 14, 9);
+      });
     }
 
     // =========================================================================
@@ -3701,7 +5623,7 @@
         ctx.lineWidth = 1.2;
         ctx.stroke();
 
-        // Large Marquee Signboard on the Roof: "🃏 MYTHOS CARD SHOP"
+        // Large Marquee Signboard on the Roof: "🃏 LEO'S CARD SHOP"
         const signW = 190;
         const signH = 30;
         const signX = sx + sw / 2 - signW / 2;
@@ -3731,10 +5653,10 @@
         ctx.fillStyle = '#fef08a';
         ctx.font = 'bold 12px Cinzel, Georgia, serif';
         ctx.textAlign = 'center';
-        ctx.fillText('MYTHOS CARD SHOP', signX + signW / 2 + 8, signY + 15);
+        ctx.fillText("LEO'S CARD SHOP", signX + signW / 2 + 8, signY + 15);
         ctx.fillStyle = '#38bdf8';
         ctx.font = 'bold 8px Inter, sans-serif';
-        ctx.fillText('BOOSTER PACKS • STARTER DECKS', signX + signW / 2 + 8, signY + 25.5);
+        ctx.fillText('MYTHOS BOOSTER PACKS • DECKS', signX + signW / 2 + 8, signY + 25.5);
       };
 
       drawMythosCardShop();
@@ -3965,7 +5887,7 @@
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
 
-      if (this.currentArea === 'interior' || this.currentArea === 'card_shop_interior') {
+      if (this.currentArea === 'interior' || this.currentArea === 'friend_interior' || this.currentArea === 'card_shop_interior') {
         // Warm Sunlight Beam from the Arched Diamond-Pane Window!
         if (timeOfDay !== 'night') {
           const sunGrad = ctx.createLinearGradient(9.8 * S, 2.2 * S, 11.2 * S, 6.8 * S);
@@ -4028,6 +5950,8 @@
 
       if (this.currentArea === 'interior') {
         this.renderCutawayInterior();
+      } else if (this.currentArea === 'friend_interior') {
+        this.renderFriendHouseInterior();
       } else if (this.currentArea === 'card_shop_interior') {
         this.renderCardShopInterior();
         // Render Shopkeeper Leo standing behind the wooden checkout counter first!
@@ -4050,7 +5974,15 @@
 
       const entities = [
         ...this.npcs
-          .filter(n => this.currentArea === 'interior' || n.id === 'best_friend')
+          .filter(n => {
+            if (n.id === 'mom') return this.currentArea === 'interior';
+            if (n.id === 'best_friend') {
+              if (this.currentArea === 'friend_interior') return true;
+              if (this.friendWaitingAtHouse) return false;
+              return true;
+            }
+            return false;
+          })
           .map(n => ({
             x: n.x,
             y: n.y,
@@ -4083,6 +6015,29 @@
         }
         for (let r = 0; r <= this.ROWS; r++) {
           ctx.beginPath(); ctx.moveTo(0, r * S); ctx.lineTo(this.canvas.width, r * S); ctx.stroke();
+        }
+      }
+
+      if (this.touchBeacon) {
+        this.touchBeacon.tick++;
+        const bx = this.touchBeacon.x * S;
+        const by = this.touchBeacon.y * S;
+        const prog = this.touchBeacon.tick / 24;
+        if (prog < 1) {
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(bx, by, 6 + prog * 18, 0, Math.PI * 2);
+          ctx.strokeStyle = `rgba(250, 204, 21, ${(1 - prog) * 0.9})`;
+          ctx.lineWidth = 2.5 * (1 - prog);
+          ctx.stroke();
+
+          ctx.beginPath();
+          ctx.arc(bx, by, 3 * (1 - prog), 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(254, 240, 138, ${(1 - prog) * 0.95})`;
+          ctx.fill();
+          ctx.restore();
+        } else {
+          this.touchBeacon = null;
         }
       }
 
