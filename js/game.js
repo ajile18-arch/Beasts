@@ -1,4 +1,4 @@
-﻿/**
+/**
  * BEASTS: Tactical Tabletop Arena - Game Engine
  */
 
@@ -225,9 +225,14 @@
         walk_left: 'Sprites/Dwarf_Warden/Dwarf_Warden_walk_left_256x256.png',
         walk_right: 'Sprites/Dwarf_Warden/Dwarf_Warden_walk_right_256x256.png',
         attack: 'Sprites/Dwarf_Warden/Dwarf_Warden_attack_hammer_throw_256x256.png',
+        attack_down: 'Sprites/Dwarf_Warden/Dwarf_Warden_attack_hammer_throw_256x256.png',
+        attack_up: 'Sprites/Dwarf_Warden/Dwarf_Warden_attack_hammer_throw_256x256.png',
         attack_left: 'Sprites/Dwarf_Warden/Dwarf_Warden_attack_left_256x256.png',
         attack_right: 'Sprites/Dwarf_Warden/Dwarf_Warden_attack_right_256x256.png',
         attack_aoe: 'Sprites/Dwarf_Warden/Dwarf_Warden_defend_bullwark_256x256.png',
+        defend_bullwark: 'Sprites/Dwarf_Warden/Dwarf_Warden_defend_bullwark_256x256.png',
+        ground_slam: 'Sprites/Dwarf_Warden/Dwarf_Warden_attack_ground_slam_256x256.png',
+        endurance_aura: 'Sprites/Dwarf_Warden/Dwarf_Warden_endurance_aura_256x256.png',
         hurt: 'Sprites/Dwarf_Warden/Dwarf_Warden_hurt_damaged_256x256.png',
         defeated: 'Sprites/Dwarf_Warden/Dwarf_Warden_defeated_256x256.png'
       },
@@ -1369,6 +1374,12 @@
         this.log(`🛡️ Bullwark! Dwarf Warden completely negated the incoming ${amount} damage from ${sourceName}!`, 'barrier');
         this.renderUnits();
         this.updateCardDossier(target);
+        setTimeout(() => {
+          if (target.hp > 0 && target.animState === 'attack_aoe') {
+            target.animState = 'idle';
+            this.renderUnits();
+          }
+        }, 600);
         return;
       }
 
@@ -2229,17 +2240,21 @@
         const el = document.createElement('div');
         el.className = `unit-entity team-${u.team} anim-${u.animState}`;
         if (this.selectedUnit === u) el.classList.add('selected');
+        if (u.status && u.status.bullwark) el.classList.add('bullwark-active');
+        if (u.id === 'dwarf_warden' && this.round > 10) el.classList.add('endurance-active');
         el.style.left = `${u.x * 10}%`;
         el.style.top = `${u.y * 12.5}%`;
 
         // Determine correct sprite orientation
         let spriteSrc = u.sprites[`idle_${u.facing}`] || u.sprites.idle_down;
-        if (u.animState === 'walk') {
+        if (u.status && u.status.bullwark && u.animState === 'idle' && u.sprites.defend_bullwark) {
+          spriteSrc = u.sprites.defend_bullwark;
+        } else if (u.animState === 'walk') {
           spriteSrc = u.sprites[`walk_${u.facing}`] || u.sprites[`idle_${u.facing}`] || u.sprites.idle_down;
         } else if (u.animState === 'attack') {
           spriteSrc = u.sprites[`attack_${u.facing}`] || u.sprites.attack || u.sprites[`idle_${u.facing}`] || u.sprites.idle_down;
         } else if (u.animState === 'attack_aoe') {
-          spriteSrc = u.sprites.attack_aoe || u.sprites.attack || u.sprites.idle_down;
+          spriteSrc = u.sprites.attack_aoe || u.sprites.defend_bullwark || u.sprites.attack || u.sprites.idle_down;
         } else if (u.animState === 'hurt') {
           spriteSrc = u.sprites.hurt || u.sprites[`idle_${u.facing}`] || u.sprites.idle_down;
         } else if (u.animState === 'defeated') {
