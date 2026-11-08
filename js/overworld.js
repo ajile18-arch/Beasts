@@ -462,7 +462,7 @@
         }
       };
 
-      return catalog[cleanId] || null;
+      return catalog[cleanId] || (window.BEAST_TEMPLATES && window.BEAST_TEMPLATES[cleanId]) || null;
     }
 
     // -------------------------------------------------------------------------
