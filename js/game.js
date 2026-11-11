@@ -275,6 +275,9 @@
         attack_aoe: 'Sprites/Pegasus/Pegasus_inspire_256x256.png',
         inspire: 'Sprites/Pegasus/Pegasus_inspire_256x256.png',
         defend: 'Sprites/Pegasus/Pegasus_defend_down_256x256.png',
+        defend_down: 'Sprites/Pegasus/Pegasus_defend_down_256x256.png',
+        defend_left: 'Sprites/Pegasus/Pegasus_defend_left_256x256.png',
+        defend_right: 'Sprites/Pegasus/Pegasus_defend_right_256x256.png',
         hurt: 'Sprites/Pegasus/Pegasus_hurt_damaged_256x256.png',
         defeated: 'Sprites/Pegasus/Pegasus_defeated_256x256.png'
       },

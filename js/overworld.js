@@ -53,6 +53,13 @@
       this.friendWaitingAtHouse = this.worldSave?.friendWaitingAtHouse ?? false;
       this.hasOldCardBinder = this.worldSave?.hasOldCardBinder ?? false;
       this.duoSelectedBeasts = [];
+      this.migratedMom25 = this.worldSave?.migratedMom25 ?? false;
+
+      // Ensure existing saves receive the +$5 if Mom gave them money under the old $20 rule
+      if (this.hasMomBoosterMoney && !this.migratedMom25) {
+        this._gold = (this._gold || 0) + 5;
+        this.migratedMom25 = true;
+      }
       this.activeChallengerFor2v2 = null;
       this.beastSelectFilter = 'all';
       this.friendDefeatedRewardPending = false;
@@ -578,6 +585,27 @@
             ability: { name: 'Soar', type: 'Flight Mobility', desc: 'Soars high above obstacles, flying over blocked tiles as long as it lands on a free tile.' }
           },
           elementLore: 'A winged steed of celestial sky realms. Endowed with soaring flight that bypasses ground blockades and inspires teammates to move with boundless haste.'
+        },
+        dreadnaught: {
+          id: 'dreadnaught',
+          name: 'Dreadnaught',
+          element: 'metal',
+          stars: 2,
+          maxHp: 160,
+          baseMove: 2,
+          cardImg: 'Cards/Dreadnaught_Card.png',
+          sprites: {
+            idle: 'Sprites/Dreadnaught/Dreadnaught_idle_down_256x256.png',
+            attack: 'Sprites/Dreadnaught/Dreadnaught_attack_magma_fist_256x256.png',
+            walk: 'Sprites/Dreadnaught/Dreadnaught_walk_down_256x256.png',
+            aoe: 'Sprites/Dreadnaught/Dreadnaught_attack_magma_fist_256x256.png'
+          },
+          skills: {
+            atk1: { name: 'Magma Fist', range: 1, dmg: 25, type: 'Target & Hazard', desc: 'Deals 25 damage (35 when alone) and creates a permanent magma pool that burns non-fire units for 10 damage each turn.' },
+            atk2: { name: 'Fortress', range: 1, cooldown: 4, type: 'Intercept Guard', desc: 'Blocks for an ally within a 3x3 range, intercepting all damage dealt to that ally for 1 turn (4-turn cooldown).' },
+            ability: { name: 'Burning Heart', type: 'Last Stand Empowerment', desc: 'If all allies are defeated, Magma Fist damage increases to 35 and Dreadnaught can target itself with Fortress.' }
+          },
+          elementLore: 'A towering fortress of molten volcanic iron. Channels volcanic magma fist strikes, shields allies with impenetrable guard, and unleashes Burning Heart fury when fighting as the last defender standing.'
         }
       };
 
@@ -751,7 +779,7 @@
         nameEl.textContent = 'Backpack Empty';
         qtyEl.classList.add('hidden');
         actionsEl?.classList.add('hidden');
-        descEl.textContent = "Your backpack has no items yet. Ask Mom for $20 and head to Leo's Card Shop on the far east block of the south road to buy your first Booster Pack!";
+        descEl.textContent = "Your backpack has no items yet. Ask Mom for $25 and head to Leo's Card Shop on the far east block of the south road to buy your first Booster Pack!";
       }
     }
 
@@ -2116,6 +2144,7 @@
 
       this.gold = 0;
       this.hasMomBoosterMoney = false;
+      this.migratedMom25 = false;
       this.hasBoughtCardShopPacks = false;
       this.hasBoughtBase2v2Map = false;
       this.hasOpenedStarterPack = false;
@@ -2288,7 +2317,8 @@
       }
 
       this.hasMomBoosterMoney = true;
-      this.gold = (this.gold || 0) + 20; // $20 added to player inventory!
+      this.gold = (this.gold || 0) + 25; // $25 added to player inventory (leaves $5 after buying $20 packs)!
+      this.migratedMom25 = true;
       this.storyState = 'mom_gave_money';
 
       const mom = this.npcs.find(n => n.id === 'mom');
@@ -2406,9 +2436,9 @@
         bar.classList.remove('hidden');
         bar.classList.remove('tv-broadcast');
         bar.classList.add('top-position');
-        speakerEl.textContent = '💝 MOM (+$20 ADDED TO INVENTORY)';
+        speakerEl.textContent = '💝 MOM (+$25 ADDED TO INVENTORY)';
         speakerEl.className = 'ow-speaker-tag friend';
-        textEl.innerHTML = `<b>Mom:</b> "Two <b>MYTHOS Booster Packs</b> so you and ${friendName} can play together? Better than being bored on Day 2 of summer! Here's <b>$20</b> — head down the road to <b>Leo's Card Shop</b> and pick out your packs!"`;
+        textEl.innerHTML = `<b>Mom:</b> "Two <b>MYTHOS Booster Packs</b> so you and ${friendName} can play together? Better than being bored on Day 2 of summer! Here's <b>$25</b> — that leaves you with <b>$5</b> to spare after getting both packs! Head down the road to <b>Leo's Card Shop</b> and pick them out!"`;
 
         choicesEl.classList.add('hidden');
         nextBtn.textContent = 'Awesome, Thanks Mom! ▸';
@@ -2565,13 +2595,13 @@
             challengeBtn.classList.remove('ow-talk-btn');
             if (!this.hasMomBoosterMoney) {
               textEl.textContent = `"Hey sweetheart! You and ${friend.name} look like you're about to burst with excitement. Did you want to ask me something?"`;
-              challengeBtn.textContent = '💵 Ask Mom for 2 Booster Packs ($20)';
+              challengeBtn.textContent = '💵 Ask Mom for Booster Money ($25)';
               challengeBtn.classList.remove('hidden');
             } else if (this.hasOpenedStarterPack) {
               textEl.textContent = `"You pulled 3 MYTHOS cards from Leo's Card Shop? Have fun battling ${friend.name} next door at his house!"`;
               challengeBtn.classList.add('hidden');
             } else {
-              textEl.textContent = `"Have fun at Leo's Card Shop down the road! Make sure you and ${friend.name} each get a MYTHOS Booster Pack with that $20!"`;
+              textEl.textContent = `"Have fun at Leo's Card Shop down the road! You'll still have $5 left over after buying both booster packs with that $25!"`;
               challengeBtn.classList.add('hidden');
             }
           } else {
@@ -2602,7 +2632,7 @@
             } else if (this.hasOpenedStarterPack) {
               textEl.textContent = `"We both pulled 3 awesome cards from Leo's Card Shop! Let's head next door to my house so we can battle!"`;
             } else {
-              textEl.textContent = `"YES!! Your Mom gave us $20 for 2 Booster Packs! Let's head out the front door, walk south, and follow the road east to Leo's Card Shop!"`;
+              textEl.textContent = `"YES!! Your Mom gave us $25! That's enough for both $10 packs plus $5 left over! Let's head out the front door, walk south, and follow the road east to Leo's Card Shop!"`;
             }
             challengeBtn.classList.add('hidden');
           } else {
@@ -3635,6 +3665,7 @@
         friendName: this.friendName,
         gold: this.gold ?? 0,
         hasMomBoosterMoney: this.hasMomBoosterMoney ?? false,
+        migratedMom25: this.migratedMom25 ?? false,
         hasBoughtCardShopPacks: this.hasBoughtCardShopPacks ?? false,
         hasBoughtBase2v2Map: this.hasBoughtBase2v2Map ?? false,
         hasOpenedStarterPack: this.hasOpenedStarterPack ?? false,
