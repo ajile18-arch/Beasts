@@ -246,6 +246,86 @@
         ability: { name: 'Endurance', range: 0, type: 'passive', desc: 'Passive. After turn 10, Dwarf Warden takes half damage from all incoming attacks.' }
       },
       passiveHint: 'Ability: Endurance — After turn 10, takes half damage from all attacks. Bullwark: Fully negates next incoming attack (5 turn cd).'
+    },
+
+    pegasus: {
+      id: 'pegasus',
+      name: 'Pegasus',
+      element: 'air',
+      stars: 3,
+      maxHp: 120,
+      cardImg: 'Cards/Pegasus_Card.png',
+      spriteBase: 'Sprites/Pegasus/Pegasus',
+      sprites: {
+        idle: 'Sprites/Pegasus/Pegasus_idle_down_256x256.png',
+        idle_down: 'Sprites/Pegasus/Pegasus_idle_down_256x256.png',
+        idle_up: 'Sprites/Pegasus/Pegasus_idle_up_256x256.png',
+        idle_left: 'Sprites/Pegasus/Pegasus_idle_left_256x256.png',
+        idle_right: 'Sprites/Pegasus/Pegasus_idle_right_256x256.png',
+        walk: 'Sprites/Pegasus/Pegasus_walk_down_256x256.png',
+        walk_down: 'Sprites/Pegasus/Pegasus_walk_down_256x256.png',
+        walk_up: 'Sprites/Pegasus/Pegasus_walk_up_256x256.png',
+        walk_left: 'Sprites/Pegasus/Pegasus_walk_left_256x256.png',
+        walk_right: 'Sprites/Pegasus/Pegasus_walk_right_256x256.png',
+        attack: 'Sprites/Pegasus/Pegasus_attack_trample_256x256.png',
+        attack_down: 'Sprites/Pegasus/Pegasus_attack_down_256x256.png',
+        attack_up: 'Sprites/Pegasus/Pegasus_attack_up_256x256.png',
+        attack_left: 'Sprites/Pegasus/Pegasus_attack_left_256x256.png',
+        attack_right: 'Sprites/Pegasus/Pegasus_attack_right_256x256.png',
+        attack_aoe: 'Sprites/Pegasus/Pegasus_inspire_256x256.png',
+        inspire: 'Sprites/Pegasus/Pegasus_inspire_256x256.png',
+        defend: 'Sprites/Pegasus/Pegasus_defend_down_256x256.png',
+        hurt: 'Sprites/Pegasus/Pegasus_hurt_damaged_256x256.png',
+        defeated: 'Sprites/Pegasus/Pegasus_defeated_256x256.png'
+      },
+      baseMove: 3,
+      skills: {
+        atk1: { name: 'Trample', range: 1, dmg: 30, type: 'target', desc: 'Charges forward with heavenly force, dealing 30 damage.' },
+        atk2: { name: 'Inspire', range: 0, type: 'inspire', desc: 'Gives up Pegasus\'s movement for the turn to extend its allies\' movement by 2 tiles.' },
+        ability: { name: 'Soar', range: 0, type: 'passive', desc: 'Can pass over tiles that have blocks as long as it lands on a free tile.' }
+      },
+      passiveHint: 'Ability: Soar — Can pass over tiles that have blocks as long as it lands on a free tile.'
+    },
+    dreadnaught: {
+      id: 'dreadnaught',
+      name: 'Dreadnaught',
+      element: 'metal',
+      stars: 2,
+      maxHp: 160,
+      cardImg: 'Cards/Dreadnaught_Card.png',
+      spriteBase: 'Sprites/Dreadnaught/Dreadnaught',
+      sprites: {
+        idle: 'Sprites/Dreadnaught/Dreadnaught_idle_down_256x256.png',
+        idle_down: 'Sprites/Dreadnaught/Dreadnaught_idle_down_256x256.png',
+        idle_up: 'Sprites/Dreadnaught/Dreadnaught_idle_up_256x256.png',
+        idle_left: 'Sprites/Dreadnaught/Dreadnaught_idle_left_256x256.png',
+        idle_right: 'Sprites/Dreadnaught/Dreadnaught_idle_right_256x256.png',
+        walk: 'Sprites/Dreadnaught/Dreadnaught_walk_down_256x256.png',
+        walk_down: 'Sprites/Dreadnaught/Dreadnaught_walk_down_256x256.png',
+        walk_up: 'Sprites/Dreadnaught/Dreadnaught_walk_up_256x256.png',
+        walk_left: 'Sprites/Dreadnaught/Dreadnaught_walk_left_256x256.png',
+        walk_right: 'Sprites/Dreadnaught/Dreadnaught_walk_right_256x256.png',
+        attack: 'Sprites/Dreadnaught/Dreadnaught_attack_magma_fist_256x256.png',
+        attack_down: 'Sprites/Dreadnaught/Dreadnaught_attack_magma_fist_256x256.png',
+        attack_up: 'Sprites/Dreadnaught/Dreadnaught_attack_up_256x256.png',
+        attack_left: 'Sprites/Dreadnaught/Dreadnaught_attack_left_256x256.png',
+        attack_right: 'Sprites/Dreadnaught/Dreadnaught_attack_right_256x256.png',
+        attack_aoe: 'Sprites/Dreadnaught/Dreadnaught_attack_magma_fist_256x256.png',
+        fortress: 'Sprites/Dreadnaught/Dreadnaught_defend_down_256x256.png',
+        defend: 'Sprites/Dreadnaught/Dreadnaught_defend_down_256x256.png',
+        defend_down: 'Sprites/Dreadnaught/Dreadnaught_defend_down_256x256.png',
+        defend_left: 'Sprites/Dreadnaught/Dreadnaught_hurt_256x256.png',
+        defend_right: 'Sprites/Dreadnaught/Dreadnaught_defend_up_256x256.png',
+        hurt: 'Sprites/Dreadnaught/Dreadnaught_hurt_256x256.png',
+        defeated: 'Sprites/Dreadnaught/Dreadnaught_defeated_256x256.png'
+      },
+      baseMove: 2,
+      skills: {
+        atk1: { name: 'Magma Fist', range: 1, dmg: 25, type: 'target_magma', desc: 'Deals 25 damage (35 with Burning Heart) and leaves a permanent boiling pool of magma. Non-Fire beasts in magma take 10 damage each turn.' },
+        atk2: { name: 'Fortress', range: 1, type: 'fortress_guard', cooldown: 4, desc: 'Dreadnaught intercepts all damage for an ally within 3x3 for 1 turn (4t cd). With Burning Heart, targets self.' },
+        ability: { name: 'Burning Heart', range: 0, type: 'passive', desc: 'If all allies are defeated, Magma Fist deals 35 damage and Dreadnaught can use Fortress on itself.' }
+      },
+      passiveHint: 'Ability: Burning Heart — If all allies are defeated, Magma Fist deals 35 damage and Dreadnaught can Fortress itself.'
     }
   };
 
@@ -253,13 +333,45 @@
   window.BEAST_TEMPLATES = BEAST_TEMPLATES;
 
   // ---------------------------------------------------------------------------
+  // Tactical Maps Registry
+  // ---------------------------------------------------------------------------
+  const MAP_TEMPLATES = {
+    standard_10x8: {
+      id: 'standard_10x8',
+      name: 'Mythos Valley (3v3)',
+      cols: 10,
+      rows: 8,
+      aspectRatio: '10 / 8',
+      aspectMultiplier: 1.25,
+      bgImg: 'Game_Board_Playable_Grid_2560x2048.png',
+      teamSize: 3,
+      cssClass: 'map-standard',
+      spawnRows: [2, 3, 4]
+    },
+    Base2v2: {
+      id: 'Base2v2',
+      name: 'Base2v2 (2v2)',
+      cols: 6,
+      rows: 6,
+      aspectRatio: '1 / 1',
+      aspectMultiplier: 1.0,
+      bgImg: 'Base2v2.png',
+      teamSize: 2,
+      cssClass: 'map-base2v2',
+      spawnRows: [2, 3]
+    }
+  };
+  window.MAP_TEMPLATES = MAP_TEMPLATES;
+
+  // ---------------------------------------------------------------------------
   // Game State Engine
   // ---------------------------------------------------------------------------
   class BeastsGame {
     constructor() {
-      this.VERSION = '1.41';
-      this.COLS = 10;
-      this.ROWS = 8;
+      this.VERSION = '1.42';
+      this.currentMap = MAP_TEMPLATES.standard_10x8;
+      this.COLS = this.currentMap.cols;
+      this.ROWS = this.currentMap.rows;
       this.round = 1;
       this.currentTeam = 1; // 1 = Solar (Player), 2 = Lunar (AI or Hotseat)
       this.mode = 'ai'; // 'ai' or 'hotseat'
@@ -289,19 +401,45 @@
       // Start in the Open-World Courtyard by default
       this.currentView = 'overworld'; // 'overworld' | 'arena'
       if (window.MythosOverworld) {
-        this.overworld = new window.MythosOverworld((challenger) => {
-          this.enterMythosArena(challenger);
+        this.overworld = new window.MythosOverworld((challenger, mapId = 'standard_10x8', customPlayerTeam = null) => {
+          this.enterMythosArena(challenger, mapId, customPlayerTeam);
         });
       } else {
         this.enterMythosArena();
       }
     }
 
+    // Switch between Arena Maps (Standard 10x8 or Base2v2 6x6)
+    setMap(mapId = 'standard_10x8') {
+      const mapData = MAP_TEMPLATES[mapId] || MAP_TEMPLATES.standard_10x8;
+      this.currentMap = mapData;
+      this.COLS = mapData.cols;
+      this.ROWS = mapData.rows;
+
+      const boardGrid = document.getElementById('board-grid');
+      if (boardGrid) {
+        boardGrid.className = `board-grid ${mapData.cssClass}`;
+        boardGrid.style.setProperty('--board-cols', mapData.cols);
+        boardGrid.style.setProperty('--board-rows', mapData.rows);
+        boardGrid.style.setProperty('--board-aspect', mapData.aspectRatio);
+        boardGrid.style.setProperty('--board-aspect-multiplier', mapData.aspectMultiplier);
+        const bgImg = boardGrid.querySelector('.board-bg');
+        if (bgImg) {
+          bgImg.src = mapData.bgImg;
+          bgImg.alt = mapData.name;
+        }
+      }
+
+      this.initBoard();
+    }
+
     // Switch from Overworld into the Mythos Tabletop Minigame
-    enterMythosArena(challenger = null) {
+    enterMythosArena(challenger = null, mapId = 'standard_10x8', customPlayerTeam = null, customOpponentTeam = null) {
       this.currentView = 'arena';
       this.currentChallenger = challenger;
       if (this.overworld) this.overworld.active = false;
+
+      this.setMap(mapId);
 
       document.getElementById('overworld-view')?.classList.add('hidden');
       document.getElementById('overworld-toolbar')?.classList.add('hidden');
@@ -309,11 +447,67 @@
       document.getElementById('arena-turn-tracker')?.classList.remove('hidden');
       document.querySelectorAll('.arena-only-ctrl').forEach(el => el.classList.remove('hidden'));
 
+      const is2v2 = mapId === 'Base2v2';
       const sub = document.getElementById('header-subtitle');
-      if (sub) sub.textContent = challenger ? `Tabletop Duel vs. ${challenger.name}` : 'Tactical Tabletop Arena';
+      if (sub) {
+        if (challenger?.id === 'pluto') {
+          sub.textContent = is2v2 
+            ? 'Tabletop 2v2 vs. Pluto ($1.00 Wager Match on Base2v2)'
+            : 'Tabletop Duel vs. Pluto ($1.00 Wager Match)';
+        } else if (challenger) {
+          sub.textContent = is2v2
+            ? `Tabletop 2v2 vs. ${challenger.name} (Base2v2)`
+            : `Tabletop Duel vs. ${challenger.name}`;
+        } else {
+          sub.textContent = is2v2 ? 'Base2v2 Tactical 2v2 Arena' : 'Tactical Tabletop Arena';
+        }
+      }
 
       const switchBtn = document.getElementById('btn-switch-view');
       if (switchBtn) switchBtn.innerHTML = '🗺️ Return to World';
+
+      if (is2v2) {
+        // Fast 2v2 Match on Base2v2
+        let playerTeam = (customPlayerTeam && customPlayerTeam.length >= 2)
+          ? customPlayerTeam.slice(0, 2)
+          : null;
+
+        if (!playerTeam) {
+          // Fallback to cards in inventory or binder
+          const invCards = (this.overworld?.inventory || [])
+            .filter(i => i.type === 'mythos_card' && (i.beastId || i.id.startsWith('card_')))
+            .map(i => i.beastId || i.id.replace('card_', ''))
+            .filter(id => BEAST_TEMPLATES[id]);
+
+          const binderCards = (this.overworld?.binderSlots || [])
+            .filter(c => c && (c.beastId || (c.id && c.id.startsWith('card_'))))
+            .map(c => c.beastId || c.id.replace('card_', ''))
+            .filter(id => BEAST_TEMPLATES[id]);
+
+          const allPlayerBeasts = Array.from(new Set([...invCards, ...binderCards]));
+          playerTeam = allPlayerBeasts.length >= 2 ? allPlayerBeasts.slice(0, 2) : ['phoenix', 'earth_golem'];
+        }
+
+        const remainingPool = ['phoenix', 'earth_golem', 'werewolf', 'hydra', 'terra_mother', 'verdant_guardian', 'dwarf_warden', 'pegasus']
+          .filter(id => !playerTeam.includes(id));
+        const opponentTeam = (customOpponentTeam && customOpponentTeam.length >= 2)
+          ? customOpponentTeam.slice(0, 2)
+          : (remainingPool.length >= 2 ? remainingPool.slice(0, 2) : ['werewolf', 'hydra']);
+
+        this.draftState.active = false;
+        this.draftState.team1Picks = playerTeam;
+        this.draftState.team2Picks = opponentTeam;
+        this.finalizeDraftAndStartMatch();
+
+        const pNames = playerTeam.map(id => BEAST_TEMPLATES[id]?.name || id).join(' & ');
+        const oNames = opponentTeam.map(id => BEAST_TEMPLATES[id]?.name || id).join(' & ');
+        if (challenger?.id === 'pluto') {
+          this.log(`🃏 Pluto accepted your $1.00 wager on Base2v2! [${pNames}] vs [${oNames}]! Win: +$1.00, Lose: -$1.00!`, 'system');
+        } else {
+          this.log(`🏟️ Base2v2 match begun! Solar Team [${pNames}] vs Lunar Team [${oNames}].`, 'system');
+        }
+        return;
+      }
 
       // If challenged by Mike or AJ after opening your booster pack, use the 3 cards you pulled in your inventory or binder!
       const invCards = (this.overworld?.inventory || [])
@@ -330,15 +524,19 @@
 
       if (challenger && allPlayerBeasts.length >= 3) {
         const playerTeam = allPlayerBeasts.slice(0, 3);
-        const remainingPool = ['phoenix', 'earth_golem', 'werewolf', 'hydra', 'terra_mother', 'verdant_guardian', 'dwarf_warden']
+        const remainingPool = ['phoenix', 'earth_golem', 'werewolf', 'hydra', 'terra_mother', 'verdant_guardian', 'dwarf_warden', 'pegasus']
           .filter(id => !playerTeam.includes(id));
-        const friendTeam = remainingPool.length === 3 ? remainingPool : ['werewolf', 'hydra', 'earth_golem'];
+        const opponentTeam = remainingPool.length >= 3 ? remainingPool.slice(0, 3) : ['werewolf', 'hydra', 'earth_golem'];
 
         this.draftState.active = false;
         this.draftState.team1Picks = playerTeam;
-        this.draftState.team2Picks = friendTeam;
+        this.draftState.team2Picks = opponentTeam;
         this.finalizeDraftAndStartMatch();
-        this.log(`🃏 ${challenger.name} challenged you at ${challenger.name}'s House using the 3 cards from your Booster Packs!`, 'system');
+        if (challenger.id === 'pluto') {
+          this.log(`🃏 Pluto accepted your $1.00 wager match at Pluto's House! Win: +$1.00, Lose: -$1.00!`, 'system');
+        } else {
+          this.log(`🃏 ${challenger.name} challenged you at ${challenger.name}'s House using the 3 cards from your Booster Packs!`, 'system');
+        }
       } else {
         this.openDraftModal();
       }
@@ -386,22 +584,20 @@
       }
     }
 
-    // Spawn 6 beasts (3 for each team) from draft picks
-    initUnits(team1Picks = ['phoenix', 'earth_golem', 'hydra'], team2Picks = ['werewolf', 'hydra', 'earth_golem']) {
-      // 3 selections for each team:
-      // Player's team (Team 1) starts on the left column (X = 0) in central tiles (Y = 2, 3, 4)
-      // Hostile team (Team 2) starts on the far right column (X = 9) in central tiles (Y = 2, 3, 4)
-      const centralRows = [2, 3, 4];
+    // Spawn beasts (2v2 or 3v3) from draft picks or selection
+    initUnits(team1Picks = ['phoenix', 'earth_golem'], team2Picks = ['werewolf', 'hydra']) {
+      const spawnRows = this.currentMap?.spawnRows || (this.ROWS === 6 ? [2, 3] : [2, 3, 4]);
+      const enemySpawnX = this.COLS - 1;
       this.units = [];
 
       team1Picks.forEach((tmplId, idx) => {
-        const y = centralRows[idx] !== undefined ? centralRows[idx] : 2 + idx;
+        const y = spawnRows[idx] !== undefined ? spawnRows[idx] : Math.min(this.ROWS - 1, 1 + idx);
         this.units.push(this.createUnitInstance(tmplId, 1, 0, y));
       });
 
       team2Picks.forEach((tmplId, idx) => {
-        const y = centralRows[idx] !== undefined ? centralRows[idx] : 2 + idx;
-        this.units.push(this.createUnitInstance(tmplId, 2, 9, y));
+        const y = spawnRows[idx] !== undefined ? spawnRows[idx] : Math.min(this.ROWS - 1, 1 + idx);
+        this.units.push(this.createUnitInstance(tmplId, 2, enemySpawnX, y));
       });
     }
 
@@ -427,7 +623,10 @@
           poisoned: 0,
           tookDamageLastTurn: false,
           bullwark: false,
-          bullwarkCooldown: 0
+          bullwarkCooldown: 0,
+          fortressCooldown: 0,
+          fortressSelf: false,
+          guardedByDreadnaught: null
         }
       };
     }
@@ -451,7 +650,9 @@
       document.getElementById('btn-atk2').addEventListener('click', () => {
         const u = this.selectedUnit;
         if (!u || this.isSkillPassive(u.skills.atk2)) return;
-        if (u.skills.atk2.type === 'counter_stance' || u.skills.atk2.type === 'self_move' || u.skills.atk2.type === 'aoe_hazard' || u.skills.atk2.type === 'bullwark_stance') {
+        const isSelfTargeting = u.skills.atk2.type === 'counter_stance' || u.skills.atk2.type === 'self_move' || u.skills.atk2.type === 'aoe_hazard' || u.skills.atk2.type === 'bullwark_stance' || u.skills.atk2.type === 'inspire';
+        const isLoneFortress = u.skills.atk2.type === 'fortress_guard' && this.units.filter(a => a.team === u.team && a.hp > 0 && a !== u).length === 0;
+        if (isSelfTargeting || isLoneFortress) {
           this.attemptAttack(u, 'atk2', u.x, u.y);
         } else {
           this.setActionMode('atk2');
@@ -561,7 +762,9 @@
         } else if (e.key === '3') {
           const u = this.selectedUnit;
           if (u && !this.isSkillPassive(u.skills.atk2)) {
-            if (u.skills.atk2.type === 'counter_stance' || u.skills.atk2.type === 'self_move' || u.skills.atk2.type === 'aoe_hazard' || u.skills.atk2.type === 'bullwark_stance') {
+            const isSelfTargeting = u.skills.atk2.type === 'counter_stance' || u.skills.atk2.type === 'self_move' || u.skills.atk2.type === 'aoe_hazard' || u.skills.atk2.type === 'bullwark_stance' || u.skills.atk2.type === 'inspire';
+            const isLoneFortress = u.skills.atk2.type === 'fortress_guard' && this.units.filter(a => a.team === u.team && a.hp > 0 && a !== u).length === 0;
+            if (isSelfTargeting || isLoneFortress) {
               this.attemptAttack(u, 'atk2', u.x, u.y);
             } else {
               this.setActionMode('atk2');
@@ -687,6 +890,20 @@
       if (unit.id === 'dwarf_warden' && this.round > 10) {
         buffContainer.innerHTML += `<span class="buff-badge buff">💪 Endurance (50% Dmg Reduction)</span>`;
       }
+      if (unit.status.fortressSelf) {
+        buffContainer.innerHTML += `<span class="buff-badge buff">🛡️ Fortress Self (Active)</span>`;
+      } else if (unit.status.fortressCooldown > 0) {
+        buffContainer.innerHTML += `<span class="buff-badge debuff">⏳ Fortress (${unit.status.fortressCooldown}t cd)</span>`;
+      }
+      if (unit.status.guardedByDreadnaught) {
+        buffContainer.innerHTML += `<span class="buff-badge buff">🛡️ Fortress Guarded</span>`;
+      }
+      if (unit.id === 'dreadnaught') {
+        const livingAllies = this.units.filter(a => a.team === unit.team && a.hp > 0 && a !== unit);
+        if (livingAllies.length === 0) {
+          buffContainer.innerHTML += `<span class="buff-badge buff">🔥 Burning Heart (35 Dmg Fist + Self Fortress)</span>`;
+        }
+      }
       if (buffContainer.innerHTML === '') {
         buffContainer.innerHTML = '<span style="font-size: 11px; color: var(--text-muted);">No active effects</span>';
       }
@@ -747,6 +964,16 @@
         } else if (u.status.bullwark) {
           btnAtk2.disabled = true;
           btnAtk2.title = 'Bullwark is currently active';
+        }
+      }
+
+      if (u && u.id === 'dreadnaught') {
+        if (u.status.fortressCooldown > 0) {
+          btnAtk2.disabled = true;
+          btnAtk2.title = `Fortress on cooldown (${u.status.fortressCooldown} turns remaining)`;
+        } else if (u.status.fortressSelf) {
+          btnAtk2.disabled = true;
+          btnAtk2.title = 'Fortress Self is currently active';
         }
       }
 
@@ -897,6 +1124,17 @@
             this.log(`${unit.name} stepped into fire taking 10 flame damage!`, 'attack');
           }
 
+          // Check if landed on Magma Tile ("Any creature in that magma not of fire type receives 10 damage each turn")
+          if (hazardHere && hazardHere.type === 'magma' && unit.element !== 'fire') {
+            unit.hp = Math.max(0, unit.hp - 10);
+            if (window.sounds?.playFire) window.sounds.playFire();
+            this.spawnFloatingText(unit.x, unit.y, '-10 MAGMA', 'damage');
+            this.log(`🌋 ${unit.name} stepped into boiling magma taking 10 heat damage!`, 'attack');
+            if (unit.hp <= 0) {
+              this.handleUnitDefeat(unit);
+            }
+          }
+
           // Check if landed on Thorns Tile (Thorn of Life)
           if (hazardHere && hazardHere.type === 'thorns' && unit.element !== 'earth') {
             unit.hp = Math.max(0, unit.hp - 15);
@@ -992,7 +1230,13 @@
       while (queue.length > 0) {
         const { x, y, dist } = queue.shift();
         if (dist > 0) {
-          moves.push({ x, y });
+          const unitObstacle = this.getUnitAt(x, y);
+          const hazard = this.getHazardAt(x, y);
+          const isBlockedByBarrier = hazard && hazard.type === 'rock_barrier' && unit.element !== 'earth';
+          // Can only land on a free, unobstructed tile
+          if (!unitObstacle && !isBlockedByBarrier) {
+            moves.push({ x, y });
+          }
         }
 
         if (dist < unit.movesLeft) {
@@ -1006,14 +1250,14 @@
               const key = `${n.x},${n.y}`;
               if (!visited.has(key)) {
                 visited.add(key);
-                // Check obstacle collision
                 const unitObstacle = this.getUnitAt(n.x, n.y);
                 const hazard = this.getHazardAt(n.x, n.y);
-
-                // Rock Barrier blocks movement for non-Earth types!
                 const isBlockedByBarrier = hazard && hazard.type === 'rock_barrier' && unit.element !== 'earth';
 
-                if (!unitObstacle && !isBlockedByBarrier) {
+                // Pegasus Ability: Soar — can pass over tiles with blocks or beasts as long as landing on a free tile
+                if (unit.id === 'pegasus') {
+                  queue.push({ x: n.x, y: n.y, dist: dist + 1 });
+                } else if (!unitObstacle && !isBlockedByBarrier) {
                   queue.push({ x: n.x, y: n.y, dist: dist + 1 });
                 }
               }
@@ -1050,8 +1294,9 @@
               const hazard = this.getHazardAt(n.x, n.y);
               const isBlockedByBarrier = hazard && hazard.type === 'rock_barrier' && unit.element !== 'earth';
 
-              // Can only walk onto target if it's empty, and path cannot cross obstacles
-              if ((!unitObstacle || (n.x === targetX && n.y === targetY)) && !isBlockedByBarrier) {
+              // Pegasus Ability: Soar — flies freely over obstacles/blocks en route to destination
+              const canPass = (unit.id === 'pegasus') || ((!unitObstacle || (n.x === targetX && n.y === targetY)) && !isBlockedByBarrier);
+              if (canPass) {
                 queue.push([...path, n]);
               }
             }
@@ -1243,6 +1488,100 @@
         return;
       }
 
+      // Special Pegasus Move 2: INSPIRE (Gives up Pegasus's movement to extend all allies' movement by 2 tiles)
+      if (skill.type === 'inspire' || (unit.id === 'pegasus' && skillKey === 'atk2')) {
+        unit.animState = 'attack_aoe';
+        if (window.sounds?.playHowl) window.sounds.playHowl();
+        else window.sounds.playMove();
+
+        unit.movesLeft = 0;
+        const allies = this.units.filter(u => u.team === unit.team && u.hp > 0 && u !== unit);
+        allies.forEach(ally => {
+          ally.movesLeft += 2;
+          this.spawnFloatingText(ally.x, ally.y, '+2 MOVE (INSPIRED)', 'status');
+          this.log(`✨ ${ally.name} gained +2 Movement from Pegasus's Inspire! (${ally.movesLeft} moves ready)`, 'system');
+        });
+
+        this.spawnFloatingText(unit.x, unit.y, 'INSPIRE!', 'status');
+        this.log(`✨ ${unit.name} used Inspire! Sacrificed remaining movement to extend ${allies.length} allies' movement by +2 tiles.`, 'attack');
+        unit.hasActed = true;
+        this.finishAction(unit);
+        return;
+      }
+
+      // Special Dreadnaught Move 2: FORTRESS ("Blocks for an ally within 3x3. Dreadnaught receives damage. 4t cooldown.")
+      if (skill.type === 'fortress_guard' || (unit.id === 'dreadnaught' && skillKey === 'atk2')) {
+        if (unit.status.fortressCooldown > 0) {
+          this.spawnFloatingText(unit.x, unit.y, `COOLDOWN (${unit.status.fortressCooldown}t)`, 'status');
+          return;
+        }
+
+        const livingAllies = this.units.filter(u => u.team === unit.team && u.hp > 0 && u !== unit);
+        if (livingAllies.length === 0 && targetX === unit.x && targetY === unit.y) {
+          // Burning Heart: Can use Fortress on self!
+          unit.status.fortressSelf = true;
+          unit.status.fortressCooldown = skill.cooldown || 4;
+          unit.animState = 'fortress';
+          unit.hasActed = true;
+          if (window.sounds?.playRock) window.sounds.playRock();
+          this.spawnFloatingText(unit.x, unit.y, 'FORTRESS LOCKDOWN!', 'status');
+          this.log(`🛡️ Burning Heart: Lone Dreadnaught fortifies itself, deflecting incoming attacks this round! (4-turn cooldown)`, 'barrier');
+          this.finishAction(unit);
+          return;
+        }
+
+        const allyTarget = this.getUnitAt(targetX, targetY);
+        if (allyTarget && allyTarget.team === unit.team && allyTarget !== unit) {
+          allyTarget.status.guardedByDreadnaught = unit.instanceId;
+          unit.status.fortressCooldown = skill.cooldown || 4;
+          unit.animState = 'fortress';
+          unit.hasActed = true;
+          if (window.sounds?.playRock) window.sounds.playRock();
+          this.spawnFloatingText(allyTarget.x, allyTarget.y, 'FORTRESS GUARDED', 'status');
+          this.spawnFloatingText(unit.x, unit.y, 'INTERCEPTING FOR ' + allyTarget.name.toUpperCase(), 'status');
+          this.log(`🛡️ Fortress: Dreadnaught establishes guard over ${allyTarget.name}! Dreadnaught will intercept all damage dealt to ${allyTarget.name} for 1 turn (4-turn cooldown).`, 'barrier');
+          this.finishAction(unit);
+          return;
+        }
+        return;
+      }
+
+      // Special Dreadnaught Move 1: MAGMA FIST ("25 damage, creates a permanent pool of magma. If all allies defeated, 35 damage.")
+      if (skill.type === 'target_magma' || (unit.id === 'dreadnaught' && skillKey === 'atk1')) {
+        const targetUnit = this.getUnitAt(targetX, targetY);
+        if (!targetUnit || targetUnit.team === unit.team) return;
+
+        const livingAllies = this.units.filter(u => u.team === unit.team && u.hp > 0 && u !== unit);
+        const isBurningHeart = livingAllies.length === 0;
+        let damage = isBurningHeart ? 35 : (skill.dmg || 25);
+
+        if (unit.status.howlBuff > 0) {
+          damage += 10;
+          this.log(`🐺 Howl boost amplified Magma Fist by +10!`, 'system');
+        }
+
+        if (targetX > unit.x) unit.facing = 'right';
+        else if (targetX < unit.x) unit.facing = 'left';
+        else if (targetY > unit.y) unit.facing = 'down';
+        else if (targetY < unit.y) unit.facing = 'up';
+
+        unit.animState = 'attack_magma_fist';
+        targetUnit.animState = 'hurt';
+        if (window.sounds?.playFire) window.sounds.playFire();
+        if (window.sounds?.playHit) window.sounds.playHit();
+
+        this.dealDamage(targetUnit, damage, `${unit.name} (Magma Fist)`, unit);
+
+        // Spawn permanent pool of magma on the tile
+        this.addHazard(targetX, targetY, 'magma', Infinity);
+        this.spawnFloatingText(targetX, targetY, 'MAGMA POOL', 'status');
+        this.log(`🌋 ${unit.name} strikes with Magma Fist dealing ${damage} damage${isBurningHeart ? ' (Burning Heart Boost!)' : ''} and creates a permanent pool of boiling Magma!`, 'attack');
+
+        unit.hasActed = true;
+        this.finishAction(unit);
+        return;
+      }
+
       const targetUnit = this.getUnitAt(targetX, targetY);
       if (!targetUnit || targetUnit.team === unit.team) return;
 
@@ -1368,6 +1707,36 @@
     }
 
     dealDamage(target, amount, sourceName, attacker = null) {
+      // Dreadnaught Fortress Self (Burning Heart Lone Survivor Shield)
+      if (target.id === 'dreadnaught' && target.status.fortressSelf) {
+        if (window.sounds?.playRock) window.sounds.playRock();
+        target.animState = 'fortress';
+        this.spawnFloatingText(target.x, target.y, 'FORTRESS DEFLECTED!', 'status');
+        this.log(`🛡️ Fortress! Lone Dreadnaught completely deflected incoming ${amount} damage from ${sourceName}!`, 'barrier');
+        this.renderUnits();
+        this.updateCardDossier(target);
+        setTimeout(() => {
+          if (target.hp > 0 && target.animState === 'fortress') {
+            target.animState = 'idle';
+            this.renderUnits();
+          }
+        }, 600);
+        return;
+      }
+
+      // Dreadnaught Fortress Interception ("Dreadnaught receives any damage that would be taken by that ally for a turn")
+      if (target.status.guardedByDreadnaught) {
+        const dread = this.units.find(u => u.instanceId === target.status.guardedByDreadnaught && u.hp > 0);
+        if (dread) {
+          this.spawnFloatingText(target.x, target.y, 'INTERCEPTED!', 'status');
+          this.log(`🛡️ Fortress: Dreadnaught intercepts and absorbs ${amount} damage meant for ${target.name}!`, 'barrier');
+          this.dealDamage(dread, amount, `${sourceName} (Intercepted for ${target.name})`, attacker);
+          return;
+        } else {
+          target.status.guardedByDreadnaught = null;
+        }
+      }
+
       // Dwarf Warden Bullwark: Fully negate an incoming attack!
       if (target.id === 'dwarf_warden' && target.status.bullwark) {
         target.status.bullwark = false;
@@ -1487,6 +1856,31 @@
     getValidAttackTargets(unit, skill) {
       if (skill.range === 0 || skill.type === 'counter_stance' || skill.type === 'self_move' || skill.type === 'passive' || skill.type === 'aoe_hazard' || skill.type === 'bullwark_stance') {
         return [{ x: unit.x, y: unit.y }];
+      }
+
+      // Fortress (Dreadnaught Move 2: Blocks for ally within 3x3 range centered on itself, or self if lone survivor)
+      if (skill.type === 'fortress_guard') {
+        if (unit.status.fortressCooldown > 0) return [];
+        const livingAllies = this.units.filter(u => u.team === unit.team && u.hp > 0 && u !== unit);
+        if (livingAllies.length === 0) {
+          // Burning Heart: lone survivor can Fortress self!
+          return [{ x: unit.x, y: unit.y }];
+        }
+        const targets = [];
+        for (let dx = -1; dx <= 1; dx++) {
+          for (let dy = -1; dy <= 1; dy++) {
+            if (dx === 0 && dy === 0) continue;
+            const tx = unit.x + dx;
+            const ty = unit.y + dy;
+            if (tx >= 0 && tx < this.COLS && ty >= 0 && ty < this.ROWS) {
+              const uAt = this.getUnitAt(tx, ty);
+              if (uAt && uAt.team === unit.team && uAt.hp > 0) {
+                targets.push({ x: tx, y: ty });
+              }
+            }
+          }
+        }
+        return targets;
       }
 
       // Hammer Throw (Dwarf Warden Move 1): Straight-line piercing attack in 4 cardinal directions
@@ -1672,6 +2066,36 @@
           u.status.bullwarkCooldown--;
           if (u.status.bullwarkCooldown === 0) {
             this.log(`🛡️ Bullwark is ready to use again for ${u.name}!`, 'system');
+          }
+        }
+
+        // Dreadnaught Magma Hazard Check at start of turn ("Any creature in that magma not of fire type receives 10 damage each turn")
+        if (hazardHere && hazardHere.type === 'magma' && u.element !== 'fire' && u.hp > 0) {
+          u.hp = Math.max(0, u.hp - 10);
+          if (window.sounds?.playFire) window.sounds.playFire();
+          this.spawnFloatingText(u.x, u.y, '-10 MAGMA', 'damage');
+          this.log(`🌋 ${u.name} starts turn standing in boiling magma taking 10 heat damage! (${u.hp}/${u.maxHp} HP)`, 'attack');
+          if (u.hp <= 0) {
+            this.handleUnitDefeat(u);
+          }
+        }
+
+        // Decrement Fortress Cooldown for Dreadnaught
+        if (u.status.fortressCooldown > 0) {
+          u.status.fortressCooldown--;
+          if (u.status.fortressCooldown === 0) {
+            this.log(`🛡️ Fortress is ready to use again for ${u.name}!`, 'system');
+          }
+        }
+
+        // Clear fortressSelf at start of its turn
+        u.status.fortressSelf = false;
+
+        // Clear guardedByDreadnaught if the protecting Dreadnaught is defeated or has started its new turn
+        if (u.status.guardedByDreadnaught) {
+          const dread = this.units.find(d => d.instanceId === u.status.guardedByDreadnaught && d.hp > 0);
+          if (!dread || dread.team === this.currentTeam) {
+            u.status.guardedByDreadnaught = null;
           }
         }
 
@@ -1875,6 +2299,39 @@
           this.attemptAttack(u, 'atk2', u.x, u.y);
         }
       }
+      // Pegasus: Trample (30 Dmg) if in range 1, or Inspire if allies can benefit
+      else if (u.id === 'pegasus') {
+        if (dist <= 1) {
+          this.attemptAttack(u, 'atk1', nearest.x, nearest.y);
+        } else {
+          const allies = this.units.filter(ally => ally.team === u.team && ally.hp > 0 && ally !== u);
+          if (allies.length > 0) {
+            this.attemptAttack(u, 'atk2', u.x, u.y);
+          }
+        }
+      }
+      // Dreadnaught: Magma Fist (25/35 Dmg + Magma pool) or Fortress
+      else if (u.id === 'dreadnaught') {
+        const livingAllies = this.units.filter(a => a.team === u.team && a.hp > 0 && a !== u);
+        if (u.status.fortressCooldown === 0) {
+          if (livingAllies.length === 0) {
+            // Burning Heart: lone survivor locks down with Fortress on self
+            this.attemptAttack(u, 'atk2', u.x, u.y);
+            return;
+          } else {
+            // Find ally within 3x3 to protect
+            const alliesInRange = livingAllies.filter(a => Math.abs(a.x - u.x) <= 1 && Math.abs(a.y - u.y) <= 1);
+            if (alliesInRange.length > 0) {
+              alliesInRange.sort((a, b) => a.hp - b.hp);
+              this.attemptAttack(u, 'atk2', alliesInRange[0].x, alliesInRange[0].y);
+              return;
+            }
+          }
+        }
+        if (dist <= (u.skills.atk1.range || 1)) {
+          this.attemptAttack(u, 'atk1', nearest.x, nearest.y);
+        }
+      }
       // Standard Skill 1 if in range
       else if (dist <= (u.skills.atk1.range || 1)) {
         this.attemptAttack(u, 'atk1', nearest.x, nearest.y);
@@ -1895,7 +2352,31 @@
         document.getElementById('winner-crest').textContent = crest;
         document.getElementById('winner-title').textContent = `${winner.toUpperCase()} VICTORIOUS!`;
 
-        if (isPlayerVictory && this.currentChallenger) {
+        if (this.currentChallenger && this.currentChallenger.id === 'pluto') {
+          if (isPlayerVictory) {
+            document.getElementById('winner-message').innerHTML = `
+              All of <b>Pluto's</b> mythical beasts were defeated in Round ${this.round}!<br>
+              <div style="margin-top: 14px; padding: 12px 16px; background: rgba(34, 197, 94, 0.22); border: 2px solid #22c55e; border-radius: 12px; color: #86efac; text-align: center;">
+                💵 <b>+$1.00 WON FROM PLUTO!</b><br>
+                <span style="font-size: 13px; color: #f8fafc;">Pluto: "Well played! You won the wager fair and square — here is your $1.00!"</span>
+              </div>
+            `;
+            if (this.overworld) {
+              this.overworld.handlePlutoBattleResult(true);
+            }
+          } else {
+            document.getElementById('winner-message').innerHTML = `
+              <b>Pluto</b> defeated your team in Round ${this.round}!<br>
+              <div style="margin-top: 14px; padding: 12px 16px; background: rgba(239, 68, 68, 0.22); border: 2px solid #ef4444; border-radius: 12px; color: #fca5a5; text-align: center;">
+                💸 <b>-$1.00 LOST TO PLUTO!</b><br>
+                <span style="font-size: 13px; color: #f8fafc;">Pluto: "Good game! That's $1.00 for the winner! Return to my house for a rematch whenever you're ready."</span>
+              </div>
+            `;
+            if (this.overworld) {
+              this.overworld.handlePlutoBattleResult(false);
+            }
+          }
+        } else if (isPlayerVictory && this.currentChallenger) {
           const fName = this.currentChallenger.name || 'Your Friend';
           document.getElementById('winner-message').innerHTML = `
             All of <b>${fName}'s</b> mythical beasts were defeated in Round ${this.round}!<br>
@@ -1918,17 +2399,25 @@
 
     resetMatch() {
       this.elWinnerModal.classList.add('hidden');
-      this.openDraftModal();
+      if (this.currentMap && this.currentMap.id === 'Base2v2') {
+        if (this.overworld) {
+          this.overworld.open2v2BeastSelect(this.currentChallenger);
+        } else {
+          this.enterMythosArena(this.currentChallenger, 'Base2v2');
+        }
+      } else {
+        this.openDraftModal();
+      }
     }
 
     // -------------------------------------------------------------------------
     // Mythical Beast Draft System (3 Selections Per Team)
     // -------------------------------------------------------------------------
     initDraft() {
-      this.draftPoolTemplates = ['phoenix', 'earth_golem', 'werewolf', 'hydra', 'terra_mother', 'verdant_guardian', 'dwarf_warden'];
+      this.draftPoolTemplates = ['phoenix', 'earth_golem', 'werewolf', 'hydra', 'terra_mother', 'verdant_guardian', 'dwarf_warden', 'pegasus', 'dreadnaught'];
       this.draftState = {
         active: false,
-        poolStock: { phoenix: 1, earth_golem: 1, werewolf: 1, hydra: 1, terra_mother: 1, verdant_guardian: 1, dwarf_warden: 1 },
+        poolStock: { phoenix: 1, earth_golem: 1, werewolf: 1, hydra: 1, terra_mother: 1, verdant_guardian: 1, dwarf_warden: 1, pegasus: 1, dreadnaught: 1 },
         team1Picks: [],
         team2Picks: [],
         turnOrder: [],
@@ -1955,7 +2444,7 @@
 
       this.draftState = {
         active: true,
-        poolStock: { phoenix: 1, earth_golem: 1, werewolf: 1, hydra: 1, terra_mother: 1, verdant_guardian: 1, dwarf_warden: 1 },
+        poolStock: { phoenix: 1, earth_golem: 1, werewolf: 1, hydra: 1, terra_mother: 1, verdant_guardian: 1, dwarf_warden: 1, pegasus: 1, dreadnaught: 1 },
         team1Picks: [],
         team2Picks: [],
         turnOrder: turnOrder,
@@ -2158,14 +2647,19 @@
       document.getElementById('team1-badge').classList.add('active');
       document.getElementById('team2-badge').classList.remove('active');
 
-      const team1Picks = this.draftState.team1Picks.length === 3 ? this.draftState.team1Picks : ['phoenix', 'earth_golem', 'hydra'];
-      const team2Picks = this.draftState.team2Picks.length === 3 ? this.draftState.team2Picks : ['werewolf', 'hydra', 'earth_golem'];
+      const is2v2 = this.currentMap && this.currentMap.teamSize === 2;
+      const expectedTeamSize = is2v2 ? 2 : 3;
+      const fallbackT1 = is2v2 ? ['phoenix', 'earth_golem'] : ['phoenix', 'earth_golem', 'hydra'];
+      const fallbackT2 = is2v2 ? ['werewolf', 'hydra'] : ['werewolf', 'hydra', 'earth_golem'];
+
+      const team1Picks = this.draftState.team1Picks.length === expectedTeamSize ? this.draftState.team1Picks : fallbackT1;
+      const team2Picks = this.draftState.team2Picks.length === expectedTeamSize ? this.draftState.team2Picks : fallbackT2;
 
       this.initUnits(team1Picks, team2Picks);
 
       // Update header badges
-      const t1Names = team1Picks.map(id => BEAST_TEMPLATES[id].name).join(' & ');
-      const t2Names = team2Picks.map(id => BEAST_TEMPLATES[id].name).join(' & ');
+      const t1Names = team1Picks.map(id => BEAST_TEMPLATES[id]?.name || id).join(' & ');
+      const t2Names = team2Picks.map(id => BEAST_TEMPLATES[id]?.name || id).join(' & ');
       const t1El = document.getElementById('team1-beasts');
       const t2El = document.getElementById('team2-beasts');
       if (t1El) t1El.textContent = t1Names;
@@ -2211,14 +2705,16 @@
 
     renderHazards() {
       this.elHazardsLayer.innerHTML = '';
+      const colPct = 100 / this.COLS;
+      const rowPct = 100 / this.ROWS;
       for (const key in this.hazards) {
         const [x, y] = key.split(',').map(Number);
         const h = this.hazards[key];
         const el = document.createElement('div');
         const durationClass = h.type === 'fire' ? `fire-turns-${h.duration}` : '';
         el.className = `hazard-sprite ${h.type.replace('_', '-')} ${durationClass}`.trim();
-        el.style.left = `${x * 10}%`;
-        el.style.top = `${y * 12.5}%`;
+        el.style.left = `${x * colPct}%`;
+        el.style.top = `${y * rowPct}%`;
 
         const img = document.createElement('img');
         if (h.type === 'fire') {
@@ -2229,6 +2725,8 @@
           img.src = 'Sprites/Effects/Thorn_Tile_256x256.png';
         } else if (h.type === 'thorn_bush') {
           img.src = 'Sprites/Effects/Thorn_Bush_Tile_256x256.png';
+        } else if (h.type === 'magma') {
+          img.src = 'Sprites/Effects/Magma_Tile_256x256.png';
         }
         el.appendChild(img);
         this.elHazardsLayer.appendChild(el);
@@ -2237,16 +2735,19 @@
 
     renderUnits() {
       this.elUnitsLayer.innerHTML = '';
+      const colPct = 100 / this.COLS;
+      const rowPct = 100 / this.ROWS;
       this.units.forEach(u => {
         if (u.hp <= 0 && u.animState !== 'defeated') return;
 
         const el = document.createElement('div');
-        el.className = `unit-entity team-${u.team} anim-${u.animState}`;
+        el.className = `unit-entity team-${u.team} anim-${u.animState} unit-${u.id}`;
+        el.dataset.unit = u.id;
         if (this.selectedUnit === u) el.classList.add('selected');
         if (u.status && u.status.bullwark) el.classList.add('bullwark-active');
         if (u.id === 'dwarf_warden' && this.round > 10) el.classList.add('endurance-active');
-        el.style.left = `${u.x * 10}%`;
-        el.style.top = `${u.y * 12.5}%`;
+        el.style.left = `${u.x * colPct}%`;
+        el.style.top = `${u.y * rowPct}%`;
 
         // Determine correct sprite orientation
         let spriteSrc = u.sprites[`idle_${u.facing}`] || u.sprites.idle_down;
@@ -2349,6 +2850,11 @@
         badges.push(`<span class="status-pill buff-shield" title="Endurance: 50% Damage Reduction (Round > 10)">💪 1/2</span>`);
       }
 
+      // Pegasus Soar (Flies over blocks/obstacles)
+      if (u.id === 'pegasus') {
+        badges.push(`<span class="status-pill buff-soar" title="Ability: Soar — Can pass over blocked tiles as long as landing on a free tile">🪽 Soar</span>`);
+      }
+
       if (badges.length === 0) return '';
       return `<div class="unit-status-under">${badges.join('')}</div>`;
     }
@@ -2445,20 +2951,24 @@
     }
 
     spawnFloatingText(x, y, text, type = 'damage') {
+      const colPct = 100 / this.COLS;
+      const rowPct = 100 / this.ROWS;
       const el = document.createElement('div');
       el.className = `floating-text ${type}`;
       el.textContent = text;
-      el.style.left = `${x * 10 + 5}%`;
-      el.style.top = `${y * 12.5 + 4}%`;
+      el.style.left = `${x * colPct + (colPct * 0.5)}%`;
+      el.style.top = `${y * rowPct + (rowPct * 0.3)}%`;
       this.elFxLayer.appendChild(el);
       setTimeout(() => el.remove(), 1200);
     }
 
     spawnThornBurst(x, y) {
+      const colPct = 100 / this.COLS;
+      const rowPct = 100 / this.ROWS;
       const el = document.createElement('div');
       el.className = 'thorn-bush-burst';
-      el.style.left = `${x * 10}%`;
-      el.style.top = `${y * 12.5}%`;
+      el.style.left = `${x * colPct}%`;
+      el.style.top = `${y * rowPct}%`;
       const img = document.createElement('img');
       img.src = 'Sprites/Effects/Thorn_Bush_Tile_256x256.png';
       el.appendChild(img);
@@ -2474,6 +2984,8 @@
       this.elLog.scrollTop = this.elLog.scrollHeight;
     }
   }
+
+  window.BeastsGame = BeastsGame;
 
   // Launch Game
   window.addEventListener('DOMContentLoaded', () => {

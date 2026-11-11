@@ -350,6 +350,67 @@
       </div>
     </div>
 
+    <!-- 2v2 Beast Selection Modal Overlay -->
+    <div class="modal-overlay hidden" id="beast-select-2v2-modal">
+      <div class="beast-select-dialog">
+        <!-- Header -->
+        <div class="beast-select-header">
+          <div class="beast-select-title-group">
+            <span class="beast-select-icon">🏟️</span>
+            <div>
+              <h2 class="beast-select-title">BASE2V2 • SELECT YOUR 2 BEASTS</h2>
+              <p class="beast-select-sub">Choose <b>2 Beasts</b> from your Backpack Inventory or Old Card Binder to deploy onto the 6×6 battlefield.</p>
+            </div>
+          </div>
+          <button type="button" class="beast-select-close-btn" id="btn-close-2v2-select" aria-label="Close">✕</button>
+        </div>
+
+        <!-- Duo Selection Trays -->
+        <div class="beast-select-trays">
+          <div class="duo-slot-box" id="duo-slot-0" data-slot="0">
+            <div class="duo-slot-label">BEAST 1 (SOLAR LEAD)</div>
+            <div class="duo-slot-content empty" id="duo-content-0">
+              <span class="duo-empty-plus">+</span>
+              <span class="duo-empty-text">Select First Beast</span>
+            </div>
+          </div>
+          <div class="duo-vs-badge">&amp;</div>
+          <div class="duo-slot-box" id="duo-slot-1" data-slot="1">
+            <div class="duo-slot-label">BEAST 2 (SOLAR WING)</div>
+            <div class="duo-slot-content empty" id="duo-content-1">
+              <span class="duo-empty-plus">+</span>
+              <span class="duo-empty-text">Select Second Beast</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Filter Bar -->
+        <div class="beast-select-filters">
+          <div class="beast-filter-tabs">
+            <button type="button" class="filter-tab-btn active" data-filter="all" id="btn-filter-all">All Beasts (<span id="filter-count-all">0</span>)</button>
+            <button type="button" class="filter-tab-btn" data-filter="backpack" id="btn-filter-backpack">🎒 Backpack (<span id="filter-count-backpack">0</span>)</button>
+            <button type="button" class="filter-tab-btn" data-filter="binder" id="btn-filter-binder">📖 Binder (<span id="filter-count-binder">0</span>)</button>
+          </div>
+          <div class="beast-select-hint" id="beast-select-hint">
+            Click any beast card below to assign it to your 2v2 Duo.
+          </div>
+        </div>
+
+        <!-- Beasts Cards Grid -->
+        <div class="beast-select-cards-grid" id="beast-select-cards-grid">
+          <!-- Populated dynamically from player's inventory & binder -->
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="beast-select-footer">
+          <button type="button" class="ui-btn secondary" id="btn-cancel-2v2-select">Cancel</button>
+          <button type="button" class="ui-btn primary-btn btn-launch-2v2" id="btn-launch-2v2" disabled>
+            ⚔️ Enter Base2v2 Arena (Select 2 Beasts)
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Winner Modal Overlay -->
     <div class="modal-overlay hidden" id="winner-modal">
       <div class="modal-card">
@@ -525,6 +586,132 @@
         <div class="inventory-footer">
           <span class="inventory-shortcut-hint">Shortcut: Press <b>I</b> for Backpack • <b>B</b> for Old Card Binder</span>
           <button type="button" class="ui-btn primary-btn" id="btn-close-inventory">Done</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Shopkeeper Leo's Card Shop Modal (Buy & Sell Counter) -->
+    <div class="modal-overlay hidden" id="shop-modal">
+      <div class="shop-modal-dialog">
+        <!-- Shop Header -->
+        <div class="shop-header">
+          <div class="shop-title-group">
+            <span class="shop-icon-badge">🃏</span>
+            <div>
+              <h2 class="shop-title">LEO'S CARD SHOP • BUY &amp; SELL COUNTER</h2>
+              <p class="shop-sub">Buy 1st-Edition Booster Packs ($10) or sell extra cards from your backpack for cash!</p>
+            </div>
+          </div>
+          <div class="shop-header-right">
+            <div class="shop-wallet-pill" id="shop-wallet-display">💵 Wallet: $0.00</div>
+            <button type="button" class="shop-close-btn" id="btn-close-shop-x" aria-label="Close Shop">✕</button>
+          </div>
+        </div>
+
+        <!-- Shop Navigation Tabs: BUY / SELL -->
+        <div class="shop-tabs-nav">
+          <button type="button" class="shop-tab-btn active" id="shop-tab-buy" data-tab="buy">
+            🛒 BUY PACKS ($10)
+          </button>
+          <button type="button" class="shop-tab-btn" id="shop-tab-sell" data-tab="sell">
+            💵 SELL CARDS <span class="shop-tab-count-pill" id="shop-sell-count-pill">0</span>
+          </button>
+        </div>
+
+        <!-- Shop Body Content Panels -->
+        <div class="shop-body">
+          <!-- 1. BUY SECTION -->
+          <div class="shop-tab-panel active" id="shop-panel-buy">
+            <div class="shop-buy-card">
+              <div class="shop-pack-artwork-box">
+                <img src="Cards/Mythos_Card_Back.png" alt="Mythos Base Set Booster Pack" class="shop-pack-img">
+                <span class="shop-pack-edition-badge">✨ 1ST EDITION</span>
+              </div>
+              <div class="shop-pack-details">
+                <div class="shop-pack-header">
+                  <h3 class="shop-pack-title">1st-Edition Mythos Base Card Pack</h3>
+                  <span class="shop-pack-price-tag">$10.00</span>
+                </div>
+                <p class="shop-pack-desc">
+                  Factory-sealed foil booster pack containing <b>3 random Mythos Game Cards</b>. Rip open the pack to discover elemental Beasts (Fire, Earth, Poison, Plant) and battle-tested moves!
+                </p>
+                <div class="shop-pack-features">
+                  <span class="shop-feat-pill">📦 3 Cards / Pack</span>
+                  <span class="shop-feat-pill">🔥 1st-Edition Holos</span>
+                  <span class="shop-feat-pill">★ Rarity 1★ to 4★</span>
+                </div>
+                <div class="shop-buy-actions">
+                  <button type="button" class="ui-btn primary-btn shop-buy-btn" id="btn-shop-buy-pack">
+                    🛒 Buy Base Card Pack ($10.00)
+                  </button>
+                  <button type="button" class="ui-btn secondary shop-rip-now-btn hidden" id="btn-shop-rip-now">
+                    ✨ Rip Open Unopened Pack
+                  </button>
+                </div>
+                <div class="shop-buy-status" id="shop-buy-status"></div>
+              </div>
+            </div>
+
+            <!-- 2. Base2v2 Tactical Battle Map ($15.00) -->
+            <div class="shop-buy-card" id="shop-card-map-base2v2">
+              <div class="shop-map-artwork-box">
+                <img src="Base2v2.png" alt="Base2v2 Battle Map" class="shop-map-preview-img">
+                <span class="shop-pack-edition-badge map-badge">🏟️ 2V2 ARENA</span>
+              </div>
+              <div class="shop-pack-details">
+                <div class="shop-pack-header">
+                  <h3 class="shop-pack-title">Base2v2 Tactical Battle Map</h3>
+                  <span class="shop-pack-price-tag">$15.00</span>
+                </div>
+                <p class="shop-pack-desc">
+                  Official <b>6×6 Mythos Tactical Tabletop Arena</b> framed in ancient weathered stone and wild ivy. Designed for fast, tactical <b>2v2 Beast Skirmishes</b>. When played, choose any 2 Beasts from your Backpack or Binder!
+                </p>
+                <div class="shop-pack-features">
+                  <span class="shop-feat-pill">🏟️ 2v2 Game Mode</span>
+                  <span class="shop-feat-pill">📐 6×6 Grid Arena</span>
+                  <span class="shop-feat-pill">🎒 Pick 2 from Binder/Pack</span>
+                  <span class="shop-feat-pill">⚡ Fast Skirmishes</span>
+                </div>
+                <div class="shop-buy-actions">
+                  <button type="button" class="ui-btn primary-btn shop-buy-btn" id="btn-shop-buy-map">
+                    🛒 Buy Base2v2 Map ($15.00)
+                  </button>
+                  <button type="button" class="ui-btn secondary shop-play-map-btn hidden" id="btn-shop-play-map">
+                    ⚔️ Play Base2v2 Now
+                  </button>
+                </div>
+                <div class="shop-buy-status" id="shop-map-buy-status"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. SELL SECTION -->
+          <div class="shop-tab-panel hidden" id="shop-panel-sell">
+            <div class="shop-sell-info-banner">
+              <div class="shop-sell-info-left">
+                <span>🎒 <b>Cards in Backpack:</b> Sell spare cards to Leo for store cash.</span>
+                <span class="shop-sell-legend">
+                  <b>Pricelist:</b> 1★ = 10¢ • 2★ = 20¢ • 3★ = 35¢ • 4★ = 50¢
+                </span>
+              </div>
+              <span class="shop-binder-safe-tag">🔒 Binder cards protected</span>
+            </div>
+
+            <!-- Sell List Items Container -->
+            <div class="shop-sell-grid" id="shop-sell-cards-grid">
+              <!-- Dynamically populated with cards from this.inventory -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Shop Footer -->
+        <div class="shop-footer">
+          <div class="shop-footer-hint" id="shop-footer-msg">
+            Leo pays fair market cash for cards: 1★ (10¢) up to 4★ (50¢).
+          </div>
+          <button type="button" class="ui-btn primary-btn" id="btn-close-shop">
+            Done / Exit Shop
+          </button>
         </div>
       </div>
     </div>

@@ -45,29 +45,77 @@
 
       // Equal 50/50 chance for friend NPC to be named Mike or AJ
       this.friendName = this.worldSave?.friendName || (Math.random() < 0.5 ? 'Mike' : 'AJ');
-      this.gold = this.worldSave?.gold ?? 0;
+      this._gold = this.worldSave?.gold ?? 0;
       this.hasMomBoosterMoney = this.worldSave?.hasMomBoosterMoney ?? false;
       this.hasBoughtCardShopPacks = this.worldSave?.hasBoughtCardShopPacks ?? false;
+      this.hasBoughtBase2v2Map = this.worldSave?.hasBoughtBase2v2Map ?? false;
       this.hasOpenedStarterPack = this.worldSave?.hasOpenedStarterPack ?? false;
       this.friendWaitingAtHouse = this.worldSave?.friendWaitingAtHouse ?? false;
       this.hasOldCardBinder = this.worldSave?.hasOldCardBinder ?? false;
+      this.duoSelectedBeasts = [];
+      this.activeChallengerFor2v2 = null;
+      this.beastSelectFilter = 'all';
       this.friendDefeatedRewardPending = false;
-      this.inventory = Array.isArray(this.worldSave?.inventory) ? [...this.worldSave.inventory] : [];
+      this._autoSaveTimer = null;
+      this._autosaveToastTimer = null;
+      this._initialized = false;
+
+      const rawInv = Array.isArray(this.worldSave?.inventory) ? [...this.worldSave.inventory] : [];
+      this.inventory = this.wrapReactiveArray(rawInv.map(i => this.wrapReactiveItem(i)), 'inventory');
       this.selectedInventoryItemId = null;
 
       // 9-Pocket Trading Card Binder
-      this.binderSlots = Array.isArray(this.worldSave?.binderSlots)
+      const rawBinder = Array.isArray(this.worldSave?.binderSlots)
         ? [...this.worldSave.binderSlots]
         : Array(9).fill(null);
-      while (this.binderSlots.length < 9) this.binderSlots.push(null);
+      while (rawBinder.length < 9) rawBinder.push(null);
+      this.binderSlots = this.wrapReactiveArray(rawBinder.map(s => s ? this.wrapReactiveItem(s) : null), 'binder');
       this.inspectingCard = null;
       this.inspectingSlotIndex = null;
       this.inspectingPose = 'idle';
       this.binderPickerTargetIndex = null;
 
+      // Ensure progressed players receive Pegasus and Dreadnaught cards to test immediately
+      if (this.hasOpenedStarterPack && !this.inventory.some(i => i.beastId === 'pegasus') && !this.binderSlots?.some(s => s && s.beastId === 'pegasus')) {
+        const pegasusDef = this.getBaseSetCardCatalog().find(c => c.beastId === 'pegasus');
+        if (pegasusDef) {
+          this.inventory.push(this.wrapReactiveItem({
+            id: pegasusDef.id,
+            beastId: pegasusDef.beastId,
+            name: pegasusDef.name,
+            shortName: pegasusDef.shortName,
+            element: pegasusDef.element,
+            stars: pegasusDef.stars,
+            cardImg: pegasusDef.cardImg,
+            type: 'mythos_card',
+            qty: 1,
+            desc: pegasusDef.desc
+          }));
+        }
+      }
+
+      if (this.hasOpenedStarterPack && !this.inventory.some(i => i.beastId === 'dreadnaught') && !this.binderSlots?.some(s => s && s.beastId === 'dreadnaught')) {
+        const dreadDef = this.getBaseSetCardCatalog().find(c => c.beastId === 'dreadnaught');
+        if (dreadDef) {
+          this.inventory.push(this.wrapReactiveItem({
+            id: dreadDef.id,
+            beastId: dreadDef.beastId,
+            name: dreadDef.name,
+            shortName: dreadDef.shortName,
+            element: dreadDef.element,
+            stars: dreadDef.stars,
+            cardImg: dreadDef.cardImg,
+            type: 'mythos_card',
+            qty: 1,
+            desc: dreadDef.desc
+          }));
+        }
+      }
+
       this.playerSprite = new CS.CharacterSpriteSheet(this.draftAppearance);
       this.shopkeeperNpc = this.createShopkeeperNpc();
-      this.npcs = [this.createFriendNpc(this.friendName)];
+      this.plutoNpc = this.createPlutoNpc();
+      this.npcs = [this.createFriendNpc(this.friendName), this.plutoNpc];
 
       // Player starts by the round wooden table facing Mike/AJ
       this.player = {
@@ -81,8 +129,9 @@
       };
 
       // Story state:
-      // 'intro_bored' -> 'tv_commercial' -> 'both_excited' -> 'mom_enters' -> 'free_roam' -> 'mom_gave_money'
-      this.storyState = 'intro_bored';
+      // 'intro_bored' -> 'tv_commercial' -> 'both_excited' -> 'free_roam' (Mom walks in) -> 'mom_gave_money'
+      this.storyState = 'intro_waiting';
+      this.activeDialogueNpc = null;
       this.tvOn = false;
       this.tvFlashTicks = 0;
       this.shakeTicks = 0;
@@ -95,6 +144,8 @@
       this.keys = {};
       this.tick = 0;
       this.nearInteractable = null;
+      this.activeDialogueNpc = null;
+      this.currentShopTab = 'buy';
 
       this.touchBeacon = null;
 
@@ -109,6 +160,7 @@
         this.initIntroAndCreatorUI();
         this.loop();
       }
+      this._initialized = true;
     }
 
     createFriendNpc(friendName) {
@@ -180,6 +232,30 @@
           eyeColor: 'amber',
           outfitStyle: 'vest',
           outfitColor: 'gold',
+          pantsColor: 'dark',
+          hatStyle: 'goggles'
+        })
+      };
+    }
+
+    createPlutoNpc() {
+      const CS = window.MythosCharacterSprites;
+      return {
+        id: 'pluto',
+        name: 'Pluto',
+        x: 6.2,
+        y: 5.25,
+        dir: 'down',
+        walkTick: 0,
+        bubble: '💻',
+        sprite: new CS.CharacterSpriteSheet({
+          name: 'Pluto',
+          skin: 'light',
+          hairStyle: 'spiky',
+          hairColor: 'midnight',
+          eyeColor: 'violet',
+          outfitStyle: 'hoodie',
+          outfitColor: 'royal',
           pantsColor: 'dark',
           hatStyle: 'goggles'
         })
@@ -267,6 +343,28 @@
           badgeLabel: '🪨 EARTH ELEMENT • 140 HP',
           cardImg: 'Cards/Dwarf_Warden_Card.png',
           desc: '<b>Dwarf Warden (Earth • 140 HP)</b> — Base Set Mythos Card. Moves: <b>Hammer Throw</b> (25 Dmg front 2 tiles), <b>Bullwark</b> (Negates incoming attack, 5t cd), &amp; <b>Endurance</b> (Halves damage after turn 10).'
+        },
+        {
+          id: 'card_pegasus',
+          beastId: 'pegasus',
+          name: 'Pegasus (Mythos Card)',
+          shortName: 'Pegasus',
+          element: 'Air',
+          stars: 3,
+          badgeLabel: '☁️ AIR ELEMENT • 120 HP',
+          cardImg: 'Cards/Pegasus_Card.png',
+          desc: '<b>Pegasus (Air • 120 HP)</b> — Base Set Mythos Card. Moves: <b>Trample</b> (30 Dmg), <b>Inspire</b> (gives up turn movement to give +2 moves to allies), &amp; <b>Soar</b> (flies over blocked tiles as long as landing on a free tile).'
+        },
+        {
+          id: 'card_dreadnaught',
+          beastId: 'dreadnaught',
+          name: 'Dreadnaught (Mythos Card)',
+          shortName: 'Dreadnaught',
+          element: 'Metal',
+          stars: 2,
+          badgeLabel: '⚙️ METAL ELEMENT • 160 HP',
+          cardImg: 'Cards/Dreadnaught_Card.png',
+          desc: '<b>Dreadnaught (Metal • 160 HP)</b> — Base Set Mythos Card. Moves: <b>Magma Fist</b> (25 Dmg + permanent Magma Pool), <b>Fortress</b> (intercepts damage for ally within 3x3 for 1t), &amp; <b>Burning Heart</b> (if alone, deals 35 Dmg and can Fortress self).'
         }
       ];
     }
@@ -292,7 +390,7 @@
         });
       }
       this.selectedInventoryItemId = itemDef.id;
-      this.saveWorldData(this.draftAppearance);
+      this.autoSave('item_added');
       this.renderInventoryModal();
       this.updateHUDSaveInfo();
     }
@@ -459,6 +557,27 @@
             ability: { name: 'Endurance', type: 'Late-Game Damage Halver', desc: 'Ancient subterranean grit. After turn 10, Dwarf Warden takes half damage from all incoming hostile strikes.' }
           },
           elementLore: 'A battle-hardened guardian of the subterranean mountain holds. Combines penetrating hammer throws with impenetrable runic shields and late-battle damage reduction.'
+        },
+        pegasus: {
+          id: 'pegasus',
+          name: 'Pegasus',
+          element: 'air',
+          stars: 3,
+          maxHp: 120,
+          baseMove: 3,
+          cardImg: 'Cards/Pegasus_Card.png',
+          sprites: {
+            idle: 'Sprites/Pegasus/Pegasus_idle_down_256x256.png',
+            attack: 'Sprites/Pegasus/Pegasus_attack_trample_256x256.png',
+            walk: 'Sprites/Pegasus/Pegasus_walk_down_256x256.png',
+            aoe: 'Sprites/Pegasus/Pegasus_inspire_256x256.png'
+          },
+          skills: {
+            atk1: { name: 'Trample', range: 1, dmg: 30, type: 'Target Attack', desc: 'Charges forward with heavenly force, dealing 30 air damage.' },
+            atk2: { name: 'Inspire', range: 0, type: 'Team Move Extension', desc: 'Gives up Pegasus\'s movement for the turn to extend all allies\' movement by 2 tiles.' },
+            ability: { name: 'Soar', type: 'Flight Mobility', desc: 'Soars high above obstacles, flying over blocked tiles as long as it lands on a free tile.' }
+          },
+          elementLore: 'A winged steed of celestial sky realms. Endowed with soaring flight that bypasses ground blockades and inspires teammates to move with boundless haste.'
         }
       };
 
@@ -496,7 +615,7 @@
 
       const totalCount = this.getTotalInventoryCount();
       if (badgeEl) badgeEl.textContent = String(totalCount);
-      if (walletEl) walletEl.textContent = `💵 $${this.gold || 0}`;
+      if (walletEl) walletEl.textContent = `💵 ${this.formatMoney(this.gold || 0)}`;
       if (!gridEl) return;
 
       gridEl.innerHTML = '';
@@ -589,6 +708,23 @@
               this.openCreatureInspect(selectedItem, null);
             };
           }
+        } else if (selectedItem.type === 'battle_map' || selectedItem.id === 'map_base2v2') {
+          artEl.innerHTML = `
+            <div class="inv-card-art-thumb" style="width: 64px; height: 64px; border-radius: 8px; overflow: hidden; border: 2px solid #38bdf8;">
+              <img src="${selectedItem.cardImg || 'Base2v2.png'}" alt="${selectedItem.name}" style="width: 100%; height: 100%; object-fit: cover;">
+            </div>
+          `;
+          if (actionsEl) actionsEl.classList.remove('hidden');
+          openPackBtn?.classList.add('hidden');
+          putBinderBtn?.classList.add('hidden');
+          if (inspectBtn) {
+            inspectBtn.classList.remove('hidden');
+            inspectBtn.textContent = '⚔️ Play 2v2 Match';
+            inspectBtn.onclick = () => {
+              this.toggleInventoryModal(false);
+              this.open2v2BeastSelect();
+            };
+          }
         } else if (selectedItem.id === 'old_card_binder') {
           artEl.innerHTML = `<span style="font-size: 38px;">📖</span>`;
           if (actionsEl) actionsEl.classList.remove('hidden');
@@ -620,6 +756,563 @@
     }
 
     // -------------------------------------------------------------------------
+    // Currency & Shopkeeper Leo's Buy & Sell Counter
+    // -------------------------------------------------------------------------
+    formatMoney(val) {
+      const num = Number(val) || 0;
+      return `$${num.toFixed(2)}`;
+    }
+
+    getCardSellPrice(card) {
+      const stars = Number(card?.stars) || 1;
+      if (stars <= 1) return 0.10;
+      if (stars === 2) return 0.20;
+      if (stars === 3) return 0.35;
+      return 0.50; // 4 stars and above
+    }
+
+    toggleShopModal(forceOpen, initialTab) {
+      if (!this.hasBoughtCardShopPacks) {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        return;
+      }
+      const modal = document.getElementById('shop-modal');
+      if (!modal) return;
+      const shouldOpen = forceOpen !== undefined ? forceOpen : modal.classList.contains('hidden');
+      if (window.sounds?.playClick) window.sounds.playClick();
+      if (shouldOpen) {
+        if (initialTab) {
+          this.currentShopTab = initialTab;
+        }
+        this.renderShopModal();
+        modal.classList.remove('hidden');
+      } else {
+        modal.classList.add('hidden');
+      }
+    }
+
+    buyBaseCardPack() {
+      const cost = 10.00;
+      if ((this.gold || 0) < cost) {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        const statusEl = document.getElementById('shop-buy-status');
+        if (statusEl) {
+          statusEl.textContent = `⚠️ You don't have enough money! A Base Card Pack costs ${this.formatMoney(cost)}.`;
+          statusEl.className = 'shop-buy-status error';
+        }
+        return;
+      }
+
+      if (window.sounds?.playVictory) {
+        window.sounds.playVictory();
+      } else if (window.sounds?.playClick) {
+        window.sounds.playClick();
+      }
+
+      this.gold = Math.round(((this.gold || 0) - cost) * 100) / 100;
+      this.hasBoughtCardShopPacks = true;
+
+      // Add 1 Unopened Mythos Base Set Booster Pack to Inventory
+      this.addInventoryItem({
+        id: 'unopened_base_pack',
+        name: 'Unopened Mythos Base Card Pack',
+        qty: 1,
+        icon: '🃏',
+        cardImg: 'Cards/Mythos_Card_Back.png',
+        type: 'booster_pack',
+        desc: `<b>Unopened Mythos Base Set Booster Pack (1st Edition)</b> — A factory-sealed foil booster pack featuring <b>The Seal of Mythos</b> and <b>3 Mythos Game Cards</b> inside. Click <b>✨ Open Booster Pack</b> to break the seal! <i>(Purchased at Leo's Card Shop for $10.00)</i>`
+      });
+
+      this.saveWorldData(this.draftAppearance);
+      this.updateHUDSaveInfo();
+      this.renderShopModal();
+      this.renderInventoryModal();
+
+      const statusEl = document.getElementById('shop-buy-status');
+      if (statusEl) {
+        statusEl.textContent = `🎉 Purchased 1x 1st-Edition Mythos Base Card Pack for $10.00! Rip it open below or from your backpack.`;
+        statusEl.className = 'shop-buy-status success';
+      }
+
+      const footerMsg = document.getElementById('shop-footer-msg');
+      if (footerMsg) {
+        footerMsg.innerHTML = `🛒 Purchased 1x Base Card Pack for $10.00! Remaining Wallet: <b>${this.formatMoney(this.gold)}</b>`;
+        footerMsg.className = 'shop-footer-hint highlight';
+      }
+    }
+
+    buyBase2v2Map() {
+      const cost = 15.00;
+      const statusEl = document.getElementById('shop-map-buy-status') || document.getElementById('shop-buy-status');
+
+      if (this.hasBoughtBase2v2Map) {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        if (statusEl) {
+          statusEl.textContent = `ℹ️ You already own the Base2v2 Tactical Battle Map! Click "Play Base2v2 Now" to duel.`;
+          statusEl.className = 'shop-buy-status success';
+        }
+        return;
+      }
+
+      if ((this.gold || 0) < cost) {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        if (statusEl) {
+          statusEl.textContent = `⚠️ You don't have enough money! The Base2v2 Battle Map costs ${this.formatMoney(cost)}. (Short ${this.formatMoney(cost - (this.gold || 0))})`;
+          statusEl.className = 'shop-buy-status error';
+        }
+        return;
+      }
+
+      if (window.sounds?.playVictory) {
+        window.sounds.playVictory();
+      } else if (window.sounds?.playClick) {
+        window.sounds.playClick();
+      }
+
+      this.gold = Math.round(((this.gold || 0) - cost) * 100) / 100;
+      this.hasBoughtBase2v2Map = true;
+
+      // Add Base2v2 Battle Map to backpack inventory
+      this.addInventoryItem({
+        id: 'map_base2v2',
+        name: 'Base2v2 Battle Map',
+        qty: 1,
+        icon: '🏟️',
+        cardImg: 'Base2v2.png',
+        type: 'battle_map',
+        mapId: 'Base2v2',
+        desc: `<b>Base2v2 Tactical Battle Map</b> — Official 6×6 tabletop arena bordered by ancient stones and wild ivy. Designed for fast-paced <b>2v2 Beast Duels</b>. Click <b>⚔️ Play 2v2 Match</b> to select 2 beasts from your backpack or binder and battle!`
+      });
+
+      this.saveWorldData(this.draftAppearance);
+      this.updateHUDSaveInfo();
+      this.renderShopModal();
+      this.renderInventoryModal();
+
+      if (statusEl) {
+        statusEl.textContent = `🎉 Purchased Base2v2 Battle Map for $15.00! Choose 2 beasts from your inventory or binder to duel!`;
+        statusEl.className = 'shop-buy-status success';
+      }
+
+      const footerMsg = document.getElementById('shop-footer-msg');
+      if (footerMsg) {
+        footerMsg.innerHTML = `🛒 Purchased Base2v2 Battle Map for $15.00! Remaining Wallet: <b>${this.formatMoney(this.gold)}</b>`;
+        footerMsg.className = 'shop-footer-hint highlight';
+      }
+    }
+
+    sellCardToShop(cardId, sellAll = false) {
+      const itemIndex = (this.inventory || []).findIndex(i => i.id === cardId && i.type === 'mythos_card' && i.qty > 0);
+      if (itemIndex < 0) return;
+
+      const item = this.inventory[itemIndex];
+      const unitPrice = this.getCardSellPrice(item);
+      const qtyToSell = sellAll ? item.qty : 1;
+      const totalEarned = Math.round(unitPrice * qtyToSell * 100) / 100;
+
+      if (item.qty > qtyToSell) {
+        item.qty -= qtyToSell;
+      } else {
+        this.inventory.splice(itemIndex, 1);
+      }
+
+      this.gold = Math.round(((this.gold || 0) + totalEarned) * 100) / 100;
+
+      if (window.sounds?.playClick) window.sounds.playClick();
+
+      this.saveWorldData(this.draftAppearance);
+      this.updateHUDSaveInfo();
+      this.renderShopModal();
+      this.renderInventoryModal();
+
+      const footerMsg = document.getElementById('shop-footer-msg');
+      if (footerMsg) {
+        footerMsg.innerHTML = `✅ Sold <b>${qtyToSell}× ${item.name}</b> to Leo for <b>+${this.formatMoney(totalEarned)}</b>! Wallet: <b>${this.formatMoney(this.gold)}</b>`;
+        footerMsg.className = 'shop-footer-hint highlight';
+      }
+    }
+
+    renderShopModal() {
+      const modal = document.getElementById('shop-modal');
+      if (!modal) return;
+
+      const walletEl = document.getElementById('shop-wallet-display');
+      if (walletEl) {
+        walletEl.textContent = `💵 Wallet: ${this.formatMoney(this.gold || 0)}`;
+      }
+
+      const buyTabBtn = document.getElementById('shop-tab-buy');
+      const sellTabBtn = document.getElementById('shop-tab-sell');
+      const buyPanel = document.getElementById('shop-panel-buy');
+      const sellPanel = document.getElementById('shop-panel-sell');
+
+      const isBuy = this.currentShopTab === 'buy';
+      buyTabBtn?.classList.toggle('active', isBuy);
+      sellTabBtn?.classList.toggle('active', !isBuy);
+      buyPanel?.classList.toggle('hidden', !isBuy);
+      sellPanel?.classList.toggle('hidden', isBuy);
+
+      // Buy Section - Booster Pack
+      const buyBtn = document.getElementById('btn-shop-buy-pack');
+      const ripNowBtn = document.getElementById('btn-shop-rip-now');
+      const hasMoneyForPack = (this.gold || 0) >= 10;
+      if (buyBtn) {
+        buyBtn.disabled = !hasMoneyForPack;
+        buyBtn.innerHTML = hasMoneyForPack
+          ? `🛒 Buy Base Card Pack ($10.00)`
+          : `🔒 Need $10.00 (Short ${this.formatMoney(10 - (this.gold || 0))})`;
+      }
+
+      const hasUnopenedPack = (this.inventory || []).some(i => i.id === 'unopened_base_pack' && i.qty > 0);
+      if (ripNowBtn) {
+        ripNowBtn.classList.toggle('hidden', !hasUnopenedPack);
+      }
+
+      // Buy Section - Base2v2 Battle Map
+      const mapBuyBtn = document.getElementById('btn-shop-buy-map');
+      const mapPlayBtn = document.getElementById('btn-shop-play-map');
+      if (mapBuyBtn) {
+        if (this.hasBoughtBase2v2Map) {
+          mapBuyBtn.disabled = true;
+          mapBuyBtn.innerHTML = `✅ Already Owned`;
+          mapBuyBtn.classList.add('disabled');
+          mapPlayBtn?.classList.remove('hidden');
+        } else {
+          const hasMoneyForMap = (this.gold || 0) >= 15;
+          mapBuyBtn.disabled = !hasMoneyForMap;
+          mapBuyBtn.classList.toggle('disabled', !hasMoneyForMap);
+          mapBuyBtn.innerHTML = hasMoneyForMap
+            ? `🛒 Buy Base2v2 Map ($15.00)`
+            : `🔒 Need $15.00 (Short ${this.formatMoney(15 - (this.gold || 0))})`;
+          mapPlayBtn?.classList.add('hidden');
+        }
+      }
+
+      // Sell Section (Strictly cards in backpack inventory, excluding binder slots)
+      const looseCards = (this.inventory || []).filter(i => i.type === 'mythos_card' && i.qty > 0);
+      const totalLooseCount = looseCards.reduce((s, i) => s + (i.qty || 0), 0);
+
+      const countPill = document.getElementById('shop-sell-count-pill');
+      if (countPill) {
+        countPill.textContent = String(totalLooseCount);
+      }
+
+      const gridEl = document.getElementById('shop-sell-cards-grid');
+      if (gridEl) {
+        gridEl.innerHTML = '';
+        if (looseCards.length === 0) {
+          gridEl.innerHTML = `
+            <div class="shop-empty-sell">
+              <span class="shop-empty-icon">🎒</span>
+              <p class="shop-empty-title">No Loose Cards in Backpack</p>
+              <p class="shop-empty-desc">
+                You have no Mythos cards in your backpack to sell right now.
+                Cards stored safely in your <b>📖 Old Card Binder</b> are protected and cannot be sold unless you remove them to your backpack first!
+              </p>
+            </div>
+          `;
+        } else {
+          looseCards.forEach(card => {
+            const unitPrice = this.getCardSellPrice(card);
+            const stars = Number(card.stars) || 1;
+            const starText = '★'.repeat(stars);
+
+            const row = document.createElement('div');
+            row.className = 'shop-sell-row';
+
+            const artSrc = card.cardImg || 'Cards/Mythos_Card_Back.png';
+            const elementName = card.element || 'Mythos';
+
+            row.innerHTML = `
+              <div class="shop-sell-card-left">
+                <div class="shop-sell-card-thumb shop-sell-thumb-box" title="Click to inspect ${card.name} in high-res">
+                  <img src="${artSrc}" alt="${card.name}" class="shop-sell-thumb" onerror="this.src='Cards/Mythos_Card_Back.png'">
+                  <span class="shop-sell-qty-badge">x${card.qty}</span>
+                </div>
+                <div class="shop-sell-card-info">
+                  <div class="shop-sell-card-name" title="${card.name}">${card.name}</div>
+                  <div class="shop-sell-card-badges">
+                    <span class="shop-sell-badge element-${elementName.toLowerCase()}">${elementName}</span>
+                    <span class="shop-sell-badge stars">${starText} (${stars}★)</span>
+                    <span class="shop-sell-badge qty">x${card.qty} loose</span>
+                  </div>
+                  <div class="shop-sell-price-tag">Leo's Offer: <b>${this.formatMoney(unitPrice)}</b> each</div>
+                </div>
+              </div>
+              <div class="shop-sell-card-actions">
+                <button type="button" class="ui-btn primary-btn shop-sell-btn sell-one">
+                  💵 Sell 1 (+${this.formatMoney(unitPrice)})
+                </button>
+                ${card.qty > 1 ? `
+                  <button type="button" class="ui-btn secondary shop-sell-btn sell-all">
+                    Sell All x${card.qty} (+${this.formatMoney(unitPrice * card.qty)})
+                  </button>
+                ` : ''}
+              </div>
+            `;
+
+            const thumbEl = row.querySelector('.shop-sell-card-thumb');
+            thumbEl?.addEventListener('click', (ev) => {
+              ev.stopPropagation();
+              this.toggleShopModal(false);
+              this.openCreatureInspect(card, null);
+            });
+
+            const sellOneBtn = row.querySelector('.sell-one');
+            sellOneBtn?.addEventListener('click', (ev) => {
+              ev.stopPropagation();
+              this.sellCardToShop(card.id, false);
+            });
+
+            const sellAllBtn = row.querySelector('.sell-all');
+            sellAllBtn?.addEventListener('click', (ev) => {
+              ev.stopPropagation();
+              this.sellCardToShop(card.id, true);
+            });
+
+            gridEl.appendChild(row);
+          });
+        }
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // BASE2V2 2v2 BEAST SELECTION SYSTEM (Inventory & Binder)
+    // -------------------------------------------------------------------------
+    getPlayerAllBeasts() {
+      const beasts = [];
+
+      // 1. From Backpack Inventory
+      (this.inventory || []).forEach(item => {
+        if (item.type === 'mythos_card' && item.qty > 0) {
+          const bId = item.beastId || (item.id && item.id.replace('card_', ''));
+          if (bId && window.BEAST_TEMPLATES && window.BEAST_TEMPLATES[bId]) {
+            const tmpl = window.BEAST_TEMPLATES[bId];
+            for (let q = 0; q < Math.min(item.qty, 2); q++) {
+              beasts.push({
+                uniqueKey: `inv_${item.id}_${q}`,
+                beastId: bId,
+                name: item.name || tmpl.name,
+                element: item.element || tmpl.element,
+                stars: item.stars || tmpl.stars || 1,
+                hp: tmpl.maxHp,
+                cardImg: item.cardImg || tmpl.cardImg,
+                source: 'backpack',
+                sourceLabel: '🎒 Backpack'
+              });
+            }
+          }
+        }
+      });
+
+      // 2. From Binder Slots
+      (this.binderSlots || []).forEach((slotCard, idx) => {
+        if (slotCard) {
+          const bId = slotCard.beastId || (slotCard.id && slotCard.id.replace('card_', ''));
+          if (bId && window.BEAST_TEMPLATES && window.BEAST_TEMPLATES[bId]) {
+            const tmpl = window.BEAST_TEMPLATES[bId];
+            beasts.push({
+              uniqueKey: `binder_${idx}_${bId}`,
+              beastId: bId,
+              name: slotCard.name || tmpl.name,
+              element: slotCard.element || tmpl.element,
+              stars: slotCard.stars || tmpl.stars || 1,
+              hp: tmpl.maxHp,
+              cardImg: slotCard.cardImg || tmpl.cardImg,
+              source: 'binder',
+              sourceLabel: `📖 Binder #${idx + 1}`
+            });
+          }
+        }
+      });
+
+      return beasts;
+    }
+
+    open2v2BeastSelect(challenger = null) {
+      this.activeChallengerFor2v2 = challenger;
+      this.duoSelectedBeasts = [];
+      this.beastSelectFilter = 'all';
+
+      const modal = document.getElementById('beast-select-2v2-modal');
+      if (!modal) return;
+
+      // Auto-prefill first 2 available beasts if available for player convenience
+      const allBeasts = this.getPlayerAllBeasts();
+      if (allBeasts.length >= 1) this.duoSelectedBeasts.push(allBeasts[0]);
+      if (allBeasts.length >= 2) this.duoSelectedBeasts.push(allBeasts[1]);
+
+      this.render2v2BeastSelect();
+      modal.classList.remove('hidden');
+      if (window.sounds?.playClick) window.sounds.playClick();
+    }
+
+    close2v2BeastSelect() {
+      const modal = document.getElementById('beast-select-2v2-modal');
+      if (modal) modal.classList.add('hidden');
+      this.activeChallengerFor2v2 = null;
+      if (window.sounds?.playClick) window.sounds.playClick();
+    }
+
+    render2v2BeastSelect() {
+      const allBeasts = this.getPlayerAllBeasts();
+      const filteredBeasts = this.beastSelectFilter === 'all'
+        ? allBeasts
+        : allBeasts.filter(b => b.source === this.beastSelectFilter);
+
+      // Update Filter counts
+      const countAll = document.getElementById('filter-count-all');
+      const countBp = document.getElementById('filter-count-backpack');
+      const countBi = document.getElementById('filter-count-binder');
+      if (countAll) countAll.textContent = String(allBeasts.length);
+      if (countBp) countBp.textContent = String(allBeasts.filter(b => b.source === 'backpack').length);
+      if (countBi) countBi.textContent = String(allBeasts.filter(b => b.source === 'binder').length);
+
+      // Update Filter tabs active state
+      document.querySelectorAll('.filter-tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.filter === this.beastSelectFilter);
+      });
+
+      // Render Duo Slots (Slot 0 and Slot 1)
+      for (let s = 0; s < 2; s++) {
+        const slotBox = document.getElementById(`duo-slot-${s}`);
+        const contentEl = document.getElementById(`duo-content-${s}`);
+        const selected = this.duoSelectedBeasts[s];
+
+        if (slotBox && contentEl) {
+          if (selected) {
+            slotBox.classList.add('filled');
+            contentEl.className = 'duo-slot-content has-card';
+            contentEl.innerHTML = `
+              <div class="duo-slot-thumb">
+                <img src="${selected.cardImg}" alt="${selected.name}">
+              </div>
+              <div class="duo-slot-details">
+                <div class="duo-slot-name">${selected.name}</div>
+                <div class="duo-slot-meta">
+                  <span class="element-tag ${selected.element}">${selected.element}</span>
+                  <span>HP: ${selected.hp}</span>
+                  <span>${selected.sourceLabel}</span>
+                </div>
+              </div>
+              <button type="button" class="duo-slot-remove-btn" title="Remove from Duo">✕</button>
+            `;
+            const removeBtn = contentEl.querySelector('.duo-slot-remove-btn');
+            if (removeBtn) {
+              removeBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.duoSelectedBeasts.splice(s, 1);
+                this.render2v2BeastSelect();
+              });
+            }
+          } else {
+            slotBox.classList.remove('filled');
+            contentEl.className = 'duo-slot-content empty';
+            contentEl.innerHTML = `
+              <span class="duo-empty-plus">+</span>
+              <span class="duo-empty-text">Select Beast ${s + 1}</span>
+            `;
+          }
+        }
+      }
+
+      // Render Beasts Cards Grid
+      const grid = document.getElementById('beast-select-cards-grid');
+      if (grid) {
+        grid.innerHTML = '';
+        if (allBeasts.length === 0) {
+          grid.innerHTML = `
+            <div class="beast-select-empty-box">
+              <div class="beast-select-empty-icon">🎒</div>
+              <p><b>No Beasts Available!</b></p>
+              <p style="font-size: 13px;">You don't have any Mythos cards in your Backpack or Old Card Binder yet. Open your booster packs to discover beasts!</p>
+            </div>
+          `;
+        } else if (filteredBeasts.length === 0) {
+          grid.innerHTML = `
+            <div class="beast-select-empty-box">
+              <p>No beasts found in this tab.</p>
+            </div>
+          `;
+        } else {
+          filteredBeasts.forEach(beast => {
+            const isSelectedIdx = this.duoSelectedBeasts.findIndex(b => b.uniqueKey === beast.uniqueKey);
+            const isSelected = isSelectedIdx !== -1;
+
+            const cardItem = document.createElement('div');
+            cardItem.className = `beast-select-card-item ${isSelected ? 'selected' : ''}`;
+
+            cardItem.innerHTML = `
+              <div class="beast-select-card-art">
+                <img src="${beast.cardImg}" alt="${beast.name}">
+                <span class="beast-select-source-tag">${beast.sourceLabel}</span>
+                ${isSelected ? `<span class="beast-select-selected-badge">${isSelectedIdx + 1}</span>` : ''}
+              </div>
+              <div class="beast-select-card-info">
+                <div class="beast-select-card-name">${beast.name}</div>
+                <div class="beast-select-card-meta">
+                  <span class="element-tag ${beast.element}">${beast.element}</span>
+                  <span>HP ${beast.hp}</span>
+                </div>
+              </div>
+            `;
+
+            cardItem.addEventListener('click', () => {
+              if (window.sounds?.playClick) window.sounds.playClick();
+              if (isSelected) {
+                // Deselect
+                this.duoSelectedBeasts.splice(isSelectedIdx, 1);
+              } else {
+                // If fewer than 2 selected, add
+                if (this.duoSelectedBeasts.length < 2) {
+                  this.duoSelectedBeasts.push(beast);
+                } else {
+                  // Replace Slot 2
+                  this.duoSelectedBeasts[1] = beast;
+                }
+              }
+              this.render2v2BeastSelect();
+            });
+
+            grid.appendChild(cardItem);
+          });
+        }
+      }
+
+      // Update Launch Button
+      const launchBtn = document.getElementById('btn-launch-2v2');
+      if (launchBtn) {
+        const isReady = this.duoSelectedBeasts.length === 2;
+        launchBtn.disabled = !isReady;
+        if (isReady) {
+          const b1 = this.duoSelectedBeasts[0].name;
+          const b2 = this.duoSelectedBeasts[1].name;
+          launchBtn.innerHTML = `⚔️ Enter Base2v2 Arena (${b1} & ${b2})`;
+        } else {
+          const needed = 2 - this.duoSelectedBeasts.length;
+          launchBtn.innerHTML = `⚔️ Enter Base2v2 Arena (Select ${needed} More Beast${needed > 1 ? 's' : ''})`;
+        }
+      }
+    }
+
+    launch2v2Match() {
+      if (this.duoSelectedBeasts.length < 2) return;
+      const b1 = this.duoSelectedBeasts[0].beastId;
+      const b2 = this.duoSelectedBeasts[1].beastId;
+      const challenger = this.activeChallengerFor2v2;
+
+      this.close2v2BeastSelect();
+
+      if (window.sounds?.playRock) {
+        window.sounds.playRock();
+      } else if (window.sounds?.playClick) {
+        window.sounds.playClick();
+      }
+
+      this.triggerDuel(challenger, 'Base2v2', [b1, b2]);
+    }
+
+    // -------------------------------------------------------------------------
     // OLD CARD BINDER (9 Protective Card Pocket Sleeves - Awarded Upon Friend Defeat)
     // -------------------------------------------------------------------------
     grantOldCardBinder(challenger) {
@@ -642,7 +1335,32 @@
       this.updateHUDSaveInfo();
     }
 
+    handlePlutoBattleResult(won) {
+      if (won) {
+        this.gold = Math.round(((this.gold || 0) + 1.00) * 100) / 100;
+        this.plutoBattleResult = 'won';
+      } else {
+        this.gold = Math.max(0, Math.round(((this.gold || 0) - 1.00) * 100) / 100);
+        this.plutoBattleResult = 'lost';
+      }
+      this.saveWorldData(this.draftAppearance);
+      this.updateHUDSaveInfo();
+    }
+
     onReturnFromBattle(challenger) {
+      if (challenger?.id === 'pluto') {
+        if (this.plutoNpc) {
+          this.plutoNpc.bubble = this.plutoBattleResult === 'won' ? '🤝' : '😏';
+        }
+        if (this.plutoBattleResult === 'won') {
+          if (window.sounds?.playVictory) window.sounds.playVictory();
+        } else if (this.plutoBattleResult === 'lost') {
+          if (window.sounds?.playHit) window.sounds.playHit();
+        }
+        this.activeDialogueNpc = 'pluto';
+        this.updateFreeRoamPrompt();
+        return;
+      }
       if (this.friendDefeatedRewardPending) {
         this.friendDefeatedRewardPending = false;
         const fName = challenger?.name || this.friendName || 'Mike';
@@ -917,8 +1635,8 @@
 
       const removeBtn = document.getElementById('btn-inspect-remove-from-binder');
 
-      const elIcons = { fire: '🔥', earth: '🪨', poison: '🐍', plant: '🍃' };
-      const elColors = { fire: '#ef4444', earth: '#eab308', poison: '#a855f7', plant: '#22c55e' };
+      const elIcons = { fire: '🔥', earth: '🪨', poison: '🐍', plant: '🍃', air: '☁️' };
+      const elColors = { fire: '#ef4444', earth: '#eab308', poison: '#a855f7', plant: '#22c55e', air: '#38bdf8' };
       const elKey = beast.element.toLowerCase();
 
       if (crestEl) crestEl.textContent = elIcons[elKey] || '✨';
@@ -1035,8 +1753,9 @@
       const packItem = this.inventory.find(i => i.id === packItemId && i.qty > 0);
       if (!packItem) return;
 
-      // Close the inventory modal so the full-screen Pack Opening Stage takes center stage
+      // Close the inventory or shop modal so the full-screen Pack Opening Stage takes center stage
       this.toggleInventoryModal(false);
+      this.toggleShopModal(false);
 
       this.packOpeningState = {
         packItemId,
@@ -1376,6 +2095,9 @@
         this.shopkeeperNpc.bubble = '🤩';
       }
       this.saveWorldData(this.draftAppearance);
+      this.updateHUDSaveInfo();
+      this.renderInventoryModal();
+      this.renderShopModal();
 
       const modal = document.getElementById('pack-opening-modal');
       modal?.classList.add('hidden');
@@ -1395,6 +2117,7 @@
       this.gold = 0;
       this.hasMomBoosterMoney = false;
       this.hasBoughtCardShopPacks = false;
+      this.hasBoughtBase2v2Map = false;
       this.hasOpenedStarterPack = false;
       this.friendWaitingAtHouse = false;
       this.hasOldCardBinder = false;
@@ -1407,7 +2130,8 @@
       this.renderInventoryModal();
       this.renderBinderModal();
 
-      this.storyState = 'intro_bored';
+      this.storyState = 'intro_waiting';
+      this.activeDialogueNpc = null;
       this.tvOn = false;
       this.tvFlashTicks = 0;
       this.shakeTicks = 0;
@@ -1463,30 +2187,27 @@
         this.npcs[0].bubble = '🤩';
         this.renderDialogueUI();
       } else if (this.storyState === 'both_excited') {
-        // Player's Mother enters the house through the bottom doorstep from work!
+        // Player's Mother steps right inside from work and walks into the living room in real time!
         if (window.sounds?.playMove) window.sounds.playMove();
-        this.storyState = 'mom_enters';
         const mom = this.createMomNpc();
-        this.npcs = [this.npcs[0], mom];
-        this.player.dir = 'down';
-        this.npcs[0].dir = 'down';
-        this.npcs[0].bubble = '👋';
-        this.renderDialogueUI();
-      } else if (this.storyState === 'mom_enters') {
-        this.storyState = 'free_roam';
-        const mom = this.npcs.find(n => n.id === 'mom');
-        if (mom) {
-          mom.dir = 'right';
-          mom.bubble = '💬';
+        if (!this.npcs.some(n => n.id === 'mom')) {
+          this.npcs.push(mom);
         }
-        this.npcs[0].dir = 'left';
-        this.npcs[0].bubble = '🤩';
+        this.storyState = 'free_roam';
+        this.activeDialogueNpc = null;
+        this.player.dir = 'down';
+        if (this.npcs[0]) {
+          this.npcs[0].dir = 'down';
+          this.npcs[0].bubble = '🤩';
+        }
         this.renderDialogueUI();
       } else if (this.storyState === 'mom_gave_money') {
         this.storyState = 'free_roam';
+        this.activeDialogueNpc = null;
         this.renderDialogueUI();
       } else if (this.storyState === 'shop_bought_packs') {
         this.storyState = 'free_roam';
+        this.activeDialogueNpc = null;
         this.renderDialogueUI();
       } else if (this.storyState === 'must_open_pack_before_leaving') {
         const hasUnopenedPack = (this.inventory || []).some(i => i.id === 'unopened_base_pack' && i.qty > 0);
@@ -1494,10 +2215,12 @@
           this.startBoosterPackOpening('unopened_base_pack');
         } else {
           this.storyState = 'free_roam';
+          this.activeDialogueNpc = null;
           this.renderDialogueUI();
         }
       } else if (this.storyState === 'friend_challenges_after_pack') {
         this.storyState = 'free_roam';
+        this.activeDialogueNpc = null;
         const friend = this.npcs[0];
         if (friend) {
           friend.following = false;
@@ -1509,6 +2232,7 @@
         this.renderDialogueUI();
       } else if (this.storyState === 'friend_defeated_celebration') {
         this.storyState = 'free_roam';
+        this.activeDialogueNpc = null;
         if (this.npcs[0]) {
           this.npcs[0].bubble = '⚔️';
         }
@@ -1579,6 +2303,39 @@
       this.renderDialogueUI();
     }
 
+    isNpc(interactable) {
+      if (!interactable) return false;
+      const id = interactable.id;
+      return id === 'friend' || id === 'best_friend' || id === 'friend_duel' || id === 'mom' || id === 'shopkeeper' || id === 'pluto' || interactable === this.npcs[0] || interactable === this.shopkeeperNpc || interactable === this.plutoNpc;
+    }
+
+    startTalkingToNpc(npcId) {
+      if (window.sounds?.playClick) window.sounds.playClick();
+      const actualId = (npcId === 'friend' || npcId === 'best_friend' || npcId === this.friendName || (this.npcs[0] && npcId === this.npcs[0].id))
+        ? (this.currentArea === 'friend_interior' ? 'friend_duel' : 'friend')
+        : npcId;
+
+      this.activeDialogueNpc = actualId;
+
+      if (this.storyState === 'intro_waiting' && (actualId === 'friend' || actualId === 'best_friend' || actualId === this.friendName)) {
+        this.storyState = 'intro_bored';
+        this.renderDialogueUI();
+        return;
+      }
+
+      this.lastShopPromptKey = null;
+      this.updateFreeRoamPrompt();
+    }
+
+    closeDialogue() {
+      this.activeDialogueNpc = null;
+      if (this.storyState === 'intro_bored') {
+        this.storyState = 'intro_waiting';
+      }
+      this.lastShopPromptKey = null;
+      this.renderDialogueUI();
+    }
+
     renderDialogueUI() {
       const bar = document.getElementById('ow-dialog-bar');
       const speakerEl = document.getElementById('ow-speaker-tag');
@@ -1592,6 +2349,12 @@
       bar.classList.remove('top-position');
       const friendName = this.npcs[0].name;
       const playerName = this.draftAppearance?.name || 'Asher';
+
+      if (this.storyState === 'intro_waiting') {
+        this.updateFreeRoamPrompt();
+        this.updateMobileActionLabel();
+        return;
+      }
 
       if (this.storyState === 'intro_bored') {
         bar.classList.remove('hidden');
@@ -1636,19 +2399,7 @@
         textEl.innerHTML = `<b>${friendName}:</b> "NO WAY!! Did you see those Beasts?! <b>MYTHOS</b> looks incredible — we HAVE to get Booster Packs right now!"<br><b>${playerName}:</b> "Totally!! If we can get enough money for <b>2 Booster Packs</b> at <b>Leo's Card Shop</b>, we can both build a deck!"`;
 
         choicesEl.classList.add('hidden');
-        nextBtn.textContent = 'Hear Front Door Open ▸';
-        nextBtn.classList.remove('hidden');
-        challengeBtn.classList.add('hidden');
-      } else if (this.storyState === 'mom_enters') {
-        bar.classList.remove('hidden');
-        bar.classList.remove('tv-broadcast');
-        bar.classList.add('top-position');
-        speakerEl.textContent = '💼 MOM (HOME FROM WORK)';
-        speakerEl.className = 'ow-speaker-tag friend';
-        textEl.innerHTML = `<i>*Click—creak!*</i> Your mother steps inside from work and sets down her bag.<br><b>Mom:</b> "Phew, what a busy shift! Hey ${playerName}, hi ${friendName} — I could hear the TV all the way from the porch! What are you two so hyped about?"`;
-
-        choicesEl.classList.add('hidden');
-        nextBtn.textContent = 'Walk Over & Talk to Mom ▸';
+        nextBtn.textContent = 'Continue ▸';
         nextBtn.classList.remove('hidden');
         challengeBtn.classList.add('hidden');
       } else if (this.storyState === 'mom_gave_money') {
@@ -1781,7 +2532,7 @@
     }
 
     updateFreeRoamPrompt() {
-      if (this.storyState !== 'free_roam') return;
+      if (this.storyState !== 'free_roam' && this.storyState !== 'intro_waiting') return;
       const bar = document.getElementById('ow-dialog-bar');
       const speakerEl = document.getElementById('ow-speaker-tag');
       const textEl = document.getElementById('ow-dialog-text');
@@ -1809,16 +2560,25 @@
           bar.classList.add('top-position');
           speakerEl.textContent = '💼 MOM';
           speakerEl.className = 'ow-speaker-tag friend';
-          if (!this.hasMomBoosterMoney) {
-            textEl.textContent = `"Hey sweetheart! You and ${friend.name} look like you're about to burst with excitement. Did you want to ask me something?"`;
-            challengeBtn.textContent = '💵 Ask Mom for 2 Booster Packs ($20)';
-            challengeBtn.classList.remove('hidden');
-          } else if (this.hasOpenedStarterPack) {
-            textEl.textContent = `"You pulled 3 MYTHOS cards from Leo's Card Shop? Have fun battling ${friend.name} next door at his house!"`;
-            challengeBtn.classList.add('hidden');
+
+          if (this.activeDialogueNpc === 'mom') {
+            challengeBtn.classList.remove('ow-talk-btn');
+            if (!this.hasMomBoosterMoney) {
+              textEl.textContent = `"Hey sweetheart! You and ${friend.name} look like you're about to burst with excitement. Did you want to ask me something?"`;
+              challengeBtn.textContent = '💵 Ask Mom for 2 Booster Packs ($20)';
+              challengeBtn.classList.remove('hidden');
+            } else if (this.hasOpenedStarterPack) {
+              textEl.textContent = `"You pulled 3 MYTHOS cards from Leo's Card Shop? Have fun battling ${friend.name} next door at his house!"`;
+              challengeBtn.classList.add('hidden');
+            } else {
+              textEl.textContent = `"Have fun at Leo's Card Shop down the road! Make sure you and ${friend.name} each get a MYTHOS Booster Pack with that $20!"`;
+              challengeBtn.classList.add('hidden');
+            }
           } else {
-            textEl.textContent = `"Have fun at Leo's Card Shop down the road! Make sure you and ${friend.name} each get a MYTHOS Booster Pack with that $20!"`;
-            challengeBtn.classList.add('hidden');
+            textEl.innerHTML = `Press <b>Talk</b> to speak with <b>Mom</b>.`;
+            challengeBtn.textContent = '💬 Talk (Space)';
+            challengeBtn.classList.add('ow-talk-btn');
+            challengeBtn.classList.remove('hidden');
           }
         } else if (distToFriend < 1.8) {
           this.nearInteractable = friend;
@@ -1829,16 +2589,32 @@
           }
           speakerEl.textContent = friend.name.toUpperCase();
           speakerEl.className = 'ow-speaker-tag friend';
-          if (!this.hasMomBoosterMoney) {
-            textEl.textContent = `"Dude, your Mom just got home from work! Go ask her if we can get enough money to buy 2 MYTHOS Booster Packs at Leo's Card Shop!"`;
-          } else if (this.hasOpenedStarterPack) {
-            textEl.textContent = `"We both pulled 3 awesome cards from Leo's Card Shop! Let's head next door to my house so we can battle!"`;
+
+          if (this.storyState === 'intro_waiting') {
+            textEl.innerHTML = `Press <b>Talk</b> to speak with <b>${friend.name}</b>.`;
+            challengeBtn.textContent = '💬 Talk (Space)';
+            challengeBtn.classList.add('ow-talk-btn');
+            challengeBtn.classList.remove('hidden');
+          } else if (this.activeDialogueNpc === 'friend' || this.activeDialogueNpc === friend.name) {
+            challengeBtn.classList.remove('ow-talk-btn');
+            if (!this.hasMomBoosterMoney) {
+              textEl.textContent = `"Dude, your Mom just got home from work! Go ask her if we can get enough money to buy 2 MYTHOS Booster Packs at Leo's Card Shop!"`;
+            } else if (this.hasOpenedStarterPack) {
+              textEl.textContent = `"We both pulled 3 awesome cards from Leo's Card Shop! Let's head next door to my house so we can battle!"`;
+            } else {
+              textEl.textContent = `"YES!! Your Mom gave us $20 for 2 Booster Packs! Let's head out the front door, walk south, and follow the road east to Leo's Card Shop!"`;
+            }
+            challengeBtn.classList.add('hidden');
           } else {
-            textEl.textContent = `"YES!! Your Mom gave us $20 for 2 Booster Packs! Let's head out the front door, walk south, and follow the road east to Leo's Card Shop!"`;
+            textEl.innerHTML = `Press <b>Talk</b> to speak with <b>${friend.name}</b>.`;
+            challengeBtn.textContent = '💬 Talk (Space)';
+            challengeBtn.classList.add('ow-talk-btn');
+            challengeBtn.classList.remove('hidden');
           }
-          challengeBtn.classList.add('hidden');
         } else if (distToTv < 1.6) {
           this.nearInteractable = { id: 'tv', name: 'TV' };
+          this.activeDialogueNpc = null;
+          challengeBtn.classList.remove('ow-talk-btn');
           bar.classList.remove('hidden');
           bar.classList.add('tv-broadcast');
           speakerEl.textContent = '📺 LIVING ROOM TV';
@@ -1847,6 +2623,8 @@
           challengeBtn.classList.add('hidden');
         } else {
           this.nearInteractable = null;
+          this.activeDialogueNpc = null;
+          challengeBtn.classList.remove('ow-talk-btn');
           bar.classList.add('hidden');
         }
       } else if (this.currentArea === 'friend_interior') {
@@ -1863,49 +2641,60 @@
           speakerEl.textContent = `⚔️ ${fName.toUpperCase()} — READY TO BATTLE AT ${fName.toUpperCase()}'S HOUSE!`;
           speakerEl.className = 'ow-speaker-tag friend';
 
-          const friendDuelKey = `friend_interior_duel_${fName}_${pName}_${this.hasOldCardBinder}`;
-          if (this.lastShopPromptKey !== friendDuelKey) {
-            this.lastShopPromptKey = friendDuelKey;
-            choicesEl.innerHTML = '';
-            if (this.hasOldCardBinder) {
-              textEl.innerHTML = `<b>${fName}:</b> "That was such an awesome match, ${pName}! How is that <b>Old Card Binder</b> working out for you? You can slot up to 9 cards into it, inspect their standalone art, and test new builds in battle! Want a rematch?!"`;
-              const binderBtn = document.createElement('button');
-              binderBtn.type = 'button';
-              binderBtn.className = 'ow-choice-btn';
-              binderBtn.innerHTML = `📖 Open the <b>Old Card Binder</b> (Press B)`;
-              binderBtn.addEventListener('click', (ev) => {
-                ev.stopPropagation();
-                this.toggleBinderModal(true);
-              });
-              const rematchBtn = document.createElement('button');
-              rematchBtn.type = 'button';
-              rematchBtn.className = 'ow-choice-btn';
-              rematchBtn.innerHTML = `⚔️ "I'm ready for a rematch, ${fName}! Let's battle!"`;
-              rematchBtn.addEventListener('click', (ev) => {
-                ev.stopPropagation();
-                this.triggerDuel();
-              });
-              choicesEl.appendChild(binderBtn);
-              choicesEl.appendChild(rematchBtn);
-            } else {
-              textEl.innerHTML = `<b>${fName}:</b> "Welcome to my house, ${pName}!! I've got the <b>MYTHOS Tabletop Arena</b> set up right here on my table with the 3 cards I pulled from Leo's pack! Defeat me and I'll give you my brother's <b>Old Card Binder</b>! Ready to battle?!"`;
-              const duelBtn = document.createElement('button');
-              duelBtn.type = 'button';
-              duelBtn.className = 'ow-choice-btn';
-              duelBtn.innerHTML = `⚔️ "I'm ready, ${fName}! Let's battle in <b>MYTHOS</b>!"`;
-              duelBtn.addEventListener('click', (ev) => {
-                ev.stopPropagation();
-                this.triggerDuel();
-              });
-              choicesEl.appendChild(duelBtn);
+          if (this.activeDialogueNpc === 'friend_duel') {
+            challengeBtn.classList.remove('ow-talk-btn');
+            const friendDuelKey = `friend_interior_duel_${fName}_${pName}_${this.hasOldCardBinder}`;
+            if (this.lastShopPromptKey !== friendDuelKey) {
+              this.lastShopPromptKey = friendDuelKey;
+              choicesEl.innerHTML = '';
+              if (this.hasOldCardBinder) {
+                textEl.innerHTML = `<b>${fName}:</b> "That was such an awesome match, ${pName}! How is that <b>Old Card Binder</b> working out for you? You can slot up to 9 cards into it, inspect their standalone art, and test new builds in battle! Want a rematch?!"`;
+                const binderBtn = document.createElement('button');
+                binderBtn.type = 'button';
+                binderBtn.className = 'ow-choice-btn';
+                binderBtn.innerHTML = `📖 Open the <b>Old Card Binder</b> (Press B)`;
+                binderBtn.addEventListener('click', (ev) => {
+                  ev.stopPropagation();
+                  this.toggleBinderModal(true);
+                });
+                const rematchBtn = document.createElement('button');
+                rematchBtn.type = 'button';
+                rematchBtn.className = 'ow-choice-btn';
+                rematchBtn.innerHTML = `⚔️ "I'm ready for a rematch, ${fName}! Let's battle!"`;
+                rematchBtn.addEventListener('click', (ev) => {
+                  ev.stopPropagation();
+                  this.triggerDuel();
+                });
+                choicesEl.appendChild(binderBtn);
+                choicesEl.appendChild(rematchBtn);
+              } else {
+                textEl.innerHTML = `<b>${fName}:</b> "Welcome to my house, ${pName}!! I've got the <b>MYTHOS Tabletop Arena</b> set up right here on my table with the 3 cards I pulled from Leo's pack! Defeat me and I'll give you my brother's <b>Old Card Binder</b>! Ready to battle?!"`;
+                const duelBtn = document.createElement('button');
+                duelBtn.type = 'button';
+                duelBtn.className = 'ow-choice-btn';
+                duelBtn.innerHTML = `⚔️ "I'm ready, ${fName}! Let's battle in <b>MYTHOS</b>!"`;
+                duelBtn.addEventListener('click', (ev) => {
+                  ev.stopPropagation();
+                  this.triggerDuel();
+                });
+                choicesEl.appendChild(duelBtn);
+              }
             }
+            choicesEl.classList.remove('hidden');
+            challengeBtn.textContent = this.hasOldCardBinder ? `⚔️ Rematch ${fName}!` : `⚔️ Battle ${fName}!`;
+            challengeBtn.classList.remove('hidden');
+          } else {
+            this.lastShopPromptKey = null;
+            textEl.innerHTML = `Press <b>Talk</b> to speak with <b>${fName}</b> at the duel table.`;
+            challengeBtn.textContent = '💬 Talk (Space)';
+            challengeBtn.classList.add('ow-talk-btn');
+            challengeBtn.classList.remove('hidden');
           }
-          choicesEl.classList.remove('hidden');
-          challengeBtn.textContent = this.hasOldCardBinder ? `⚔️ Rematch ${fName}!` : `⚔️ Battle ${fName}!`;
-          challengeBtn.classList.remove('hidden');
         } else {
           this.lastShopPromptKey = null;
           this.nearInteractable = null;
+          this.activeDialogueNpc = null;
+          challengeBtn.classList.remove('ow-talk-btn');
           bar.classList.add('hidden');
         }
       } else if (this.currentArea === 'card_shop_interior') {
@@ -1924,64 +2713,128 @@
           speakerEl.textContent = "🃏 SHOPKEEPER LEO — LEO'S CARD SHOP";
           speakerEl.className = 'ow-speaker-tag tv';
 
-          if (!this.hasBoughtCardShopPacks) {
-            const hasMoney = (this.gold || 0) >= 20;
-            const shopKey = `keeper_buy_${hasMoney}_${pName}_${fName}`;
-            if (this.lastShopPromptKey !== shopKey) {
-              this.lastShopPromptKey = shopKey;
-              textEl.innerHTML = `"Welcome to <b>Leo's Card Shop</b>, ${pName} and ${fName}!! Have you seen the new <b>MYTHOS</b> game?! It's unbelievable — elemental Beasts, tactical grid movement, and high-impact abilities! Every duelist in town is losing their minds over the Base Set!"`;
-              choicesEl.innerHTML = '';
-              const buyBtn = document.createElement('button');
-              buyBtn.type = 'button';
-              buyBtn.className = 'ow-choice-btn';
-              if (hasMoney) {
-                buyBtn.innerHTML = `💬 "We saw the commercial! Can we buy <b>2 MYTHOS Base Set Booster Packs ($20)</b> — one for me and one for ${fName}?"`;
-                buyBtn.addEventListener('click', (ev) => {
-                  ev.stopPropagation();
-                  this.buyTwoBoosterPacks();
-                });
-              } else {
-                buyBtn.innerHTML = `💬 "We want to buy 2 Booster Packs ($20), one for me and one for ${fName}! <i>(Need $20 — ask Mom at home first!)</i>"`;
-                buyBtn.addEventListener('click', (ev) => {
-                  ev.stopPropagation();
-                  if (window.sounds?.playClick) window.sounds.playClick();
-                });
+          if (this.activeDialogueNpc === 'shopkeeper') {
+            challengeBtn.classList.remove('ow-talk-btn');
+
+            if (!this.hasBoughtCardShopPacks) {
+              // ---------------------------------------------------------------
+              // INTRO QUEST: Buy 2 Booster Packs ($20) for Asher & Best Friend
+              // ---------------------------------------------------------------
+              const hasMoney = (this.gold || 0) >= 20;
+              const shopKey = `keeper_intro_${hasMoney}_${pName}_${fName}`;
+              if (this.lastShopPromptKey !== shopKey) {
+                this.lastShopPromptKey = shopKey;
+                textEl.innerHTML = `"Welcome to <b>Leo's Card Shop</b>, ${pName} and ${fName}!! Have you seen the new <b>MYTHOS</b> game?! It's unbelievable — elemental Beasts, tactical grid movement, and high-impact abilities! Every duelist in town is losing their minds over the Base Set!"`;
+                choicesEl.innerHTML = '';
+
+                const buyBtn = document.createElement('button');
+                buyBtn.type = 'button';
+                buyBtn.className = 'ow-choice-btn primary';
+                if (hasMoney) {
+                  buyBtn.innerHTML = `💬 "We saw the commercial! Can we buy <b>2 MYTHOS Base Set Booster Packs ($20)</b> — one for me and one for ${fName}?"`;
+                  buyBtn.addEventListener('click', (ev) => {
+                    ev.stopPropagation();
+                    this.buyTwoBoosterPacks();
+                  });
+                } else {
+                  buyBtn.innerHTML = `💬 "We want to buy 2 Booster Packs ($20), one for me and one for ${fName}! <i>(Need $20 — ask Mom at home first!)</i>"`;
+                  buyBtn.addEventListener('click', (ev) => {
+                    ev.stopPropagation();
+                    if (window.sounds?.playClick) window.sounds.playClick();
+                  });
+                }
+                choicesEl.appendChild(buyBtn);
               }
-              choicesEl.appendChild(buyBtn);
-            }
-            choicesEl.classList.remove('hidden');
-            challengeBtn.textContent = hasMoney ? '💵 Buy 2 Packs ($20)' : '💵 Need $20';
-            challengeBtn.classList.toggle('hidden', !hasMoney);
-          } else {
-            const hasUnopenedPack = (this.inventory || []).some(i => i.id === 'unopened_base_pack' && i.qty > 0);
-            const boughtKey = `keeper_bought_${hasUnopenedPack}_${fName}`;
-            if (this.lastShopPromptKey !== boughtKey) {
-              this.lastShopPromptKey = boughtKey;
-              choicesEl.innerHTML = '';
-              if (hasUnopenedPack) {
-                textEl.innerHTML = `"I still can't get over how awesome <b>MYTHOS</b> is! You and ${fName} each have your own <b>Unopened Base Set Booster Pack</b> — click below or open your <b>🎒 Inventory (I)</b> to break <b>The Seal of Mythos</b> right here in <b>Leo's Card Shop</b>!"`;
-                const openPackChoice = document.createElement('button');
-                openPackChoice.type = 'button';
-                openPackChoice.className = 'ow-choice-btn';
-                openPackChoice.innerHTML = `✨ "Let's open my <b>Mythos Base Card Pack</b> right now!"`;
-                openPackChoice.addEventListener('click', (ev) => {
-                  ev.stopPropagation();
-                  this.startBoosterPackOpening('unopened_base_pack');
-                });
-                choicesEl.appendChild(openPackChoice);
-                choicesEl.classList.remove('hidden');
-              } else {
-                textEl.innerHTML = `"Whoa, those 3 <b>MYTHOS Base Set Cards</b> you pulled from your Booster Pack are incredible!! Good luck in your Mythos Battle against ${fName} at his house!"`;
-                choicesEl.classList.add('hidden');
-              }
+              choicesEl.classList.remove('hidden');
+              challengeBtn.textContent = hasMoney ? '💵 Buy 2 Packs ($20)' : '💵 Need $20';
+              challengeBtn.classList.toggle('hidden', !hasMoney);
             } else {
-              choicesEl.classList.toggle('hidden', !hasUnopenedPack);
+              // ---------------------------------------------------------------
+              // UNLOCKED: Leo's Buy & Sell Counter ($10 packs / 10¢-50¢ buyback)
+              // ---------------------------------------------------------------
+              const hasMoneyForPack = (this.gold || 0) >= 10;
+              const hasUnopenedPack = (this.inventory || []).some(i => i.id === 'unopened_base_pack' && i.qty > 0);
+              const looseCardCount = (this.inventory || []).filter(i => i.type === 'mythos_card' && i.qty > 0).reduce((s, i) => s + (i.qty || 0), 0);
+
+              const shopKey = `keeper_unlocked_${hasMoneyForPack}_${hasUnopenedPack}_${looseCardCount}_${pName}_${fName}`;
+              if (this.lastShopPromptKey !== shopKey) {
+                this.lastShopPromptKey = shopKey;
+                textEl.innerHTML = `"Welcome back to the counter, ${pName}! Now that you and ${fName} have your starter packs, feel free to use our <b>Buy &amp; Sell Counter</b>: grab more 1st-Edition <b>Mythos Base Card Packs for $10</b>, or trade in extra cards from your backpack for cash (10¢ for 1★ up to 50¢ for 4★)!"`;
+
+                choicesEl.innerHTML = '';
+
+                // Choice 1: Open Shop (Buy & Sell)
+                const openShopBtn = document.createElement('button');
+                openShopBtn.type = 'button';
+                openShopBtn.className = 'ow-choice-btn primary';
+                openShopBtn.innerHTML = `🛒 "Let's check out your <b>Buy &amp; Sell Counter</b>!"`;
+                openShopBtn.addEventListener('click', (ev) => {
+                  ev.stopPropagation();
+                  this.toggleShopModal(true);
+                });
+                choicesEl.appendChild(openShopBtn);
+
+                // Choice 2: Buy Base Card Pack ($10)
+                const buyPackBtn = document.createElement('button');
+                buyPackBtn.type = 'button';
+                buyPackBtn.className = 'ow-choice-btn';
+                if (hasMoneyForPack) {
+                  buyPackBtn.innerHTML = `📦 "I'd like to buy a <b>1st-Edition Base Card Pack ($10.00)</b>!"`;
+                  buyPackBtn.addEventListener('click', (ev) => {
+                    ev.stopPropagation();
+                    this.buyBaseCardPack();
+                  });
+                } else {
+                  buyPackBtn.innerHTML = `📦 "I'd like a Base Card Pack ($10.00)..." <i>(Wallet: ${this.formatMoney(this.gold || 0)} — need $10.00)</i>`;
+                  buyPackBtn.addEventListener('click', (ev) => {
+                    ev.stopPropagation();
+                    this.toggleShopModal(true, 'buy');
+                  });
+                }
+                choicesEl.appendChild(buyPackBtn);
+
+                // Choice 3: Sell Cards (if player has loose cards)
+                if (looseCardCount > 0) {
+                  const sellCardsBtn = document.createElement('button');
+                  sellCardsBtn.type = 'button';
+                  sellCardsBtn.className = 'ow-choice-btn';
+                  sellCardsBtn.innerHTML = `💵 "I have <b>${looseCardCount} card${looseCardCount > 1 ? 's' : ''}</b> in my backpack to sell!"`;
+                  sellCardsBtn.addEventListener('click', (ev) => {
+                    ev.stopPropagation();
+                    this.toggleShopModal(true, 'sell');
+                  });
+                  choicesEl.appendChild(sellCardsBtn);
+                }
+
+                // Choice 4: Rip Unopened Pack (if player has unopened pack)
+                if (hasUnopenedPack) {
+                  const openPackChoice = document.createElement('button');
+                  openPackChoice.type = 'button';
+                  openPackChoice.className = 'ow-choice-btn';
+                  openPackChoice.innerHTML = `✨ "Let's rip open my <b>Mythos Base Card Pack</b> right here!"`;
+                  openPackChoice.addEventListener('click', (ev) => {
+                    ev.stopPropagation();
+                    this.startBoosterPackOpening('unopened_base_pack');
+                  });
+                  choicesEl.appendChild(openPackChoice);
+                }
+              }
+
+              choicesEl.classList.remove('hidden');
+              challengeBtn.textContent = '🛒 Buy & Sell Counter (Space)';
+              challengeBtn.classList.remove('hidden');
             }
-            challengeBtn.textContent = hasUnopenedPack ? '✨ Rip Open Booster Pack!' : '🎒 Open Inventory (I)';
+          } else {
+            this.lastShopPromptKey = null;
+            textEl.innerHTML = `Press <b>Talk</b> to speak with <b>Shopkeeper Leo</b> across the counter.`;
+            challengeBtn.textContent = '💬 Talk (Space)';
+            challengeBtn.classList.add('ow-talk-btn');
             challengeBtn.classList.remove('hidden');
           }
         } else if (distToCase < 1.55) {
           this.lastShopPromptKey = null;
+          this.activeDialogueNpc = null;
+          challengeBtn.classList.remove('ow-talk-btn');
           this.nearInteractable = { id: 'booster_display', name: 'Booster Pack Display Shelf' };
           bar.classList.remove('hidden');
           bar.classList.remove('tv-broadcast');
@@ -1991,6 +2844,8 @@
           challengeBtn.classList.add('hidden');
         } else if (distToTable < 1.55) {
           this.lastShopPromptKey = null;
+          this.activeDialogueNpc = null;
+          challengeBtn.classList.remove('ow-talk-btn');
           this.nearInteractable = { id: 'duel_table', name: 'In-Store Duel Table' };
           bar.classList.remove('hidden');
           bar.classList.remove('tv-broadcast');
@@ -2005,6 +2860,145 @@
         } else {
           this.lastShopPromptKey = null;
           this.nearInteractable = null;
+          this.activeDialogueNpc = null;
+          challengeBtn.classList.remove('ow-talk-btn');
+          bar.classList.add('hidden');
+        }
+      } else if (this.currentArea === 'pluto_interior') {
+        const pName = this.draftAppearance?.name || 'Asher';
+        const pluto = this.plutoNpc;
+        const distToPluto = pluto ? Math.hypot(this.player.x - pluto.x, this.player.y - (pluto.y + 0.85)) : 999;
+        const distToDesk = Math.hypot(this.player.x - 6.2, this.player.y - 5.6);
+        const distToBed = Math.hypot(this.player.x - 3.2, this.player.y - 5.4);
+        const distToWardrobe = Math.hypot(this.player.x - 12.2, this.player.y - 5.0);
+
+        if (distToPluto < 1.95 || distToDesk < 1.4) {
+          this.nearInteractable = pluto;
+          bar.classList.remove('hidden');
+          bar.classList.remove('tv-broadcast');
+          speakerEl.textContent = "💻 PLUTO — BEDROOM COMPUTER DESK";
+          speakerEl.className = 'ow-speaker-tag friend';
+
+          if (this.activeDialogueNpc === 'pluto') {
+            challengeBtn.classList.remove('ow-talk-btn');
+            const hasDollar = (this.gold || 0) >= 1.00;
+            const res = this.plutoBattleResult;
+            const plutoKey = `pluto_dialogue_${pName}_${hasDollar}_${res || 'none'}`;
+
+            if (this.lastShopPromptKey !== plutoKey) {
+              this.lastShopPromptKey = plutoKey;
+              choicesEl.innerHTML = '';
+
+              if (res === 'won') {
+                textEl.innerHTML = `<b>Pluto:</b> "Whoa, amazing match, ${pName}! You completely outplayed my Beasts! Here is your <b>+$1.00</b> stake! Want a rematch for another dollar?"`;
+                this.plutoBattleResult = null;
+              } else if (res === 'lost') {
+                textEl.innerHTML = `<b>Pluto:</b> "Good game, ${pName}! My deck held strong this round! That'll be <b>-$1.00</b> for the wager! Ready to try again and win your dollar back?"`;
+                this.plutoBattleResult = null;
+              } else {
+                textEl.innerHTML = `<b>Pluto:</b> "Hey ${pName}! Welcome to my room! I was just researching Mythos card deck strategies on my computer. How about a tabletop duel right now? Let's set the stakes to <b>$1.00</b> — if you win you get <b>$1.00</b>, and if you lose you lose <b>$1.00</b>! Ready?"`;
+              }
+
+              const btnDuel = document.createElement('button');
+              btnDuel.type = 'button';
+              btnDuel.className = 'ow-choice-btn primary';
+              if (hasDollar) {
+                btnDuel.innerHTML = `⚔️ "You're on, Pluto! Let's battle in <b>MYTHOS for $1.00</b>!"`;
+                btnDuel.addEventListener('click', (ev) => {
+                  ev.stopPropagation();
+                  this.triggerDuel(this.plutoNpc);
+                });
+              } else {
+                btnDuel.innerHTML = `⚔️ "Let's battle for $1.00!" <i>(Need $1.00 — Wallet: ${this.formatMoney(this.gold || 0)})</i>`;
+                btnDuel.addEventListener('click', (ev) => {
+                  ev.stopPropagation();
+                  if (window.sounds?.playClick) window.sounds.playClick();
+                  textEl.innerHTML = `<b>Pluto:</b> "Looks like you don't have $1.00 on you right now! <i>(Wallet: ${this.formatMoney(this.gold || 0)})</i> Go sell an extra card to Shopkeeper Leo down the road or ask Mom for allowance first, then come back!"`;
+                });
+              }
+              choicesEl.appendChild(btnDuel);
+
+              // 2v2 Wager Option if Base2v2 map is owned
+              if (this.hasBoughtBase2v2Map) {
+                const btn2v2 = document.createElement('button');
+                btn2v2.type = 'button';
+                btn2v2.className = 'ow-choice-btn primary';
+                if (hasDollar) {
+                  btn2v2.innerHTML = `🏟️ "Let's duel on <b>Base2v2 for $1.00</b> (Select 2 Beasts)!"`;
+                  btn2v2.addEventListener('click', (ev) => {
+                    ev.stopPropagation();
+                    this.open2v2BeastSelect(this.plutoNpc);
+                  });
+                } else {
+                  btn2v2.innerHTML = `🏟️ "Let's duel on Base2v2 for $1.00!" <i>(Need $1.00)</i>`;
+                  btn2v2.addEventListener('click', (ev) => {
+                    ev.stopPropagation();
+                    if (window.sounds?.playClick) window.sounds.playClick();
+                    textEl.innerHTML = `<b>Pluto:</b> "We need at least $1.00 each for the wager! Go sell an extra card to Shopkeeper Leo or earn some cash, then let's play Base2v2!"`;
+                  });
+                }
+                choicesEl.appendChild(btn2v2);
+              }
+
+              const btnComputer = document.createElement('button');
+              btnComputer.type = 'button';
+              btnComputer.className = 'ow-choice-btn';
+              btnComputer.innerHTML = `💻 "What are you researching on your computer?"`;
+              btnComputer.addEventListener('click', (ev) => {
+                ev.stopPropagation();
+                if (window.sounds?.playClick) window.sounds.playClick();
+                textEl.innerHTML = `<b>Pluto:</b> "I have Leo's Card Shop catalog open and a spreadsheet of Beast stats! Phoenix has 120 HP with 30-damage Flaming Talons, while Earth Golem has a massive 200 HP pool. Ready to test your deck against mine for $1.00?"`;
+              });
+              choicesEl.appendChild(btnComputer);
+
+              const btnRoom = document.createElement('button');
+              btnRoom.type = 'button';
+              btnRoom.className = 'ow-choice-btn';
+              btnRoom.innerHTML = `🏠 "Your bedroom looks really cozy!"`;
+              btnRoom.addEventListener('click', (ev) => {
+                ev.stopPropagation();
+                if (window.sounds?.playClick) window.sounds.playClick();
+                textEl.innerHTML = `<b>Pluto:</b> "Thanks! My bed is super comfortable, and I like having my computer desk set up right here in my room. Whenever you want to wager that dollar, let's battle!"`;
+              });
+              choicesEl.appendChild(btnRoom);
+            }
+            choicesEl.classList.remove('hidden');
+            challengeBtn.textContent = hasDollar ? '⚔️ Battle Pluto ($1.00 Wager)' : '💵 Need $1.00 Wager';
+            challengeBtn.classList.remove('hidden');
+          } else {
+            this.lastShopPromptKey = null;
+            textEl.innerHTML = `Press <b>Talk</b> to speak with <b>Pluto</b> at his computer desk.`;
+            challengeBtn.textContent = '💬 Talk (Space)';
+            challengeBtn.classList.add('ow-talk-btn');
+            challengeBtn.classList.remove('hidden');
+          }
+        } else if (distToBed < 1.5) {
+          this.lastShopPromptKey = null;
+          this.activeDialogueNpc = null;
+          challengeBtn.classList.remove('ow-talk-btn');
+          this.nearInteractable = { id: 'pluto_bed', name: "Pluto's Bed" };
+          bar.classList.remove('hidden');
+          bar.classList.remove('tv-broadcast');
+          speakerEl.textContent = "🛏️ PLUTO'S BED";
+          speakerEl.className = 'ow-speaker-tag friend';
+          textEl.innerHTML = `A cozy carved wooden bed dressed in a warm blue and green plaid quilt with plump sleeping pillows.`;
+          challengeBtn.classList.add('hidden');
+        } else if (distToWardrobe < 1.55) {
+          this.lastShopPromptKey = null;
+          this.activeDialogueNpc = null;
+          challengeBtn.classList.remove('ow-talk-btn');
+          this.nearInteractable = { id: 'pluto_wardrobe', name: "Pluto's Wardrobe" };
+          bar.classList.remove('hidden');
+          bar.classList.remove('tv-broadcast');
+          speakerEl.textContent = "🚪 BEDROOM WARDROBE & DRESSER";
+          speakerEl.className = 'ow-speaker-tag friend';
+          textEl.innerHTML = `A solid oak wardrobe and chest of drawers with polished brass handles, a wooden clock, and a potted houseplant on top.`;
+          challengeBtn.classList.add('hidden');
+        } else {
+          this.lastShopPromptKey = null;
+          this.nearInteractable = null;
+          this.activeDialogueNpc = null;
+          challengeBtn.classList.remove('ow-talk-btn');
           bar.classList.add('hidden');
         }
       } else {
@@ -2012,16 +3006,46 @@
         const pName = this.draftAppearance?.name || 'Asher';
         const fName = this.friendName || 'Mike';
         const wName = this.draftAppearance?.worldName || 'Oakhaven';
+        const friend = this.npcs[0];
+        const distFriendExt = (friend && friend.following) ? Math.hypot(this.player.x - friend.x, this.player.y - friend.y) : 999;
 
         const distFriendMailbox = Math.hypot(this.player.x - 8.15, this.player.y - 3.95);
         const distPlayerMailbox = Math.hypot(this.player.x - 4.75, this.player.y - 3.95);
         const distFriendDoor = Math.hypot(this.player.x - 10.05, this.player.y - 2.95);
+        const distPlutoDoor = Math.hypot(this.player.x - 1.98, this.player.y - 8.85);
+        const distPlutoMailbox = Math.hypot(this.player.x - 4.75, this.player.y - 9.25);
         const distRoadSign = Math.hypot(this.player.x - 7.35, this.player.y - 5.45);
         const distEastSign = Math.hypot(this.player.x - 10.65, this.player.y - 9.25);
         const distCardShopDoor = Math.hypot(this.player.x - 13.65, this.player.y - 9.25);
 
-        if (distCardShopDoor < 1.15) {
+        if (distFriendExt < 1.55) {
           this.lastShopPromptKey = null;
+          this.nearInteractable = friend;
+          bar.classList.remove('hidden');
+          bar.classList.remove('tv-broadcast');
+          speakerEl.textContent = fName.toUpperCase();
+          speakerEl.className = 'ow-speaker-tag friend';
+
+          if (this.activeDialogueNpc === 'friend' || this.activeDialogueNpc === fName) {
+            challengeBtn.classList.remove('ow-talk-btn');
+            if (this.hasOpenedStarterPack) {
+              textEl.innerHTML = `<b>${fName}:</b> "I can't wait to battle you at my house! Head north up the road to <b>${fName}'s House</b>!"`;
+            } else if (this.hasBoughtCardShopPacks) {
+              textEl.innerHTML = `<b>${fName}:</b> "We got our packs! Let's open them or head inside my house to duel!"`;
+            } else {
+              textEl.innerHTML = `<b>${fName}:</b> "We're on our way to <b>Leo's Card Shop</b>! Follow the road east to grab our 2 Booster Packs!"`;
+            }
+            challengeBtn.classList.add('hidden');
+          } else {
+            textEl.innerHTML = `Press <b>Talk</b> to speak with <b>${fName}</b>.`;
+            challengeBtn.textContent = '💬 Talk (Space)';
+            challengeBtn.classList.add('ow-talk-btn');
+            challengeBtn.classList.remove('hidden');
+          }
+        } else if (distCardShopDoor < 1.15) {
+          this.lastShopPromptKey = null;
+          this.activeDialogueNpc = null;
+          challengeBtn.classList.remove('ow-talk-btn');
           this.nearInteractable = { id: 'card_shop', name: "Leo's Card Shop" };
           bar.classList.remove('hidden');
           bar.classList.remove('tv-broadcast');
@@ -2033,6 +3057,8 @@
           challengeBtn.classList.add('hidden');
         } else if (distEastSign < 1.0) {
           this.lastShopPromptKey = null;
+          this.activeDialogueNpc = null;
+          challengeBtn.classList.remove('ow-talk-btn');
           this.nearInteractable = { id: 'east_sign', name: 'East Block Sign' };
           bar.classList.remove('hidden');
           bar.classList.remove('tv-broadcast');
@@ -2042,6 +3068,8 @@
           challengeBtn.classList.add('hidden');
         } else if (distFriendMailbox < 1.0) {
           this.lastShopPromptKey = null;
+          this.activeDialogueNpc = null;
+          challengeBtn.classList.remove('ow-talk-btn');
           this.nearInteractable = { id: 'friend_mailbox', name: `${fName}'s Mailbox` };
           bar.classList.remove('hidden');
           bar.classList.remove('tv-broadcast');
@@ -2051,6 +3079,8 @@
           challengeBtn.classList.add('hidden');
         } else if (distPlayerMailbox < 1.0) {
           this.lastShopPromptKey = null;
+          this.activeDialogueNpc = null;
+          challengeBtn.classList.remove('ow-talk-btn');
           this.nearInteractable = { id: 'player_mailbox', name: `${pName}'s Mailbox` };
           bar.classList.remove('hidden');
           bar.classList.remove('tv-broadcast');
@@ -2059,6 +3089,8 @@
           textEl.innerHTML = `<b>"${pName}'s House"</b> — Your family mailbox. No new mail since morning.`;
           challengeBtn.classList.add('hidden');
         } else if (distFriendDoor < 1.1) {
+          this.activeDialogueNpc = null;
+          challengeBtn.classList.remove('ow-talk-btn');
           this.nearInteractable = { id: 'friend_door', name: `${fName}'s Front Door` };
           bar.classList.remove('hidden');
           bar.classList.remove('tv-broadcast');
@@ -2090,6 +3122,8 @@
           }
         } else if (distRoadSign < 1.05) {
           this.lastShopPromptKey = null;
+          this.activeDialogueNpc = null;
+          challengeBtn.classList.remove('ow-talk-btn');
           this.nearInteractable = { id: 'road_sign', name: 'Crossroads Sign' };
           bar.classList.remove('hidden');
           bar.classList.remove('tv-broadcast');
@@ -2097,9 +3131,34 @@
           speakerEl.className = 'ow-speaker-tag friend';
           textEl.innerHTML = `<b>◄ West / East ►:</b> ${wName} Residential Lane &nbsp;|&nbsp; <b>▼ South to East Market Block:</b> Leo's Card Shop`;
           challengeBtn.classList.add('hidden');
+        } else if (distPlutoDoor < 1.15) {
+          this.lastShopPromptKey = null;
+          this.activeDialogueNpc = null;
+          challengeBtn.classList.remove('ow-talk-btn');
+          this.nearInteractable = { id: 'pluto_door', name: "Pluto's House" };
+          bar.classList.remove('hidden');
+          bar.classList.remove('tv-broadcast');
+          speakerEl.textContent = `🚪 PLUTO'S HOUSE`;
+          speakerEl.className = 'ow-speaker-tag friend';
+          textEl.innerHTML = `<b>Pluto's House</b> — A sleek craftsman cottage with deep cosmic-indigo shingles and glowing cyan windowpanes. Step through the front door to visit Pluto in his bedroom!`;
+          challengeBtn.textContent = "🚪 Enter Pluto's House (Space)";
+          challengeBtn.classList.remove('hidden');
+        } else if (distPlutoMailbox < 1.0) {
+          this.lastShopPromptKey = null;
+          this.activeDialogueNpc = null;
+          challengeBtn.classList.remove('ow-talk-btn');
+          this.nearInteractable = { id: 'pluto_mailbox', name: "Pluto's Mailbox" };
+          bar.classList.remove('hidden');
+          bar.classList.remove('tv-broadcast');
+          speakerEl.textContent = `📬 MAILBOX — 201 SOUTH CONNECTOR AVE`;
+          speakerEl.className = 'ow-speaker-tag friend';
+          textEl.innerHTML = `<b>"Pluto's House"</b> — Sleek purple metallic mailbox with digital address readouts and tech decals.`;
+          challengeBtn.classList.add('hidden');
         } else {
           this.lastShopPromptKey = null;
           this.nearInteractable = null;
+          this.activeDialogueNpc = null;
+          challengeBtn.classList.remove('ow-talk-btn');
           bar.classList.add('hidden');
         }
       }
@@ -2137,6 +3196,18 @@
       const dialogBar = document.getElementById('ow-dialog-bar');
       const isDialogVisible = dialogBar && !dialogBar.classList.contains('hidden');
 
+      if (!this.nearInteractable) {
+        labelEl.textContent = 'TALK';
+        btnA?.classList.remove('dialogue-mode');
+        return;
+      }
+
+      if (this.isNpc(this.nearInteractable) && !this.activeDialogueNpc) {
+        labelEl.textContent = 'TALK 💬';
+        btnA?.classList.remove('dialogue-mode');
+        return;
+      }
+
       if (isDialogVisible) {
         labelEl.textContent = 'NEXT ▸';
         btnA?.classList.add('dialogue-mode');
@@ -2144,11 +3215,6 @@
       }
 
       btnA?.classList.remove('dialogue-mode');
-
-      if (!this.nearInteractable) {
-        labelEl.textContent = 'TALK';
-        return;
-      }
 
       const id = this.nearInteractable.id;
       if (id === 'tv') {
@@ -2163,8 +3229,10 @@
         labelEl.textContent = this.hasOpenedStarterPack ? 'DUEL ⚔️' : 'DOOR 🚪';
       } else if (id === 'booster_display') {
         labelEl.textContent = 'VIEW ✨';
-      } else if (id === 'card_shop') {
+      } else if (id === 'card_shop' || id === 'pluto_door') {
         labelEl.textContent = 'ENTER 🚪';
+      } else if (id === 'pluto') {
+        labelEl.textContent = 'TALK 💬';
       } else {
         labelEl.textContent = 'CHECK 💬';
       }
@@ -2203,12 +3271,17 @@
         return;
       }
 
+      if (this.nearInteractable && this.isNpc(this.nearInteractable) && !this.activeDialogueNpc) {
+        this.startTalkingToNpc(this.nearInteractable.id);
+        return;
+      }
+
       const dialogBar = document.getElementById('ow-dialog-bar');
       const isDialogVisible = dialogBar && !dialogBar.classList.contains('hidden');
 
       if (isDialogVisible) {
         const challengeBtn = document.getElementById('ow-btn-challenge');
-        if (challengeBtn && !challengeBtn.classList.contains('hidden')) {
+        if (challengeBtn && !challengeBtn.classList.contains('hidden') && !challengeBtn.classList.contains('ow-talk-btn')) {
           challengeBtn.click();
           return;
         }
@@ -2226,7 +3299,7 @@
         return;
       }
 
-      if (this.storyState === 'free_roam') {
+      if (this.storyState === 'free_roam' || this.storyState === 'intro_waiting') {
         if (this.nearInteractable) {
           const id = this.nearInteractable.id;
           if (id === 'tv') {
@@ -2239,13 +3312,33 @@
               this.renderDialogueUI();
             }
           } else if (id === 'shopkeeper') {
-            if (!this.hasBoughtCardShopPacks && (this.gold || 0) >= 20) {
-              this.buyTwoBoosterPacks();
+            if (!this.activeDialogueNpc) {
+              this.startTalkingToNpc('shopkeeper');
+            } else if (!this.hasBoughtCardShopPacks) {
+              if ((this.gold || 0) >= 20) {
+                this.buyTwoBoosterPacks();
+              }
             } else {
-              this.renderDialogueUI();
+              this.toggleShopModal(true);
             }
           } else if (id === 'friend_duel' || id === 'best_friend' || id === 'friend_door') {
             this.triggerDuel();
+          } else if (id === 'pluto') {
+            if (!this.activeDialogueNpc) {
+              this.startTalkingToNpc('pluto');
+            } else if ((this.gold || 0) >= 1.00) {
+              this.triggerDuel(this.plutoNpc);
+            }
+          } else if (id === 'pluto_door') {
+            if (window.sounds?.playMove) window.sounds.playMove();
+            this.currentArea = 'pluto_interior';
+            this.player.x = 9.8;
+            this.player.y = 9.3;
+            this.player.dir = 'up';
+            this.player.targetX = null;
+            this.player.targetY = null;
+            this.areaTransitionCooldown = 25;
+            this.updateHUDSaveInfo();
           }
         }
       }
@@ -2435,19 +3528,120 @@
       }
     }
 
-    saveWorldData(appearance) {
+    get gold() {
+      return this._gold ?? 0;
+    }
+
+    set gold(val) {
+      const rounded = Math.round((Number(val) || 0) * 100) / 100;
+      const changed = this._gold !== rounded;
+      this._gold = rounded;
+      if (this._initialized && changed) {
+        this.autoSave('money');
+      }
+    }
+
+    wrapReactiveArray(arr, category = 'items') {
+      const self = this;
+      return new Proxy(arr, {
+        set(target, prop, val, receiver) {
+          const oldLen = target.length;
+          const oldVal = target[prop];
+          const finalVal = (val && typeof val === 'object' && !val._isProxy)
+            ? self.wrapReactiveItem(val)
+            : val;
+          const result = Reflect.set(target, prop, finalVal, receiver);
+          if (self._initialized && (prop === 'length' ? target.length !== oldLen : oldVal !== val)) {
+            self.autoSave(category);
+          }
+          return result;
+        },
+        deleteProperty(target, prop) {
+          const result = Reflect.deleteProperty(target, prop);
+          if (self._initialized) {
+            self.autoSave(category);
+          }
+          return result;
+        }
+      });
+    }
+
+    wrapReactiveItem(item) {
+      if (!item || typeof item !== 'object' || item._isProxy) return item;
+      const self = this;
+      try {
+        Object.defineProperty(item, '_isProxy', { value: true, enumerable: false, writable: true });
+      } catch (e) {
+        item._isProxy = true;
+      }
+      return new Proxy(item, {
+        set(target, prop, val, receiver) {
+          const oldVal = target[prop];
+          const result = Reflect.set(target, prop, val, receiver);
+          if (self._initialized && oldVal !== val && (prop === 'qty' || prop === 'stars' || prop === 'name')) {
+            self.autoSave('item_property');
+          }
+          return result;
+        }
+      });
+    }
+
+    autoSave(reason = 'change') {
+      if (!this._initialized) return;
+      if (this._autoSaveTimer) clearTimeout(this._autoSaveTimer);
+      this._autoSaveTimer = setTimeout(() => {
+        this.saveWorldData(this.draftAppearance);
+        this.showAutosaveIndicator();
+      }, 50);
+    }
+
+    showAutosaveIndicator() {
+      let toast = document.getElementById('ow-autosave-toast');
+      if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'ow-autosave-toast';
+        toast.className = 'ow-autosave-toast';
+        document.body.appendChild(toast);
+      }
+      toast.innerHTML = `💾 Auto-Saved`;
+      toast.classList.add('visible');
+      if (this._autosaveToastTimer) clearTimeout(this._autosaveToastTimer);
+      this._autosaveToastTimer = setTimeout(() => {
+        toast.classList.remove('visible');
+      }, 1500);
+    }
+
+    saveWorldData(appearance = this.draftAppearance) {
+      const app = appearance || this.draftAppearance || {};
+      const cleanInventory = Array.isArray(this.inventory)
+        ? this.inventory.map(i => {
+            const copy = { ...i };
+            delete copy._isProxy;
+            return copy;
+          })
+        : [];
+      const cleanBinderSlots = Array.isArray(this.binderSlots)
+        ? this.binderSlots.map(s => {
+            if (!s) return null;
+            const copy = { ...s };
+            delete copy._isProxy;
+            return copy;
+          })
+        : Array(9).fill(null);
+
       const saveObj = {
-        worldName: appearance.worldName || 'Oakhaven',
-        playerAppearance: { ...appearance },
+        worldName: app.worldName || 'Oakhaven',
+        playerAppearance: { ...app },
         friendName: this.friendName,
         gold: this.gold ?? 0,
         hasMomBoosterMoney: this.hasMomBoosterMoney ?? false,
         hasBoughtCardShopPacks: this.hasBoughtCardShopPacks ?? false,
+        hasBoughtBase2v2Map: this.hasBoughtBase2v2Map ?? false,
         hasOpenedStarterPack: this.hasOpenedStarterPack ?? false,
         friendWaitingAtHouse: this.friendWaitingAtHouse ?? false,
         hasOldCardBinder: this.hasOldCardBinder ?? false,
-        inventory: Array.isArray(this.inventory) ? [...this.inventory] : [],
-        binderSlots: Array.isArray(this.binderSlots) ? [...this.binderSlots] : Array(9).fill(null),
+        inventory: cleanInventory,
+        binderSlots: cleanBinderSlots,
         wins: this.worldSave?.wins ?? 0,
         updatedAt: new Date().toLocaleDateString()
       };
@@ -2492,6 +3686,8 @@
           areaLabel = `🏠 ${this.friendName}'s House`;
         } else if (this.currentArea === 'card_shop_interior') {
           areaLabel = `🃏 Leo's Card Shop`;
+        } else if (this.currentArea === 'pluto_interior') {
+          areaLabel = `🏠 Pluto's House`;
         }
         const packCount = (this.inventory || [])
           .filter(i => i.type === 'booster_pack')
@@ -2501,7 +3697,7 @@
           .reduce((s, i) => s + (i.qty || 0), 0);
         const packSummary = packCount > 0 ? ` • 📦 ${packCount} Pack${packCount > 1 ? 's' : ''}` : '';
         const cardSummary = cardCount > 0 ? ` • 🃏 ${cardCount} Card${cardCount > 1 ? 's' : ''}` : '';
-        locPill.textContent = `${areaLabel} • Friend: ${this.friendName} • 🎒 $${this.gold || 0}${packSummary}${cardSummary}`;
+        locPill.textContent = `${areaLabel} • Friend: ${this.friendName} • 🎒 ${this.formatMoney(this.gold || 0)}${packSummary}${cardSummary}`;
       }
 
       // Sync Mobile HUD Elements
@@ -2515,7 +3711,8 @@
         if (this.currentArea === 'interior') shortArea = '🏠 Home';
         else if (this.currentArea === 'friend_interior') shortArea = `🏠 ${this.friendName}'s`;
         else if (this.currentArea === 'card_shop_interior') shortArea = `🃏 Leo's Shop`;
-        mobLocTag.textContent = `${shortArea} • 🎒 $${this.gold || 0}`;
+        else if (this.currentArea === 'pluto_interior') shortArea = `🏠 Pluto's`;
+        mobLocTag.textContent = `${shortArea} • 🎒 ${this.formatMoney(this.gold || 0)}`;
       }
 
       if (mobInvBadge) {
@@ -2686,6 +3883,83 @@
         collectCardsBtn.addEventListener('click', () => this.collectPulledCardsToInventory());
       }
 
+      // Shopkeeper Leo's Buy & Sell Counter Modal Controls
+      const shopBuyTabBtn = document.getElementById('shop-tab-buy');
+      if (shopBuyTabBtn) {
+        shopBuyTabBtn.addEventListener('click', () => {
+          this.currentShopTab = 'buy';
+          this.renderShopModal();
+        });
+      }
+
+      const shopSellTabBtn = document.getElementById('shop-tab-sell');
+      if (shopSellTabBtn) {
+        shopSellTabBtn.addEventListener('click', () => {
+          this.currentShopTab = 'sell';
+          this.renderShopModal();
+        });
+      }
+
+      const shopBuyPackBtn = document.getElementById('btn-shop-buy-pack');
+      if (shopBuyPackBtn) {
+        shopBuyPackBtn.addEventListener('click', () => this.buyBaseCardPack());
+      }
+
+      const shopRipNowBtn = document.getElementById('btn-shop-rip-now');
+      if (shopRipNowBtn) {
+        shopRipNowBtn.addEventListener('click', () => this.startBoosterPackOpening('unopened_base_pack'));
+      }
+
+      const shopBuyMapBtn = document.getElementById('btn-shop-buy-map');
+      if (shopBuyMapBtn) {
+        shopBuyMapBtn.addEventListener('click', () => this.buyBase2v2Map());
+      }
+
+      const shopPlayMapBtn = document.getElementById('btn-shop-play-map');
+      if (shopPlayMapBtn) {
+        shopPlayMapBtn.addEventListener('click', () => {
+          this.toggleShopModal(false);
+          this.open2v2BeastSelect();
+        });
+      }
+
+      const closeShopBtn = document.getElementById('btn-close-shop');
+      if (closeShopBtn) {
+        closeShopBtn.addEventListener('click', () => this.toggleShopModal(false));
+      }
+
+      const closeShopXBtn = document.getElementById('btn-close-shop-x');
+      if (closeShopXBtn) {
+        closeShopXBtn.addEventListener('click', () => this.toggleShopModal(false));
+      }
+
+      // Base2v2 2v2 Beast Select Modal Listeners
+      const close2v2Btn = document.getElementById('btn-close-2v2-select');
+      if (close2v2Btn) {
+        close2v2Btn.addEventListener('click', () => this.close2v2BeastSelect());
+      }
+
+      const cancel2v2Btn = document.getElementById('btn-cancel-2v2-select');
+      if (cancel2v2Btn) {
+        cancel2v2Btn.addEventListener('click', () => this.close2v2BeastSelect());
+      }
+
+      const launch2v2Btn = document.getElementById('btn-launch-2v2');
+      if (launch2v2Btn) {
+        launch2v2Btn.addEventListener('click', () => this.launch2v2Match());
+      }
+
+      ['all', 'backpack', 'binder'].forEach(f => {
+        const fBtn = document.getElementById(`btn-filter-${f}`);
+        if (fBtn) {
+          fBtn.addEventListener('click', () => {
+            this.beastSelectFilter = f;
+            this.render2v2BeastSelect();
+          });
+        }
+      });
+
+      this.renderShopModal();
       this.renderInventoryModal();
       this.buildCreatorControls();
     }
@@ -2722,6 +3996,16 @@
       const modal = document.getElementById('creator-modal');
       if (!modal) return;
       modal.classList.remove('hidden');
+
+      const CS = window.MythosCharacterSprites;
+      if (isNewWorld && CS?.DEFAULT_APPEARANCE) {
+        this.draftAppearance = {
+          ...CS.DEFAULT_APPEARANCE,
+          name: 'Asher',
+          worldName: 'Oakhaven'
+        };
+        this.playerSprite.setAppearance(this.draftAppearance);
+      }
 
       const nameInput = document.getElementById('cc-player-name');
       const worldInput = document.getElementById('cc-world-name');
@@ -2840,12 +4124,14 @@
           if (this.isCreatingNewWorld || !this.worldSave) {
             this.friendName = Math.random() < 0.5 ? 'Mike' : 'AJ';
             this.npcs[0] = this.createFriendNpc(this.friendName);
+            document.getElementById('creator-modal')?.classList.add('hidden');
+            this.active = true;
+            this.startOpeningCutscene(true);
+          } else {
+            this.saveWorldData(this.draftAppearance);
+            document.getElementById('creator-modal')?.classList.add('hidden');
+            this.active = true;
           }
-
-          this.saveWorldData(this.draftAppearance);
-          document.getElementById('creator-modal')?.classList.add('hidden');
-          this.active = true;
-          this.startOpeningCutscene(false);
         });
       }
     }
@@ -2938,6 +4224,11 @@
           return;
         }
         if (k === 'escape') {
+          if (this.activeDialogueNpc) {
+            e.preventDefault();
+            this.closeDialogue();
+            return;
+          }
           const inspectModal = document.getElementById('creature-inspect-modal');
           if (inspectModal && !inspectModal.classList.contains('hidden')) {
             e.preventDefault();
@@ -2962,6 +4253,12 @@
             this.toggleInventoryModal(false);
             return;
           }
+          const shopModal = document.getElementById('shop-modal');
+          if (shopModal && !shopModal.classList.contains('hidden')) {
+            e.preventDefault();
+            this.toggleShopModal(false);
+            return;
+          }
         }
 
         if (this.storyState === 'intro_bored' && ['1', '2', '3'].includes(k)) {
@@ -2970,7 +4267,7 @@
           return;
         }
 
-        if (['tv_commercial', 'both_excited', 'mom_enters', 'mom_gave_money', 'shop_bought_packs', 'must_open_pack_before_leaving', 'friend_challenges_after_pack', 'friend_defeated_celebration'].includes(this.storyState) && (k === ' ' || k === 'enter')) {
+        if (['tv_commercial', 'both_excited', 'mom_gave_money', 'shop_bought_packs', 'must_open_pack_before_leaving', 'friend_challenges_after_pack', 'friend_defeated_celebration'].includes(this.storyState) && (k === ' ' || k === 'enter')) {
           e.preventDefault();
           this.advanceStoryStep();
           return;
@@ -2982,26 +4279,41 @@
           e.preventDefault();
         }
 
-        if ((k === ' ' || k === 'enter' || k === 'e' || k === '1') && this.storyState === 'free_roam' && this.nearInteractable) {
+        if ((k === ' ' || k === 'enter' || k === 'e' || k === '1') && (this.storyState === 'free_roam' || this.storyState === 'intro_waiting') && this.nearInteractable) {
           e.preventDefault();
+          if (this.isNpc(this.nearInteractable) && !this.activeDialogueNpc) {
+            this.startTalkingToNpc(this.nearInteractable.id);
+            return;
+          }
           if (this.nearInteractable.id === 'tv') {
             this.storyState = 'tv_commercial';
             this.renderDialogueUI();
           } else if (this.nearInteractable.id === 'mom' && !this.hasMomBoosterMoney) {
             this.askMomForBoosterMoney();
           } else if (this.nearInteractable.id === 'shopkeeper') {
-            if (!this.hasBoughtCardShopPacks && (this.gold || 0) >= 20) {
-              this.buyTwoBoosterPacks();
-            } else if (this.hasBoughtCardShopPacks) {
-              const hasUnopenedPack = (this.inventory || []).some(i => i.id === 'unopened_base_pack' && i.qty > 0);
-              if (hasUnopenedPack) {
-                this.startBoosterPackOpening('unopened_base_pack');
-              } else {
-                this.toggleInventoryModal(true);
+            if (!this.hasBoughtCardShopPacks) {
+              if ((this.gold || 0) >= 20) {
+                this.buyTwoBoosterPacks();
               }
+            } else {
+              this.toggleShopModal(true);
             }
           } else if (this.nearInteractable.id === 'friend_duel' || (this.nearInteractable.id === 'friend_door' && this.hasOpenedStarterPack)) {
             this.triggerDuel();
+          } else if (this.nearInteractable.id === 'pluto') {
+            if ((this.gold || 0) >= 1.00) {
+              this.triggerDuel(this.plutoNpc);
+            }
+          } else if (this.nearInteractable.id === 'pluto_door') {
+            if (window.sounds?.playMove) window.sounds.playMove();
+            this.currentArea = 'pluto_interior';
+            this.player.x = 9.8;
+            this.player.y = 9.3;
+            this.player.dir = 'up';
+            this.player.targetX = null;
+            this.player.targetY = null;
+            this.areaTransitionCooldown = 25;
+            this.updateHUDSaveInfo();
           } else if (window.sounds?.playClick) {
             window.sounds.playClick();
           }
@@ -3014,7 +4326,7 @@
 
       const handleCanvasTap = (clientX, clientY) => {
         if (!this.active) return;
-        if (this.storyState !== 'free_roam') return;
+        if (this.storyState !== 'free_roam' && this.storyState !== 'intro_waiting') return;
 
         const rect = this.canvas.getBoundingClientRect();
         const scaleX = this.canvas.width / rect.width;
@@ -3028,23 +4340,43 @@
         this.touchBeacon = { x: tx, y: ty, tick: 0 };
 
         const mom = this.npcs.find(n => n.id === 'mom');
-        if (this.currentArea === 'interior' && mom && !this.hasMomBoosterMoney && Math.hypot(tx - mom.x, ty - mom.y) < 1.2 && Math.hypot(this.player.x - mom.x, this.player.y - mom.y) < 2.0) {
-          this.askMomForBoosterMoney();
-          return;
+        if (this.currentArea === 'interior' && mom && Math.hypot(tx - mom.x, ty - mom.y) < 1.4) {
+          if (Math.hypot(this.player.x - mom.x, this.player.y - mom.y) < 1.85) {
+            if (!this.activeDialogueNpc) {
+              this.startTalkingToNpc('mom');
+              return;
+            }
+          }
         }
 
         const keeper = this.shopkeeperNpc;
-        if (this.currentArea === 'card_shop_interior' && keeper && !this.hasBoughtCardShopPacks && Math.hypot(tx - keeper.x, ty - keeper.y) < 1.5 && Math.hypot(this.player.x - keeper.x, this.player.y - (keeper.y + 1.05)) < 2.1) {
-          if ((this.gold || 0) >= 20) {
-            this.buyTwoBoosterPacks();
-            return;
+        if (this.currentArea === 'card_shop_interior' && keeper && Math.hypot(tx - keeper.x, ty - keeper.y) < 1.6) {
+          if (Math.hypot(this.player.x - keeper.x, this.player.y - (keeper.y + 1.05)) < 1.9) {
+            if (!this.activeDialogueNpc) {
+              this.startTalkingToNpc('shopkeeper');
+              return;
+            }
+          }
+        }
+
+        const pluto = this.plutoNpc;
+        if (this.currentArea === 'pluto_interior' && pluto && Math.hypot(tx - pluto.x, ty - pluto.y) < 1.6) {
+          if (Math.hypot(this.player.x - pluto.x, this.player.y - (pluto.y + 0.85)) < 1.95) {
+            if (!this.activeDialogueNpc) {
+              this.startTalkingToNpc('pluto');
+              return;
+            }
           }
         }
 
         const friend = this.npcs[0];
-        if (this.currentArea === 'friend_interior' && friend && Math.hypot(tx - friend.x, ty - friend.y) < 1.5 && Math.hypot(this.player.x - friend.x, this.player.y - friend.y) < 2.4) {
-          this.triggerDuel();
-          return;
+        if (friend && Math.hypot(tx - friend.x, ty - friend.y) < 1.5) {
+          if (Math.hypot(this.player.x - friend.x, this.player.y - friend.y) < 2.0) {
+            if (!this.activeDialogueNpc) {
+              this.startTalkingToNpc(this.currentArea === 'friend_interior' ? 'friend_duel' : 'friend');
+              return;
+            }
+          }
         }
 
         this.player.targetX = tx;
@@ -3090,34 +4422,52 @@
       const challengeBtn = document.getElementById('ow-btn-challenge');
       if (challengeBtn) {
         challengeBtn.addEventListener('click', () => {
+          if (this.nearInteractable && this.isNpc(this.nearInteractable) && !this.activeDialogueNpc) {
+            this.startTalkingToNpc(this.nearInteractable.id);
+            return;
+          }
           if (this.nearInteractable?.id === 'mom' && !this.hasMomBoosterMoney) {
             this.askMomForBoosterMoney();
           } else if (this.nearInteractable?.id === 'shopkeeper') {
-            if (!this.hasBoughtCardShopPacks && (this.gold || 0) >= 20) {
-              this.buyTwoBoosterPacks();
-            } else {
-              const hasUnopenedPack = (this.inventory || []).some(i => i.id === 'unopened_base_pack' && i.qty > 0);
-              if (hasUnopenedPack) {
-                this.startBoosterPackOpening('unopened_base_pack');
-              } else {
-                this.toggleInventoryModal(true);
+            if (!this.hasBoughtCardShopPacks) {
+              if ((this.gold || 0) >= 20) {
+                this.buyTwoBoosterPacks();
               }
+            } else {
+              this.toggleShopModal(true);
             }
           } else if (this.nearInteractable?.id === 'friend_duel' || (this.nearInteractable?.id === 'friend_door' && this.hasOpenedStarterPack)) {
             this.triggerDuel();
+          } else if (this.nearInteractable?.id === 'pluto' || (this.currentArea === 'pluto_interior' && this.activeDialogueNpc === 'pluto')) {
+            if ((this.gold || 0) >= 1.00) {
+              this.triggerDuel(this.plutoNpc);
+            } else if (window.sounds?.playClick) {
+              window.sounds.playClick();
+            }
+          } else if (this.nearInteractable?.id === 'pluto_door') {
+            if (window.sounds?.playMove) window.sounds.playMove();
+            this.currentArea = 'pluto_interior';
+            this.player.x = 9.8;
+            this.player.y = 9.3;
+            this.player.dir = 'up';
+            this.player.targetX = null;
+            this.player.targetY = null;
+            this.areaTransitionCooldown = 25;
+            this.updateHUDSaveInfo();
           }
         });
       }
     }
 
-    triggerDuel() {
+    triggerDuel(challenger = null, mapId = 'standard_10x8', customPlayerTeam = null) {
       if (window.sounds?.playClick) window.sounds.playClick();
       this.storyState = 'free_roam';
       this.keys = {};
       this.player.targetX = null;
       this.player.targetY = null;
+      const target = challenger || (this.currentArea === 'pluto_interior' ? this.plutoNpc : this.npcs[0]);
       if (this.onStartDuel) {
-        this.onStartDuel(this.npcs[0]);
+        this.onStartDuel(target, mapId, customPlayerTeam);
       }
     }
 
@@ -3165,6 +4515,16 @@
         // Round In-Store Mythos Duel Table & Chairs on Right Floor (center at x: 10.5, y: 6.8)
         if (Math.hypot(tx - 10.5, ty - 6.8) < 1.18) return true;
         return false;
+      } else if (this.currentArea === 'pluto_interior') {
+        // Cutaway room floor bounds
+        if (tx < 2.2 || tx > 13.8 || ty < 4.15 || ty > 10.35) return true;
+        // Bedroom Bed on West Wall (x: 2.2..4.5, y: 4.1..6.6)
+        if (tx < 4.5 && ty < 6.6) return true;
+        // Pluto's Computer Desk Battlestation & Gaming Chair (x: 4.7..7.7, y: 4.1..5.85)
+        if (tx >= 4.7 && tx <= 7.7 && ty < 5.85) return true;
+        // East Server Rack & Electronics Workbench (x: 11.2..13.8, y: 4.1..5.6)
+        if (tx >= 11.2 && ty < 5.6) return true;
+        return false;
       } else {
         // Wider Zoomed-Out Exterior World Bounds (Cols 0.5..15.5, Rows 0.5..11.6)
         if (tx < 0.5 || tx > 15.5 || ty < 0.5 || ty > 11.6) return true;
@@ -3210,9 +4570,27 @@
           return true;
         }
 
-        // 4. Mailboxes, Tree Stump, Gazebo Bench & Crossroads Signpost Collisions
+        // 4. PLUTO'S COTTAGE (South-West Block: x = 1.1..4.3, y = 5.95..8.85)
+        if (tx >= 1.1 && tx <= 4.3 && ty >= 5.95 && ty <= 8.85) {
+          // Right-side open wooden patio deck is walkable (x: 2.85..4.2, y: 7.75..8.45)
+          if (tx >= 2.85 && tx <= 4.2 && ty >= 7.75) {
+            if (tx >= 3.15 && tx <= 3.85 && ty >= 7.8 && ty <= 8.3) return true;
+            return false;
+          }
+          // Left front door threshold (x: 1.65..2.35, y: 7.9..8.85) -> steps inside!
+          if (tx >= 1.65 && tx <= 2.35 && ty >= 7.9) return false;
+          return true;
+        }
+        // Pluto's front balustrade railing & brick foundation (x: 1.1..4.3, y: 8.85..9.28)
+        if (tx >= 1.1 && tx <= 4.3 && ty > 8.85 && ty <= 9.28) {
+          if (tx >= 1.65 && tx <= 2.35) return false; // Front wooden steps
+          return true;
+        }
+
+        // 5. Mailboxes, Tree Stump, Gazebo Bench & Crossroads Signpost Collisions
         if (Math.hypot(tx - 4.75, ty - 3.95) < 0.28) return true; // Player Mailbox
         if (Math.hypot(tx - 8.15, ty - 3.95) < 0.28) return true; // Mike/AJ Mailbox
+        if (Math.hypot(tx - 4.75, ty - 9.25) < 0.28) return true; // Pluto Mailbox
         if (Math.hypot(tx - 0.85, ty - 3.65) < 0.30) return true; // Cut Tree Stump
         if (Math.hypot(tx - 7.35, ty - 5.45) < 0.28) return true; // Upper Intersection Signpost
         if (Math.hypot(tx - 10.65, ty - 9.25) < 0.28) return true; // East Market Block Signpost
@@ -3256,6 +4634,9 @@
               n.following = false;
               this.friendWaitingAtHouse = true;
               this.saveWorldData(this.draftAppearance);
+            } else if (n.id === 'mom') {
+              n.dir = 'right';
+              n.bubble = '💬';
             } else {
               n.dir = 'right';
             }
@@ -3263,7 +4644,7 @@
         }
       }
 
-      if (['intro_bored', 'tv_commercial', 'both_excited', 'mom_enters', 'mom_gave_money', 'shop_bought_packs', 'must_open_pack_before_leaving', 'friend_challenges_after_pack'].includes(this.storyState)) {
+      if (['intro_bored', 'tv_commercial', 'both_excited', 'mom_gave_money', 'shop_bought_packs', 'must_open_pack_before_leaving', 'friend_challenges_after_pack'].includes(this.storyState)) {
         this.player.moving = false;
         const isBouncing = ['both_excited', 'shop_bought_packs', 'friend_challenges_after_pack'].includes(this.storyState);
         this.player.walkTick = isBouncing ? (this.tick * 0.25) : 0;
@@ -3341,6 +4722,20 @@
       // Check Doorway Transitions between House Interior, Friend's House, Zoomed-Out Neighborhood Exterior, and Leo's Card Shop!
       if (this.areaTransitionCooldown === 0) {
         if (this.currentArea === 'interior' && this.player.x >= 9.0 && this.player.x <= 10.6 && this.player.y >= 10.05) {
+          if (this.storyState === 'intro_waiting') {
+            this.player.y = 9.85;
+            this.player.targetY = null;
+            const bar = document.getElementById('ow-dialog-bar');
+            const speakerEl = document.getElementById('ow-speaker-tag');
+            const textEl = document.getElementById('ow-dialog-text');
+            if (bar && speakerEl && textEl) {
+              bar.classList.remove('hidden');
+              speakerEl.textContent = '💡 ' + (this.draftAppearance?.name || 'Asher').toUpperCase();
+              speakerEl.className = 'ow-speaker-tag tv';
+              textEl.innerHTML = `I should talk to <b>${this.friendName || 'my friend'}</b> by the table before heading outside!`;
+            }
+            return;
+          }
           // Step out onto your Left Cottage's Front Wooden Porch Steps
           if (window.sounds?.playMove) window.sounds.playMove();
           this.currentArea = 'exterior';
@@ -3483,6 +4878,30 @@
             this.areaTransitionCooldown = 25;
             this.updateHUDSaveInfo();
           }
+        } else if (this.currentArea === 'exterior' && this.player.x >= 1.65 && this.player.x <= 2.35 && this.player.y <= 9.05 && this.player.y >= 8.3) {
+          // Step inside Pluto's House on the South-West block!
+          if (window.sounds?.playMove) window.sounds.playMove();
+          this.currentArea = 'pluto_interior';
+          this.player.x = 9.8;
+          this.player.y = 9.3;
+          this.player.dir = 'up';
+          this.player.targetX = null;
+          this.player.targetY = null;
+
+          this.areaTransitionCooldown = 25;
+          this.updateHUDSaveInfo();
+        } else if (this.currentArea === 'pluto_interior' && this.player.x >= 9.0 && this.player.x <= 10.6 && this.player.y >= 10.05) {
+          // Step out of Pluto's House back onto the South-West block!
+          if (window.sounds?.playMove) window.sounds.playMove();
+          this.currentArea = 'exterior';
+          this.player.x = 1.98;
+          this.player.y = 9.25;
+          this.player.dir = 'down';
+          this.player.targetX = null;
+          this.player.targetY = null;
+
+          this.areaTransitionCooldown = 25;
+          this.updateHUDSaveInfo();
         }
       }
 
@@ -4998,6 +6417,631 @@
     }
 
     // =========================================================================
+    // PLUTO'S HOUSE INTERIOR RENDERER (Warm Cozy Residential Home with Bedroom Desk)
+    // =========================================================================
+    renderPlutoHouseInterior() {
+      const ctx = this.ctx;
+      const S = this.TILE; // 64px
+      const W = this.canvas.width;  // 1024
+      const H = this.canvas.height; // 768
+
+      // 1. Muted Slate-Blue Cutaway Void Background (#658296) matching the neighborhood architectural style
+      ctx.fillStyle = '#658296';
+      ctx.fillRect(0, 0, W, H);
+
+      // Room coordinates (matching cutaway architectural shell)
+      const rx = 1.5 * S;        // 96
+      const ry = 0.8 * S;        // 51.2
+      const rw = 13.0 * S;       // 832
+      const rh = 9.9 * S;        // 633.6
+      const floorTop = 3.85 * S; // 246.4
+
+      const drawChamferedRect = (x, y, w, h, c) => {
+        ctx.beginPath();
+        ctx.moveTo(x + c, y);
+        ctx.lineTo(x + w - c, y);
+        ctx.lineTo(x + w, y + c);
+        ctx.lineTo(x + w, y + h - c);
+        ctx.lineTo(x + w - c, y + h);
+        ctx.lineTo(x + c, y + h);
+        ctx.lineTo(x, y + h - c);
+        ctx.lineTo(x, y + c);
+        ctx.closePath();
+      };
+
+      // 2. Cutaway Drop Shadow
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.42)';
+      drawChamferedRect(rx + 16, ry + 16, rw, rh, 18);
+      ctx.fill();
+
+      // 3. Wide-Plank Warm Honey-Oak Hardwood Floor (#8a6544)
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(rx + 42, floorTop - 24);
+      ctx.lineTo(rx + rw - 42, floorTop - 24);
+      ctx.lineTo(rx + rw, floorTop + 16);
+      ctx.lineTo(rx + rw, ry + rh - 24);
+      ctx.lineTo(rx + rw - 28, ry + rh);
+      ctx.lineTo(rx + 28, ry + rh);
+      ctx.lineTo(rx, ry + rh - 24);
+      ctx.lineTo(rx, floorTop + 16);
+      ctx.closePath();
+      ctx.clip();
+
+      ctx.fillStyle = '#8a6544';
+      ctx.fillRect(rx, floorTop - 30, rw, rh);
+
+      // Horizontal wide floorboards + dark plank lines (#543b24) + natural grain streaks
+      const plankH = 36;
+      for (let y = floorTop - 20, row = 0; y < ry + rh; y += plankH, row++) {
+        ctx.fillStyle = row % 2 === 0 ? '#8e6947' : '#825f3f';
+        ctx.fillRect(rx, y, rw, plankH);
+
+        // Subtle horizontal wood grain streaks
+        ctx.fillStyle = '#6e4f32';
+        ctx.fillRect(rx + 30, y + 10, rw - 60, 1.8);
+        ctx.fillRect(rx + 90, y + 24, rw - 160, 1.8);
+
+        // Dark plank seam
+        ctx.fillStyle = '#543b24';
+        ctx.fillRect(rx, y + plankH - 2, rw, 2);
+
+        // Staggered vertical plank joints
+        const shift = (row * 125) % 230;
+        for (let x = rx + 60 + shift; x < rx + rw - 40; x += 230) {
+          ctx.fillRect(x, y, 2, plankH);
+        }
+      }
+
+      // Cozy woven navy & cream braided oval rug in center of the bedroom
+      const rugX = rx + 3.2 * S;
+      const rugY = floorTop + 1.25 * S;
+      const rugW = 6.6 * S;
+      const rugH = 4.2 * S;
+
+      ctx.fillStyle = '#2c3e50';
+      ctx.beginPath();
+      ctx.roundRect(rugX, rugY, rugW, rugH, 18);
+      ctx.fill();
+      ctx.strokeStyle = '#d6cdb8';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      // Inner woven cream braided border
+      ctx.strokeStyle = '#4a627a';
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      ctx.roundRect(rugX + 10, rugY + 10, rugW - 20, rugH - 20, 14);
+      ctx.stroke();
+
+      // Soft woven diamond pattern in rug center
+      const rcx = rugX + rugW / 2;
+      const rcy = rugY + rugH / 2;
+      ctx.fillStyle = 'rgba(214, 205, 184, 0.18)';
+      ctx.beginPath();
+      ctx.moveTo(rcx, rcy - 24);
+      ctx.lineTo(rcx + 32, rcy);
+      ctx.lineTo(rcx, rcy + 24);
+      ctx.lineTo(rcx - 32, rcy);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.restore();
+
+      // 4. Warm Buttercream / Soft Amber Plaster North Wall (#ded8c3)
+      ctx.fillStyle = '#ded8c3';
+      ctx.beginPath();
+      ctx.moveTo(rx + 28, ry + 56);
+      ctx.lineTo(rx + 68, ry + 30);
+      ctx.lineTo(rx + rw - 68, ry + 30);
+      ctx.lineTo(rx + rw - 28, ry + 56);
+      ctx.lineTo(rx + rw - 28, floorTop + 14);
+      ctx.lineTo(rx + rw - 68, floorTop - 12);
+      ctx.lineTo(rx + 68, floorTop - 12);
+      ctx.lineTo(rx + 28, floorTop + 14);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = '#543b24';
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+
+      // White crown molding at top & dark oak baseboard along bottom of wall
+      ctx.fillStyle = '#f8f6f0';
+      ctx.fillRect(rx + 68, ry + 30, rw - 136, 6);
+      ctx.strokeStyle = '#9ca3af';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(rx + 68, ry + 30, rw - 136, 6);
+
+      ctx.fillStyle = '#543b24';
+      ctx.fillRect(rx + 68, floorTop - 14, rw - 136, 7);
+      ctx.strokeRect(rx + 68, floorTop - 14, rw - 136, 7);
+
+      // Angled wing wall corner lines
+      ctx.strokeStyle = '#aba67c';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(rx + 68, ry + 30); ctx.lineTo(rx + 68, floorTop - 12);
+      ctx.moveTo(rx + rw - 68, ry + 30); ctx.lineTo(rx + rw - 68, floorTop - 12);
+      ctx.stroke();
+
+      // 5. Two Sunny 6-Pane Bedroom Windows with Curtains (Left of Desk & Right of Desk)
+      const drawHomeWindow = (wx, wy, ww, wh) => {
+        // Window casing trim
+        ctx.fillStyle = '#f8f6f0';
+        ctx.strokeStyle = '#543b24';
+        ctx.lineWidth = 2;
+        ctx.fillRect(wx - 4, wy - 4, ww + 8, wh + 8);
+        ctx.strokeRect(wx - 4, wy - 4, ww + 8, wh + 8);
+
+        // Sunny daylight sky glass
+        const winGrad = ctx.createLinearGradient(wx, wy, wx, wy + wh);
+        winGrad.addColorStop(0, '#7dd3fc');
+        winGrad.addColorStop(1, '#bae6fd');
+        ctx.fillStyle = winGrad;
+        ctx.fillRect(wx, wy, ww, wh);
+
+        // Window muntins (6 panes)
+        ctx.strokeStyle = '#f8f6f0';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(wx, wy + wh / 2); ctx.lineTo(wx + ww, wy + wh / 2);
+        ctx.moveTo(wx + ww / 3, wy); ctx.lineTo(wx + ww / 3, wy + wh);
+        ctx.moveTo(wx + (ww * 2) / 3, wy); ctx.lineTo(wx + (ww * 2) / 3, wy + wh);
+        ctx.stroke();
+
+        // Cheerful fabric curtains tied back on sides
+        ctx.fillStyle = '#3b82f6';
+        ctx.beginPath();
+        ctx.moveTo(wx - 8, wy - 4);
+        ctx.lineTo(wx + 8, wy - 4);
+        ctx.lineTo(wx + 2, wy + wh);
+        ctx.lineTo(wx - 8, wy + wh);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(wx + ww + 8, wy - 4);
+        ctx.lineTo(wx + ww - 8, wy - 4);
+        ctx.lineTo(wx + ww - 2, wy + wh);
+        ctx.lineTo(wx + ww + 8, wy + wh);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Window sill
+        ctx.fillStyle = '#f8f6f0';
+        ctx.fillRect(wx - 7, wy + wh + 2, ww + 14, 5);
+        ctx.strokeRect(wx - 7, wy + wh + 2, ww + 14, 5);
+
+        // Gentle sunlight beam cast onto the floor
+        ctx.fillStyle = 'rgba(254, 240, 138, 0.16)';
+        ctx.beginPath();
+        ctx.moveTo(wx, wy + wh + 6);
+        ctx.lineTo(wx + ww, wy + wh + 6);
+        ctx.lineTo(wx + ww + 38, floorTop + 65);
+        ctx.lineTo(wx - 15, floorTop + 65);
+        ctx.closePath();
+        ctx.fill();
+      };
+
+      drawHomeWindow(rx + 1.25 * S, ry + 42, 54, 76);
+      drawHomeWindow(rx + rw - 2.15 * S, ry + 42, 54, 76);
+
+      // Wall-mounted Bookshelf above the desk with colorful reading books
+      const bsX = 5.2 * S;
+      const bsY = ry + 48;
+      ctx.fillStyle = '#7a5230';
+      ctx.strokeStyle = '#422814';
+      ctx.lineWidth = 1.8;
+      ctx.fillRect(bsX, bsY + 28, 128, 6);
+      ctx.strokeRect(bsX, bsY + 28, 128, 6);
+      // Potted succulent on shelf
+      ctx.fillStyle = '#d97706';
+      ctx.fillRect(bsX + 6, bsY + 18, 10, 10);
+      ctx.fillStyle = '#22c55e';
+      ctx.beginPath(); ctx.arc(bsX + 11, bsY + 16, 6, 0, Math.PI * 2); ctx.fill();
+
+      // Row of colorful book spines
+      const bSpines = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#0284c7'];
+      bSpines.forEach((col, idx) => {
+        ctx.fillStyle = col;
+        ctx.fillRect(bsX + 22 + idx * 14, bsY + 12, 10, 16);
+        ctx.strokeStyle = '#1e293b';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(bsX + 22 + idx * 14, bsY + 12, 10, 16);
+      });
+
+      // Framed picture on wall next to window
+      const picX = rx + 2.45 * S;
+      const picY = ry + 46;
+      ctx.fillStyle = '#543b24';
+      ctx.strokeStyle = '#3b2512';
+      ctx.lineWidth = 2;
+      ctx.fillRect(picX, picY, 36, 44);
+      ctx.strokeRect(picX, picY, 36, 44);
+      ctx.fillStyle = '#e0f2fe';
+      ctx.fillRect(picX + 4, picY + 4, 28, 36);
+      // Mountain landscape drawing
+      ctx.fillStyle = '#38bdf8';
+      ctx.beginPath(); ctx.arc(picX + 24, picY + 14, 5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#16a34a';
+      ctx.beginPath();
+      ctx.moveTo(picX + 4, picY + 40);
+      ctx.lineTo(picX + 16, picY + 22);
+      ctx.lineTo(picX + 28, picY + 40);
+      ctx.closePath();
+      ctx.fill();
+
+      // 6. PLUTO'S COZY BEDROOM BED (West Wall, x: 2.2..4.4*S, y: 4.1..6.5*S)
+      const bedX = 2.2 * S;
+      const bedY = 4.1 * S;
+      const bedW = 2.2 * S; // 140.8px
+      const bedH = 2.35 * S; // 150.4px
+
+      // Bed shadow on floor
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.32)';
+      ctx.fillRect(bedX + 4, bedY + bedH - 2, bedW, 10);
+
+      // Warm Oak Bed Frame
+      ctx.fillStyle = '#8f6542';
+      ctx.strokeStyle = '#4f351f';
+      ctx.lineWidth = 2;
+      ctx.fillRect(bedX, bedY, bedW, bedH);
+      ctx.strokeRect(bedX, bedY, bedW, bedH);
+
+      // Carved Wooden Headboard with Vertical Slats
+      ctx.fillStyle = '#785030';
+      ctx.fillRect(bedX - 4, bedY - 18, bedW + 8, 22);
+      ctx.strokeRect(bedX - 4, bedY - 18, bedW + 8, 22);
+      for (let sx = bedX + 8; sx < bedX + bedW - 8; sx += 14) {
+        ctx.fillStyle = '#543b24';
+        ctx.fillRect(sx, bedY - 14, 6, 16);
+      }
+
+      // Two Plump White Sleeping Pillows
+      [bedX + 10, bedX + bedW / 2 + 6].forEach(px => {
+        ctx.fillStyle = '#f8fafc';
+        ctx.strokeStyle = '#cbd5e1';
+        ctx.lineWidth = 1.3;
+        ctx.beginPath();
+        ctx.roundRect(px, bedY + 8, bedW / 2 - 16, 26, 6);
+        ctx.fill();
+        ctx.stroke();
+      });
+
+      // Cozy Blue & Forest Green Plaid Bed Quilt
+      const qGrad = ctx.createLinearGradient(bedX, bedY + 40, bedX, bedY + bedH);
+      qGrad.addColorStop(0, '#1e3a5f');
+      qGrad.addColorStop(1, '#152942');
+      ctx.fillStyle = qGrad;
+      ctx.fillRect(bedX + 4, bedY + 40, bedW - 8, bedH - 44);
+      ctx.strokeStyle = '#0f172a';
+      ctx.lineWidth = 1.4;
+      ctx.strokeRect(bedX + 4, bedY + 40, bedW - 8, bedH - 44);
+
+      // Plaid blanket stripes
+      ctx.strokeStyle = 'rgba(74, 222, 128, 0.45)';
+      ctx.lineWidth = 1.5;
+      for (let px = bedX + 16; px < bedX + bedW - 10; px += 24) {
+        ctx.beginPath(); ctx.moveTo(px, bedY + 40); ctx.lineTo(px, bedY + bedH - 4); ctx.stroke();
+      }
+      ctx.strokeStyle = 'rgba(251, 191, 36, 0.45)';
+      for (let py = bedY + 54; py < bedY + bedH - 8; py += 24) {
+        ctx.beginPath(); ctx.moveTo(bedX + 4, py); ctx.lineTo(bedX + bedW - 4, py); ctx.stroke();
+      }
+
+      // Bedside Nightstand with Drawer & Warm Brass Table Lamp
+      const nsX = bedX + bedW + 6;
+      const nsY = bedY + 8;
+      ctx.fillStyle = '#8f6542';
+      ctx.strokeStyle = '#4f351f';
+      ctx.lineWidth = 1.6;
+      ctx.fillRect(nsX, nsY, 32, 38);
+      ctx.strokeRect(nsX, nsY, 32, 38);
+      // Drawer with brass knob
+      ctx.fillStyle = '#785030';
+      ctx.fillRect(nsX + 3, nsY + 8, 26, 12);
+      ctx.strokeRect(nsX + 3, nsY + 8, 26, 12);
+      ctx.fillStyle = '#fbbf24';
+      ctx.beginPath(); ctx.arc(nsX + 16, nsY + 14, 2.2, 0, Math.PI * 2); ctx.fill();
+
+      // Brass Bedside Lamp with Fabric Shade
+      ctx.fillStyle = '#d97706';
+      ctx.fillRect(nsX + 14, nsY - 6, 4, 12);
+      ctx.fillStyle = '#fef08a';
+      ctx.strokeStyle = '#ca8a04';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(nsX + 8, nsY - 6);
+      ctx.lineTo(nsX + 24, nsY - 6);
+      ctx.lineTo(nsX + 28, nsY - 20);
+      ctx.lineTo(nsX + 4, nsY - 20);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      // Warm golden lamp glow
+      ctx.fillStyle = 'rgba(254, 240, 138, 0.22)';
+      ctx.beginPath();
+      ctx.arc(nsX + 16, nsY - 12, 22, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 7. WARDROBE & CLOTHES DRESSER (East Wall, x: 11.4..13.6*S, y: 4.1..5.6*S)
+      const wardX = 11.4 * S;
+      const wardY = 4.1 * S;
+      const wardW = 2.2 * S; // 140.8px
+      const wardH = 1.45 * S; // 92.8px
+
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+      ctx.fillRect(wardX + 4, wardY + wardH - 4, wardW, 12);
+
+      // Solid Oak Wardrobe Cabinet Body
+      ctx.fillStyle = '#8f6542';
+      ctx.strokeStyle = '#4f351f';
+      ctx.lineWidth = 2;
+      ctx.fillRect(wardX, wardY, wardW, wardH);
+      ctx.strokeRect(wardX, wardY, wardW, wardH);
+
+      // Crown molding at top
+      ctx.fillStyle = '#785030';
+      ctx.fillRect(wardX - 3, wardY, wardW + 6, 10);
+      ctx.strokeRect(wardX - 3, wardY, wardW + 6, 10);
+
+      // Dual wardrobe panel doors with brass pull handles
+      const dwW = (wardW - 14) / 2;
+      [wardX + 5, wardX + 9 + dwW].forEach((dx, idx) => {
+        ctx.fillStyle = '#785030';
+        ctx.strokeStyle = '#4f351f';
+        ctx.lineWidth = 1.3;
+        ctx.fillRect(dx, wardY + 14, dwW, wardH - 20);
+        ctx.strokeRect(dx, wardY + 14, dwW, wardH - 20);
+
+        // Recessed inner door panel
+        ctx.fillStyle = '#6b4526';
+        ctx.fillRect(dx + 4, wardY + 18, dwW - 8, wardH - 28);
+
+        // Brass handle
+        const hx = idx === 0 ? (dx + dwW - 6) : (dx + 4);
+        ctx.fillStyle = '#fbbf24';
+        ctx.fillRect(hx, wardY + wardH / 2 - 4, 2.5, 8);
+      });
+
+      // Top of dresser: alarm clock & potted fern
+      const ckX = wardX + 16;
+      const ckY = wardY - 10;
+      ctx.fillStyle = '#b45309';
+      ctx.beginPath(); ctx.arc(ckX, ckY, 7, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#f8fafc';
+      ctx.beginPath(); ctx.arc(ckX, ckY, 5.5, 0, Math.PI * 2); ctx.fill();
+
+      // Potted green fern on top of wardrobe
+      const ptX = wardX + wardW - 24;
+      const ptY = wardY - 8;
+      ctx.fillStyle = '#d97706';
+      ctx.fillRect(ptX - 6, ptY, 12, 10);
+      ctx.fillStyle = '#16a34a';
+      ctx.beginPath();
+      ctx.arc(ptX, ptY - 4, 10, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 8. PLUTO'S BEDROOM COMPUTER DESK BACKGROUND & SWIVEL CHAIR
+      // High-back comfortable swivel desk chair behind Pluto (x: 6.2*S, y: 4.85*S)
+      const chX = 6.2 * S;
+      const chY = 4.85 * S;
+      ctx.fillStyle = '#1e293b';
+      ctx.strokeStyle = '#0f172a';
+      ctx.lineWidth = 2;
+      // Headrest
+      ctx.beginPath();
+      ctx.roundRect(chX - 14, chY - 28, 28, 18, 6);
+      ctx.fill();
+      ctx.stroke();
+      // Cushioned backrest
+      ctx.fillStyle = '#334155';
+      ctx.beginPath();
+      ctx.roundRect(chX - 18, chY - 8, 36, 24, 6);
+      ctx.fill();
+      ctx.stroke();
+
+      // 9. Front Entrance Doorway & Welcome Mat
+      const dwX = 9.8 * S;
+      const dwY = ry + rh - 18;
+      ctx.fillStyle = '#6b4e32';
+      ctx.fillRect(rx, dwY, rw, 18);
+      ctx.strokeStyle = '#3b2816';
+      ctx.lineWidth = 2.5;
+      ctx.strokeRect(rx, dwY, rw, 18);
+
+      // Wooden threshold & Natural Coir Welcome Mat
+      ctx.fillStyle = '#8f6542';
+      ctx.fillRect(dwX - 24, dwY - 4, 48, 22);
+      ctx.strokeStyle = '#4f351f';
+      ctx.lineWidth = 1.4;
+      ctx.strokeRect(dwX - 24, dwY - 4, 48, 22);
+
+      ctx.fillStyle = '#b48a58';
+      ctx.beginPath();
+      ctx.roundRect(dwX - 22, dwY - 22, 44, 16, 4);
+      ctx.fill();
+      ctx.strokeStyle = '#6b4e32';
+      ctx.lineWidth = 1.3;
+      ctx.stroke();
+      ctx.fillStyle = '#4f351f';
+      ctx.font = 'bold 8px Inter, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('WELCOME', dwX, dwY - 11);
+    }
+
+    // =========================================================================
+    // PLUTO'S COMPUTER DESK FOREGROUND RENDERER
+    // Renders a normal, cozy bedroom wooden computer desk with desktop monitor,
+    // keyboard, mousepad, pen cup, warm mug, and desktop computer in front of Pluto!
+    // =========================================================================
+    renderPlutoDeskForeground() {
+      const ctx = this.ctx;
+      const S = this.TILE;
+      const cntX = 4.85 * S;  // 310.4px
+      const cntY = 5.35 * S;  // 342.4px
+      const cntW = 2.75 * S;  // 176px
+      const cntH = 46;
+      const nearPluto = this.nearInteractable?.id === 'pluto';
+
+      // Desk drop shadow
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+      ctx.fillRect(cntX + 4, cntY + 8, cntW, cntH);
+
+      // Solid Oak Computer Desk Base
+      ctx.fillStyle = '#8f6542';
+      ctx.strokeStyle = '#4f351f';
+      ctx.lineWidth = 2.2;
+      ctx.fillRect(cntX, cntY, cntW, cntH);
+      ctx.strokeRect(cntX, cntY, cntW, cntH);
+
+      // Polished Wood Desktop Surface Trim
+      ctx.fillStyle = '#a67853';
+      ctx.fillRect(cntX - 3, cntY, cntW + 6, 18);
+      ctx.strokeStyle = nearPluto ? '#60a5fa' : '#4f351f';
+      ctx.lineWidth = 1.6;
+      ctx.strokeRect(cntX - 3, cntY, cntW + 6, 18);
+
+      // Left Desk Drawer with Brass Knob
+      ctx.fillStyle = '#785030';
+      ctx.fillRect(cntX + 8, cntY + 22, 42, 18);
+      ctx.strokeRect(cntX + 8, cntY + 22, 42, 18);
+      ctx.fillStyle = '#fbbf24';
+      ctx.beginPath(); ctx.arc(cntX + 29, cntY + 31, 2.4, 0, Math.PI * 2); ctx.fill();
+
+      // Neat Charcoal Desk Mousepad across the center
+      const padX = cntX + 44;
+      const padY = cntY + 4;
+      const padW = cntW - 84;
+      const padH = 34;
+      ctx.fillStyle = '#1e293b';
+      ctx.beginPath();
+      ctx.roundRect(padX, padY, padW, padH, 4);
+      ctx.fill();
+      ctx.strokeStyle = '#475569';
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+
+      // Modern Desktop Keyboard
+      const kbX = padX + 8;
+      const kbY = padY + 12;
+      const kbW = 48;
+      const kbH = 17;
+      ctx.fillStyle = '#334155';
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 1.1;
+      ctx.fillRect(kbX, kbY, kbW, kbH);
+      ctx.strokeRect(kbX, kbY, kbW, kbH);
+
+      // White/grey keyboard keys
+      ctx.fillStyle = '#e2e8f0';
+      for (let k = 0; k < 5; k++) {
+        ctx.fillRect(kbX + 4 + k * 8, kbY + 3, 6, 4);
+        ctx.fillRect(kbX + 4 + k * 8, kbY + 9, 6, 4);
+      }
+
+      // Desktop Optical Mouse
+      const msX = kbX + kbW + 10;
+      const msY = padY + 13;
+      ctx.fillStyle = '#334155';
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 1.1;
+      ctx.beginPath();
+      ctx.roundRect(msX, msY, 12, 16, 5);
+      ctx.fill();
+      ctx.stroke();
+
+      // Cozy Ceramic Red Mug with Warm Steam on a wooden coaster
+      const mugX = cntX + 16;
+      const mugY = cntY + 6;
+      ctx.fillStyle = '#785030';
+      ctx.beginPath(); ctx.arc(mugX + 6, mugY + 8, 8, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#dc2626';
+      ctx.strokeStyle = '#991b1b';
+      ctx.lineWidth = 1.2;
+      ctx.fillRect(mugX, mugY, 12, 12);
+      ctx.strokeRect(mugX, mugY, 12, 12);
+      // Steam
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(mugX + 4, mugY - 2);
+      ctx.quadraticCurveTo(mugX + 8, mugY - 6, mugX + 4, mugY - 10);
+      ctx.stroke();
+
+      // Desktop Pen Holder / Pencil Cup
+      const cupX = cntX + cntW - 68;
+      const cupY = cntY + 4;
+      ctx.fillStyle = '#64748b';
+      ctx.strokeStyle = '#334155';
+      ctx.lineWidth = 1.1;
+      ctx.fillRect(cupX, cupY + 6, 12, 14);
+      ctx.strokeRect(cupX, cupY + 6, 12, 14);
+      // Pens sticking out
+      ctx.fillStyle = '#3b82f6';
+      ctx.fillRect(cupX + 2, cupY - 2, 2, 8);
+      ctx.fillStyle = '#eab308';
+      ctx.fillRect(cupX + 6, cupY - 4, 2, 10);
+
+      // Desktop PC Tower tucked neatly on the right side of the desk
+      const pcX = cntX + cntW - 36;
+      const pcY = cntY - 24;
+      const pcW = 32;
+      const pcH = 62;
+
+      ctx.fillStyle = '#1e293b';
+      ctx.strokeStyle = '#0f172a';
+      ctx.lineWidth = 1.8;
+      ctx.fillRect(pcX, pcY, pcW, pcH);
+      ctx.strokeRect(pcX, pcY, pcW, pcH);
+
+      // Power button & front drive slot
+      ctx.fillStyle = '#38bdf8';
+      ctx.beginPath(); ctx.arc(pcX + 16, pcY + 8, 2, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#334155';
+      ctx.fillRect(pcX + 6, pcY + 16, 20, 3);
+
+      // 27-INCH WIDESCREEN DESKTOP MONITOR ON MONITOR STAND
+      const standX = cntX + cntW / 2 - 16;
+      ctx.fillStyle = '#475569';
+      ctx.fillRect(standX, cntY - 12, 32, 12);
+
+      const monX = cntX + 42;
+      const monY = cntY - 34;
+      const monW = 86;
+      const monH = 44;
+
+      // Monitor outer bezel
+      ctx.fillStyle = '#0f172a';
+      ctx.strokeStyle = '#334155';
+      ctx.lineWidth = 2;
+      ctx.fillRect(monX, monY, monW, monH);
+      ctx.strokeRect(monX, monY, monW, monH);
+
+      // Screen glass with light blue desktop wallpaper & Mythos window
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillRect(monX + 3, monY + 3, monW - 6, monH - 6);
+
+      // Browser / Mythos Card Deck window on screen
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(monX + 6, monY + 6, monW - 12, monH - 12);
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(monX + 6, monY + 6, monW - 12, 5);
+
+      // Mini card images on the web page
+      ctx.fillStyle = '#ef4444';
+      ctx.fillRect(monX + 10, monY + 15, 14, 16);
+      ctx.fillStyle = '#10b981';
+      ctx.fillRect(monX + 28, monY + 15, 14, 16);
+      ctx.fillStyle = '#3b82f6';
+      ctx.fillRect(monX + 46, monY + 15, 14, 16);
+      ctx.fillStyle = '#f59e0b';
+      ctx.fillRect(monX + 64, monY + 12, 12, 16);
+    }
+
+    // =========================================================================
     // EXTERIOR RENDERER — Zoomed-Out Neighborhood, Dual East-West Roads & Card Shop:
     // - Zoomed-out camera perspective showing the full neighborhood & commercial district:
     //   1. Upper Residential East-West Lane with Player's Cottage (Left) & Mike/AJ's Cottage (Right)
@@ -5094,6 +7138,8 @@
       drawDrivewayPath(9.79 * S, 3.22 * S, 0.50 * S, road1Y - 3.22 * S + 4);
       // Card Shop front plaza walkway -> Lower E-W Road (Far-East Block!)
       drawDrivewayPath(13.25 * S, 9.05 * S, 0.80 * S, road2Y - 9.05 * S + 4);
+      // Pluto's house walkway -> Lower E-W Road (South-West Block!)
+      drawDrivewayPath(1.71 * S, 8.85 * S, 0.50 * S, road2Y - 8.85 * S + 4);
 
       // Stone Curb Borders along Upper Road, Both Connector Roads & Lower Road
       ctx.strokeStyle = '#3d352b';
@@ -5128,9 +7174,10 @@
         ctx.strokeRect(vx, road1Y + road1H, 4, connH);
       });
 
-      // Lower Road Top Curbs (leaving gaps for 1st Connector, 2nd Connector, and Card Shop Walkway)
+      // Lower Road Top Curbs (leaving gaps for Pluto's Walkway, 1st Connector, 2nd Connector, and Card Shop Walkway)
       const topCurbs2 = [
-        { x: 0, w: south1X },
+        { x: 0, w: 1.71 * S },
+        { x: 2.21 * S, w: south1X - 2.21 * S },
         { x: south1X + south1W, w: south2X - (south1X + south1W) },
         { x: south2X + south2W, w: (13.25 * S) - (south2X + south2W) },
         { x: 14.05 * S, w: W - 14.05 * S }
@@ -5617,7 +7664,24 @@
         glowWindows: false
       });
 
-      // 4C. Render the MIDDLE BLOCK TOWN GREEN / PARK PLAZA between the 1st & 2nd N-S Roads (x: 6.8*S .. 9.8*S, y: 5.7*S .. 9.2*S)
+      // 4C. Render PLUTO'S HOUSE on the South-West Plot (x: 1.1*S .. 4.3*S, y: 5.95*S, width 3.2 tiles)
+      drawNeighborhoodCottage({
+        hx: 1.1 * S,
+        hy: 5.95 * S,
+        hw: 3.2 * S,
+        mirror: false,
+        roofDark: '#1e1b4b',
+        roofMid: '#2e1065',
+        roofLight: '#3b0764',
+        sidingCol: '#cbd5e1',
+        sidingLineCol: '#94a3b8',
+        trimCol: '#f8fafc',
+        doorMatCol: '#7c3aed',
+        hasChimney: false,
+        glowWindows: true
+      });
+
+      // 4D. Render the MIDDLE BLOCK TOWN GREEN / PARK PLAZA between the 1st & 2nd N-S Roads (x: 6.8*S .. 9.8*S, y: 5.7*S .. 9.2*S)
       // This makes it visually unmistakable that the Card Shop is ONE FULL BLOCK past the first south road!
       const drawMiddleTownBlock = () => {
         const bx = 6.95 * S;
@@ -5951,9 +8015,11 @@
 
       const nearPlayerMb = this.nearInteractable?.id === 'player_mailbox';
       const nearFriendMb = this.nearInteractable?.id === 'friend_mailbox';
+      const nearPlutoMb = this.nearInteractable?.id === 'pluto_mailbox';
 
       drawMailbox(4.75 * S, 3.95 * S, `📬 ${pName}'s House`, '#2563eb', nearPlayerMb);
       drawMailbox(8.15 * S, 3.95 * S, `📬 ${fName}'s House`, '#dc2626', nearFriendMb);
+      drawMailbox(4.75 * S, 9.25 * S, `📬 Pluto's House`, '#9333ea', nearPlutoMb);
 
       // 7. DIRECTIONAL SIGNPOSTS at the 1st and 2nd Block Intersections
       const drawSignpost = (sgX, sgY) => {
@@ -6058,11 +8124,13 @@
       drawLushBushCluster(13.4 * S, 2.6 * S, 23, false);
       drawLushBushCluster(15.2 * S, 3.1 * S, 22, false);
 
-      // West Parkland between Upper Road (y=5.25) and Lower Road (y=9.55)
-      drawLushBushCluster(1.2 * S, 6.2 * S, 26, false);
-      drawLushBushCluster(3.4 * S, 6.8 * S, 24, true);
-      drawLushBushCluster(1.8 * S, 8.3 * S, 28, false);
-      drawLushBushCluster(4.2 * S, 8.5 * S, 24, false);
+      // West Block trees framing Pluto's House (x: 1.1*S..4.3*S, y: 5.95*S..8.85*S)
+      drawLushBushCluster(0.45 * S, 6.2 * S, 22, false);
+      drawLushBushCluster(0.50 * S, 8.2 * S, 22, true);
+      drawLushBushCluster(2.2 * S, 5.55 * S, 18, false);
+      drawLushBushCluster(3.8 * S, 5.55 * S, 18, true);
+      drawLushBushCluster(4.9 * S, 6.6 * S, 22, false);
+      drawLushBushCluster(5.0 * S, 8.2 * S, 20, false);
 
       // Southern edge trees below the Lower East-West Road (y = 11.35*S)
       drawLushBushCluster(1.5 * S, 11.45 * S, 24, false);
@@ -6100,18 +8168,22 @@
         ctx.fillText(entity.name, cx, footY + (isExt ? 11.5 : 15));
       }
 
-      if (entity.bubble) {
+      const isTargetNpcNear = this.nearInteractable && (this.nearInteractable.id === entity.id || (entity.id === 'friend' && this.nearInteractable.id === 'friend_duel') || (this.nearInteractable === entity));
+      const showTalkBubble = isTargetNpcNear && !this.activeDialogueNpc;
+      const bubbleText = showTalkBubble ? '💬' : entity.bubble;
+
+      if (bubbleText) {
         const by = footY - (isExt ? 62 : 96) - Math.sin(this.tick * 0.09) * 4;
-        ctx.fillStyle = '#ffffff';
+        ctx.fillStyle = showTalkBubble ? '#fef08a' : '#ffffff';
         ctx.beginPath();
-        ctx.roundRect(cx - 14, by, 28, 22, 6);
+        ctx.roundRect(cx - (showTalkBubble ? 16 : 14), by, (showTalkBubble ? 32 : 28), 22, 6);
         ctx.fill();
-        ctx.strokeStyle = '#0f172a';
-        ctx.lineWidth = 2;
+        ctx.strokeStyle = showTalkBubble ? '#ca8a04' : '#0f172a';
+        ctx.lineWidth = showTalkBubble ? 2.5 : 2;
         ctx.stroke();
         ctx.font = isExt ? '12.5px sans-serif' : '14px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText(entity.bubble, cx, by + 15.5);
+        ctx.fillText(bubbleText, cx, by + 15.5);
       }
     }
 
@@ -6214,6 +8286,22 @@
         }
         // Render the wooden Card Shop Counter + Booster Box + Cash Register in front of Shopkeeper Leo's waist
         this.renderShopCounterForeground();
+      } else if (this.currentArea === 'pluto_interior') {
+        this.renderPlutoHouseInterior();
+        // Render Pluto seated at his computer desk inside his bedroom battlestation!
+        if (this.plutoNpc) {
+          this.drawEntity({
+            x: this.plutoNpc.x,
+            y: this.plutoNpc.y,
+            dir: this.plutoNpc.dir,
+            walkTick: this.plutoNpc.walkTick || 0,
+            name: this.plutoNpc.name,
+            bubble: this.plutoNpc.bubble,
+            sprite: this.plutoNpc.sprite
+          });
+        }
+        // Render the Computer Desk Surface + Triple Monitors + Keyboard + PC Tower in front of Pluto!
+        this.renderPlutoDeskForeground();
       } else {
         this.renderCraftsmanExterior();
       }
@@ -6227,6 +8315,7 @@
               if (this.friendWaitingAtHouse) return false;
               return true;
             }
+            if (n.id === 'pluto') return false; // Rendered directly with foreground battlestation desk overlay!
             return false;
           })
           .map(n => ({
