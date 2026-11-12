@@ -6687,3 +6687,773 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   transform: translateY(0) scale(1);
 }
 
+/* --------------------------------------------------------------------------
+   Mythos Coin Toss Modal & 3D Celestial Coin Flip
+   -------------------------------------------------------------------------- */
+.coin-toss-card {
+  background: linear-gradient(165deg, rgba(15, 23, 42, 0.96) 0%, rgba(30, 41, 59, 0.98) 100%);
+  border: 2px solid #d4af37;
+  border-radius: 20px;
+  padding: 26px 30px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  max-width: 480px;
+  width: 92vw;
+  box-shadow: 0 0 50px rgba(0, 0, 0, 0.92), 0 0 35px rgba(212, 175, 55, 0.4);
+  animation: modalPop 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+  position: relative;
+  overflow: hidden;
+}
+
+.coin-toss-card::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle at 50% 50%, rgba(212, 175, 55, 0.08), transparent 70%);
+  pointer-events: none;
+}
+
+.coin-toss-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.coin-toss-badge {
+  font-family: var(--font-title);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.18);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  padding: 4px 12px;
+  border-radius: 12px;
+  text-transform: uppercase;
+}
+
+.coin-toss-title {
+  font-family: var(--font-title);
+  font-size: 26px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  background: linear-gradient(135deg, #fffbeb 0%, #fef08a 40%, #f59e0b 80%, #d97706 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin: 2px 0;
+  text-shadow: 0 0 20px rgba(245, 158, 11, 0.4);
+}
+
+.coin-toss-sub {
+  font-size: 13px;
+  color: #94a3b8;
+  margin: 0;
+}
+
+.coin-toss-teams {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  margin-top: 4px;
+}
+
+.coin-team-card {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.coin-team-card.team-solar {
+  border-color: rgba(245, 158, 11, 0.4);
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, rgba(15, 23, 42, 0.7) 100%);
+}
+
+.coin-team-card.team-lunar {
+  border-color: rgba(99, 102, 241, 0.4);
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.12) 0%, rgba(15, 23, 42, 0.7) 100%);
+}
+
+.coin-team-card.winner-glow {
+  transform: scale(1.04);
+}
+.coin-team-card.team-solar.winner-glow {
+  border-color: #fbbf24;
+  color: #fbbf24;
+  box-shadow: 0 0 24px rgba(245, 158, 11, 0.6);
+}
+.coin-team-card.team-lunar.winner-glow {
+  border-color: #818cf8;
+  color: #818cf8;
+  box-shadow: 0 0 24px rgba(99, 102, 241, 0.6);
+}
+
+.coin-team-crest {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.coin-team-info {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  overflow: hidden;
+}
+
+.coin-team-side {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.coin-team-name {
+  font-family: var(--font-title);
+  font-size: 13px;
+  font-weight: 700;
+  color: #f8fafc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.coin-vs-badge {
+  font-family: var(--font-title);
+  font-weight: 900;
+  font-size: 12px;
+  color: #d4af37;
+  padding: 4px 8px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  border-radius: 8px;
+}
+
+/* 3D Coin Viewport */
+.mythos-coin-viewport {
+  perspective: 1000px;
+  width: 170px;
+  height: 170px;
+  margin: 10px auto;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mythos-coin-shadow {
+  position: absolute;
+  bottom: 0;
+  width: 110px;
+  height: 18px;
+  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.65) 0%, transparent 70%);
+  border-radius: 50%;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.mythos-coin {
+  width: 145px;
+  height: 145px;
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.1s linear;
+  cursor: pointer;
+}
+
+.mythos-coin .coin-face {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  backface-visibility: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  box-shadow: 0 0 25px rgba(0, 0, 0, 0.75), inset 0 0 16px rgba(255, 255, 255, 0.35);
+}
+
+.coin-face-solar {
+  background: radial-gradient(circle at 35% 32%, #fffbeb 0%, #fef08a 25%, #f59e0b 60%, #b45309 85%, #78350f 100%);
+  border: 6px solid #fbbf24;
+  color: #451a03;
+  transform: rotateY(0deg);
+}
+
+.coin-face-lunar {
+  background: radial-gradient(circle at 35% 32%, #e0e7ff 0%, #818cf8 30%, #4338ca 65%, #1e1b4b 90%, #0f172a 100%);
+  border: 6px solid #c7d2fe;
+  color: #e0e7ff;
+  transform: rotateY(180deg);
+}
+
+.coin-rim-bezel {
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  border: 2px dashed rgba(255, 255, 255, 0.45);
+  pointer-events: none;
+}
+
+.coin-face-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  pointer-events: none;
+}
+
+.coin-face .coin-symbol {
+  font-size: 46px;
+  line-height: 1;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.4));
+}
+
+.coin-face .coin-title {
+  font-family: var(--font-title);
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: 2.5px;
+  line-height: 1;
+  margin-top: 2px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+.coin-face-solar .coin-title {
+  color: #78350f;
+}
+
+.coin-face-lunar .coin-title {
+  color: #e0e7ff;
+  text-shadow: 0 0 10px rgba(129, 140, 248, 0.8);
+}
+
+.coin-face .coin-sub {
+  font-family: var(--font-title);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  opacity: 0.8;
+}
+
+/* Coin Toss Animation Keyframes */
+@keyframes coinFlipToSolar {
+  0% {
+    transform: translateY(0) scale(1) rotateY(0deg);
+  }
+  20% {
+    transform: translateY(-90px) scale(1.15) rotateY(540deg);
+  }
+  50% {
+    transform: translateY(-135px) scale(1.22) rotateY(1260deg);
+  }
+  80% {
+    transform: translateY(-40px) scale(1.05) rotateY(1980deg);
+  }
+  95% {
+    transform: translateY(6px) scale(0.97) rotateY(2160deg);
+  }
+  100% {
+    transform: translateY(0) scale(1) rotateY(2160deg);
+  }
+}
+
+@keyframes coinFlipToLunar {
+  0% {
+    transform: translateY(0) scale(1) rotateY(0deg);
+  }
+  20% {
+    transform: translateY(-90px) scale(1.15) rotateY(540deg);
+  }
+  50% {
+    transform: translateY(-135px) scale(1.22) rotateY(1260deg);
+  }
+  80% {
+    transform: translateY(-40px) scale(1.05) rotateY(2160deg);
+  }
+  95% {
+    transform: translateY(6px) scale(0.97) rotateY(2340deg);
+  }
+  100% {
+    transform: translateY(0) scale(1) rotateY(2340deg);
+  }
+}
+
+@keyframes shadowToss {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.65;
+  }
+  50% {
+    transform: scale(0.4);
+    opacity: 0.15;
+  }
+}
+
+.mythos-coin.flipping-solar {
+  animation: coinFlipToSolar 1.8s cubic-bezier(0.25, 0.9, 0.25, 1) forwards;
+}
+
+.mythos-coin.flipping-lunar {
+  animation: coinFlipToLunar 1.8s cubic-bezier(0.25, 0.9, 0.25, 1) forwards;
+}
+
+.mythos-coin-shadow.tossing {
+  animation: shadowToss 1.8s cubic-bezier(0.25, 0.9, 0.25, 1) forwards;
+}
+
+.coin-toss-footer {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.coin-toss-status {
+  font-family: var(--font-title);
+  font-size: 14px;
+  font-weight: 700;
+  color: #cbd5e1;
+  min-height: 24px;
+  transition: all 0.3s ease;
+}
+
+.coin-toss-status.winner-solar {
+  color: #fde047;
+  font-size: 15px;
+  text-shadow: 0 0 12px rgba(250, 204, 21, 0.6);
+}
+
+.coin-toss-status.winner-lunar {
+  color: #a5b4fc;
+  font-size: 15px;
+  text-shadow: 0 0 12px rgba(165, 180, 252, 0.6);
+}
+
+.coin-action-btn {
+  font-family: var(--font-title);
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  padding: 10px 28px;
+  border-radius: 24px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* ==========================================================================
+   WEEKLY CALENDAR & BED SLEEP CYCLE STYLES
+   ========================================================================== */
+
+.calendar-toolbar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+  transition: all 0.2s ease;
+}
+
+.calendar-toolbar-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.45);
+}
+
+.calendar-modal-card {
+  background: linear-gradient(160deg, #181d2c 0%, #0f121d 100%);
+  border: 2px solid rgba(52, 211, 153, 0.4);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.8), 0 0 30px rgba(16, 185, 129, 0.2);
+  border-radius: 16px;
+  width: 92%;
+  max-width: 860px;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 24px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  position: relative;
+  color: var(--text-main);
+  animation: modalScaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.calendar-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 12px;
+}
+
+.calendar-header-title {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.calendar-header-icon {
+  font-size: 32px;
+  filter: drop-shadow(0 2px 8px rgba(16, 185, 129, 0.5));
+}
+
+.calendar-title {
+  font-family: var(--font-title);
+  font-size: 22px;
+  font-weight: 700;
+  color: #f1f5f9;
+  letter-spacing: 0.5px;
+}
+
+.calendar-subtitle {
+  font-size: 13px;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.calendar-subtitle span {
+  color: #34d399;
+  font-weight: 700;
+}
+
+.calendar-close-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #cbd5e1;
+  font-size: 16px;
+  font-weight: 700;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.calendar-close-btn:hover {
+  background: rgba(239, 68, 68, 0.25);
+  border-color: #ef4444;
+  color: #fca5a5;
+}
+
+.calendar-today-banner {
+  background: linear-gradient(135deg, rgba(5, 150, 105, 0.22) 0%, rgba(16, 185, 129, 0.12) 100%);
+  border: 1.5px solid rgba(52, 211, 153, 0.5);
+  border-radius: 12px;
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: relative;
+  box-shadow: inset 0 0 20px rgba(16, 185, 129, 0.1);
+}
+
+.cal-today-badge {
+  display: inline-block;
+  align-self: flex-start;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  background: #059669;
+  color: #ffffff;
+  padding: 3px 8px;
+  border-radius: 6px;
+  text-transform: uppercase;
+}
+
+.cal-today-event-title {
+  font-family: var(--font-title);
+  font-size: 17px;
+  font-weight: 700;
+  color: #6ee7b7;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cal-today-event-desc {
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: #e2e8f0;
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 10px;
+}
+
+@media (max-width: 768px) {
+  .calendar-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.calendar-day-card {
+  background: rgba(30, 35, 50, 0.65);
+  border: 1.5px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 12px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 8px;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.calendar-day-card:hover {
+  background: rgba(38, 44, 64, 0.85);
+  border-color: rgba(255, 255, 255, 0.25);
+  transform: translateY(-2px);
+}
+
+.calendar-day-card.active-today {
+  background: linear-gradient(180deg, rgba(6, 78, 59, 0.65) 0%, rgba(15, 23, 42, 0.85) 100%);
+  border: 2px solid #34d399;
+  box-shadow: 0 0 16px rgba(52, 211, 153, 0.4), inset 0 0 12px rgba(52, 211, 153, 0.15);
+  transform: translateY(-2px);
+}
+
+.cal-card-today-badge {
+  position: absolute;
+  top: -8px;
+  background: #10b981;
+  color: #042f2e;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.8px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+.cal-card-day-name {
+  font-family: var(--font-title);
+  font-size: 13px;
+  font-weight: 800;
+  color: #cbd5e1;
+  letter-spacing: 0.5px;
+}
+
+.calendar-day-card.active-today .cal-card-day-name {
+  color: #a7f3d0;
+}
+
+.cal-card-icon {
+  font-size: 26px;
+  line-height: 1;
+}
+
+.cal-card-event-name {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #f1f5f9;
+  line-height: 1.25;
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+}
+
+.cal-card-perk-pill {
+  font-size: 10px;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #94a3b8;
+  padding: 3px 6px;
+  border-radius: 6px;
+  line-height: 1.2;
+}
+
+.calendar-day-card.active-today .cal-card-perk-pill {
+  background: rgba(52, 211, 153, 0.2);
+  border-color: rgba(52, 211, 153, 0.4);
+  color: #6ee7b7;
+  font-weight: 700;
+}
+
+.calendar-modal-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 14px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.calendar-tip {
+  font-size: 12.5px;
+  color: #94a3b8;
+}
+
+/* Sleep Transition Overlay */
+.sleep-fade-overlay {
+  position: fixed;
+  inset: 0;
+  background: #030712;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 1;
+  transition: opacity 0.4s ease;
+}
+
+.sleep-overlay-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  text-align: center;
+  animation: sleepPulse 2s infinite ease-in-out;
+}
+
+.sleep-moon-icon {
+  font-size: 54px;
+  filter: drop-shadow(0 0 20px rgba(165, 180, 252, 0.6));
+}
+
+.sleep-title {
+  font-family: var(--font-title);
+  font-size: 24px;
+  font-weight: 700;
+  color: #e2e8f0;
+  letter-spacing: 1px;
+}
+
+.sleep-subtitle {
+  font-size: 14px;
+  color: #94a3b8;
+}
+
+@keyframes sleepPulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  50% {
+    transform: scale(1.03);
+    opacity: 1;
+  }
+}
+
+/* Morning Wake-Up Modal */
+.morning-wake-card {
+  background: linear-gradient(160deg, #1e293b 0%, #0f172a 100%);
+  border: 2px solid #f59e0b;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.8), 0 0 35px rgba(245, 158, 11, 0.35);
+  border-radius: 18px;
+  padding: 28px 32px;
+  max-width: 460px;
+  width: 90%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 14px;
+  animation: modalScaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.morning-sun-badge {
+  background: linear-gradient(135deg, #d97706, #f59e0b);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 1.5px;
+  padding: 5px 12px;
+  border-radius: 20px;
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+}
+
+.morning-day-heading {
+  font-family: var(--font-title);
+  font-size: 26px;
+  font-weight: 800;
+  color: #fef08a;
+  letter-spacing: 0.5px;
+  text-shadow: 0 0 16px rgba(254, 240, 138, 0.3);
+}
+
+.morning-divider {
+  width: 80px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #f59e0b, transparent);
+}
+
+.morning-event-box {
+  background: rgba(15, 23, 42, 0.7);
+  border: 1.5px solid rgba(245, 158, 11, 0.4);
+  border-radius: 12px;
+  padding: 14px 18px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.morning-event-tag {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: #fbbf24;
+}
+
+.morning-event-name {
+  font-family: var(--font-title);
+  font-size: 17px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.morning-event-desc {
+  font-size: 13px;
+  line-height: 1.4;
+  color: #cbd5e1;
+}
+
+.morning-stats-row {
+  display: flex;
+  gap: 16px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #94a3b8;
+  margin-top: 4px;
+}
+
+.morning-btn {
+  width: 100%;
+  padding: 12px 20px;
+  font-size: 15px;
+  font-weight: 800;
+  font-family: var(--font-title);
+  letter-spacing: 0.5px;
+  background: linear-gradient(135deg, #d97706, #f59e0b);
+  border-color: #fbbf24;
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.35);
+  margin-top: 6px;
+}
+
+.morning-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(245, 158, 11, 0.5);
+}
+

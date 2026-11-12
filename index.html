@@ -42,6 +42,7 @@
       <!-- Overworld Style & Lighting Quick-Tweak Bar (Visible in Overworld) -->
       <div class="overworld-toolbar" id="overworld-toolbar">
         <span class="ow-location-pill" id="ow-location-pill">🏠 Living Room (Day 2 of Summer)</span>
+        <button id="btn-open-calendar" class="ui-btn primary-btn calendar-toolbar-btn" style="padding: 4px 10px; font-size: 12px; background: linear-gradient(135deg, #059669, #10b981); border-color: #34d399;" title="Town Weekly Calendar & Daily Events (Key: C)">📅 <span id="calendar-btn-day-label">Monday</span> • Day <span id="calendar-btn-day-num">1</span></button>
         <button id="btn-open-inventory" class="ui-btn primary-btn" style="padding: 4px 10px; font-size: 12px;" title="Open Backpack & Inventory (Key: I)">🎒 Inventory <span id="inv-badge-count" class="inv-badge-pill">0</span></button>
         <button id="btn-open-binder" class="ui-btn primary-btn binder-toolbar-btn locked" style="padding: 4px 10px; font-size: 12px; background: linear-gradient(135deg, #1e3a8a, #2563eb); border-color: #60a5fa;" title="Old Card Binder (Locked — Defeat Friend to Unlock)">📖 Old Card Binder <span id="binder-badge-count" class="inv-badge-pill">0</span></button>
         <button id="btn-open-creator" class="ui-btn secondary" style="padding: 4px 10px; font-size: 12px;" title="Customize Character or World Save">👤 Character</button>
@@ -420,6 +421,74 @@
         <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
           <button class="ui-btn primary-btn" id="btn-rematch">⚔️ Rematch</button>
           <button class="ui-btn secondary" id="btn-return-overworld">🗺️ Return to Overworld</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mythos Coin Toss Modal (Determines Who Strikes First) -->
+    <div class="modal-overlay hidden" id="coin-toss-modal" style="z-index: 105;">
+      <div class="coin-toss-card">
+        <div class="coin-toss-header">
+          <div class="coin-toss-badge">🪙 INITIATIVE ROLL</div>
+          <h2 class="coin-toss-title">MYTHOS COIN TOSS</h2>
+          <p class="coin-toss-sub">Flipping the celestial coin to decide who strikes first!</p>
+        </div>
+
+        <!-- Contender Callouts -->
+        <div class="coin-toss-teams">
+          <div class="coin-team-card team-solar" id="coin-team-1">
+            <span class="coin-team-crest">☀️</span>
+            <div class="coin-team-info">
+              <span class="coin-team-side">HEADS • TEAM 1</span>
+              <span class="coin-team-name" id="coin-team1-name">Team Solar</span>
+            </div>
+          </div>
+
+          <div class="coin-vs-badge">VS</div>
+
+          <div class="coin-team-card team-lunar" id="coin-team-2">
+            <span class="coin-team-crest">🌙</span>
+            <div class="coin-team-info">
+              <span class="coin-team-side">TAILS • TEAM 2</span>
+              <span class="coin-team-name" id="coin-team2-name">Team Lunar</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3D Coin Flip Arena -->
+        <div class="mythos-coin-viewport">
+          <div class="mythos-coin-shadow" id="mythos-coin-shadow"></div>
+          <div class="mythos-coin" id="mythos-coin">
+            <!-- Front Face: Solar -->
+            <div class="coin-face coin-face-solar">
+              <div class="coin-rim-bezel"></div>
+              <div class="coin-face-inner">
+                <span class="coin-symbol">☀️</span>
+                <span class="coin-title">SOLAR</span>
+                <span class="coin-sub" id="coin-solar-sub">PLAYER</span>
+              </div>
+            </div>
+            <!-- Back Face: Lunar -->
+            <div class="coin-face coin-face-lunar">
+              <div class="coin-rim-bezel"></div>
+              <div class="coin-face-inner">
+                <span class="coin-symbol">🌙</span>
+                <span class="coin-title">LUNAR</span>
+                <span class="coin-sub" id="coin-lunar-sub">OPPONENT</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dynamic Result & Action -->
+        <div class="coin-toss-footer">
+          <div class="coin-toss-status" id="coin-toss-status">
+            Flip the Mythos coin to determine who takes Turn 1!
+          </div>
+          <div class="coin-toss-actions">
+            <button class="ui-btn primary-btn coin-action-btn" id="btn-flip-coin">🪙 Flip Coin</button>
+            <button class="ui-btn primary-btn coin-action-btn hidden" id="btn-start-battle-coin">⚔️ Start Battle</button>
+          </div>
         </div>
       </div>
     </div>
@@ -996,6 +1065,65 @@
           </button>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- Weekly Calendar & Events Modal -->
+  <div id="calendar-modal" class="ui-modal-backdrop hidden">
+    <div class="calendar-modal-card">
+      <div class="calendar-modal-header">
+        <div class="calendar-header-title">
+          <span class="calendar-header-icon">📅</span>
+          <div>
+            <h2 class="calendar-title">Town Weekly Calendar</h2>
+            <div class="calendar-subtitle">Summer Season • <span id="cal-current-day-banner">Monday, Day 1</span></div>
+          </div>
+        </div>
+        <button id="btn-close-calendar" class="calendar-close-btn" title="Close (Esc)">✕</button>
+      </div>
+
+      <div class="calendar-today-banner" id="cal-today-banner-card">
+        <div class="cal-today-badge">TODAY'S SPECIAL EVENT</div>
+        <div class="cal-today-event-title" id="cal-today-title">Leo's Booster Restock</div>
+        <div class="cal-today-event-desc" id="cal-today-desc">Leo at the Card Shop has restocked rare foils. Booster packs have +25% increased Holo drop chance today!</div>
+      </div>
+
+      <div class="calendar-grid" id="calendar-week-grid">
+        <!-- 7 Days dynamically rendered -->
+      </div>
+
+      <div class="calendar-modal-footer">
+        <div class="calendar-tip">💡 <em>Tip: Return home and sleep in your bed to advance the day!</em></div>
+        <button id="btn-done-calendar" class="ui-btn primary-btn" style="min-width: 120px;">Got It</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bed Sleep Transition Overlay -->
+  <div id="sleep-fade-overlay" class="sleep-fade-overlay hidden">
+    <div class="sleep-overlay-content">
+      <div class="sleep-moon-icon">🌙</div>
+      <div class="sleep-title">Resting for the night...</div>
+      <div class="sleep-subtitle">Saving your journey & restoring stamina</div>
+    </div>
+  </div>
+
+  <!-- Morning Wake-Up Modal -->
+  <div id="morning-wake-modal" class="ui-modal-backdrop hidden">
+    <div class="morning-wake-card">
+      <div class="morning-sun-badge">☀️ GOOD MORNING!</div>
+      <h2 class="morning-day-heading" id="morning-day-heading">Tuesday • Day 2</h2>
+      <div class="morning-divider"></div>
+      <div class="morning-event-box">
+        <div class="morning-event-tag">TODAY'S TOWN EVENT</div>
+        <div class="morning-event-name" id="morning-event-name">Pluto's Double Wager</div>
+        <div class="morning-event-desc" id="morning-event-desc">Pluto is feeling bold! Friendly duels against Pluto have doubled stakes and a $2.00 reward.</div>
+      </div>
+      <div class="morning-stats-row">
+        <span>✨ All Beasts Rested & Energized</span>
+        <span>💾 Game Auto-Saved</span>
+      </div>
+      <button id="btn-wake-up" class="ui-btn primary-btn morning-btn">Rise & Shine ☀️</button>
     </div>
   </div>
 

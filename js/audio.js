@@ -428,6 +428,104 @@ class SoundController {
       });
     }
   }
+
+  // Metallic 3D Coin Flip Spin (Fluttering ascending harmonic ring)
+  playCoinFlip() {
+    if (!this.enabled) return;
+    this.init();
+    const now = this.ctx.currentTime;
+
+    const count = 7;
+    for (let i = 0; i < count; i++) {
+      const osc = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      osc.type = 'triangle';
+      const freq = 1100 + i * 150 + (i % 2 === 0 ? 90 : -70);
+      osc.frequency.setValueAtTime(freq, now + i * 0.16);
+      g.gain.setValueAtTime(0.18, now + i * 0.16);
+      g.gain.exponentialRampToValueAtTime(0.005, now + i * 0.16 + 0.11);
+      osc.connect(g);
+      g.connect(this.ctx.destination);
+      osc.start(now + i * 0.16);
+      osc.stop(now + i * 0.16 + 0.11);
+    }
+  }
+
+  // Metallic Coin Landing Clink & Resonant Chime
+  playCoinLand() {
+    if (!this.enabled) return;
+    this.init();
+    const now = this.ctx.currentTime;
+
+    // Sharp metallic impact click
+    const impactOsc = this.ctx.createOscillator();
+    const impactGain = this.ctx.createGain();
+    impactOsc.type = 'square';
+    impactOsc.frequency.setValueAtTime(980, now);
+    impactOsc.frequency.exponentialRampToValueAtTime(320, now + 0.08);
+    impactGain.gain.setValueAtTime(0.24, now);
+    impactGain.gain.exponentialRampToValueAtTime(0.005, now + 0.09);
+    impactOsc.connect(impactGain);
+    impactGain.connect(this.ctx.destination);
+    impactOsc.start(now);
+    impactOsc.stop(now + 0.09);
+
+    // Resonating crystal bell chime
+    const bellChord = [1046.50, 1318.51, 1567.98, 2093.00];
+    bellChord.forEach((freq, idx) => {
+      const osc = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, now + 0.02);
+      g.gain.setValueAtTime(0.16 / (idx + 1), now + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.002, now + 0.75);
+      osc.connect(g);
+      g.connect(this.ctx.destination);
+      osc.start(now + 0.02);
+      osc.stop(now + 0.75);
+    });
+  }
+
+  // Lullaby Falling Arpeggio when going to sleep in bed
+  playSleepChime() {
+    if (!this.enabled) return;
+    this.init();
+    const now = this.ctx.currentTime;
+    const notes = [659.25, 523.25, 392.00, 329.63, 261.63];
+    notes.forEach((freq, i) => {
+      const osc = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, now + i * 0.14);
+      g.gain.setValueAtTime(0.14, now + i * 0.14);
+      g.gain.exponentialRampToValueAtTime(0.001, now + i * 0.14 + 0.65);
+      osc.connect(g);
+      g.connect(this.ctx.destination);
+      osc.start(now + i * 0.14);
+      osc.stop(now + i * 0.14 + 0.65);
+    });
+  }
+
+  // Ascending Sunrise Morning Dawn Chime when waking up rested
+  playMorningChime() {
+    if (!this.enabled) return;
+    this.init();
+    const now = this.ctx.currentTime;
+    const chord = [261.63, 329.63, 392.00, 523.25, 659.25, 783.99, 1046.50];
+    chord.forEach((freq, i) => {
+      const osc = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      osc.type = i === chord.length - 1 ? 'triangle' : 'sine';
+      const startTime = now + i * 0.10;
+      osc.frequency.setValueAtTime(freq, startTime);
+      g.gain.setValueAtTime(0.15, startTime);
+      g.gain.exponentialRampToValueAtTime(0.002, startTime + (i === chord.length - 1 ? 1.2 : 0.6));
+      osc.connect(g);
+      g.connect(this.ctx.destination);
+      osc.start(startTime);
+      osc.stop(startTime + (i === chord.length - 1 ? 1.2 : 0.6));
+    });
+  }
 }
 
 const sounds = new SoundController();

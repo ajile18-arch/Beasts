@@ -606,15 +606,34 @@
 
     createUnitInstance(templateId, team, x, y) {
       const tmpl = BEAST_TEMPLATES[templateId];
+      let maxHp = tmpl.maxHp;
+      let baseMove = tmpl.baseMove;
+
+      // Weekly Calendar Active Event Battle Modifiers
+      const activeEvent = this.overworld?.getCurrentDayEvent?.();
+      if (activeEvent?.id === 'botanical_bloom') {
+        // Thursday: Maya's Botanical Bloom - +15 Max HP to Earth / Nature beasts
+        if (tmpl.element?.toLowerCase() === 'earth' || templateId === 'earth_golem') {
+          maxHp += 15;
+        }
+      } else if (activeEvent?.id === 'stargazer_astronomy') {
+        // Sunday: Nova's Stargazer Astronomy - +1 Move Range to Celestial / Flying beasts
+        if (tmpl.element?.toLowerCase() === 'celestial' || templateId === 'phoenix' || templateId === 'pegasus') {
+          baseMove += 1;
+        }
+      }
+
       return {
         ...tmpl,
         instanceId: `${templateId}_${team}_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
         team: team,
         x: x,
         y: y,
-        hp: tmpl.maxHp,
+        hp: maxHp,
+        maxHp: maxHp,
         shield: 0,
-        movesLeft: tmpl.baseMove,
+        baseMove: baseMove,
+        movesLeft: baseMove,
         hasActed: false,
         facing: team === 1 ? 'right' : 'left',
         animState: 'idle',
@@ -2356,12 +2375,16 @@
         document.getElementById('winner-title').textContent = `${winner.toUpperCase()} VICTORIOUS!`;
 
         if (this.currentChallenger && this.currentChallenger.id === 'pluto') {
+          const activeEvent = this.overworld?.getCurrentDayEvent?.();
+          const plutoWager = activeEvent?.id === 'pluto_double_wager' ? 2.00 : 1.00;
+          const plutoWagerStr = plutoWager.toFixed(2);
+          const plutoWagerTag = activeEvent?.id === 'pluto_double_wager' ? ' 💰 (Tuesday Double Wager!)' : '';
           if (isPlayerVictory) {
             document.getElementById('winner-message').innerHTML = `
               All of <b>Pluto's</b> mythical beasts were defeated in Round ${this.round}!<br>
               <div style="margin-top: 14px; padding: 12px 16px; background: rgba(34, 197, 94, 0.22); border: 2px solid #22c55e; border-radius: 12px; color: #86efac; text-align: center;">
-                💵 <b>+$1.00 WON FROM PLUTO!</b><br>
-                <span style="font-size: 13px; color: #f8fafc;">Pluto: "Well played! You won the wager fair and square — here is your $1.00!"</span>
+                💵 <b>+$${plutoWagerStr} WON FROM PLUTO!${plutoWagerTag}</b><br>
+                <span style="font-size: 13px; color: #f8fafc;">Pluto: "Well played! You won the wager fair and square — here is your $${plutoWagerStr}!"</span>
               </div>
             `;
             if (this.overworld) {
@@ -2371,13 +2394,49 @@
             document.getElementById('winner-message').innerHTML = `
               <b>Pluto</b> defeated your team in Round ${this.round}!<br>
               <div style="margin-top: 14px; padding: 12px 16px; background: rgba(239, 68, 68, 0.22); border: 2px solid #ef4444; border-radius: 12px; color: #fca5a5; text-align: center;">
-                💸 <b>-$1.00 LOST TO PLUTO!</b><br>
-                <span style="font-size: 13px; color: #f8fafc;">Pluto: "Good game! That's $1.00 for the winner! Return to my house for a rematch whenever you're ready."</span>
+                💸 <b>-$${plutoWagerStr} LOST TO PLUTO!${plutoWagerTag}</b><br>
+                <span style="font-size: 13px; color: #f8fafc;">Pluto: "Good game! That's $${plutoWagerStr} for the winner! Return to my house for a rematch whenever you're ready."</span>
               </div>
             `;
             if (this.overworld) {
               this.overworld.handlePlutoBattleResult(false);
             }
+          }
+        } else if (isPlayerVictory && this.currentChallenger?.id === 'maya') {
+          const fName = this.currentChallenger.name || 'Maya';
+          document.getElementById('winner-message').innerHTML = `
+            All of <b>${fName}'s</b> mythical beasts were defeated in Round ${this.round}!<br>
+            <div style="margin-top: 14px; padding: 12px 16px; background: rgba(34, 197, 94, 0.15); border: 1.5px solid #4ade80; border-radius: 12px; color: #86efac; text-align: center;">
+              🌿 <b>BOTANICAL CONSERVATORY VICTORY</b><br>
+              <span style="font-size: 13px; color: #f8fafc;">Maya: "Breathtaking tactics! Your beasts flourished like a wild canopy! Come back to the greenhouse anytime for another friendly match!"</span>
+            </div>
+          `;
+          if (this.overworld) {
+            this.overworld.handleMayaBattleResult(true);
+          }
+        } else if (isPlayerVictory && this.currentChallenger?.id === 'silas') {
+          const fName = this.currentChallenger.name || 'Silas';
+          document.getElementById('winner-message').innerHTML = `
+            All of <b>${fName}'s</b> mythical beasts were defeated in Round ${this.round}!<br>
+            <div style="margin-top: 14px; padding: 12px 16px; background: rgba(245, 158, 11, 0.22); border: 2px solid #fbbf24; border-radius: 12px; color: #fde68a; text-align: center;">
+              ⚙️ <b>CLOCKWORK ARTISAN REWARD: +$2.00 & Dwarf Warden Foil Card!</b><br>
+              <span style="font-size: 13px; color: #f8fafc;">Silas: "Fine craftsmanship in your maneuvering! You worked through my defenses like clockwork! Take this $2.00 purse and my reinforced Dwarf Warden card!"</span>
+            </div>
+          `;
+          if (this.overworld) {
+            this.overworld.handleSilasBattleResult(true);
+          }
+        } else if (isPlayerVictory && this.currentChallenger?.id === 'nova') {
+          const fName = this.currentChallenger.name || 'Nova';
+          document.getElementById('winner-message').innerHTML = `
+            All of <b>${fName}'s</b> mythical beasts were defeated in Round ${this.round}!<br>
+            <div style="margin-top: 14px; padding: 12px 16px; background: rgba(168, 85, 247, 0.22); border: 2px solid #c084fc; border-radius: 12px; color: #e9d5ff; text-align: center;">
+              ✨ <b>STARGAZER CELESTIAL REWARD: +$2.00 & Pegasus Foil Card!</b><br>
+              <span style="font-size: 13px; color: #f8fafc;">Nova: "Written in the constellations! What brilliant celestial synergy! Here is your $2.00 prize and a celestial Pegasus foil card!"</span>
+            </div>
+          `;
+          if (this.overworld) {
+            this.overworld.handleNovaBattleResult(true);
           }
         } else if (isPlayerVictory && this.currentChallenger) {
           const fName = this.currentChallenger.name || 'Your Friend';
@@ -2393,6 +2452,23 @@
           }
         } else {
           document.getElementById('winner-message').textContent = `All opposing mythical beasts were defeated in Round ${this.round}.`;
+        }
+
+        // Friday Night Mythos League Event Bounty
+        const activeEvent = this.overworld?.getCurrentDayEvent?.();
+        if (isPlayerVictory && activeEvent?.id === 'league_night' && this.overworld) {
+          this.overworld.gold = Math.round(((this.overworld.gold || 0) + 1.50) * 100) / 100;
+          this.overworld.saveWorldData(this.overworld.draftAppearance);
+          this.overworld.updateHUDSaveInfo();
+          const winMsgEl = document.getElementById('winner-message');
+          if (winMsgEl) {
+            winMsgEl.innerHTML += `
+              <div style="margin-top: 12px; padding: 10px 16px; background: rgba(59, 130, 246, 0.22); border: 2px solid #3b82f6; border-radius: 12px; color: #93c5fd; text-align: center;">
+                🏆 <b>FRIDAY NIGHT MYTHOS LEAGUE PURSE: +$1.50!</b><br>
+                <span style="font-size: 13px; color: #f8fafc;">Earned an extra <b>+$1.50</b> bounty for winning during the Friday League event!</span>
+              </div>
+            `;
+          }
         }
 
         this.elWinnerModal.classList.remove('hidden');
@@ -2644,11 +2720,8 @@
       if (modal) modal.classList.add('hidden');
 
       this.round = 1;
-      this.currentTeam = 1;
       this.hazards = {};
       document.getElementById('round-num').textContent = '1';
-      document.getElementById('team1-badge').classList.add('active');
-      document.getElementById('team2-badge').classList.remove('active');
 
       const is2v2 = this.currentMap && this.currentMap.teamSize === 2;
       const expectedTeamSize = is2v2 ? 2 : 3;
@@ -2669,9 +2742,129 @@
       if (t2El) t2El.textContent = t2Names;
 
       this.render();
-      this.selectUnit(this.units[0]);
 
-      this.log(`⚔️ Draft Complete! Solar Team [${t1Names}] vs Lunar Team [${t2Names}].`, 'system');
+      this.log(`⚔️ Match Initialized! Solar Team [${t1Names}] vs Lunar Team [${t2Names}].`, 'system');
+
+      // Mythos Coin Toss determines who goes first!
+      this.startCoinToss((firstTeam) => {
+        this.currentTeam = firstTeam;
+        document.getElementById('team1-badge').classList.toggle('active', firstTeam === 1);
+        document.getElementById('team2-badge').classList.toggle('active', firstTeam === 2);
+
+        const activeUnits = this.units.filter(u => u.team === firstTeam && u.hp > 0);
+        if (activeUnits.length > 0) {
+          this.selectUnit(activeUnits[0]);
+        }
+        this.renderSwitcherChips();
+        this.render();
+
+        const firstTeamLabel = firstTeam === 1 ? '☀️ Solar Team' : `🌙 Lunar Team (${this.currentChallenger?.name || 'Opponent'})`;
+        this.log(`🪙 Mythos Coin Toss: ${firstTeamLabel} goes first!`, 'system');
+
+        if (firstTeam === 2 && this.mode === 'ai') {
+          setTimeout(() => this.runAiTurn(), 700);
+        }
+      });
+    }
+
+    startCoinToss(onComplete) {
+      const modal = document.getElementById('coin-toss-modal');
+      const coin = document.getElementById('mythos-coin');
+      const shadow = document.getElementById('mythos-coin-shadow');
+      const team1Card = document.getElementById('coin-team-1');
+      const team2Card = document.getElementById('coin-team-2');
+      const team1NameEl = document.getElementById('coin-team1-name');
+      const team2NameEl = document.getElementById('coin-team2-name');
+      const statusEl = document.getElementById('coin-toss-status');
+      const btnFlip = document.getElementById('btn-flip-coin');
+      const btnStart = document.getElementById('btn-start-battle-coin');
+
+      if (!modal || !coin || !btnFlip) {
+        if (onComplete) onComplete(Math.random() < 0.5 ? 1 : 2);
+        return;
+      }
+
+      const pName = this.overworld?.playerName || this.overworld?.draftAppearance?.name || this.overworld?.worldSave?.playerAppearance?.name || 'Player';
+      const oppName = this.currentChallenger?.name || (this.mode === 'ai' ? 'Opponent AI' : 'Team Lunar');
+      if (team1NameEl) team1NameEl.textContent = `${pName} (Team Solar)`;
+      if (team2NameEl) team2NameEl.textContent = `${oppName} (Team Lunar)`;
+
+      const coinSolarSub = document.getElementById('coin-solar-sub');
+      const coinLunarSub = document.getElementById('coin-lunar-sub');
+      if (coinSolarSub) coinSolarSub.textContent = pName.toUpperCase();
+      if (coinLunarSub) coinLunarSub.textContent = oppName.toUpperCase();
+
+      // Reset state & classes
+      coin.className = 'mythos-coin';
+      if (shadow) shadow.className = 'mythos-coin-shadow';
+      if (team1Card) team1Card.classList.remove('winner-glow');
+      if (team2Card) team2Card.classList.remove('winner-glow');
+      if (statusEl) {
+        statusEl.className = 'coin-toss-status';
+        statusEl.innerHTML = `Flip the Mythos coin to determine who takes Turn 1!`;
+      }
+      btnFlip.classList.remove('hidden');
+      btnFlip.disabled = false;
+      if (btnStart) btnStart.classList.add('hidden');
+
+      modal.classList.remove('hidden');
+
+      let hasFlipped = false;
+      let autoAdvanceTimer = null;
+
+      const finishCoinToss = (winnerTeam) => {
+        if (autoAdvanceTimer) clearTimeout(autoAdvanceTimer);
+        modal.classList.add('hidden');
+        if (onComplete) onComplete(winnerTeam);
+      };
+
+      const executeFlip = () => {
+        if (hasFlipped) return;
+        hasFlipped = true;
+        btnFlip.disabled = true;
+
+        // 50/50 randomized decision
+        const winnerTeam = Math.random() < 0.5 ? 1 : 2;
+
+        if (statusEl) {
+          statusEl.innerHTML = `Tossing the celestial coin into the air...`;
+        }
+
+        // Trigger fluttering spin audio & CSS animation
+        if (window.sounds?.playCoinFlip) window.sounds.playCoinFlip();
+
+        coin.className = 'mythos-coin ' + (winnerTeam === 1 ? 'flipping-solar' : 'flipping-lunar');
+        if (shadow) shadow.className = 'mythos-coin-shadow tossing';
+
+        // When flip finishes (1.8s)
+        setTimeout(() => {
+          if (window.sounds?.playCoinLand) window.sounds.playCoinLand();
+
+          if (statusEl) {
+            statusEl.className = 'coin-toss-status ' + (winnerTeam === 1 ? 'winner-solar' : 'winner-lunar');
+            statusEl.innerHTML = winnerTeam === 1
+              ? `☀️ <b>SOLAR WINS!</b> ${pName} takes Turn 1!`
+              : `🌙 <b>LUNAR WINS!</b> ${oppName} takes Turn 1!`;
+          }
+
+          if (winnerTeam === 1 && team1Card) team1Card.classList.add('winner-glow');
+          if (winnerTeam === 2 && team2Card) team2Card.classList.add('winner-glow');
+
+          btnFlip.classList.add('hidden');
+          if (btnStart) {
+            btnStart.classList.remove('hidden');
+            btnStart.onclick = () => finishCoinToss(winnerTeam);
+          }
+
+          // Auto-commence after 2.2s so match flows smoothly
+          autoAdvanceTimer = setTimeout(() => {
+            finishCoinToss(winnerTeam);
+          }, 2200);
+        }, 1800);
+      };
+
+      btnFlip.onclick = () => executeFlip();
+      coin.onclick = () => executeFlip();
     }
 
     renderSwitcherChips() {
