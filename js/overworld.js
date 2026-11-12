@@ -5235,6 +5235,9 @@
             this.areaTransitionCooldown = 25;
             this.updateHUDSaveInfo();
           }
+        }
+      }
+    }
 
     initTouchControls() {
       const leftWing = document.getElementById('ow-left-wing');
