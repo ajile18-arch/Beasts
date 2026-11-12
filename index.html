@@ -43,6 +43,7 @@
       <div class="overworld-toolbar" id="overworld-toolbar">
         <span class="ow-location-pill" id="ow-location-pill">🏠 Living Room (Day 2 of Summer)</span>
         <button id="btn-open-calendar" class="ui-btn primary-btn calendar-toolbar-btn" style="padding: 4px 10px; font-size: 12px; background: linear-gradient(135deg, #059669, #10b981); border-color: #34d399;" title="Town Weekly Calendar & Daily Events (Key: C)">📅 <span id="calendar-btn-day-label">Monday</span> • Day <span id="calendar-btn-day-num">1</span></button>
+        <button id="btn-open-phone" class="ui-btn primary-btn phone-toolbar-btn" style="padding: 4px 10px; font-size: 12px; background: linear-gradient(135deg, #4f46e5, #6366f1); border-color: #818cf8;" title="Mythos Mobile Smartphone (Key: P)">📱 Phone <span id="phone-alert-badge" class="phone-badge-pill hidden">!</span></button>
         <button id="btn-open-inventory" class="ui-btn primary-btn" style="padding: 4px 10px; font-size: 12px;" title="Open Backpack & Inventory (Key: I)">🎒 Inventory <span id="inv-badge-count" class="inv-badge-pill">0</span></button>
         <button id="btn-open-binder" class="ui-btn primary-btn binder-toolbar-btn locked" style="padding: 4px 10px; font-size: 12px; background: linear-gradient(135deg, #1e3a8a, #2563eb); border-color: #60a5fa;" title="Old Card Binder (Locked — Defeat Friend to Unlock)">📖 Old Card Binder <span id="binder-badge-count" class="inv-badge-pill">0</span></button>
         <button id="btn-open-creator" class="ui-btn secondary" style="padding: 4px 10px; font-size: 12px;" title="Customize Character or World Save">👤 Character</button>
@@ -79,6 +80,9 @@
       <div class="ow-mobile-header-bar" id="ow-mobile-header-bar">
         <div class="ow-mobile-loc-tag" id="ow-mobile-loc-tag">🏠 Living Room • $0</div>
         <div class="ow-mobile-nav-buttons">
+          <button id="btn-mob-phone" class="ow-mob-nav-btn" title="Mythos Mobile Phone">
+            📱 <span class="mob-btn-text">Phone</span> <span id="mob-phone-badge" class="phone-badge-pill hidden">!</span>
+          </button>
           <button id="btn-mob-inventory" class="ow-mob-nav-btn" title="Backpack / Inventory">
             🎒 <span class="mob-btn-text">Pack</span> <span id="mob-inv-badge" class="inv-badge-pill">0</span>
           </button>
@@ -1124,6 +1128,173 @@
         <span>💾 Game Auto-Saved</span>
       </div>
       <button id="btn-wake-up" class="ui-btn primary-btn morning-btn">Rise & Shine ☀️</button>
+    </div>
+  </div>
+
+  <!-- Mythos Mobile Smartphone Modal -->
+  <div id="phone-modal" class="ui-modal-backdrop hidden">
+    <div class="phone-device-frame">
+      <!-- Phone Outer Bezel Hardware -->
+      <div class="phone-speaker-earpiece"></div>
+      <div class="phone-camera-lens"></div>
+
+      <!-- Phone Screen Container -->
+      <div class="phone-screen-container">
+        <!-- Status Bar -->
+        <div class="phone-status-bar">
+          <span class="phone-status-time" id="phone-status-time">9:41 AM</span>
+          <span class="phone-status-location" id="phone-status-loc">Oakhaven</span>
+          <div class="phone-status-icons">
+            <span class="phone-signal">📶</span>
+            <span class="phone-wifi">🛜</span>
+            <span class="phone-battery">🔋 100%</span>
+          </div>
+        </div>
+
+        <!-- Phone Dynamic App Viewport -->
+        <div class="phone-app-viewport" id="phone-app-viewport">
+          <!-- Home Screen View -->
+          <div class="phone-view phone-home-view active" id="phone-view-home">
+            <div class="phone-home-header">
+              <div class="phone-home-day" id="phone-home-day-label">Monday, Day 1</div>
+              <div class="phone-home-title">MythosOS 2.0</div>
+            </div>
+
+            <!-- Home App Grid -->
+            <div class="phone-app-grid">
+              <!-- App 1: Contacts & Chat -->
+              <div class="phone-app-icon-item" data-app="contacts" id="app-btn-contacts">
+                <div class="phone-icon-box bg-contacts">
+                  💬
+                  <span class="phone-app-unread-dot hidden" id="dot-contacts"></span>
+                </div>
+                <span class="phone-app-name">Contacts</span>
+              </div>
+
+              <!-- App 2: Mythos Marketplace (Card Listings) -->
+              <div class="phone-app-icon-item" data-app="market" id="app-btn-market">
+                <div class="phone-icon-box bg-market">
+                  🤝
+                  <span class="phone-app-unread-dot hidden" id="dot-market"></span>
+                </div>
+                <span class="phone-app-name">Card Exchange</span>
+              </div>
+
+              <!-- App 3: Leo's Card Shop Live Feed & Alerts -->
+              <div class="phone-app-icon-item" data-app="shopfeed" id="app-btn-shopfeed">
+                <div class="phone-icon-box bg-shop">
+                  🃏
+                  <span class="phone-app-unread-dot" id="dot-shopfeed"></span>
+                </div>
+                <span class="phone-app-name">Leo's Alerts</span>
+              </div>
+
+              <!-- App 4: Tournaments & Brackets -->
+              <div class="phone-app-icon-item" data-app="tournaments" id="app-btn-tournaments">
+                <div class="phone-icon-box bg-tournaments">
+                  🏆
+                  <span class="phone-app-unread-dot hidden" id="dot-tournaments"></span>
+                </div>
+                <span class="phone-app-name">Tournaments</span>
+              </div>
+            </div>
+
+            <!-- Quick Widget: Today's Town Event Summary -->
+            <div class="phone-home-widget" id="phone-home-widget">
+              <div class="phone-widget-tag">TODAY IN OAKHAVEN</div>
+              <div class="phone-widget-title" id="phone-widget-title">🃏 Leo's Booster Restock</div>
+              <div class="phone-widget-desc" id="phone-widget-desc">Fresh 1st-Edition packs restocked on shelves!</div>
+            </div>
+
+            <!-- Wallet Pill on Phone -->
+            <div class="phone-wallet-card">
+              <span>👛 Digital Wallet Balance</span>
+              <strong id="phone-wallet-val">$0.00</strong>
+            </div>
+          </div>
+
+          <!-- App View 1: Contacts & Messenger -->
+          <div class="phone-view phone-sub-view hidden" id="phone-view-contacts">
+            <div class="phone-app-header">
+              <button class="phone-back-btn" id="btn-contacts-back">‹ Home</button>
+              <div class="phone-app-title">👥 Town Contacts</div>
+              <span style="width: 36px;"></span>
+            </div>
+            <div class="phone-contacts-body">
+              <div class="phone-contacts-list" id="phone-contacts-list">
+                <!-- Dynamically populated contacts -->
+              </div>
+              <div class="phone-chat-pane hidden" id="phone-chat-pane">
+                <div class="phone-chat-header">
+                  <button class="phone-chat-back-btn" id="btn-chat-back">‹ All</button>
+                  <div class="phone-chat-user-info">
+                    <span class="phone-chat-user-avatar" id="phone-chat-avatar">👤</span>
+                    <div>
+                      <div class="phone-chat-user-name" id="phone-chat-name">Mike</div>
+                      <div class="phone-chat-user-status" id="phone-chat-status">● Active now</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="phone-chat-messages" id="phone-chat-messages"></div>
+                <div class="phone-chat-replies" id="phone-chat-replies"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- App View 2: Mythos Marketplace (Card Listings) -->
+          <div class="phone-view phone-sub-view hidden" id="phone-view-market">
+            <div class="phone-app-header">
+              <button class="phone-back-btn" id="btn-market-back">‹ Home</button>
+              <div class="phone-app-title">🤝 Card Exchange</div>
+              <span style="width: 36px;"></span>
+            </div>
+            <div class="phone-market-tabs">
+              <button class="phone-market-tab-btn active" id="tab-market-buy">🛒 Buy Offers</button>
+              <button class="phone-market-tab-btn" id="tab-market-sell">💰 Sell Offers</button>
+            </div>
+            <div class="phone-market-body">
+              <div class="phone-market-notice">
+                Arrange direct town meetups to trade, buy rare singles, or sell your duplicates for cash!
+              </div>
+              <div class="phone-listings-container" id="phone-listings-container">
+                <!-- Dynamically rendered card listings -->
+              </div>
+            </div>
+          </div>
+
+          <!-- App View 3: Leo's Card Shop Feed & Stock Alerts -->
+          <div class="phone-view phone-sub-view hidden" id="phone-view-shopfeed">
+            <div class="phone-app-header">
+              <button class="phone-back-btn" id="btn-shopfeed-back">‹ Home</button>
+              <div class="phone-app-title">🃏 Leo's Live Alerts</div>
+              <span style="width: 36px;"></span>
+            </div>
+            <div class="phone-shopfeed-body" id="phone-shopfeed-body">
+              <!-- Dynamically populated shop alerts, restocks, and daily deals -->
+            </div>
+          </div>
+
+          <!-- App View 4: Tournament League App -->
+          <div class="phone-view phone-sub-view hidden" id="phone-view-tournaments">
+            <div class="phone-app-header">
+              <button class="phone-back-btn" id="btn-tournaments-back">‹ Home</button>
+              <div class="phone-app-title">🏆 League Tournaments</div>
+              <span style="width: 36px;"></span>
+            </div>
+            <div class="phone-tournaments-body" id="phone-tournaments-body">
+              <!-- Dynamically populated tournament schedule & entry info -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Phone Bottom Navigation Bar -->
+        <div class="phone-nav-bar">
+          <button class="phone-home-pill" id="btn-phone-home-pill" title="Return to Phone Home Screen"></button>
+        </div>
+      </div>
+
+      <!-- Close Phone Button (Floating outside frame) -->
+      <button class="phone-close-hardware-btn" id="btn-close-phone" title="Put away phone (Key: P or Esc)">✕</button>
     </div>
   </div>
 

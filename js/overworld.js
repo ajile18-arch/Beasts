@@ -266,6 +266,7 @@
       if (this.canvas) {
         this.canvas.width = this.COLS * this.TILE;
         this.canvas.height = this.ROWS * this.TILE;
+        this.initPhoneSystem();
         this.bindEvents();
         this.initTouchControls();
         this.initIntroAndCreatorUI();
@@ -641,6 +642,726 @@
       this._isSleeping = false;
       this.updateFreeRoamPrompt();
       this.showAutosaveIndicator(`☀️ Good Morning! It's ${this.getCurrentDayName()}!`);
+    }
+
+    // -------------------------------------------------------------------------
+    // Mythos Mobile Smartphone System (Apps: Contacts, Card Exchange, Shop Alerts, Tournaments)
+    // -------------------------------------------------------------------------
+    initPhoneSystem() {
+      this.currentPhoneApp = 'home';
+      this.activeChatContactId = null;
+      this.marketTab = 'buy'; // 'buy' or 'sell'
+      this.phoneUnreadShop = this.worldSave?.phoneUnreadShop ?? true;
+      this.phoneChatHistories = this.worldSave?.phoneChatHistories || {};
+      this.phoneListingsBought = this.worldSave?.phoneListingsBought || [];
+      this.phoneListingsSold = this.worldSave?.phoneListingsSold || [];
+      this.registeredTournaments = this.worldSave?.registeredTournaments || [];
+    }
+
+    getTownContactsList() {
+      const fName = this.friendName || 'Mike';
+      const pName = this.playerName;
+      return [
+        {
+          id: 'friend',
+          name: fName,
+          title: 'Best Friend & Duelist',
+          avatar: '👦',
+          color: '#3b82f6',
+          location: `${fName}'s Cottage (104 Oakhaven Lane)`,
+          preview: this.hasOpenedStarterPack
+            ? `Ready for our battle at my house whenever you are, ${pName}!`
+            : `Let's get those packs at Leo's Card Shop!`,
+          chat: [
+            { sender: 'npc', text: `Yo ${pName}! Welcome to summer vacation!` },
+            { sender: 'npc', text: this.hasOpenedStarterPack
+                ? `I built my deck with Werewolf and Hydra. Come over to my house to battle!`
+                : `Mom gave us money for booster packs at Leo's Card Shop! Text me when you're there!` }
+          ],
+          replies: [
+            { text: `⚔️ "Are you ready to duel right now, ${fName}?"`, reply: `You know it! Head to my bedroom whenever you want to test out your cards!` },
+            { text: `🃏 "What's the best beast card you pulled?"`, reply: `My Werewolf is insanely fast! But I hear there are foils like Dreadnaught and Pegasus floating around town!` },
+            { text: `📅 "Let's enter the Friday Night Mythos League together!"`, reply: `Deal! Check the Tournaments app on your phone so we don't miss check-in!` }
+          ]
+        },
+        {
+          id: 'shopkeeper',
+          name: 'Shopkeeper Leo',
+          title: "Leo's Card Shop Owner",
+          avatar: '🃏',
+          color: '#f59e0b',
+          location: "Leo's Card Shop (Far East Commercial Block)",
+          preview: `Fresh 1st-Edition Booster Packs in stock!`,
+          chat: [
+            { sender: 'npc', text: `Hello ${pName}! Thanks for stopping by the shop.` },
+            { sender: 'npc', text: `Check the Leo's Alerts app anytime to see when we restock or run pack sales!` }
+          ],
+          replies: [
+            { text: `📦 "Do you have any foil packs left in stock?"`, reply: `Always! Base Set boosters are $10.00 each, and remember that Mondays have a +25% Foil Holo surge rate!` },
+            { text: `🗺️ "Tell me about the Base2v2 Tactical Battle Map."`, reply: `It's Silas's handcrafted arena! On Wednesdays Silas runs a woodcraft promo with 50% off the map!` },
+            { text: `💵 "Do you buy duplicate singles from players?"`, reply: `Yes! You can sell to me directly at my shop counter or post listings on the Card Exchange app to find town buyers!` }
+          ]
+        },
+        {
+          id: 'pluto',
+          name: 'Pluto',
+          title: 'Tech Prodigy & Collector',
+          avatar: '💻',
+          color: '#a855f7',
+          location: "Pluto's Cottage (201 South Connector Ave)",
+          preview: `Analyzing beast combat algorithms and high-stakes wagers.`,
+          chat: [
+            { sender: 'npc', text: `Greetings, ${pName}. My deck analytics are clocking peak efficiency.` }
+          ],
+          replies: [
+            { text: `⚔️ "Want to test your deck in a wager duel?"`, reply: `I wager $1.00 on my battles! On Tuesdays, my wager doubles to $2.00. Drop by my house if you have the funds!` },
+            { text: `💻 "Have you checked the Card Exchange app today?"`, reply: `Affirmative. I'm frequently looking to buy tech and combo cards to complete my algorithm testing.` }
+          ]
+        },
+        {
+          id: 'nova',
+          name: 'Nova',
+          title: 'Stargazer & Celestial Master',
+          avatar: '✨',
+          color: '#38bdf8',
+          location: "Nova's Observatory (301 South Cobblestone Way)",
+          preview: `The constellations align over Oakhaven tonight.`,
+          chat: [
+            { sender: 'npc', text: `Hello ${pName}! Have you gazed at the stars from the observatory yet?` }
+          ],
+          replies: [
+            { text: `✨ "How do Celestial beasts fight?"`, reply: `Pegasus can soar across all ground hazards! On Sundays, all flying beasts gain +1 Move Range under the astral transit.` },
+            { text: `🔭 "Are you competing in the town tournaments?"`, reply: `I am! Look for me in the Oakhaven Summer Open and Friday League.` }
+          ]
+        },
+        {
+          id: 'silas',
+          name: 'Silas',
+          title: 'Master Craftsman & Dwarf Warden',
+          avatar: '⚒️',
+          color: '#10b981',
+          location: "Silas's Workshop (303 South Cobblestone Way)",
+          preview: `Carving new tournament tables and sturdy shield tokens.`,
+          chat: [
+            { sender: 'npc', text: `Ho there, ${pName}! Hammer and woodcraft wait for no duelist.` }
+          ],
+          replies: [
+            { text: `🛡️ "Tell me about Dwarf Warden's defense."`, reply: `Runic Shield Wall blocks incoming attacks from all sides! Solid heartwood strength, just like my furniture.` },
+            { text: `🤝 "Any woodworking meetups planned?"`, reply: `Wednesdays at Leo's shop! Drop by or check my listings on Card Exchange.` }
+          ]
+        },
+        {
+          id: 'maya',
+          name: 'Maya',
+          title: 'Botanist & Nature Duelist',
+          avatar: '🌿',
+          color: '#22c55e',
+          location: "Maya's Conservatory (305 South Cobblestone Way)",
+          preview: `Tending to orchid blooms and sweet-pea vines.`,
+          chat: [
+            { sender: 'npc', text: `Hi ${pName}! The flowers in the conservatory are blooming beautifully today.` }
+          ],
+          replies: [
+            { text: `🌿 "What happens during Botanical Bloom on Thursdays?"`, reply: `My rare orchid pollen gives all Earth and Nature beasts +15 bonus Max HP in duels! Earth Golem becomes an absolute titan!` },
+            { text: `🌸 "Are you trading any floral beast cards?"`, reply: `Check the Card Exchange app! I occasionally trade Terra Mother and Verdant Guardian duplicates.` }
+          ]
+        },
+        {
+          id: 'chloe',
+          name: 'Chloe',
+          title: 'Central Park Courtyard Host',
+          avatar: '🧺',
+          color: '#f43f5e',
+          location: 'Central Park Courtyard (Picnic Table 1)',
+          preview: `Picnicking by the park fountain with berry iced tea!`,
+          chat: [
+            { sender: 'npc', text: `Hi ${pName}! Whenever you need a break from dueling, meet us at the picnic tables!` }
+          ],
+          replies: [
+            { text: `🍋 "What's happening at the park today?"`, reply: `Rowan is trading cards at table two, and Jasper is drawing wildlife in his sketchbook. Drop by anytime!` }
+          ]
+        },
+        {
+          id: 'rowan',
+          name: 'Rowan',
+          title: 'Tactical Card Trader',
+          avatar: '🃏',
+          color: '#6366f1',
+          location: 'Central Park Courtyard (Picnic Table 2)',
+          preview: `Organizing binder spreads for the upcoming tournament.`,
+          chat: [
+            { sender: 'npc', text: `Hey ${pName}! I'm always looking to swap cards and arrange meetups.` }
+          ],
+          replies: [
+            { text: `🤝 "Got any good card listings on the exchange?"`, reply: `Check the Card Exchange app on your phone right now! I posted a few single offers looking for meetups in the park.` }
+          ]
+        },
+        {
+          id: 'jasper',
+          name: 'Jasper',
+          title: 'Wildlife Artist & Naturalist',
+          avatar: '🎨',
+          color: '#eab308',
+          location: 'Central Park Courtyard (Picnic Table 3)',
+          preview: `Sketching songbirds in the park treetops.`,
+          chat: [
+            { sender: 'npc', text: `Hey ${pName}! Nature is filled with incredible beast ideas if you watch closely.` }
+          ],
+          replies: [
+            { text: `🎨 "What are you working on next?"`, reply: `A field study of winged celestial beasts! Meet me at the park picnic tables if you want to see the sketchbook.` }
+          ]
+        }
+      ];
+    }
+
+    getMarketplaceListings() {
+      return [
+        {
+          id: 'mkt_buy_1',
+          type: 'buy',
+          beastId: 'werewolf',
+          cardName: 'Werewolf',
+          element: '🌑 Dark • 140 HP',
+          price: 5.50,
+          seller: 'Rowan',
+          avatar: '🃏',
+          location: 'Central Park Picnic Table 2',
+          note: 'Mint condition duplicate from base pack. Ready for a quick park courtyard meetup!',
+          img: 'Cards/Werewolf_Card.png'
+        },
+        {
+          id: 'mkt_buy_2',
+          type: 'buy',
+          beastId: 'earth_golem',
+          cardName: 'Earth Golem',
+          element: '🪨 Earth • 200 HP',
+          price: 6.00,
+          seller: 'Silas',
+          avatar: '⚒️',
+          location: "Silas's Workshop (303 Cobblestone Way)",
+          note: 'Rock Barrier defense single. Guaranteed authentic heartwood-certified sleeve.',
+          img: 'Cards/Earth_Golem_Card.png'
+        },
+        {
+          id: 'mkt_buy_3',
+          type: 'buy',
+          beastId: 'hydra',
+          cardName: 'Hydra',
+          element: '💧 Water • 160 HP',
+          price: 7.00,
+          seller: 'Pluto',
+          avatar: '💻',
+          location: "Pluto's House (201 South Connector Ave)",
+          note: 'Multi-target Venom Strike beast. Tested in 25 benchmark matches.',
+          img: 'Cards/Hydra_Card.png'
+        },
+        {
+          id: 'mkt_buy_4',
+          type: 'buy',
+          beastId: 'phoenix',
+          cardName: 'Phoenix (Holo)',
+          element: '🔥 Fire • 120 HP',
+          price: 12.00,
+          seller: 'Nova',
+          avatar: '✨',
+          location: "Nova's Observatory (301 Cobblestone Way)",
+          note: 'Flaming Talons & Rebirth burst! Looking for cash for telescope optics.',
+          img: 'Cards/Phoenix_Card.png'
+        },
+        {
+          id: 'mkt_sell_1',
+          type: 'sell',
+          beastId: 'phoenix',
+          cardName: 'Phoenix',
+          element: '🔥 Fire Beast',
+          payout: 8.50,
+          buyer: 'Rowan',
+          avatar: '🃏',
+          location: 'Central Park Courtyard',
+          note: 'Looking to buy 1x Phoenix to round out my aggressive fire burn deck!'
+        },
+        {
+          id: 'mkt_sell_2',
+          type: 'sell',
+          beastId: 'earth_golem',
+          cardName: 'Earth Golem',
+          element: '🪨 Earth Beast',
+          payout: 5.00,
+          buyer: 'Pluto',
+          avatar: '💻',
+          location: "Pluto's Bedroom Desk",
+          note: 'Need an Earth tank card for damage-mitigation calculation tests.'
+        },
+        {
+          id: 'mkt_sell_3',
+          type: 'sell',
+          beastId: 'werewolf',
+          cardName: 'Werewolf',
+          element: '🌑 Dark Beast',
+          payout: 4.50,
+          buyer: 'Maya',
+          avatar: '🌿',
+          location: "Maya's Greenhouse",
+          note: 'Looking for a Werewolf card to trade to a visiting collector!'
+        }
+      ];
+    }
+
+    getShopAlertsFeed() {
+      const curDay = this.getCurrentDayName();
+      const curEvent = this.getCurrentDayEvent();
+      const alerts = [
+        {
+          id: 'feed_today',
+          title: `TODAY: ${curEvent.title}`,
+          tag: 'ACTIVE EVENT',
+          time: 'Updated this morning',
+          icon: curEvent.icon,
+          highlight: true,
+          text: `<b>${curEvent.desc}</b> Perk: <i>${curEvent.perk}</i>. Visit Leo's Card Shop or battle town duelists today to take advantage!`
+        },
+        {
+          id: 'feed_1st_ed',
+          title: '1st-Edition Mythos Boosters Restocked',
+          tag: 'INVENTORY UPDATE',
+          time: 'Official Store Bulletin',
+          icon: '📦',
+          highlight: false,
+          text: 'Factory-sealed 1st-Edition foil booster packs ($10.00 each) are fully stocked on our showcase racks. Every pack guarantees 3 collectible beast cards with chances at rare foils!'
+        },
+        {
+          id: 'feed_map',
+          title: 'Base2v2 Tactical Arena Available',
+          tag: 'STORE GEAR',
+          time: 'Store Feature',
+          icon: '⚔️',
+          highlight: false,
+          text: 'Upgrade from 1v1 duels to fast-paced 2v2 tactical tabletop combat! Purchase the official 6×6 Base2v2 Battle Map from Leo for $15.00 (or $7.50 during Wednesday Woodcraft).'
+        },
+        {
+          id: 'feed_singles',
+          title: 'Singles Buy-Back Counter Open',
+          tag: 'TRADE DESK',
+          time: 'Standing Service',
+          icon: '💵',
+          highlight: false,
+          text: 'Got duplicates from opening booster packs? Leo buys back singles for cash instantly at the counter, or trade directly with friends via your phone Card Exchange!'
+        }
+      ];
+      return alerts;
+    }
+
+    getTournamentSchedule() {
+      return [
+        {
+          id: 'tourney_fri',
+          name: 'Friday Night Mythos League',
+          badge: 'WEEKLY LEAGUE',
+          badgeClass: 'purple',
+          dayText: 'Every Friday • 6:00 PM',
+          fee: 'Free Entry',
+          prize: '+$1.50 Gold Bounty per win + League Trophy',
+          format: '1v1 / 2v2 Tabletop Duels',
+          location: "Leo's Card Shop — Duel Tables",
+          desc: 'The official community dueling league! Bring your best beasts to Leo\'s Card Shop. Every victory earns bonus prize purse cash and league points.'
+        },
+        {
+          id: 'tourney_weekend',
+          name: 'Oakhaven Summer Grand Prix',
+          badge: 'CHAMPIONSHIP',
+          badgeClass: 'gold',
+          dayText: 'Saturday & Sunday • All Day',
+          fee: '$2.00 Buy-in',
+          prize: '$10.00 Grand Purse + Ultra Rare Holo',
+          format: 'Best-of-3 Base2v2 Elimination',
+          location: 'Central Park Courtyard & Promenade',
+          desc: 'The premier summer tournament attracting all master duelists across Oakhaven. Silas, Nova, Pluto, and Maya compete for the championship banner!'
+        },
+        {
+          id: 'tourney_park',
+          name: 'Courtyard Rookie Invitational',
+          badge: 'CASUAL OPEN',
+          badgeClass: 'blue',
+          dayText: 'Daily • Continuous Matchups',
+          fee: 'Free Entry',
+          prize: 'Card Trades & Stamina Buffs',
+          format: 'Casual Pickup Matches',
+          location: 'Central Park Picnic Tables',
+          desc: 'A friendly gathering in the park courtyard hosted by Chloe, Rowan, and Jasper. Perfect for playtesting new deck synergy before entering the Friday League.'
+        }
+      ];
+    }
+
+    togglePhoneModal(force) {
+      const modal = document.getElementById('phone-modal');
+      if (!modal) return;
+      const shouldOpen = force !== undefined ? !!force : modal.classList.contains('hidden');
+      if (shouldOpen) {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        this.openPhoneApp('home');
+        modal.classList.remove('hidden');
+      } else {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        modal.classList.add('hidden');
+      }
+    }
+
+    openPhoneApp(appName) {
+      this.currentPhoneApp = appName;
+      const views = ['home', 'contacts', 'market', 'shopfeed', 'tournaments'];
+      views.forEach(v => {
+        const el = document.getElementById(`phone-view-${v}`);
+        if (el) {
+          if (v === appName) {
+            el.classList.remove('hidden');
+            el.classList.add('active');
+          } else {
+            el.classList.add('hidden');
+            el.classList.remove('active');
+          }
+        }
+      });
+
+      // Update Phone Status Bar
+      const timeEl = document.getElementById('phone-status-time');
+      const locEl = document.getElementById('phone-status-loc');
+      const dayLabel = document.getElementById('phone-home-day-label');
+      const walletVal = document.getElementById('phone-wallet-val');
+      const widgetTitle = document.getElementById('phone-widget-title');
+      const widgetDesc = document.getElementById('phone-widget-desc');
+
+      if (timeEl) timeEl.textContent = '2:30 PM';
+      if (locEl) locEl.textContent = this.draftAppearance?.worldName || 'Oakhaven';
+      if (dayLabel) dayLabel.textContent = `${this.getCurrentDayName()}, Day ${this.dayNumber || 1}`;
+      if (walletVal) walletVal.textContent = this.formatMoney(this.gold || 0);
+
+      const curEv = this.getCurrentDayEvent();
+      if (widgetTitle) widgetTitle.textContent = `${curEv.icon} ${curEv.title}`;
+      if (widgetDesc) widgetDesc.textContent = curEv.highlight;
+
+      // Clear alert dots if visiting that app
+      if (appName === 'shopfeed') {
+        this.phoneUnreadShop = false;
+        const dot = document.getElementById('dot-shopfeed');
+        if (dot) dot.classList.add('hidden');
+        const badge = document.getElementById('phone-alert-badge');
+        if (badge) badge.classList.add('hidden');
+        const mobBadge = document.getElementById('mob-phone-badge');
+        if (mobBadge) mobBadge.classList.add('hidden');
+      }
+
+      // Render corresponding app view
+      if (appName === 'contacts') {
+        this.renderContactsApp();
+      } else if (appName === 'market') {
+        this.renderMarketApp();
+      } else if (appName === 'shopfeed') {
+        this.renderShopFeedApp();
+      } else if (appName === 'tournaments') {
+        this.renderTournamentsApp();
+      }
+    }
+
+    renderContactsApp() {
+      const listEl = document.getElementById('phone-contacts-list');
+      const chatPane = document.getElementById('phone-chat-pane');
+      if (!listEl || !chatPane) return;
+
+      if (!this.activeChatContactId) {
+        listEl.classList.remove('hidden');
+        chatPane.classList.add('hidden');
+      } else {
+        listEl.classList.add('hidden');
+        chatPane.classList.remove('hidden');
+        this.renderChatPane(this.activeChatContactId);
+        return;
+      }
+
+      const contacts = this.getTownContactsList();
+      listEl.innerHTML = '';
+
+      contacts.forEach(c => {
+        const row = document.createElement('div');
+        row.className = 'phone-contact-row';
+        row.innerHTML = `
+          <div class="phone-contact-avatar" style="border-color: ${c.color};">${c.avatar}</div>
+          <div class="phone-contact-meta">
+            <div class="phone-contact-name-row">
+              <span class="phone-contact-name">${c.name}</span>
+              <span class="phone-contact-loc">${c.title}</span>
+            </div>
+            <div class="phone-contact-preview">${c.preview}</div>
+          </div>
+        `;
+        row.addEventListener('click', () => {
+          if (window.sounds?.playClick) window.sounds.playClick();
+          this.activeChatContactId = c.id;
+          this.renderContactsApp();
+        });
+        listEl.appendChild(row);
+      });
+    }
+
+    renderChatPane(contactId) {
+      const contacts = this.getTownContactsList();
+      const contact = contacts.find(c => c.id === contactId) || contacts[0];
+      const chatPane = document.getElementById('phone-chat-pane');
+      const listEl = document.getElementById('phone-contacts-list');
+      const avatarEl = document.getElementById('phone-chat-avatar');
+      const nameEl = document.getElementById('phone-chat-name');
+      const statusEl = document.getElementById('phone-chat-status');
+      const msgsEl = document.getElementById('phone-chat-messages');
+      const repliesEl = document.getElementById('phone-chat-replies');
+
+      if (avatarEl) avatarEl.textContent = contact.avatar;
+      if (nameEl) nameEl.textContent = contact.name;
+      if (statusEl) statusEl.textContent = `● Active in ${contact.location}`;
+
+      // Initialize saved history for contact if none exists
+      if (!this.phoneChatHistories[contact.id]) {
+        this.phoneChatHistories[contact.id] = [...contact.chat];
+      }
+
+      if (msgsEl) {
+        msgsEl.innerHTML = '';
+        this.phoneChatHistories[contact.id].forEach(m => {
+          const bubble = document.createElement('div');
+          bubble.className = `phone-chat-bubble ${m.sender}`;
+          bubble.innerHTML = m.text;
+          msgsEl.appendChild(bubble);
+        });
+        msgsEl.scrollTop = msgsEl.scrollHeight;
+      }
+
+      if (repliesEl) {
+        repliesEl.innerHTML = '';
+        contact.replies.forEach(r => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'phone-reply-btn';
+          btn.textContent = r.text;
+          btn.addEventListener('click', () => {
+            if (window.sounds?.playClick) window.sounds.playClick();
+            // Append player message
+            this.phoneChatHistories[contact.id].push({ sender: 'player', text: r.text });
+            this.renderChatPane(contact.id);
+
+            // NPC replies after brief realistic texting delay
+            setTimeout(() => {
+              if (window.sounds?.playNotification) window.sounds.playNotification();
+              this.phoneChatHistories[contact.id].push({ sender: 'npc', text: r.reply });
+              this.saveWorldData(this.draftAppearance);
+              this.renderChatPane(contact.id);
+            }, 600);
+          });
+          repliesEl.appendChild(btn);
+        });
+      }
+    }
+
+    renderMarketApp() {
+      const container = document.getElementById('phone-listings-container');
+      const tabBuy = document.getElementById('tab-market-buy');
+      const tabSell = document.getElementById('tab-market-sell');
+      if (!container) return;
+
+      if (tabBuy && tabSell) {
+        if (this.marketTab === 'buy') {
+          tabBuy.classList.add('active');
+          tabSell.classList.remove('active');
+        } else {
+          tabBuy.classList.remove('active');
+          tabSell.classList.add('active');
+        }
+      }
+
+      const allListings = this.getMarketplaceListings();
+      const currentListings = allListings.filter(l => l.type === this.marketTab);
+      container.innerHTML = '';
+
+      if (this.marketTab === 'buy') {
+        currentListings.forEach(item => {
+          const isBought = this.phoneListingsBought.includes(item.id);
+          const cardEl = document.createElement('div');
+          cardEl.className = 'phone-listing-card';
+          cardEl.innerHTML = `
+            <div class="phone-listing-top">
+              <div>
+                <span class="phone-listing-card-title">${item.cardName}</span>
+                <div style="font-size: 10px; color: #94a3b8;">${item.element}</div>
+              </div>
+              <span class="phone-listing-price">${this.formatMoney(item.price)}</span>
+            </div>
+            <div class="phone-listing-seller">
+              ${item.avatar} Seller: <strong>${item.seller}</strong>
+            </div>
+            <div class="phone-listing-meetup">
+              📍 Meetup Location: <b>${item.location}</b>
+            </div>
+            <div style="font-size: 11px; color: #cbd5e1; font-style: italic;">"${item.note}"</div>
+            <button class="phone-listing-btn" id="btn-buy-${item.id}" ${isBought ? 'disabled style="background: #334155; border-color: #475569; cursor: default;"' : ''}>
+              ${isBought ? '✅ Purchased & Collected' : `🤝 Meet & Buy (${this.formatMoney(item.price)})`}
+            </button>
+          `;
+          const buyBtn = cardEl.querySelector(`#btn-buy-${item.id}`);
+          if (buyBtn && !isBought) {
+            buyBtn.addEventListener('click', () => {
+              this.buyMarketListing(item);
+            });
+          }
+          container.appendChild(cardEl);
+        });
+      } else {
+        // Player Sell Offers
+        currentListings.forEach(item => {
+          const isSold = this.phoneListingsSold.includes(item.id);
+          // Check if player has this card in inventory
+          const playerHasCard = (this.inventory || []).some(i => i.beastId === item.beastId && (i.qty || 1) > 0);
+
+          const cardEl = document.createElement('div');
+          cardEl.className = 'phone-listing-card';
+          cardEl.innerHTML = `
+            <div class="phone-listing-top">
+              <div>
+                <span class="phone-listing-card-title">${item.cardName}</span>
+                <div style="font-size: 10px; color: #94a3b8;">Wanted by ${item.buyer}</div>
+              </div>
+              <span class="phone-listing-price">+${this.formatMoney(item.payout)} Payout</span>
+            </div>
+            <div class="phone-listing-seller">
+              ${item.avatar} Buyer: <strong>${item.buyer}</strong>
+            </div>
+            <div class="phone-listing-meetup">
+              📍 Meetup Location: <b>${item.location}</b>
+            </div>
+            <div style="font-size: 11px; color: #cbd5e1; font-style: italic;">"${item.note}"</div>
+            <button class="phone-listing-btn" id="btn-sell-${item.id}" ${isSold || !playerHasCard ? 'disabled style="background: #334155; border-color: #475569; cursor: default;"' : 'style="background: linear-gradient(135deg, #059669, #10b981); border-color: #34d399;"'}>
+              ${isSold ? '✅ Fulfilled & Paid' : (playerHasCard ? `💰 Sell to ${item.buyer} (+${this.formatMoney(item.payout)})` : '❌ Card Not in Backpack')}
+            </button>
+          `;
+          const sellBtn = cardEl.querySelector(`#btn-sell-${item.id}`);
+          if (sellBtn && !isSold && playerHasCard) {
+            sellBtn.addEventListener('click', () => {
+              this.sellMarketListing(item);
+            });
+          }
+          container.appendChild(cardEl);
+        });
+      }
+    }
+
+    buyMarketListing(item) {
+      if ((this.gold || 0) < item.price) {
+        if (window.sounds?.playError) window.sounds.playError();
+        alert(`You don't have enough cash! (Wallet: ${this.formatMoney(this.gold || 0)}). Earn cash from Mom, duel Pluto, or sell extra cards first.`);
+        return;
+      }
+      this.gold = Math.round(((this.gold || 0) - item.price) * 100) / 100;
+      this.phoneListingsBought.push(item.id);
+
+      // Add purchased card to inventory
+      const cardDef = this.getBaseSetCardCatalog().find(c => c.beastId === item.beastId);
+      if (cardDef) {
+        this.addCardToInventory(cardDef);
+      }
+
+      if (window.sounds?.playCollect) window.sounds.playCollect();
+      this.saveWorldData(this.draftAppearance);
+      this.updateHUDSaveInfo();
+      this.renderMarketApp();
+      this.showAutosaveIndicator(`🤝 Meetup Complete: Received ${item.cardName} from ${item.seller}!`);
+    }
+
+    sellMarketListing(item) {
+      const idx = (this.inventory || []).findIndex(i => i.beastId === item.beastId && (i.qty || 1) > 0);
+      if (idx === -1) {
+        if (window.sounds?.playError) window.sounds.playError();
+        alert(`You don't have a ${item.cardName} in your backpack to sell!`);
+        return;
+      }
+
+      // Remove 1 card or decrement quantity
+      const invItem = this.inventory[idx];
+      if (invItem.qty && invItem.qty > 1) {
+        invItem.qty--;
+      } else {
+        this.inventory.splice(idx, 1);
+      }
+
+      this.gold = Math.round(((this.gold || 0) + item.payout) * 100) / 100;
+      this.phoneListingsSold.push(item.id);
+
+      if (window.sounds?.playCoins) window.sounds.playCoins();
+      this.saveWorldData(this.draftAppearance);
+      this.updateHUDSaveInfo();
+      this.renderMarketApp();
+      this.showAutosaveIndicator(`💰 Sold ${item.cardName} to ${item.buyer} for +${this.formatMoney(item.payout)}!`);
+    }
+
+    renderShopFeedApp() {
+      const body = document.getElementById('phone-shopfeed-body');
+      if (!body) return;
+      const alerts = this.getShopAlertsFeed();
+      body.innerHTML = '';
+
+      alerts.forEach(a => {
+        const card = document.createElement('div');
+        card.className = `phone-alert-card${a.highlight ? ' highlight' : ''}`;
+        card.innerHTML = `
+          <div class="phone-alert-icon">${a.icon}</div>
+          <div class="phone-alert-content">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span class="phone-alert-title">${a.title}</span>
+              <span class="phone-alert-time">${a.tag}</span>
+            </div>
+            <div style="font-size: 10px; color: #94a3b8; margin-top: 1px;">${a.time}</div>
+            <div class="phone-alert-text">${a.text}</div>
+          </div>
+        `;
+        body.appendChild(card);
+      });
+    }
+
+    renderTournamentsApp() {
+      const body = document.getElementById('phone-tournaments-body');
+      if (!body) return;
+      const tournaments = this.getTournamentSchedule();
+      body.innerHTML = '';
+
+      tournaments.forEach(t => {
+        const isRegistered = this.registeredTournaments.includes(t.id);
+        const card = document.createElement('div');
+        card.className = `phone-tourney-card${t.id === 'tourney_fri' ? ' live-today' : ''}`;
+        card.innerHTML = `
+          <div class="phone-tourney-header">
+            <div>
+              <div class="phone-tourney-name">${t.name}</div>
+              <div style="font-size: 10.5px; color: #a78bfa; font-weight: 700;">${t.dayText}</div>
+            </div>
+            <span class="phone-tourney-badge ${t.badgeClass}">${t.badge}</span>
+          </div>
+          <div class="phone-tourney-meta">
+            <span>🎟️ ${t.fee}</span>
+            <span>🏆 ${t.prize}</span>
+          </div>
+          <div style="font-size: 10.5px; color: #94a3b8;">📍 Venue: <b>${t.location}</b></div>
+          <div class="phone-tourney-desc">${t.desc}</div>
+          <button class="phone-tourney-btn" id="btn-reg-${t.id}" ${isRegistered ? 'disabled style="background: #334155; border-color: #475569; cursor: default;"' : ''}>
+            ${isRegistered ? '✅ Checked-In & Registered' : '📋 Register & RSVP Entry'}
+          </button>
+        `;
+        const regBtn = card.querySelector(`#btn-reg-${t.id}`);
+        if (regBtn && !isRegistered) {
+          regBtn.addEventListener('click', () => {
+            if (window.sounds?.playClick) window.sounds.playClick();
+            this.registeredTournaments.push(t.id);
+            this.saveWorldData(this.draftAppearance);
+            this.renderTournamentsApp();
+            this.showAutosaveIndicator(`🏆 Registered for ${t.name}! Check in at ${t.location}`);
+          });
+        }
+        body.appendChild(card);
+      });
     }
 
     // -------------------------------------------------------------------------
@@ -3941,7 +4662,7 @@
           bar.classList.remove('tv-broadcast');
           speakerEl.textContent = `🪧 ${wName.toUpperCase()} CROSSROADS`;
           speakerEl.className = 'ow-speaker-tag friend';
-          textEl.innerHTML = `<b>◄ West / East ►:</b> ${wName} Residential Lane &nbsp;|&nbsp; <b>▼ South to East Market Block:</b> Leo's Card Shop`;
+          textEl.innerHTML = `<b>◄ West:</b> Player's House &nbsp;|&nbsp; <b>► East:</b> ${fName}'s Cottage & North Turn &nbsp;|&nbsp; <b>▼ South to East Market Block:</b> Leo's Card Shop`;
           challengeBtn.classList.add('hidden');
         } else if (distPlutoDoor < 1.15) {
           this.lastShopPromptKey = null;
@@ -4042,9 +4763,9 @@
           this.nearInteractable = { id: 'south_sign', name: 'South Block Signpost' };
           bar.classList.remove('hidden');
           bar.classList.remove('tv-broadcast');
-          speakerEl.textContent = `🪧 SOUTH BLOCK RESIDENTIAL AVENUE`;
+          speakerEl.textContent = `🪧 COBBLESTONE WAY`;
           speakerEl.className = 'ow-speaker-tag friend';
-          textEl.innerHTML = `<b>◄ West:</b> Nova's House &nbsp;|&nbsp; <b>▲ North:</b> Leo's Card Shop & Town Green &nbsp;|&nbsp; <b>► East:</b> Silas's & Maya's Houses`;
+          textEl.innerHTML = `<b>◄ West:</b> Nova's House &nbsp;|&nbsp; <b>▲ North:</b> Leo's Card Shop & Town Green &nbsp;|&nbsp; <b>► East:</b> Silas & Maya's Cottages & Cobblestone Way East End`;
           challengeBtn.classList.add('hidden');
         } else if (distChloe < 1.6) {
           this.lastShopPromptKey = null;
@@ -4080,7 +4801,7 @@
               btnPark.addEventListener('click', (ev) => {
                 ev.stopPropagation();
                 if (window.sounds?.playClick) window.sounds.playClick();
-                textEl.innerHTML = `<b>Chloe:</b> "I love the fresh air and the peaceful courtyard! Rowan over at table two has been deep into his card binders, and Jasper's sketching ducks by the north pond. It's the liveliest spot in town!"`;
+                textEl.innerHTML = `<b>Chloe:</b> "I love the fresh air and the peaceful courtyard! Rowan over at table two has been deep into his card binders, and Jasper's doing landscape sketches. It's the liveliest spot in town!"`;
               });
               choicesEl.appendChild(btnPark);
 
@@ -4204,7 +4925,7 @@
             if (this.lastShopPromptKey !== jasperKey) {
               this.lastShopPromptKey = jasperKey;
               choicesEl.innerHTML = '';
-              textEl.innerHTML = `<b>Jasper:</b> "Shh... look over toward the north pond reed beds! A mallard duck and four little ducklings just paddled past the water lilies. I'm finishing up a wildlife sketch. Want to see?"`;
+              textEl.innerHTML = `<b>Jasper:</b> "Shh... look up through the maple and oak canopies! A flock of cedar waxwings just landed among the high boughs. I'm finishing up a wildlife sketch. Want to see?"`;
 
               const btnSketch = document.createElement('button');
               btnSketch.type = 'button';
@@ -4220,11 +4941,11 @@
               const btnBinoc = document.createElement('button');
               btnBinoc.type = 'button';
               btnBinoc.className = 'ow-choice-btn';
-              btnBinoc.innerHTML = `2. 🔭 "Can I borrow your binoculars to look at the pond?"`;
+              btnBinoc.innerHTML = `2. 🔭 "Can I borrow your binoculars to scan the treetops?"`;
               btnBinoc.addEventListener('click', (ev) => {
                 ev.stopPropagation();
                 if (window.sounds?.playClick) window.sounds.playClick();
-                textEl.innerHTML = `<b>Jasper:</b> "Sure! Focus near the weeping willow branches. If you look closely across the lily pads, you can see golden dragonflies darting over the pond ripples."`;
+                textEl.innerHTML = `<b>Jasper:</b> "Sure! Focus near the highest oak branches. If you look closely across the leaves, you can spot songbirds and golden dragonflies darting through the sunbeams."`;
               });
               choicesEl.appendChild(btnBinoc);
 
@@ -4282,7 +5003,7 @@
           bar.classList.remove('tv-broadcast');
           speakerEl.textContent = "🪧 OAKHAVEN CENTRAL PARK";
           speakerEl.className = 'ow-speaker-tag friend';
-          textEl.innerHTML = `<b>◄ West:</b> Leo's Card Shop & Town Center &nbsp;|&nbsp; <b>► East:</b> Courtyard Picnic Tables & Duck Pond`;
+          textEl.innerHTML = `<b>◄ West:</b> Leo's Card Shop & Town Center &nbsp;|&nbsp; <b>► East:</b> Courtyard Picnic Tables & Central Fountain`;
           challengeBtn.classList.add('hidden');
         } else {
           this.lastShopPromptKey = null;
@@ -4827,6 +5548,11 @@
           dir: this.player?.dir || 'down'
         },
         wins: this.worldSave?.wins ?? 0,
+        phoneUnreadShop: this.phoneUnreadShop ?? true,
+        phoneChatHistories: this.phoneChatHistories || {},
+        phoneListingsBought: this.phoneListingsBought || [],
+        phoneListingsSold: this.phoneListingsSold || [],
+        registeredTournaments: this.registeredTournaments || [],
         updatedAt: new Date().toLocaleDateString()
       };
       this.worldSave = saveObj;
@@ -4926,6 +5652,13 @@
         mobBinderBtn.title = this.hasOldCardBinder ? 'Open Old Card Binder' : 'Old Card Binder (Locked)';
       }
 
+      // Sync Phone Alerts & Unread Dot
+      const phoneBadge = document.getElementById('phone-alert-badge');
+      const mobPhoneBadge = document.getElementById('mob-phone-badge');
+      const hasPhoneAlert = !!this.phoneUnreadShop;
+      if (phoneBadge) phoneBadge.classList.toggle('hidden', !hasPhoneAlert);
+      if (mobPhoneBadge) mobPhoneBadge.classList.toggle('hidden', !hasPhoneAlert);
+
       // Sync Landscape Wing Badges
       const lsInvBadge = document.getElementById('ls-inv-badge');
       const lsBinderBadge = document.getElementById('ls-binder-badge');
@@ -4982,6 +5715,83 @@
           this.startOpeningCutscene(true);
         });
       }
+
+      // Phone Button Handlers
+      const openPhoneBtn = document.getElementById('btn-open-phone');
+      if (openPhoneBtn) {
+        openPhoneBtn.addEventListener('click', () => this.togglePhoneModal(true));
+      }
+      const mobPhoneBtn = document.getElementById('btn-mob-phone');
+      if (mobPhoneBtn) {
+        mobPhoneBtn.addEventListener('click', () => this.togglePhoneModal(true));
+      }
+      const closePhoneBtn = document.getElementById('btn-close-phone');
+      if (closePhoneBtn) {
+        closePhoneBtn.addEventListener('click', () => this.togglePhoneModal(false));
+      }
+      const phoneHomePill = document.getElementById('btn-phone-home-pill');
+      if (phoneHomePill) {
+        phoneHomePill.addEventListener('click', () => {
+          if (window.sounds?.playClick) window.sounds.playClick();
+          this.activeChatContactId = null;
+          this.openPhoneApp('home');
+        });
+      }
+
+      // App Icon Triggers on Phone Home
+      document.getElementById('app-btn-contacts')?.addEventListener('click', () => {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        this.activeChatContactId = null;
+        this.openPhoneApp('contacts');
+      });
+      document.getElementById('app-btn-market')?.addEventListener('click', () => {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        this.openPhoneApp('market');
+      });
+      document.getElementById('app-btn-shopfeed')?.addEventListener('click', () => {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        this.openPhoneApp('shopfeed');
+      });
+      document.getElementById('app-btn-tournaments')?.addEventListener('click', () => {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        this.openPhoneApp('tournaments');
+      });
+
+      // App Back Buttons
+      document.getElementById('btn-contacts-back')?.addEventListener('click', () => {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        this.activeChatContactId = null;
+        this.openPhoneApp('home');
+      });
+      document.getElementById('btn-chat-back')?.addEventListener('click', () => {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        this.activeChatContactId = null;
+        this.renderContactsApp();
+      });
+      document.getElementById('btn-market-back')?.addEventListener('click', () => {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        this.openPhoneApp('home');
+      });
+      document.getElementById('btn-shopfeed-back')?.addEventListener('click', () => {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        this.openPhoneApp('home');
+      });
+      document.getElementById('btn-tournaments-back')?.addEventListener('click', () => {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        this.openPhoneApp('home');
+      });
+
+      // Market Tab Switches
+      document.getElementById('tab-market-buy')?.addEventListener('click', () => {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        this.marketTab = 'buy';
+        this.renderMarketApp();
+      });
+      document.getElementById('tab-market-sell')?.addEventListener('click', () => {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        this.marketTab = 'sell';
+        this.renderMarketApp();
+      });
 
       const openInvBtn = document.getElementById('btn-open-inventory');
       if (openInvBtn) {
@@ -5569,6 +6379,11 @@
           this.toggleCalendarModal();
           return;
         }
+        if (k === 'p') {
+          e.preventDefault();
+          this.togglePhoneModal();
+          return;
+        }
         const wakeModal = document.getElementById('morning-wake-modal');
         if (wakeModal && !wakeModal.classList.contains('hidden')) {
           if (k === ' ' || k === 'enter' || k === 'escape') {
@@ -5578,6 +6393,12 @@
           }
         }
         if (k === 'escape') {
+          const phoneModal = document.getElementById('phone-modal');
+          if (phoneModal && !phoneModal.classList.contains('hidden')) {
+            e.preventDefault();
+            this.togglePhoneModal(false);
+            return;
+          }
           const calModal = document.getElementById('calendar-modal');
           if (calModal && !calModal.classList.contains('hidden')) {
             e.preventDefault();
@@ -6050,8 +6871,10 @@
         if (tx >= 11.2 && ty < 5.6) return true;
         return false;
       } else {
-        // Wider Zoomed-Out Exterior World Bounds with Expanded South Block & Central Park East (Cols 0.5..25.4, Rows 0.5..17.8)
-        if (tx < 0.5 || tx > 25.4 || ty < 0.5 || ty > 17.8) return true;
+        // Wider Zoomed-Out Exterior World Bounds with Expanded South Block & Central Park East (Cols 0.5..25.6, Rows 0.5..17.8)
+        // Allow Oakhaven Lane north road extension (x: 14.1..15.5) to reach top of screen (ty >= 0.1)
+        const inOakhavenNorthRoad = (tx >= 14.1 && tx <= 15.5 && ty >= 0.1 && ty <= 5.25);
+        if (!inOakhavenNorthRoad && (tx < 0.5 || tx > 25.6 || ty < 0.5 || ty > 17.8)) return true;
 
         // 1. PLAYER'S COTTAGE (North-West Plot: x = 1.1..4.3, y = 0.45..2.95)
         if (tx >= 1.1 && tx <= 4.3 && ty >= 0.45 && ty <= 2.95) {
@@ -6161,7 +6984,7 @@
         if (Math.hypot(tx - 10.65, ty - 9.25) < 0.28) return true; // East Market Block Signpost
         if (Math.hypot(tx - 7.35, ty - 14.50) < 0.28) return true; // South Block Signpost
 
-        // 7. Central Park Courtyard, Fountain, Picnic Tables, Duck Pond & Signpost
+        // 7. Central Park Courtyard, Fountain, Picnic Tables & Signpost
         // Central Stone Tiered Water Fountain (center at x: 21.1, y: 9.0)
         if (Math.hypot(tx - 21.1, ty - 9.0) < 0.85) return true;
         // Picnic Table 1 (NW / Chloe's Picnic Table: x: 18.8..20.2, y: 7.3..8.1)
@@ -6170,8 +6993,6 @@
         if (tx >= 22.1 && tx <= 23.5 && ty >= 7.3 && ty <= 8.1) return true;
         // Picnic Table 3 (S / Jasper's Sketchbook Table: x: 20.4..21.8, y: 10.1..10.9)
         if (tx >= 20.4 && tx <= 21.8 && ty >= 10.1 && ty <= 10.9) return true;
-        // North Duck Pond Water Basin (x: 21.8..25.4, y: 1.6..4.6)
-        if (tx >= 21.8 && tx <= 25.4 && ty >= 1.6 && ty <= 4.6) return true;
         // Park Welcome Signpost
         if (Math.hypot(tx - 16.6, ty - 9.25) < 0.28) return true;
 
@@ -9431,11 +10252,12 @@
       }
 
       // 2. EXPANDED COBBLESTONE ROAD NETWORK:
-      // - Upper Residential East-West Road:  y = 4.20*S .. 5.25*S
-      // - Middle Commercial East-West Road:  y = 9.55*S .. 10.70*S
-      // - Lower South Residential Avenue:    y = 14.80*S .. 15.95*S
-      // - 1st North-South Connector Road:    x = 5.55*S .. 6.65*S, y = 4.20*S .. 15.95*S
-      // - 2nd North-South Connector Road:    x = 9.95*S .. 10.95*S, y = 4.20*S .. 15.95*S
+      // - Upper Residential East-West Road (Oakhaven Lane):  y = 4.20*S .. 5.25*S (curves north at east end)
+      // - Middle Commercial East-West Road:                  y = 9.55*S .. 10.70*S
+      // - Lower South Residential Avenue (Cobblestone Way):  y = 14.80*S .. 15.95*S (extends to east screen end)
+      // - 1st North-South Connector Road:                    x = 5.55*S .. 6.65*S, y = 4.20*S .. 15.95*S
+      // - 2nd North-South Connector Road:                    x = 9.95*S .. 10.95*S, y = 4.20*S .. 15.95*S
+      // - Oakhaven Lane North Extension:                     x = 14.25*S .. 15.35*S, y = 0 .. 5.25*S
       const road1Y = 4.20 * S;
       const road1H = 1.05 * S;     // Ends at 5.25 * S
       const south1X = 5.55 * S;
@@ -9448,35 +10270,63 @@
       const road3H = 1.15 * S;     // Ends at 15.95 * S
       const fullConnH = (road3Y + road3H) - road1Y;
 
+      // Oakhaven Lane East End North Turn / Extension Dimensions
+      const oakhavenTurnX = 14.25 * S;
+      const oakhavenTurnW = 1.10 * S; // Ends at 15.35 * S
+      const oakhavenRoad1W = (oakhavenTurnX + oakhavenTurnW); // upper road extends to curve at x = 15.35 * S
+
       // Dark Basalt/Slate Road Base & Mortar Subgrade (#1e242d)
       ctx.fillStyle = '#1e242d';
-      ctx.fillRect(0, road1Y - 4, W, road1H + 8);
+      ctx.fillRect(0, road1Y - 4, oakhavenRoad1W + 4, road1H + 8);
+      // North extension of Oakhaven Lane going north to the top of screen (y = 0)
+      ctx.fillRect(oakhavenTurnX - 4, 0, oakhavenTurnW + 8, road1Y + road1H + 4);
       ctx.fillRect(0, road2Y - 4, W, road2H + 8);
-      ctx.fillRect(0, road3Y - 4, W, road3H + 8);
+      // Cobblestone Way extended all the way east to the end of the current screen (EXT_W)
+      ctx.fillRect(0, road3Y - 4, EXT_W, road3H + 8);
       ctx.fillRect(south1X - 4, road1Y - 4, south1W + 8, fullConnH + 8);
       ctx.fillRect(south2X - 4, road1Y - 4, south2W + 8, fullConnH + 8);
 
       // Procedural Textured Cobblestone Street Surface across all road segments
       this.initCobblestonePattern();
       ctx.fillStyle = this.cobblePattern || '#334155';
-      ctx.fillRect(0, road1Y, W, road1H);
+      ctx.fillRect(0, road1Y, oakhavenRoad1W, road1H);
+      // Oakhaven Lane North vertical street surface
+      ctx.fillRect(oakhavenTurnX, 0, oakhavenTurnW, road1Y + road1H);
       ctx.fillRect(0, road2Y, W, road2H);
-      ctx.fillRect(0, road3Y, W, road3H);
+      // Cobblestone Way surface across full screen width
+      ctx.fillRect(0, road3Y, EXT_W, road3H);
       ctx.fillRect(south1X, road1Y, south1W, fullConnH);
       ctx.fillRect(south2X, road1Y, south2W, fullConnH);
 
+      // Curved inner fillet smooth junction at Oakhaven Lane turn
+      ctx.fillStyle = this.cobblePattern || '#334155';
+      ctx.beginPath();
+      ctx.moveTo(oakhavenTurnX, road1Y);
+      ctx.arcTo(oakhavenTurnX, road1Y, oakhavenTurnX, road1Y - 10, 14);
+      ctx.lineTo(oakhavenTurnX, road1Y);
+      ctx.fill();
+
       // Subtle Street Vignette / Road Wear Shading
-      const drawRoadVignette = (ry, rh) => {
+      const drawRoadVignette = (ry, rh, rw = W) => {
         const vGrad = ctx.createLinearGradient(0, ry, 0, ry + rh);
         vGrad.addColorStop(0, 'rgba(15, 23, 42, 0.28)');
         vGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0.04)');
         vGrad.addColorStop(1, 'rgba(15, 23, 42, 0.32)');
         ctx.fillStyle = vGrad;
-        ctx.fillRect(0, ry, W, rh);
+        ctx.fillRect(0, ry, rw, rh);
       };
-      drawRoadVignette(road1Y, road1H);
-      drawRoadVignette(road2Y, road2H);
-      drawRoadVignette(road3Y, road3H);
+      drawRoadVignette(road1Y, road1H, oakhavenRoad1W);
+      // Vignette for Oakhaven Lane North extension
+      const vGradNorth = ctx.createLinearGradient(oakhavenTurnX, 0, oakhavenTurnX + oakhavenTurnW, 0);
+      vGradNorth.addColorStop(0, 'rgba(15, 23, 42, 0.26)');
+      vGradNorth.addColorStop(0.5, 'rgba(255, 255, 255, 0.04)');
+      vGradNorth.addColorStop(1, 'rgba(15, 23, 42, 0.30)');
+      ctx.fillStyle = vGradNorth;
+      ctx.fillRect(oakhavenTurnX, 0, oakhavenTurnW, road1Y + road1H);
+
+      drawRoadVignette(road2Y, road2H, W);
+      // Cobblestone Way extended vignette
+      drawRoadVignette(road3Y, road3H, EXT_W);
 
       // Walkways connecting all house porch stairs & shop to the cobblestone avenues
       const drawDrivewayPath = (px, py, pw, ph) => {
@@ -9517,25 +10367,31 @@
       ctx.lineWidth = 1.6;
       ctx.fillStyle = '#94a3b8';
 
-      // Upper Road Top Curbs
+      // Upper Road Top Curbs (runs to Oakhaven Lane turn, then turns north along the west side of the lane to y = 0)
       [
         { x: 0, w: 1.71 * S },
         { x: 2.21 * S, w: (9.79 - 2.21) * S },
-        { x: 10.29 * S, w: W - 10.29 * S }
+        { x: 10.29 * S, w: oakhavenTurnX - 10.29 * S }
       ].forEach(c => {
         ctx.fillRect(c.x, road1Y - 4, c.w, 4);
         ctx.strokeRect(c.x, road1Y - 4, c.w, 4);
       });
+      // Left/West Curb along Oakhaven Lane North Extension (from road1Y to top of screen y = 0)
+      ctx.fillRect(oakhavenTurnX - 4, 0, 4, road1Y);
+      ctx.strokeRect(oakhavenTurnX - 4, 0, 4, road1Y);
 
-      // Upper Road Bottom Curbs
+      // Upper Road Bottom Curbs (with smooth corner curve at east end turning north)
       [
         { x: 0, w: south1X },
         { x: south1X + south1W, w: south2X - (south1X + south1W) },
-        { x: south2X + south2W, w: W - (south2X + south2W) }
+        { x: south2X + south2W, w: (oakhavenTurnX + oakhavenTurnW) - (south2X + south2W) }
       ].forEach(c => {
         ctx.fillRect(c.x, road1Y + road1H, c.w, 4);
         ctx.strokeRect(c.x, road1Y + road1H, c.w, 4);
       });
+      // Right/East Curb along Oakhaven Lane North Extension (from bottom corner road1Y + road1H to y = 0)
+      ctx.fillRect(oakhavenTurnX + oakhavenTurnW, 0, 4, road1Y + road1H + 4);
+      ctx.strokeRect(oakhavenTurnX + oakhavenTurnW, 0, 4, road1Y + road1H + 4);
 
       // Middle Road Top Curbs
       [
@@ -9566,15 +10422,15 @@
         { x: south1X + south1W, w: (7.35 * S) - (south1X + south1W) },
         { x: 7.85 * S, w: south2X - 7.85 * S },
         { x: south2X + south2W, w: (12.43 * S) - (south2X + south2W) },
-        { x: 12.93 * S, w: W - 12.93 * S }
+        { x: 12.93 * S, w: EXT_W - 12.93 * S }
       ].forEach(c => {
         ctx.fillRect(c.x, road3Y - 4, c.w, 4);
         ctx.strokeRect(c.x, road3Y - 4, c.w, 4);
       });
 
-      // Southern Avenue Bottom Continuous Curb
-      ctx.fillRect(0, road3Y + road3H, W, 4);
-      ctx.strokeRect(0, road3Y + road3H, W, 4);
+      // Southern Avenue Bottom Continuous Curb extending to the east screen edge
+      ctx.fillRect(0, road3Y + road3H, EXT_W, 4);
+      ctx.strokeRect(0, road3Y + road3H, EXT_W, 4);
 
       // Vertical Curbs along North-South Connector Roads
       const connMidH = road2Y - (road1Y + road1H);
@@ -10358,16 +11214,15 @@
         ctx.fill();
       };
 
-      // Trees in North Block
+      // Trees in North Block (framing cottages; shifted away from Oakhaven Lane north road extension)
       drawLushBushCluster(6.0 * S, 0.9 * S, 24, true);
       drawLushBushCluster(6.0 * S, 2.0 * S, 22, false);
       drawLushBushCluster(6.0 * S, 3.0 * S, 20, false);
       drawLushBushCluster(0.45 * S, 0.9 * S, 23, false);
       drawLushBushCluster(0.55 * S, 2.2 * S, 22, true);
-      drawLushBushCluster(12.2 * S, 0.9 * S, 24, false);
-      drawLushBushCluster(14.5 * S, 1.2 * S, 25, true);
-      drawLushBushCluster(13.4 * S, 2.6 * S, 23, false);
-      drawLushBushCluster(15.2 * S, 3.1 * S, 22, false);
+      drawLushBushCluster(11.8 * S, 0.9 * S, 24, false);
+      drawLushBushCluster(12.3 * S, 2.3 * S, 22, true);
+      drawLushBushCluster(13.1 * S, 3.2 * S, 20, false);
 
       // Trees in Middle Block (framing Pluto's House)
       drawLushBushCluster(0.45 * S, 6.2 * S, 22, false);
@@ -10387,12 +11242,15 @@
       drawLushBushCluster(15.2 * S, 11.5 * S, 24, false);
       drawLushBushCluster(15.2 * S, 13.5 * S, 23, true);
 
-      // Deep Southern Forest Border below Southern Avenue
+      // Deep Southern Forest Border below Cobblestone Way (extending across full neighborhood width)
       drawLushBushCluster(1.5 * S, 16.7 * S, 26, false);
       drawLushBushCluster(4.5 * S, 16.8 * S, 24, true);
       drawLushBushCluster(7.5 * S, 16.8 * S, 26, false);
       drawLushBushCluster(10.8 * S, 16.7 * S, 24, true);
       drawLushBushCluster(13.8 * S, 16.8 * S, 26, false);
+      drawLushBushCluster(17.2 * S, 16.8 * S, 26, false);
+      drawLushBushCluster(20.5 * S, 16.7 * S, 26, true);
+      drawLushBushCluster(23.8 * S, 16.8 * S, 26, false);
 
       // South Edge Park Bench
       const sBenchX = 7.35 * S - 20;
@@ -10441,21 +11299,6 @@
       const plazaY = 6.4 * S;
       const plazaW = 6.0 * S;
       const plazaH = 5.4 * S;
-
-      // North path connecting plaza to Duck Pond
-      ctx.fillStyle = '#1e242d';
-      ctx.fillRect(21.8 * S - 4, 4.4 * S - 4, 1.6 * S + 8, 2.0 * S + 8);
-      ctx.fillStyle = '#475569';
-      ctx.fillRect(21.8 * S, 4.4 * S, 1.6 * S, 2.0 * S);
-      for (let px = 21.8 * S + 4; px < 23.4 * S - 4; px += 16) {
-        for (let py = 4.4 * S + 4; py < 6.4 * S - 4; py += 15) {
-          ctx.fillStyle = (Math.floor((px + py) / 15) % 2 === 0) ? '#64748b' : '#475569';
-          ctx.fillRect(px, py, 14, 12);
-          ctx.strokeStyle = '#1e293b';
-          ctx.lineWidth = 1;
-          ctx.strokeRect(px, py, 14, 12);
-        }
-      }
 
       // Plaza Stone Curb & Pavers
       ctx.fillStyle = '#1e242d';
@@ -10527,8 +11370,7 @@
       drawHedge(plazaX - 8, plazaY, 8, (promY - plazaY));
       drawHedge(plazaX - 8, promY + promH, 8, (plazaY + plazaH) - (promY + promH));
       // North and South courtyard hedges
-      drawHedge(plazaX, plazaY - 8, 3.6 * S, 8);
-      drawHedge(plazaX + 5.2 * S, plazaY - 8, 0.8 * S, 8);
+      drawHedge(plazaX, plazaY - 8, plazaW, 8);
       drawHedge(plazaX, plazaY + plazaH, plazaW, 8);
       // East courtyard hedge
       drawHedge(plazaX + plazaW, plazaY, 8, plazaH);
@@ -10646,140 +11488,11 @@
       ctx.fillText('PARK', signX, signY - 16);
 
       // -----------------------------------------------------------------------
-      // NORTH DUCK POND (x = 21.8*S .. 25.4*S, y = 1.6*S .. 4.4*S)
+      // NORTH CENTRAL PARK LAWN & SHADE TREES
       // -----------------------------------------------------------------------
-      const pondX = 23.6 * S;
-      const pondY = 3.0 * S;
-      const pondRadiusX = 1.7 * S;
-      const pondRadiusY = 1.35 * S;
-
-      // River stones and mossy boulders along shoreline
-      for (let a = 0; a < Math.PI * 2; a += 0.32) {
-        const sx = pondX + Math.cos(a) * (pondRadiusX + 5);
-        const sy = pondY + Math.sin(a) * (pondRadiusY + 5);
-        ctx.fillStyle = ((Math.floor(a * 10) % 2 === 0) ? '#475569' : '#64748b');
-        ctx.beginPath();
-        ctx.ellipse(sx, sy, 7, 5, a, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      // Pond Water Basin
-      const pGrad = ctx.createRadialGradient(pondX, pondY, 12, pondX, pondY, pondRadiusX);
-      pGrad.addColorStop(0, '#38bdf8');
-      pGrad.addColorStop(0.35, '#0284c7');
-      pGrad.addColorStop(0.75, '#0369a1');
-      pGrad.addColorStop(1, '#075985');
-      ctx.fillStyle = pGrad;
-      ctx.beginPath();
-      ctx.ellipse(pondX, pondY, pondRadiusX, pondRadiusY, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = '#0f172a';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-
-      // Animated Water Waves / Ripples
-      const wavePhase = (this.tick * 0.05) % (Math.PI * 2);
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
-      ctx.lineWidth = 1.2;
-      for (let r = 0; r < 3; r++) {
-        const wrX = 22 + r * 28 + Math.sin(wavePhase + r) * 6;
-        const wrY = 14 + r * 18 + Math.sin(wavePhase + r) * 4;
-        ctx.beginPath();
-        ctx.ellipse(pondX - 10, pondY + 4, wrX, wrY, 0, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-
-      // Water Lily Pads & Lotus Flowers
-      const lilyPads = [
-        { x: pondX - 55, y: pondY - 25, r: 8, lotus: true },
-        { x: pondX - 35, y: pondY + 30, r: 10, lotus: false },
-        { x: pondX + 45, y: pondY - 20, r: 9, lotus: true },
-        { x: pondX + 30, y: pondY + 32, r: 8, lotus: false },
-        { x: pondX - 70, y: pondY + 10, r: 7, lotus: true }
-      ];
-      lilyPads.forEach(pad => {
-        ctx.fillStyle = '#15803d';
-        ctx.beginPath();
-        ctx.arc(pad.x, pad.y, pad.r, 0.25, Math.PI * 2 - 0.25);
-        ctx.lineTo(pad.x, pad.y);
-        ctx.fill();
-        ctx.strokeStyle = '#14532d';
-        ctx.lineWidth = 1;
-        ctx.stroke();
-
-        if (pad.lotus) {
-          ctx.fillStyle = '#f472b6';
-          ctx.beginPath();
-          ctx.arc(pad.x, pad.y - 3, 3.5, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.fillStyle = '#ffffff';
-          ctx.beginPath();
-          ctx.arc(pad.x, pad.y - 3, 1.5, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      });
-
-      // Swimming Ducks in the Pond (Mother Mallard + 3 Tiny Ducklings)
-      const duckBob = Math.sin(this.tick * 0.09) * 2;
-      const duckX = pondX + Math.sin(this.tick * 0.02) * 25;
-      const duckY = pondY - 8 + duckBob;
-
-      // Mother Duck
-      ctx.fillStyle = '#78350f'; // body
-      ctx.beginPath();
-      ctx.ellipse(duckX, duckY, 9, 6, 0.1, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#065f46'; // iridescent head
-      ctx.beginPath();
-      ctx.arc(duckX - 7, duckY - 4, 4.5, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#facc15'; // beak
-      ctx.beginPath();
-      ctx.moveTo(duckX - 11, duckY - 3);
-      ctx.lineTo(duckX - 14, duckY - 4);
-      ctx.lineTo(duckX - 11, duckY - 5);
-      ctx.closePath();
-      ctx.fill();
-
-      // 3 Ducklings paddling behind
-      for (let di = 1; di <= 3; di++) {
-        const dkx = duckX + di * 12;
-        const dky = duckY + di * 3 + Math.sin(this.tick * 0.09 + di) * 1.5;
-        ctx.fillStyle = '#ca8a04';
-        ctx.beginPath();
-        ctx.ellipse(dkx, dky, 4.5, 3.5, 0.1, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#facc15';
-        ctx.beginPath();
-        ctx.arc(dkx - 3.5, dky - 2, 2.5, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      // Weeping Willow on West Bank of Pond
-      const willowX = 21.4 * S;
-      const willowY = 2.4 * S;
-      ctx.fillStyle = '#451a03';
-      ctx.beginPath();
-      ctx.moveTo(willowX - 8, willowY + 36);
-      ctx.quadraticCurveTo(willowX - 14, willowY + 12, willowX - 4, willowY - 14);
-      ctx.quadraticCurveTo(willowX + 10, willowY + 14, willowX + 8, willowY + 36);
-      ctx.closePath();
-      ctx.fill();
-
-      // Willow Drooping Foliage Tendrils
-      ctx.fillStyle = '#65a30d';
-      ctx.beginPath();
-      ctx.arc(willowX - 4, willowY - 16, 28, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = '#4d7c0f';
-      ctx.lineWidth = 1.8;
-      for (let ti = -24; ti <= 24; ti += 7) {
-        ctx.beginPath();
-        ctx.moveTo(willowX + ti, willowY - 14);
-        const sway = Math.sin(this.tick * 0.04 + ti) * 4;
-        ctx.quadraticCurveTo(willowX + ti + sway, willowY + 10, willowX + ti + sway * 1.5, willowY + 28);
-        ctx.stroke();
-      }
+      drawLushBushCluster(21.8 * S, 2.8 * S, 24, false);
+      drawLushBushCluster(23.6 * S, 2.2 * S, 26, true);
+      drawLushBushCluster(25.0 * S, 3.2 * S, 22, false);
 
       // -----------------------------------------------------------------------
       // CENTRAL WATER FOUNTAIN (x = 21.1*S, y = 9.0*S)
@@ -11085,10 +11798,9 @@
       drawLushBushCluster(25.5 * S, 5.8 * S, 26, true);
       drawLushBushCluster(25.4 * S, 8.5 * S, 25, false);
       drawLushBushCluster(25.5 * S, 11.8 * S, 26, true);
-      drawLushBushCluster(25.2 * S, 14.5 * S, 26, false);
-      drawLushBushCluster(18.0 * S, 16.6 * S, 26, false);
-      drawLushBushCluster(21.5 * S, 16.7 * S, 26, true);
-      drawLushBushCluster(24.5 * S, 16.6 * S, 26, false);
+      drawLushBushCluster(25.2 * S, 13.5 * S, 24, false);
+      drawLushBushCluster(18.0 * S, 13.8 * S, 24, false);
+      drawLushBushCluster(21.5 * S, 13.8 * S, 24, true);
     }
     drawEntity(entity) {
       if (!entity || !entity.sprite) return;
