@@ -140,13 +140,9 @@
     return true;
   }
 
-  // Reusable scratch canvases (never call getImageData — 100% file:/// safe)
+  // Reusable scratch canvas (never calls getImageData — 100% file:/// safe)
   let workCanvas = null;
   let workCtx = null;
-  let hairSilCanvas = null;
-  let hairSilCtx = null;
-  let hairOutCanvas = null;
-  let hairOutCtx = null;
 
   function ensureScratch() {
     if (!workCanvas) {
@@ -155,18 +151,6 @@
       workCanvas.height = SHEET_SIZE;
       workCtx = workCanvas.getContext('2d');
       workCtx.imageSmoothingEnabled = false;
-
-      hairSilCanvas = document.createElement('canvas');
-      hairSilCanvas.width = SHEET_SIZE;
-      hairSilCanvas.height = SHEET_SIZE;
-      hairSilCtx = hairSilCanvas.getContext('2d');
-      hairSilCtx.imageSmoothingEnabled = false;
-
-      hairOutCanvas = document.createElement('canvas');
-      hairOutCanvas.width = SHEET_SIZE;
-      hairOutCanvas.height = SHEET_SIZE;
-      hairOutCtx = hairOutCanvas.getContext('2d');
-      hairOutCtx.imageSmoothingEnabled = false;
     }
   }
 
@@ -182,41 +166,111 @@
     workCtx.globalCompositeOperation = 'source-over';
   }
 
+  /** Draws shoulder-length back hair locks with tapered silhouettes for 'long' hairstyles. */
   function drawFlowingLongLocks(ctx, hair, dirRow) {
     const px = (cx, cy, x, y, w, h, col) => {
       ctx.fillStyle = col;
       ctx.fillRect(cx + x, cy + y, w, h);
     };
-    const INK = '#1e1410';
+    const INK = '#1b1210';
     for (let col = 0; col < 4; col++) {
       const cx = col * CELL;
-      const cy = dirRow * CELL;
       const bob = (col === 1 || col === 3) ? -1 : 0;
-      const y0 = cy + bob;
+      const y0 = dirRow * CELL + bob;
       if (dirRow === 0) {
-        // Soft shoulder-length flowing tendrils behind shoulders
-        px(cx, y0, 26, 39, 8, 22, INK);
-        px(cx, y0, 27, 40, 6, 20, hair.dark);
-        px(cx, y0, 28, 41, 4, 17, hair.base);
-        px(cx, y0, 62, 39, 8, 22, INK);
-        px(cx, y0, 63, 40, 6, 20, hair.dark);
-        px(cx, y0, 64, 41, 4, 17, hair.base);
+        for (const sx of [29, 60]) {
+          px(cx, y0, sx, 38, 7, 18, INK);
+          px(cx, y0, sx + 1, 56, 5, 3, INK);
+          px(cx, y0, sx + 1, 39, 5, 17, hair.dark);
+          px(cx, y0, sx + 2, 40, 3, 14, hair.base);
+        }
       } else if (dirRow === 1) {
-        px(cx, y0, 48, 38, 12, 23, INK);
-        px(cx, y0, 49, 39, 10, 21, hair.dark);
-        px(cx, y0, 50, 40, 8, 18, hair.base);
+        px(cx, y0, 48, 37, 10, 20, INK);
+        px(cx, y0, 50, 57, 7, 3, INK);
+        px(cx, y0, 49, 38, 8, 19, hair.dark);
+        px(cx, y0, 50, 39, 6, 16, hair.base);
       } else if (dirRow === 2) {
-        px(cx, y0, 36, 38, 12, 23, INK);
-        px(cx, y0, 37, 39, 10, 21, hair.dark);
-        px(cx, y0, 38, 40, 8, 18, hair.base);
+        px(cx, y0, 38, 37, 10, 20, INK);
+        px(cx, y0, 39, 57, 7, 3, INK);
+        px(cx, y0, 39, 38, 8, 19, hair.dark);
+        px(cx, y0, 40, 39, 6, 16, hair.base);
       } else if (dirRow === 3) {
-        // Rich cascading back locks over upper coat/jacket
-        px(cx, y0, 30, 34, 36, 28, INK);
-        px(cx, y0, 32, 35, 32, 25, hair.dark);
-        px(cx, y0, 34, 36, 28, 22, hair.base);
-        px(cx, y0, 38, 38, 20, 10, hair.hi);
+        px(cx, y0, 33, 35, 30, 17, INK);
+        px(cx, y0, 35, 52, 26, 4, INK);
+        px(cx, y0, 37, 56, 22, 3, INK);
+        px(cx, y0, 34, 36, 28, 16, hair.dark);
+        px(cx, y0, 36, 52, 24, 4, hair.dark);
+        px(cx, y0, 36, 37, 24, 15, hair.base);
+        px(cx, y0, 38, 52, 20, 2, hair.base);
+        px(cx, y0, 40, 39, 16, 6, hair.hi);
       }
     }
+  }
+
+  // Uniform neck-seam split bounds and per-archetype alignment tables so every head matches its own eyes/hair/ink
+  const BODY_SKIN_MIN_Y = 56;
+  const HEAD_HAIR_MAX_Y = 52;
+  const HEAD_SPLIT_SPEC = {
+    jacket: { skinMaxY: 48, inkMaxY: 48 },
+    hoodie: { skinMaxY: 47, inkMaxY: 47 },
+    vest:   { skinMaxY: 48, inkMaxY: 46 },
+    trench: { skinMaxY: 46, inkMaxY: 47 }
+  };
+  const BODY_INK_MIN_Y = {
+    jacket: [49, 50, 50, 48],
+    hoodie: [47, 47, 47, 46],
+    vest:   [47, 47, 47, 43],
+    trench: [48, 48, 48, 46]
+  };
+  const CROSS_HEAD_ROW0_DX = {
+    trench: [4, -4, 4, 3]
+  };
+
+  function drawCellSlices(octx, srcImg, sliceHeight, dxRow0) {
+    for (let r = 0; r < 4; r++) {
+      const cy = r * CELL;
+      for (let c = 0; c < 4; c++) {
+        const cx = c * CELL;
+        const dx = (r === 0 && dxRow0) ? (dxRow0[c] || 0) : 0;
+        octx.drawImage(srcImg, cx, cy, CELL, sliceHeight, cx + dx, cy, CELL, sliceHeight);
+      }
+    }
+  }
+
+  function compositeCrossArchetype(octx, ob, hb, outfitKey, hairKey, colors, hairStyle) {
+    const headSpec = HEAD_SPLIT_SPEC[hairKey];
+    const bodyInkMins = BODY_INK_MIN_Y[outfitKey];
+    const dxRow0 = outfitKey !== hairKey ? CROSS_HEAD_ROW0_DX[hairKey] : null;
+
+    // 1. Body skin (hands/forearms only, below neck seam) and body/collar ink
+    renderTintedLayerToWork(ob.skin, colors.skin.base);
+    for (let r = 0; r < 4; r++) {
+      const cy = r * CELL;
+      octx.drawImage(
+        workCanvas,
+        0, cy + BODY_SKIN_MIN_Y, SHEET_SIZE, CELL - BODY_SKIN_MIN_Y,
+        0, cy + BODY_SKIN_MIN_Y, SHEET_SIZE, CELL - BODY_SKIN_MIN_Y
+      );
+      const bMin = bodyInkMins[r];
+      octx.drawImage(ob.ink, 0, cy + bMin, SHEET_SIZE, CELL - bMin, 0, cy + bMin, SHEET_SIZE, CELL - bMin);
+    }
+
+    // Back-view flowing locks sit over upper back coat/jacket but below rounded head crown
+    if (hairStyle === 'long') {
+      drawFlowingLongLocks(octx, colors.hair, 3);
+    }
+
+    // 2. Cohesive Head from hair archetype (skin, eyes, hair, and native head ink aligned to torso center)
+    renderTintedLayerToWork(hb.skin, colors.skin.base);
+    drawCellSlices(octx, workCanvas, headSpec.skinMaxY + 1, dxRow0);
+
+    renderTintedLayerToWork(hb.eyes, colors.eye.base);
+    drawCellSlices(octx, workCanvas, HEAD_HAIR_MAX_Y, dxRow0);
+
+    renderTintedLayerToWork(hb.hair, colors.hair.base);
+    drawCellSlices(octx, workCanvas, HEAD_HAIR_MAX_Y, dxRow0);
+
+    drawCellSlices(octx, hb.ink, headSpec.inkMaxY + 1, dxRow0);
   }
 
   const composedCache = new Map();
@@ -250,60 +304,28 @@
     const hb = spriteBank[hairKey];
     const nativeMatch = (hairKey === outfitKey && hairStyle !== 'long');
 
-    // Optional back flowing locks behind body for 'long' front/sides
     if (hairStyle === 'long') {
       drawFlowingLongLocks(octx, hair, 0);
       drawFlowingLongLocks(octx, hair, 1);
       drawFlowingLongLocks(octx, hair, 2);
     }
 
-    // Composite body layers in strict depth order
     renderTintedLayerToWork(ob.pants, pants.base);
     octx.drawImage(workCanvas, 0, 0);
 
     renderTintedLayerToWork(ob.outfit, outfit.base);
     octx.drawImage(workCanvas, 0, 0);
 
-    renderTintedLayerToWork(ob.skin, skin.base);
-    octx.drawImage(workCanvas, 0, 0);
-
-    renderTintedLayerToWork(ob.eyes, eye.base);
-    octx.drawImage(workCanvas, 0, 0);
-
     if (nativeMatch) {
-      // Exact native hair + hand-inked sheet outline
+      renderTintedLayerToWork(ob.skin, skin.base);
+      octx.drawImage(workCanvas, 0, 0);
+      renderTintedLayerToWork(hb.eyes, eye.base);
+      octx.drawImage(workCanvas, 0, 0);
       renderTintedLayerToWork(hb.hair, hair.base);
       octx.drawImage(workCanvas, 0, 0);
       octx.drawImage(ob.ink, 0, 0, SHEET_SIZE, SHEET_SIZE);
     } else {
-      // Keep body, collar, eyes, boots ink below crown line (y >= 31 in each 96x96 cell)
-      for (let r = 0; r < 4; r++) {
-        const cy = r * CELL;
-        octx.drawImage(ob.ink, 0, cy + 31, SHEET_SIZE, CELL - 31, 0, cy + 31, SHEET_SIZE, CELL - 31);
-      }
-
-      if (hairStyle === 'long') {
-        drawFlowingLongLocks(octx, hair, 3);
-      }
-
-      // Render tinted cross-archetype hair with crisp 1px dark RPG pixel outline
-      renderTintedLayerToWork(hb.hair, hair.base);
-      hairOutCtx.clearRect(0, 0, SHEET_SIZE, SHEET_SIZE);
-      hairOutCtx.drawImage(workCanvas, 0, 0);
-
-      hairSilCtx.globalCompositeOperation = 'source-over';
-      hairSilCtx.clearRect(0, 0, SHEET_SIZE, SHEET_SIZE);
-      hairSilCtx.fillStyle = '#1b1210';
-      hairSilCtx.fillRect(0, 0, SHEET_SIZE, SHEET_SIZE);
-      hairSilCtx.globalCompositeOperation = 'destination-in';
-      hairSilCtx.drawImage(hb.hair, 0, 0, SHEET_SIZE, SHEET_SIZE);
-      hairSilCtx.globalCompositeOperation = 'source-over';
-
-      octx.drawImage(hairSilCanvas, -1, 0);
-      octx.drawImage(hairSilCanvas, 1, 0);
-      octx.drawImage(hairSilCanvas, 0, -1);
-      octx.drawImage(hairSilCanvas, 0, 1);
-      octx.drawImage(hairOutCanvas, 0, 0);
+      compositeCrossArchetype(octx, ob, hb, outfitKey, hairKey, { skin, hair, eye }, hairStyle);
     }
 
     if (composedCache.size >= MAX_CACHE_SIZE) {

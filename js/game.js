@@ -404,8 +404,8 @@
       // Start in the Open-World Courtyard by default
       this.currentView = 'overworld'; // 'overworld' | 'arena'
       if (window.MythosOverworld) {
-        this.overworld = new window.MythosOverworld((challenger, mapId = 'standard_10x8', customPlayerTeam = null) => {
-          this.enterMythosArena(challenger, mapId, customPlayerTeam);
+        this.overworld = new window.MythosOverworld((challenger, mapId = 'standard_10x8', customPlayerTeam = null, customOpponentTeam = null) => {
+          this.enterMythosArena(challenger, mapId, customPlayerTeam, customOpponentTeam);
         });
       } else {
         this.enterMythosArena();
@@ -440,7 +440,13 @@
     enterMythosArena(challenger = null, mapId = 'standard_10x8', customPlayerTeam = null, customOpponentTeam = null) {
       this.currentView = 'arena';
       this.currentChallenger = challenger;
+      this._parkTourneyMatchRecorded = false;
       if (this.overworld) this.overworld.active = false;
+
+      const rematchBtn = document.getElementById('btn-rematch');
+      if (rematchBtn) rematchBtn.classList.remove('hidden');
+      const returnOverworldBtn = document.getElementById('btn-return-overworld');
+      if (returnOverworldBtn) returnOverworldBtn.innerHTML = '🌲 Return to Overworld';
 
       this.setMap(mapId);
 
@@ -451,9 +457,12 @@
       document.querySelectorAll('.arena-only-ctrl').forEach(el => el.classList.remove('hidden'));
 
       const is2v2 = mapId === 'Base2v2';
+      const tourneyCtx = challenger?.tournamentContext;
       const sub = document.getElementById('header-subtitle');
       if (sub) {
-        if (challenger?.id === 'pluto') {
+        if (tourneyCtx?.type === 'park_monday_rr') {
+          sub.textContent = `Monday Central Park Casual (Round ${tourneyCtx.round || 1}/3) vs. ${challenger.name}`;
+        } else if (challenger?.id === 'pluto') {
           sub.textContent = is2v2 
             ? 'Tabletop 2v2 vs. Pluto ($1.00 Wager Match on Base2v2)'
             : 'Tabletop Duel vs. Pluto ($1.00 Wager Match)';
@@ -525,17 +534,23 @@
 
       const allPlayerBeasts = Array.from(new Set([...invCards, ...binderCards]));
 
-      if (challenger && allPlayerBeasts.length >= 3) {
-        const playerTeam = allPlayerBeasts.slice(0, 3);
+      if (challenger && (allPlayerBeasts.length >= 3 || (customPlayerTeam && customPlayerTeam.length >= 3))) {
+        const playerTeam = (customPlayerTeam && customPlayerTeam.length >= 3)
+          ? customPlayerTeam.slice(0, 3)
+          : allPlayerBeasts.slice(0, 3);
         const remainingPool = ['phoenix', 'earth_golem', 'werewolf', 'hydra', 'terra_mother', 'verdant_guardian', 'dwarf_warden', 'pegasus']
           .filter(id => !playerTeam.includes(id));
-        const opponentTeam = remainingPool.length >= 3 ? remainingPool.slice(0, 3) : ['werewolf', 'hydra', 'earth_golem'];
+        const opponentTeam = (customOpponentTeam && customOpponentTeam.length >= 3)
+          ? customOpponentTeam.slice(0, 3)
+          : (remainingPool.length >= 3 ? remainingPool.slice(0, 3) : ['werewolf', 'hydra', 'earth_golem']);
 
         this.draftState.active = false;
         this.draftState.team1Picks = playerTeam;
         this.draftState.team2Picks = opponentTeam;
         this.finalizeDraftAndStartMatch();
-        if (challenger.id === 'pluto') {
+        if (challenger?.tournamentContext?.type === 'park_monday_rr') {
+          this.log(`🏆 Oakhaven Central Park Monday Casual — Round ${challenger.tournamentContext.round || 1} vs. ${challenger.name}!`, 'system');
+        } else if (challenger.id === 'pluto') {
           this.log(`🃏 Pluto accepted your $1.00 wager match at Pluto's House! Win: +$1.00, Lose: -$1.00!`, 'system');
         } else {
           this.log(`🃏 ${challenger.name} challenged you at ${challenger.name}'s House using the 3 cards from your Booster Packs!`, 'system');
@@ -550,7 +565,11 @@
       this.currentView = 'overworld';
       this.draftState.active = false;
       document.getElementById('draft-modal')?.classList.add('hidden');
+      document.getElementById('coin-toss-modal')?.classList.add('hidden');
       this.elWinnerModal?.classList.add('hidden');
+      document.getElementById('btn-rematch')?.classList.remove('hidden');
+      const returnOverworldBtn = document.getElementById('btn-return-overworld');
+      if (returnOverworldBtn) returnOverworldBtn.innerHTML = '🌲 Return to Overworld';
 
       document.getElementById('arena-view')?.classList.add('hidden');
       document.getElementById('arena-turn-tracker')?.classList.add('hidden');
@@ -2438,6 +2457,49 @@
           if (this.overworld) {
             this.overworld.handleNovaBattleResult(true);
           }
+        } else if (this.currentChallenger?.tournamentContext?.type === 'park_monday_rr') {
+          document.getElementById('btn-rematch')?.classList.add('hidden');
+          const returnOverworldBtn = document.getElementById('btn-return-overworld');
+          if (returnOverworldBtn) returnOverworldBtn.innerHTML = '🏆 View Tournament Bracket';
+
+          const t1Hp = this.units.filter(u => u.team === 1).reduce((s, u) => s + Math.max(0, u.hp || 0), 0);
+          const t2Hp = this.units.filter(u => u.team === 2).reduce((s, u) => s + Math.max(0, u.hp || 0), 0);
+          const hpMargin = t1Hp - t2Hp;
+
+          let summary = null;
+          if (!this._parkTourneyMatchRecorded && this.overworld?.recordParkMondayMatchResult) {
+            this._parkTourneyMatchRecorded = true;
+            summary = this.overworld.recordParkMondayMatchResult(this.currentChallenger, isPlayerVictory, hpMargin);
+          }
+
+          const oppName = this.currentChallenger.name || 'Opponent';
+          const roundNum = this.currentChallenger.tournamentContext.round || 1;
+          const headline = isPlayerVictory
+            ? `You defeated <b>${oppName}</b> in Round ${roundNum} of the Monday Casual Round Robin!`
+            : `<b>${oppName}</b> won Round ${roundNum} of the Monday Casual Round Robin.`;
+
+          let detailHtml = '';
+          if (summary?.completed) {
+            const rankLabel = summary.playerRank === 1 ? '🥇 1st Place' : summary.playerRank === 2 ? '🥈 2nd Place' : `${summary.playerRank}th Place`;
+            const prizeHtml = summary.playerPrize > 0
+              ? `You earned <b>$${summary.playerPrize.toFixed(2)}</b>!`
+              : 'No cash prize this week — come back next Monday for another shot!';
+            detailHtml = `
+              <div style="margin-top: 14px; padding: 12px 16px; background: rgba(245, 158, 11, 0.2); border: 2px solid #f59e0b; border-radius: 12px; color: #fde68a; text-align: center;">
+                🏆 <b>TOURNAMENT COMPLETE — ${rankLabel}!</b><br>
+                <span style="font-size: 13px; color: #f8fafc;">${prizeHtml} (Champion: ${summary.championName} • Runner-up: ${summary.runnerUpName})</span>
+              </div>
+            `;
+          } else {
+            const npcText = summary?.npcMatchSummary ? `<br><span style="font-size: 12px; color: #cbd5e1;">Other table: ${summary.npcMatchSummary}</span>` : '';
+            detailHtml = `
+              <div style="margin-top: 14px; padding: 12px 16px; background: rgba(56, 189, 248, 0.18); border: 2px solid #38bdf8; border-radius: 12px; color: #bae6fd; text-align: center;">
+                📋 <b>ROUND ${roundNum} OF 3 RECORDED</b>${npcText}<br>
+                <span style="font-size: 13px; color: #f8fafc;">Click <b>View Tournament Bracket</b> below to inspect standings and start the next round.</span>
+              </div>
+            `;
+          }
+          document.getElementById('winner-message').innerHTML = `${headline}<br>${detailHtml}`;
         } else if (isPlayerVictory && this.currentChallenger) {
           const fName = this.currentChallenger.name || 'Your Friend';
           document.getElementById('winner-message').innerHTML = `

@@ -44,7 +44,7 @@
         <span class="ow-location-pill" id="ow-location-pill">🏠 Living Room (Day 2 of Summer)</span>
         <button id="btn-open-calendar" class="ui-btn primary-btn calendar-toolbar-btn" style="padding: 4px 10px; font-size: 12px; background: linear-gradient(135deg, #059669, #10b981); border-color: #34d399;" title="Town Weekly Calendar & Daily Events (Key: C)">📅 <span id="calendar-btn-day-label">Monday</span> • Day <span id="calendar-btn-day-num">1</span></button>
         <button id="btn-open-phone" class="ui-btn primary-btn phone-toolbar-btn" style="padding: 4px 10px; font-size: 12px; background: linear-gradient(135deg, #4f46e5, #6366f1); border-color: #818cf8;" title="Mythos Mobile Smartphone (Key: P)">📱 Phone <span id="phone-alert-badge" class="phone-badge-pill hidden">!</span></button>
-        <button id="btn-open-inventory" class="ui-btn primary-btn" style="padding: 4px 10px; font-size: 12px;" title="Open Backpack & Inventory (Key: I)">🎒 Inventory <span id="inv-badge-count" class="inv-badge-pill">0</span></button>
+        <button id="btn-open-inventory" class="ui-btn primary-btn backpack-toolbar-btn" title="Open Adventurer Backpack & Inventory (Key: I)"><img src="Sprites/Overworld/backpack_icon.png" class="hud-backpack-img" alt=""> Backpack <span id="inv-badge-count" class="inv-badge-pill">0</span></button>
         <button id="btn-open-binder" class="ui-btn primary-btn binder-toolbar-btn locked" style="padding: 4px 10px; font-size: 12px; background: linear-gradient(135deg, #1e3a8a, #2563eb); border-color: #60a5fa;" title="Old Card Binder (Locked — Defeat Friend to Unlock)">📖 Old Card Binder <span id="binder-badge-count" class="inv-badge-pill">0</span></button>
         <button id="btn-open-creator" class="ui-btn secondary" style="padding: 4px 10px; font-size: 12px;" title="Customize Character or World Save">👤 Character</button>
         <button id="btn-replay-intro" class="ui-btn secondary" style="padding: 4px 10px; font-size: 12px;" title="Replay the Living Room Opening & TV Commercial">🎬 Replay Intro</button>
@@ -84,7 +84,7 @@
             📱 <span class="mob-btn-text">Phone</span> <span id="mob-phone-badge" class="phone-badge-pill hidden">!</span>
           </button>
           <button id="btn-mob-inventory" class="ow-mob-nav-btn" title="Backpack / Inventory">
-            🎒 <span class="mob-btn-text">Pack</span> <span id="mob-inv-badge" class="inv-badge-pill">0</span>
+            <img src="Sprites/Overworld/backpack_icon.png" class="hud-backpack-img-sm" alt=""> <span class="mob-btn-text">Pack</span> <span id="mob-inv-badge" class="inv-badge-pill">0</span>
           </button>
           <button id="btn-mob-binder" class="ow-mob-nav-btn locked" title="Old Card Binder">
             📖 <span class="mob-btn-text">Binder</span> <span id="mob-binder-badge" class="inv-badge-pill">0</span>
@@ -618,29 +618,42 @@
       <div class="inventory-modal-dialog">
         <div class="inventory-header">
           <div class="inventory-title-group">
-            <span class="inventory-icon-badge">🎒</span>
+            <span class="inventory-icon-badge"><img src="Sprites/Overworld/backpack_icon.png" class="inventory-backpack-emblem" alt="Backpack"></span>
             <div>
-              <h2 class="inventory-title">DUELIST BACKPACK & INVENTORY</h2>
-              <p class="inventory-sub">Manage your unopened booster packs, cards, and wallet</p>
+              <h2 class="inventory-title">DUELIST BACKPACK &amp; SATCHEL</h2>
+              <p class="inventory-sub">Oakhaven Traveler's Pack • Booster Packs, Mythos Cards &amp; Gear</p>
             </div>
-            <button type="button" class="ui-btn secondary" id="btn-inv-to-binder" style="padding: 4px 10px; font-size: 11px; margin-left: 8px;">📖 Open Binder ▸</button>
           </div>
-          <div class="inventory-wallet-pill" id="inv-wallet-display">💵 $0</div>
+          <div class="inventory-header-actions">
+            <button type="button" class="ui-btn secondary inv-header-binder-btn" id="btn-inv-to-binder">📖 Binder ▸</button>
+            <div class="inventory-wallet-pill" id="inv-wallet-display">💵 $0.00</div>
+          </div>
         </div>
 
         <div class="inventory-body">
+          <div class="inv-satchel-toolbar">
+            <div class="inv-filter-tabs" id="inv-filter-tabs">
+              <button type="button" class="inv-filter-tab active" data-filter="all">All</button>
+              <button type="button" class="inv-filter-tab" data-filter="pack">Packs</button>
+              <button type="button" class="inv-filter-tab" data-filter="card">Cards</button>
+              <button type="button" class="inv-filter-tab" data-filter="gear">Gear</button>
+            </div>
+            <div class="inv-slot-summary" id="inv-slot-summary">0 Items • 0 Total</div>
+          </div>
+
           <div class="inventory-grid" id="inventory-items-grid">
             <!-- Dynamically populated with inventory items or empty slots -->
           </div>
 
           <div class="inventory-detail-card" id="inventory-detail-panel">
-            <div class="inv-detail-art" id="inv-detail-art">📦</div>
+            <div class="inv-detail-art" id="inv-detail-art"><img src="Sprites/Overworld/backpack_icon.png" class="inventory-backpack-emblem" alt=""></div>
             <div class="inv-detail-info">
               <div class="inv-detail-header">
                 <h3 id="inv-detail-name">Select an Item</h3>
                 <span class="inv-detail-qty hidden" id="inv-detail-qty">x1</span>
               </div>
-              <p id="inv-detail-desc">Your backpack is currently empty. Explore the neighborhood and visit Leo's Card Shop to pick up your first Booster Pack!</p>
+              <div class="inv-detail-tags" id="inv-detail-tags"></div>
+              <p id="inv-detail-desc">Your backpack is currently empty. Explore Oakhaven and visit Leo's Card Shop to pick up your first Booster Pack!</p>
               <div class="inv-detail-actions hidden" id="inv-detail-actions">
                 <button type="button" class="ui-btn primary-btn inv-open-pack-btn hidden" id="btn-inv-open-pack">
                   ✨ Open Booster Pack
@@ -658,7 +671,7 @@
 
         <div class="inventory-footer">
           <span class="inventory-shortcut-hint">Shortcut: Press <b>I</b> for Backpack • <b>B</b> for Old Card Binder</span>
-          <button type="button" class="ui-btn primary-btn" id="btn-close-inventory">Done</button>
+          <button type="button" class="ui-btn primary-btn inv-done-btn" id="btn-close-inventory">Done</button>
         </div>
       </div>
     </div>
@@ -1301,6 +1314,50 @@
 
       <!-- Close Phone Button (Floating outside frame) -->
       <button class="phone-close-hardware-btn" id="btn-close-phone" title="Put away phone (Key: P or Esc)">✕</button>
+    </div>
+  </div>
+
+  <!-- Oakhaven Central Park Monday Round Robin Tournament Modal -->
+  <div id="park-tournament-modal" class="modal-overlay tourney-modal-overlay hidden">
+    <div class="calendar-modal-card tourney-modal-card">
+      <div class="calendar-modal-header">
+        <div class="calendar-header-title">
+          <span class="calendar-header-icon">🏆</span>
+          <div>
+            <h2 class="calendar-title">Oakhaven Central Park Monday Casual</h2>
+            <div class="calendar-subtitle" id="park-tourney-subtitle">4-Player Round Robin • 1st: $10.00 • 2nd: $5.00</div>
+          </div>
+        </div>
+        <button id="btn-close-park-tourney" class="calendar-close-btn" title="Close (Esc)">✕</button>
+      </div>
+
+      <div id="park-tourney-status-banner" class="tourney-status-banner">
+        <!-- Populated dynamically by renderParkTournamentModal() -->
+      </div>
+
+      <div class="tourney-layout-grid">
+        <div class="tourney-panel">
+          <div class="tourney-panel-title">📊 Round Robin Standings</div>
+          <div id="park-tourney-standings" class="tourney-standings-wrap">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+        <div class="tourney-panel">
+          <div class="tourney-panel-title">⚔️ 3-Round Match Schedule</div>
+          <div id="park-tourney-rounds" class="tourney-rounds-wrap">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+      </div>
+
+      <div class="calendar-modal-footer tourney-modal-footer">
+        <div class="calendar-tip" id="park-tourney-footer-tip">💡 <em>Playable once every Monday via Chloe, Rowan, or Jasper at Oakhaven Central Park.</em></div>
+        <div class="tourney-footer-actions">
+          <button id="btn-close-park-tourney-footer" class="ui-btn secondary-btn">Close</button>
+          <button id="btn-start-park-tourney-match" class="ui-btn primary-btn">⚔️ Play Round 1</button>
+        </div>
+      </div>
     </div>
   </div>
 
