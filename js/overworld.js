@@ -632,8 +632,15 @@
           eventName.innerHTML = `${ev.icon} ${ev.title}`;
         }
         if (eventDesc) {
-          eventDesc.textContent = `${ev.desc} (${ev.highlight})`;
+          const todayMeetups = (this.scheduledMeetups || []).filter(
+            m => m.status === 'scheduled' && m.scheduledDay === this.dayNumber
+          );
+          const meetupNote = todayMeetups.length > 0
+            ? ` | 🤝 Meetups Today (${todayMeetups.length}): ${todayMeetups.map(m => `${m.npcName} @ ${m.shortVenueLabel || m.venueLabel} (${m.cardName})`).join(', ')}`
+            : '';
+          eventDesc.textContent = `${ev.desc} (${ev.highlight})${meetupNote}`;
         }
+        this.updateMeetupBadgeCount?.();
 
         if (wakeModal) {
           wakeModal.classList.remove('hidden');
@@ -655,12 +662,213 @@
     initPhoneSystem() {
       this.currentPhoneApp = 'home';
       this.activeChatContactId = null;
-      this.marketTab = 'buy'; // 'buy' or 'sell'
+      this.marketTab = 'buy'; // 'buy' | 'sell' | 'meetups'
+      this.activeNegotiation = null;
       this.phoneUnreadShop = this.worldSave?.phoneUnreadShop ?? true;
       this.phoneChatHistories = this.worldSave?.phoneChatHistories || {};
       this.phoneListingsBought = this.worldSave?.phoneListingsBought || [];
       this.phoneListingsSold = this.worldSave?.phoneListingsSold || [];
+      this.scheduledMeetups = Array.isArray(this.worldSave?.scheduledMeetups)
+        ? this.worldSave.scheduledMeetups.map(m => ({ ...m }))
+        : [];
       this.registeredTournaments = this.worldSave?.registeredTournaments || [];
+      this.updateMeetupBadgeCount();
+    }
+
+    /** Known Oakhaven landmarks selectable as card meetup locations. */
+    getKnownMarketLandmarks() {
+      return [
+        {
+          id: 'park_fountain',
+          name: 'Central Park Fountain',
+          shortName: 'Park Fountain',
+          icon: '⛲',
+          area: 'exterior',
+          meetupPos: { x: 19.7, y: 9.0, dir: 'right' }
+        },
+        {
+          id: 'crossroads_sign',
+          name: 'Oakhaven Crossroads Sign',
+          shortName: 'Crossroads Sign',
+          icon: '🪧',
+          area: 'exterior',
+          meetupPos: { x: 8.4, y: 5.5, dir: 'down' }
+        },
+        {
+          id: 'leo_shop',
+          name: "Leo's Card Shop",
+          shortName: "Leo's Shop",
+          icon: '🏪',
+          area: 'card_shop_interior',
+          meetupPos: { x: 12.2, y: 8.4, dir: 'left' }
+        }
+      ];
+    }
+
+    /** Home area metadata for every Card Exchange NPC with an enterable cottage. */
+    getNpcHomeMeetupInfo(npcId) {
+      const friendName = this.friendName || 'Mike';
+      const homes = {
+        maya: {
+          name: 'Maya',
+          avatar: '🌿',
+          houseLabel: "Maya's House (305 Cobblestone Way)",
+          area: 'maya_interior'
+        },
+        silas: {
+          name: 'Silas',
+          avatar: '⚒️',
+          houseLabel: "Silas's House (303 Cobblestone Way)",
+          area: 'silas_interior'
+        },
+        pluto: {
+          name: 'Pluto',
+          avatar: '💻',
+          houseLabel: "Pluto's House (201 South Connector Ave)",
+          area: 'pluto_interior'
+        },
+        nova: {
+          name: 'Nova',
+          avatar: '✨',
+          houseLabel: "Nova's House (301 Cobblestone Way)",
+          area: 'nova_interior'
+        },
+        friend: {
+          name: friendName,
+          avatar: '🧢',
+          houseLabel: `${friendName}'s House (101 Sunny Brook Ln)`,
+          area: 'friend_interior'
+        }
+      };
+      return homes[npcId] || homes.maya;
+    }
+
+    getNpcSpriteForMeetup(npcId) {
+      if (npcId === 'pluto') {
+        if (!this.plutoNpc) this.plutoNpc = this.createPlutoNpc();
+        return this.plutoNpc.sprite;
+      }
+      if (npcId === 'nova') {
+        if (!this.novaNpc) this.novaNpc = this.createNovaNpc();
+        return this.novaNpc.sprite;
+      }
+      if (npcId === 'silas') {
+        if (!this.silasNpc) this.silasNpc = this.createSilasNpc();
+        return this.silasNpc.sprite;
+      }
+      if (npcId === 'maya') {
+        if (!this.mayaNpc) this.mayaNpc = this.createMayaNpc();
+        return this.mayaNpc.sprite;
+      }
+      const friend = this.getFriendNpc() || this.createFriendNpc(this.friendName);
+      return friend?.sprite || this.playerSprite;
+    }
+
+    roundQuarterDollar(amount) {
+      return Math.max(0.50, Math.round(Number(amount) * 4) / 4);
+    }
+
+    /**
+     * Venue-adjusted card price: lower when meeting at NPC's house (0.80x),
+     * baseline at a town landmark (1.00x), and higher when NPC travels to player's house (1.25x).
+     */
+    getVenueAdjustedPrice(basePrice, venueType) {
+      const multipliers = {
+        npc_house: 0.80,
+        landmark: 1.00,
+        player_house: 1.25
+      };
+      const mult = multipliers[venueType] ?? 1.00;
+      return this.roundQuarterDollar(basePrice * mult);
+    }
+
+    getMeetupTargetDetails(npcId, venueType, landmarkId) {
+      const home = this.getNpcHomeMeetupInfo(npcId);
+      if (venueType === 'npc_house') {
+        return {
+          venueType: 'npc_house',
+          landmarkId: null,
+          area: home.area,
+          venueLabel: `🏠 ${home.houseLabel}`,
+          shortVenueLabel: `${home.name}'s House`,
+          meetupPos: null,
+          usesExistingNpc: true
+        };
+      }
+      if (venueType === 'player_house') {
+        return {
+          venueType: 'player_house',
+          landmarkId: null,
+          area: 'interior',
+          venueLabel: "🏡 Your House (Living Room)",
+          shortVenueLabel: 'Your House',
+          meetupPos: { x: 6.2, y: 7.6, dir: 'right' },
+          usesExistingNpc: false
+        };
+      }
+      const landmarks = this.getKnownMarketLandmarks();
+      const landmark = landmarks.find(l => l.id === landmarkId) || landmarks[0];
+      return {
+        venueType: 'landmark',
+        landmarkId: landmark.id,
+        area: landmark.area,
+        venueLabel: `${landmark.icon} ${landmark.name}`,
+        shortVenueLabel: landmark.shortName,
+        meetupPos: { ...landmark.meetupPos },
+        usesExistingNpc: false
+      };
+    }
+
+    getScheduledMeetupsForNpc(npcId, area, day = (this.dayNumber || 1)) {
+      return (this.scheduledMeetups || []).filter(m =>
+        m.status === 'scheduled' &&
+        m.scheduledDay === day &&
+        m.npcId === npcId &&
+        m.area === area
+      );
+    }
+
+    getActiveMeetupVisitorsForArea(area = this.currentArea) {
+      if (this.storyState !== 'free_roam') return [];
+      const day = this.dayNumber || 1;
+      const matches = (this.scheduledMeetups || []).filter(m =>
+        m.status === 'scheduled' &&
+        m.scheduledDay === day &&
+        m.area === area &&
+        m.venueType !== 'npc_house'
+      );
+      return matches.map((m, idx) => {
+        const target = this.getMeetupTargetDetails(m.npcId, m.venueType, m.landmarkId);
+        const base = m.meetupPos || target.meetupPos || { x: 6.2, y: 7.6, dir: 'right' };
+        let px = base.x;
+        if (area === 'card_shop_interior') {
+          px = Math.min(13.8, base.x + idx * 0.85);
+        } else if (m.landmarkId === 'crossroads_sign') {
+          px = base.x + idx * 0.9;
+        } else {
+          px = base.x - idx * 0.9;
+        }
+        return {
+          id: `meetup_${m.id}`,
+          meetupId: m.id,
+          isMeetupVisitor: true,
+          npcId: m.npcId,
+          name: m.npcName,
+          x: px,
+          y: base.y,
+          dir: base.dir || 'down',
+          sprite: this.getNpcSpriteForMeetup(m.npcId),
+          bubble: '🤝',
+          meetup: m
+        };
+      });
+    }
+
+    updateMeetupBadgeCount() {
+      const badge = document.getElementById('market-meetups-count');
+      if (!badge) return;
+      const active = (this.scheduledMeetups || []).filter(m => m.status === 'scheduled');
+      badge.textContent = active.length > 0 ? `(${active.length})` : '';
     }
 
     getTownContactsList() {
@@ -798,7 +1006,7 @@
             { sender: 'npc', text: `Hey ${pName}! I'm always looking to swap cards and arrange meetups.` }
           ],
           replies: [
-            { text: `🤝 "Got any good card listings on the exchange?"`, reply: `Check the Card Exchange app on your phone right now! I posted a few single offers looking for meetups in the park.` }
+            { text: `🤝 "Got any advice on trading cards in town?"`, reply: `Check the Card Exchange app on your phone right now! Maya, Silas, Pluto, Nova, and ${this.friendName || 'Mike'} all negotiate prices and arrange meetups across town.` }
           ]
         },
         {
@@ -820,93 +1028,108 @@
     }
 
     getMarketplaceListings() {
+      const friendName = this.friendName || 'Mike';
       return [
         {
           id: 'mkt_buy_1',
           type: 'buy',
+          npcId: 'maya',
           beastId: 'werewolf',
           cardName: 'Werewolf',
           element: '🌑 Dark • 140 HP',
+          basePrice: 5.50,
           price: 5.50,
-          seller: 'Rowan',
-          avatar: '🃏',
-          location: 'Central Park Picnic Table 2',
-          note: 'Mint condition duplicate from base pack. Ready for a quick park courtyard meetup!',
+          seller: 'Maya',
+          avatar: '🌿',
+          location: "Maya's House, Landmark, or Yours",
+          note: 'Mint condition duplicate from base pack. Happy to negotiate where and when we meet!',
           img: 'Cards/Werewolf_Card.png'
         },
         {
           id: 'mkt_buy_2',
           type: 'buy',
+          npcId: 'silas',
           beastId: 'earth_golem',
           cardName: 'Earth Golem',
           element: '🪨 Earth • 200 HP',
+          basePrice: 6.00,
           price: 6.00,
           seller: 'Silas',
           avatar: '⚒️',
-          location: "Silas's Workshop (303 Cobblestone Way)",
-          note: 'Rock Barrier defense single. Guaranteed authentic heartwood-certified sleeve.',
+          location: "Silas's House, Landmark, or Yours",
+          note: 'Rock Barrier defense single. Pick a day & venue and send an offer!',
           img: 'Cards/Earth_Golem_Card.png'
         },
         {
           id: 'mkt_buy_3',
           type: 'buy',
+          npcId: 'pluto',
           beastId: 'hydra',
           cardName: 'Hydra',
           element: '💧 Water • 160 HP',
+          basePrice: 7.00,
           price: 7.00,
           seller: 'Pluto',
           avatar: '💻',
-          location: "Pluto's House (201 South Connector Ave)",
-          note: 'Multi-target Venom Strike beast. Tested in 25 benchmark matches.',
+          location: "Pluto's House, Landmark, or Yours",
+          note: 'Multi-target Venom Strike beast. Open to counter-offers depending on meetup spot.',
           img: 'Cards/Hydra_Card.png'
         },
         {
           id: 'mkt_buy_4',
           type: 'buy',
+          npcId: 'nova',
           beastId: 'phoenix',
           cardName: 'Phoenix (Holo)',
           element: '🔥 Fire • 120 HP',
+          basePrice: 12.00,
           price: 12.00,
           seller: 'Nova',
           avatar: '✨',
-          location: "Nova's Observatory (301 Cobblestone Way)",
-          note: 'Flaming Talons & Rebirth burst! Looking for cash for telescope optics.',
+          location: "Nova's House, Landmark, or Yours",
+          note: 'Flaming Talons & Rebirth burst! Cheaper if you visit my observatory.',
           img: 'Cards/Phoenix_Card.png'
         },
         {
           id: 'mkt_sell_1',
           type: 'sell',
+          npcId: 'friend',
           beastId: 'phoenix',
           cardName: 'Phoenix',
           element: '🔥 Fire Beast',
+          basePrice: 8.50,
           payout: 8.50,
-          buyer: 'Rowan',
-          avatar: '🃏',
-          location: 'Central Park Courtyard',
+          buyer: friendName,
+          avatar: '🧢',
+          location: `${friendName}'s House, Landmark, or Yours`,
           note: 'Looking to buy 1x Phoenix to round out my aggressive fire burn deck!'
         },
         {
           id: 'mkt_sell_2',
           type: 'sell',
+          npcId: 'pluto',
           beastId: 'earth_golem',
           cardName: 'Earth Golem',
           element: '🪨 Earth Beast',
+          basePrice: 5.00,
           payout: 5.00,
           buyer: 'Pluto',
           avatar: '💻',
-          location: "Pluto's Bedroom Desk",
+          location: "Pluto's House, Landmark, or Yours",
           note: 'Need an Earth tank card for damage-mitigation calculation tests.'
         },
         {
           id: 'mkt_sell_3',
           type: 'sell',
+          npcId: 'maya',
           beastId: 'werewolf',
           cardName: 'Werewolf',
           element: '🌑 Dark Beast',
+          basePrice: 4.50,
           payout: 4.50,
           buyer: 'Maya',
           avatar: '🌿',
-          location: "Maya's Greenhouse",
+          location: "Maya's House, Landmark, or Yours",
           note: 'Looking for a Werewolf card to trade to a visiting collector!'
         }
       ];
@@ -1056,6 +1279,9 @@
       }
 
       // Render corresponding app view
+      if (appName !== 'market') {
+        this.activeNegotiation = null;
+      }
       if (appName === 'contacts') {
         this.renderContactsApp();
       } else if (appName === 'market') {
@@ -1164,143 +1390,746 @@
       }
     }
 
+    getScheduledMeetupForListing(listingId) {
+      return (this.scheduledMeetups || []).find(m => m.listingId === listingId && m.status === 'scheduled') || null;
+    }
+
+    getDayMetadataForNumber(dayNum) {
+      const days = this.DAYS_OF_WEEK || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+      const cal = this.WEEKLY_CALENDAR || [{ icon: '✨' }];
+      const idx = ((dayNum - 1) % days.length + days.length) % days.length;
+      const dayName = days[idx];
+      const ev = cal[idx] || cal[0];
+      const curDay = this.dayNumber || 1;
+      const diff = dayNum - curDay;
+      const relLabel = diff === 0 ? 'Today' : (diff === 1 ? 'Tomorrow' : `In ${diff}d`);
+      return { dayNum, dayName, shortDay: dayName.slice(0, 3), icon: ev.icon, relLabel };
+    }
+
+    computeNegotiationBounds(type, venuePrice) {
+      if (type === 'buy') {
+        const openOffer = this.roundQuarterDollar(venuePrice * 1.10);
+        return {
+          venuePrice,
+          openOffer,
+          fairTarget: this.roundQuarterDollar(venuePrice * 0.92),
+          walkLimit: this.roundQuarterDollar(venuePrice * 0.80),
+          draftOffer: Math.max(0.50, this.roundQuarterDollar(openOffer - 0.50))
+        };
+      }
+      const openOffer = this.roundQuarterDollar(venuePrice * 0.90);
+      return {
+        venuePrice,
+        openOffer,
+        fairTarget: this.roundQuarterDollar(venuePrice * 1.08),
+        walkLimit: this.roundQuarterDollar(venuePrice * 1.20),
+        draftOffer: this.roundQuarterDollar(openOffer + 0.50)
+      };
+    }
+
     renderMarketApp() {
+      const browseEl = document.getElementById('phone-market-browse');
+      const negEl = document.getElementById('phone-negotiate-pane');
       const container = document.getElementById('phone-listings-container');
+      const noticeEl = document.getElementById('phone-market-notice');
       const tabBuy = document.getElementById('tab-market-buy');
       const tabSell = document.getElementById('tab-market-sell');
+      const tabMeetups = document.getElementById('tab-market-meetups');
       if (!container) return;
 
-      if (tabBuy && tabSell) {
-        if (this.marketTab === 'buy') {
-          tabBuy.classList.add('active');
-          tabSell.classList.remove('active');
+      this.updateMeetupBadgeCount();
+
+      if (this.activeNegotiation && browseEl && negEl) {
+        browseEl.classList.add('hidden');
+        negEl.classList.remove('hidden');
+        this.renderNegotiationPane();
+        return;
+      }
+
+      if (browseEl && negEl) {
+        browseEl.classList.remove('hidden');
+        negEl.classList.add('hidden');
+      }
+
+      const tabMap = { buy: tabBuy, sell: tabSell, meetups: tabMeetups };
+      Object.entries(tabMap).forEach(([key, el]) => {
+        if (el) el.classList.toggle('active', this.marketTab === key);
+      });
+
+      if (noticeEl) {
+        noticeEl.textContent = this.marketTab === 'meetups'
+          ? 'Visit your scheduled spot on the agreed day and talk to the NPC (🤝) to exchange cards & cash!'
+          : 'Pick a Day & Meetup Place and negotiate the price! Lower at NPC\'s house (-20%), baseline at a landmark, higher at your house (+25%).';
+      }
+
+      container.innerHTML = '';
+
+      if (this.marketTab === 'meetups') {
+        this.renderMeetupsTab(container);
+        return;
+      }
+
+      const currentListings = this.getMarketplaceListings().filter(l => l.type === this.marketTab);
+      currentListings.forEach(item => {
+        container.appendChild(this.buildMarketplaceListingCard(item));
+      });
+    }
+
+    buildMarketplaceListingCard(item) {
+      const isBuy = item.type === 'buy';
+      const personName = isBuy ? item.seller : item.buyer;
+      const doneList = isBuy ? this.phoneListingsBought : this.phoneListingsSold;
+      const isDone = doneList.includes(item.id);
+      const scheduled = this.getScheduledMeetupForListing(item.id);
+      const hasCard = isBuy || (this.inventory || []).some(i => i.beastId === item.beastId && (i.qty || 1) > 0);
+      const npcPrice = this.getVenueAdjustedPrice(item.basePrice, 'npc_house');
+      const landmarkPrice = this.getVenueAdjustedPrice(item.basePrice, 'landmark');
+      const homePrice = this.getVenueAdjustedPrice(item.basePrice, 'player_house');
+
+      const cardEl = document.createElement('div');
+      cardEl.className = 'phone-listing-card';
+
+      let btnLabel = isBuy
+        ? `💬 Negotiate & Arrange (${this.formatMoney(landmarkPrice)})`
+        : `💬 Negotiate Sale (+${this.formatMoney(landmarkPrice)})`;
+      let btnStyle = isBuy
+        ? ''
+        : 'style="background: linear-gradient(135deg, #059669, #10b981); border-color: #34d399;"';
+      let disabledAttr = '';
+
+      if (isDone) {
+        btnLabel = isBuy ? '✅ Purchased & Collected' : '✅ Fulfilled & Paid';
+        btnStyle = 'style="background: #334155; border-color: #475569; cursor: default;"';
+        disabledAttr = 'disabled';
+      } else if (scheduled) {
+        btnLabel = `📅 Scheduled Day ${scheduled.scheduledDay} (${this.formatMoney(scheduled.agreedPrice)})`;
+        btnStyle = 'style="background: linear-gradient(135deg, #4f46e5, #6366f1); border-color: #818cf8;"';
+      } else if (!hasCard) {
+        btnLabel = '❌ Card Not in Backpack';
+        btnStyle = 'style="background: #334155; border-color: #475569; cursor: default;"';
+        disabledAttr = 'disabled';
+      }
+
+      cardEl.innerHTML = `
+        <div class="phone-listing-top">
+          <div>
+            <span class="phone-listing-card-title">${item.cardName}</span>
+            <div style="font-size: 10px; color: #94a3b8;">${isBuy ? item.element : `Wanted by ${personName}`}</div>
+          </div>
+          <span class="phone-listing-price">${isBuy ? '' : '+'}${this.formatMoney(landmarkPrice)}</span>
+        </div>
+        <div class="phone-listing-seller">
+          ${item.avatar} ${isBuy ? 'Seller' : 'Buyer'}: <strong>${personName}</strong>
+        </div>
+        <div class="phone-listing-meetup">
+          📍 Rates: <b>🏠 ${this.formatMoney(npcPrice)}</b> • ⛲ ${this.formatMoney(landmarkPrice)} • 🏡 <b>${this.formatMoney(homePrice)}</b>
+        </div>
+        <div style="font-size: 11px; color: #cbd5e1; font-style: italic;">"${item.note}"</div>
+        <button class="phone-listing-btn" id="btn-market-${item.id}" ${disabledAttr} ${btnStyle}>
+          ${btnLabel}
+        </button>
+      `;
+
+      const actionBtn = cardEl.querySelector(`#btn-market-${item.id}`);
+      if (actionBtn && !disabledAttr) {
+        actionBtn.addEventListener('click', () => {
+          if (window.sounds?.playClick) window.sounds.playClick();
+          if (scheduled) {
+            this.marketTab = 'meetups';
+            this.renderMarketApp();
+          } else {
+            this.startListingNegotiation(item);
+          }
+        });
+      }
+      return cardEl;
+    }
+
+    renderMeetupsTab(container) {
+      const curDay = this.dayNumber || 1;
+      const activeMeetups = (this.scheduledMeetups || [])
+        .filter(m => m.status === 'scheduled')
+        .sort((a, b) => {
+          const rank = d => (d === curDay ? 0 : d > curDay ? 1 : 2);
+          const ra = rank(a.scheduledDay);
+          const rb = rank(b.scheduledDay);
+          return ra !== rb ? ra - rb : a.scheduledDay - b.scheduledDay;
+        });
+
+      if (activeMeetups.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'phone-listing-card';
+        empty.innerHTML = `
+          <div class="phone-listing-card-title">No Card Meetups Scheduled</div>
+          <div style="font-size: 11px; color: #cbd5e1; line-height: 1.4;">
+            Pick any listing in <b>Buy</b> or <b>Sell</b> to negotiate a price and schedule a meetup day &amp; location!
+          </div>
+        `;
+        container.appendChild(empty);
+        return;
+      }
+
+      activeMeetups.forEach(m => {
+        const dayMeta = this.getDayMetadataForNumber(m.scheduledDay);
+        const isToday = m.scheduledDay === curDay;
+        const isMissed = m.scheduledDay < curDay;
+        const statusCls = isToday ? 'today' : (isMissed ? 'missed' : 'upcoming');
+        const statusText = isToday
+          ? `🤝 TODAY (Day ${m.scheduledDay})`
+          : (isMissed ? `⚠️ MISSED (Day ${m.scheduledDay})` : `📆 Day ${m.scheduledDay} • ${dayMeta.shortDay}`);
+        const isBuy = m.type === 'buy';
+
+        const cardEl = document.createElement('div');
+        cardEl.className = 'phone-listing-card';
+        cardEl.innerHTML = `
+          <div class="phone-listing-top">
+            <div>
+              <span class="phone-listing-card-title">${isBuy ? '🛒 Buy' : '💰 Sell'} ${m.cardName}</span>
+              <div style="font-size: 10px; color: #cbd5e1;">with ${m.npcAvatar || '🤝'} <b>${m.npcName}</b></div>
+            </div>
+            <span class="phone-meetup-status-pill ${statusCls}">${statusText}</span>
+          </div>
+          <div class="phone-listing-meetup">
+            📍 Location: <b>${m.venueLabel}</b><br/>
+            💵 Agreed Price: <b style="color:#4ade80;">${isBuy ? '' : '+'}${this.formatMoney(m.agreedPrice)}</b>
+          </div>
+          <div class="phone-neg-actions-row">
+            <button class="phone-neg-btn-send" data-action="reschedule">📅 Reschedule</button>
+            <button class="phone-neg-btn-cancel" data-action="cancel">✖ Cancel</button>
+          </div>
+        `;
+
+        cardEl.querySelector('[data-action="reschedule"]')?.addEventListener('click', () => {
+          if (window.sounds?.playClick) window.sounds.playClick();
+          const listing = this.getMarketplaceListings().find(l => l.id === m.listingId) || {
+            id: m.listingId,
+            type: m.type,
+            npcId: m.npcId,
+            beastId: m.beastId,
+            cardName: m.cardName,
+            element: '',
+            basePrice: m.basePrice || m.agreedPrice,
+            seller: m.npcName,
+            buyer: m.npcName,
+            avatar: m.npcAvatar || '🤝'
+          };
+          this.startListingNegotiation(listing, m);
+        });
+
+        cardEl.querySelector('[data-action="cancel"]')?.addEventListener('click', () => {
+          if (window.sounds?.playClick) window.sounds.playClick();
+          this.cancelScheduledMeetup(m.id);
+        });
+
+        container.appendChild(cardEl);
+      });
+    }
+
+    startListingNegotiation(item, existingMeetup = null) {
+      const isBuy = item.type === 'buy';
+      const npcId = item.npcId || 'maya';
+      const home = this.getNpcHomeMeetupInfo(npcId);
+      const npcName = (isBuy ? item.seller : item.buyer) || home.name;
+      const basePrice = item.basePrice || (isBuy ? item.price : item.payout) || 5.0;
+      const venueType = existingMeetup?.venueType || 'landmark';
+      const landmarkId = existingMeetup?.landmarkId || 'park_fountain';
+      const curDay = this.dayNumber || 1;
+      const scheduledDay = existingMeetup
+        ? Math.max(curDay, existingMeetup.scheduledDay || curDay)
+        : curDay;
+
+      const venuePrice = this.getVenueAdjustedPrice(basePrice, venueType);
+      const bounds = this.computeNegotiationBounds(item.type, venuePrice);
+      const target = this.getMeetupTargetDetails(npcId, venueType, landmarkId);
+
+      const openingMsg = existingMeetup
+        ? `Rescheduling ${item.cardName} (${this.formatMoney(existingMeetup.agreedPrice)})! Pick a new day or switch places for an updated quote.`
+        : (isBuy
+            ? `Hey! My ${item.cardName} runs cheaper at my house (-20%), fair at landmarks, or +25% if I come to yours. Right now at ${target.shortVenueLabel} I'm asking ${this.formatMoney(bounds.openOffer)} — what's your offer?`
+            : `I'd love your ${item.cardName}! Coming to your house pays +25% extra convenience bonus, or less at my house (-20%). Starting at ${this.formatMoney(bounds.openOffer)} for ${target.shortVenueLabel} — counter me!`);
+
+      this.activeNegotiation = {
+        listingId: item.id,
+        type: item.type,
+        beastId: item.beastId,
+        cardName: item.cardName,
+        element: item.element || '',
+        npcId,
+        npcName,
+        npcAvatar: item.avatar || home.avatar,
+        basePrice,
+        venueType,
+        landmarkId,
+        scheduledDay,
+        venuePrice: bounds.venuePrice,
+        npcCurrentOffer: bounds.openOffer,
+        npcFairTarget: bounds.fairTarget,
+        npcWalkAwayLimit: bounds.walkLimit,
+        playerDraftOffer: bounds.draftOffer,
+        patience: 3,
+        maxPatience: 3,
+        status: existingMeetup ? 'agreed' : 'negotiating',
+        agreedPrice: existingMeetup ? existingMeetup.agreedPrice : null,
+        editingMeetupId: existingMeetup?.id || null,
+        messages: [{ sender: 'npc', text: openingMsg }]
+      };
+      this.renderMarketApp();
+    }
+
+    recalculateNegotiationForVenue(neg) {
+      const venuePrice = this.getVenueAdjustedPrice(neg.basePrice, neg.venueType);
+      const bounds = this.computeNegotiationBounds(neg.type, venuePrice);
+      const target = this.getMeetupTargetDetails(neg.npcId, neg.venueType, neg.landmarkId);
+
+      neg.venuePrice = bounds.venuePrice;
+      neg.npcCurrentOffer = bounds.openOffer;
+      neg.npcFairTarget = bounds.fairTarget;
+      neg.npcWalkAwayLimit = bounds.walkLimit;
+      neg.playerDraftOffer = bounds.draftOffer;
+      neg.patience = neg.maxPatience;
+      neg.status = 'negotiating';
+      neg.agreedPrice = null;
+
+      const reason = neg.venueType === 'player_house'
+        ? (neg.type === 'buy' ? 'Travel to your house adds +25%' : 'Delivery bonus to your house adds +25%')
+        : (neg.venueType === 'npc_house'
+            ? 'Meeting at my house cuts the rate by -20%'
+            : `Meeting at ${target.shortVenueLabel} keeps the standard landmark price`);
+      neg.messages.push({
+        sender: 'npc',
+        text: `${reason}! Updated opening offer for ${target.shortVenueLabel}: ${this.formatMoney(neg.npcCurrentOffer)}.`
+      });
+    }
+
+    renderNegotiationPane() {
+      const pane = document.getElementById('phone-negotiate-pane');
+      const neg = this.activeNegotiation;
+      if (!pane || !neg) return;
+
+      const curDay = this.dayNumber || 1;
+      const isBuy = neg.type === 'buy';
+      const npcPrice = this.getVenueAdjustedPrice(neg.basePrice, 'npc_house');
+      const landmarkPrice = this.getVenueAdjustedPrice(neg.basePrice, 'landmark');
+      const homePrice = this.getVenueAdjustedPrice(neg.basePrice, 'player_house');
+      const target = this.getMeetupTargetDetails(neg.npcId, neg.venueType, neg.landmarkId);
+      const dayMeta = this.getDayMetadataForNumber(neg.scheduledDay);
+
+      const dayButtonsHtml = [0, 1, 2, 3].map(offset => {
+        const d = this.getDayMetadataForNumber(curDay + offset);
+        const active = neg.scheduledDay === d.dayNum ? 'active' : '';
+        return `
+          <button class="phone-neg-pill ${active}" data-day="${d.dayNum}">
+            <span>${d.icon} ${d.relLabel}</span>
+            <small>Day ${d.dayNum} (${d.shortDay})</small>
+          </button>
+        `;
+      }).join('');
+
+      const landmarksHtml = neg.venueType === 'landmark'
+        ? `<div class="phone-neg-grid-3">${this.getKnownMarketLandmarks().map(lm => `
+            <button class="phone-neg-pill ${neg.landmarkId === lm.id ? 'active' : ''}" data-landmark="${lm.id}">
+              <span>${lm.icon} ${lm.shortName}</span>
+            </button>
+          `).join('')}</div>`
+        : '';
+
+      const statusHeaderText = neg.status === 'agreed'
+        ? `🤝 Agreed: ${this.formatMoney(neg.agreedPrice)}`
+        : (neg.status === 'walked'
+            ? '💔 Walked Away'
+            : `Patience ${'❤️'.repeat(neg.patience)}${'🖤'.repeat(Math.max(0, neg.maxPatience - neg.patience))}`);
+
+      const chatHtml = neg.messages.map(msg =>
+        `<div class="phone-neg-bubble ${msg.sender}">${msg.text}</div>`
+      ).join('');
+
+      let controlsHtml = '';
+      if (neg.status === 'negotiating') {
+        const lowFundsNote = isBuy && (this.gold || 0) < neg.npcCurrentOffer
+          ? `<div style="font-size:10px; color:#fbbf24;">Note: Wallet is ${this.formatMoney(this.gold || 0)} — you can schedule ahead and earn cash before meetup day!</div>`
+          : '';
+        controlsHtml = `
+          ${lowFundsNote}
+          <div class="phone-neg-offer-row">
+            <button class="phone-neg-step-btn" data-step="-0.50">-$0.50</button>
+            <button class="phone-neg-step-btn" data-step="-0.25">-$0.25</button>
+            <input type="number" step="0.25" min="0.50" id="market-counter-input" class="phone-neg-input" value="${Number(neg.playerDraftOffer).toFixed(2)}" />
+            <button class="phone-neg-step-btn" data-step="0.25">+$0.25</button>
+            <button class="phone-neg-step-btn" data-step="0.50">+$0.50</button>
+          </div>
+          <div class="phone-neg-actions-row">
+            <button class="phone-neg-btn-send" id="btn-neg-send">💬 Counter Offer</button>
+            <button class="phone-neg-btn-accept" id="btn-neg-accept">🤝 Accept ${this.formatMoney(neg.npcCurrentOffer)}</button>
+          </div>
+        `;
+      } else if (neg.status === 'agreed') {
+        controlsHtml = `
+          <div style="font-size:11px; color:#86efac; background:rgba(16,185,129,0.12); border:1px solid rgba(52,211,153,0.4); border-radius:8px; padding:6px 8px;">
+            ✅ Deal Agreed at <b>${this.formatMoney(neg.agreedPrice)}</b> for <b>${dayMeta.relLabel} (Day ${dayMeta.dayNum})</b> @ <b>${target.shortVenueLabel}</b>!
+          </div>
+          <div class="phone-neg-actions-row">
+            <button class="phone-neg-btn-accept" id="btn-neg-confirm">📅 Confirm &amp; Schedule Meetup</button>
+            <button class="phone-neg-btn-cancel" id="btn-neg-reopen">💬 Re-negotiate</button>
+          </div>
+        `;
+      } else {
+        controlsHtml = `
+          <div style="font-size:10.5px; color:#fca5a5;">${neg.npcName} paused talks. Switch meeting place or reopen negotiation!</div>
+          <div class="phone-neg-actions-row">
+            <button class="phone-neg-btn-send" id="btn-neg-reopen">🔄 Re-open Negotiation</button>
+          </div>
+        `;
+      }
+
+      pane.innerHTML = `
+        <div class="phone-neg-section">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:6px;">
+            <button class="phone-neg-step-btn" id="btn-neg-back">‹ Listings</button>
+            <div style="text-align:right;">
+              <div style="font-size:12px; font-weight:800; color:#f8fafc;">${isBuy ? '🛒 Buy' : '💰 Sell'} ${neg.cardName}</div>
+              <div style="font-size:10px; color:#94a3b8;">${neg.npcAvatar} with ${neg.npcName} • Base ${this.formatMoney(neg.basePrice)}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="phone-neg-section">
+          <div class="phone-neg-label"><span>1. Choose Meetup Day</span><span>Day ${neg.scheduledDay} (${dayMeta.shortDay})</span></div>
+          <div class="phone-neg-grid-4">${dayButtonsHtml}</div>
+        </div>
+
+        <div class="phone-neg-section">
+          <div class="phone-neg-label"><span>2. Choose Meetup Place</span><span>${this.formatMoney(neg.venuePrice)} base</span></div>
+          <div class="phone-neg-grid-3">
+            <button class="phone-neg-pill ${neg.venueType === 'npc_house' ? 'active' : ''}" data-venue="npc_house">
+              <span>🏠 NPC's House</span>
+              <small class="cheaper">${this.formatMoney(npcPrice)} (Less)</small>
+            </button>
+            <button class="phone-neg-pill ${neg.venueType === 'landmark' ? 'active' : ''}" data-venue="landmark">
+              <span>⛲ Landmark</span>
+              <small>${this.formatMoney(landmarkPrice)} (Base)</small>
+            </button>
+            <button class="phone-neg-pill ${neg.venueType === 'player_house' ? 'active' : ''}" data-venue="player_house">
+              <span>🏡 Your House</span>
+              <small class="pricier">${this.formatMoney(homePrice)} (More)</small>
+            </button>
+          </div>
+          ${landmarksHtml}
+        </div>
+
+        <div class="phone-neg-section">
+          <div class="phone-neg-label">
+            <span>3. Price Negotiation</span>
+            <span>${statusHeaderText}</span>
+          </div>
+          <div class="phone-neg-chat" id="phone-neg-chat-log">${chatHtml}</div>
+          ${controlsHtml}
+        </div>
+      `;
+
+      const chatLog = pane.querySelector('#phone-neg-chat-log');
+      if (chatLog) chatLog.scrollTop = chatLog.scrollHeight;
+
+      pane.querySelector('#btn-neg-back')?.addEventListener('click', () => {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        this.activeNegotiation = null;
+        this.renderMarketApp();
+      });
+
+      pane.querySelectorAll('[data-day]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          if (window.sounds?.playClick) window.sounds.playClick();
+          neg.scheduledDay = Number(btn.getAttribute('data-day'));
+          this.renderNegotiationPane();
+        });
+      });
+
+      pane.querySelectorAll('[data-venue]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          if (window.sounds?.playClick) window.sounds.playClick();
+          const newVenue = btn.getAttribute('data-venue');
+          if (newVenue !== neg.venueType) {
+            neg.venueType = newVenue;
+            this.recalculateNegotiationForVenue(neg);
+            this.renderNegotiationPane();
+          }
+        });
+      });
+
+      pane.querySelectorAll('[data-landmark]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          if (window.sounds?.playClick) window.sounds.playClick();
+          const newLm = btn.getAttribute('data-landmark');
+          if (newLm !== neg.landmarkId) {
+            neg.landmarkId = newLm;
+            this.recalculateNegotiationForVenue(neg);
+            this.renderNegotiationPane();
+          }
+        });
+      });
+
+      const counterInput = pane.querySelector('#market-counter-input');
+      if (counterInput) {
+        counterInput.addEventListener('input', () => {
+          const val = parseFloat(counterInput.value);
+          if (!Number.isNaN(val)) neg.playerDraftOffer = val;
+        });
+        counterInput.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            this.submitNegotiationOffer(counterInput.value);
+          } else if (e.key === 'Escape') {
+            counterInput.blur();
+          }
+        });
+      }
+
+      pane.querySelectorAll('[data-step]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          if (window.sounds?.playClick) window.sounds.playClick();
+          const delta = parseFloat(btn.getAttribute('data-step')) || 0;
+          const curVal = counterInput ? parseFloat(counterInput.value) : neg.playerDraftOffer;
+          const next = Math.max(0.50, Math.round(((Number.isNaN(curVal) ? neg.playerDraftOffer : curVal) + delta) * 100) / 100);
+          neg.playerDraftOffer = next;
+          if (counterInput) counterInput.value = next.toFixed(2);
+        });
+      });
+
+      pane.querySelector('#btn-neg-send')?.addEventListener('click', () => {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        const raw = counterInput ? counterInput.value : neg.playerDraftOffer;
+        this.submitNegotiationOffer(raw);
+      });
+
+      pane.querySelector('#btn-neg-accept')?.addEventListener('click', () => {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        this.acceptCurrentNegotiationPrice();
+      });
+
+      pane.querySelector('#btn-neg-confirm')?.addEventListener('click', () => {
+        if (window.sounds?.playCollect) window.sounds.playCollect();
+        this.confirmAgreedMeetup();
+      });
+
+      pane.querySelector('#btn-neg-reopen')?.addEventListener('click', () => {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        this.recalculateNegotiationForVenue(neg);
+        this.renderNegotiationPane();
+      });
+    }
+
+    submitNegotiationOffer(rawOffer) {
+      const neg = this.activeNegotiation;
+      if (!neg || neg.status !== 'negotiating') return;
+
+      const parsed = parseFloat(rawOffer);
+      if (Number.isNaN(parsed) || parsed <= 0) {
+        if (window.sounds?.playError) window.sounds.playError();
+        return;
+      }
+
+      const offer = this.roundQuarterDollar(parsed);
+      neg.playerDraftOffer = offer;
+      const target = this.getMeetupTargetDetails(neg.npcId, neg.venueType, neg.landmarkId);
+      neg.messages.push({ sender: 'player', text: `How about ${this.formatMoney(offer)}?` });
+
+      const isBuy = neg.type === 'buy';
+      const immediateOk = isBuy ? (offer >= neg.npcCurrentOffer) : (offer <= neg.npcCurrentOffer);
+      const fairOk = isBuy ? (offer >= neg.npcFairTarget) : (offer <= neg.npcFairTarget);
+      const withinWalkLimit = isBuy ? (offer >= neg.npcWalkAwayLimit) : (offer <= neg.npcWalkAwayLimit);
+
+      if (immediateOk || fairOk) {
+        neg.agreedPrice = offer;
+        neg.status = 'agreed';
+        neg.messages.push({
+          sender: 'npc',
+          text: `Deal! ${this.formatMoney(offer)} sounds great for ${target.shortVenueLabel}. Confirm the meetup when ready!`
+        });
+        if (window.sounds?.playCollect) window.sounds.playCollect();
+      } else if (withinWalkLimit) {
+        let counter;
+        if (isBuy) {
+          counter = Math.min(this.roundQuarterDollar((neg.npcCurrentOffer + offer) / 2), neg.npcCurrentOffer - 0.25);
+          counter = Math.max(offer, neg.npcWalkAwayLimit, counter);
         } else {
-          tabBuy.classList.remove('active');
-          tabSell.classList.add('active');
+          counter = Math.max(this.roundQuarterDollar((neg.npcCurrentOffer + offer) / 2), neg.npcCurrentOffer + 0.25);
+          counter = Math.min(offer, neg.npcWalkAwayLimit, counter);
+        }
+        if (counter === offer) {
+          neg.agreedPrice = offer;
+          neg.status = 'agreed';
+          neg.messages.push({
+            sender: 'npc',
+            text: `You drive a smart bargain — let's lock in ${this.formatMoney(offer)} at ${target.shortVenueLabel}!`
+          });
+          if (window.sounds?.playCollect) window.sounds.playCollect();
+        } else {
+          neg.npcCurrentOffer = counter;
+          neg.playerDraftOffer = counter;
+          neg.messages.push({
+            sender: 'npc',
+            text: `${this.formatMoney(offer)} is a bit tight — can you meet me at ${this.formatMoney(counter)}?`
+          });
+        }
+      } else {
+        neg.patience = Math.max(0, neg.patience - 1);
+        if (window.sounds?.playError) window.sounds.playError();
+        if (neg.patience <= 0) {
+          neg.status = 'walked';
+          neg.messages.push({
+            sender: 'npc',
+            text: `No can do — ${this.formatMoney(offer)} is too far from my ${this.formatMoney(neg.npcWalkAwayLimit)} limit. Try switching places or reopen talks!`
+          });
+        } else {
+          const nudge = isBuy
+            ? Math.max(neg.npcWalkAwayLimit, this.roundQuarterDollar(neg.npcCurrentOffer - 0.25))
+            : Math.min(neg.npcWalkAwayLimit, this.roundQuarterDollar(neg.npcCurrentOffer + 0.25));
+          neg.npcCurrentOffer = nudge;
+          neg.playerDraftOffer = nudge;
+          neg.messages.push({
+            sender: 'npc',
+            text: `Whoa, ${this.formatMoney(offer)} won't cover it! Best I can move to is ${this.formatMoney(nudge)} (${neg.patience}/${neg.maxPatience} patience left).`
+          });
         }
       }
 
-      const allListings = this.getMarketplaceListings();
-      const currentListings = allListings.filter(l => l.type === this.marketTab);
-      container.innerHTML = '';
-
-      if (this.marketTab === 'buy') {
-        currentListings.forEach(item => {
-          const isBought = this.phoneListingsBought.includes(item.id);
-          const cardEl = document.createElement('div');
-          cardEl.className = 'phone-listing-card';
-          cardEl.innerHTML = `
-            <div class="phone-listing-top">
-              <div>
-                <span class="phone-listing-card-title">${item.cardName}</span>
-                <div style="font-size: 10px; color: #94a3b8;">${item.element}</div>
-              </div>
-              <span class="phone-listing-price">${this.formatMoney(item.price)}</span>
-            </div>
-            <div class="phone-listing-seller">
-              ${item.avatar} Seller: <strong>${item.seller}</strong>
-            </div>
-            <div class="phone-listing-meetup">
-              📍 Meetup Location: <b>${item.location}</b>
-            </div>
-            <div style="font-size: 11px; color: #cbd5e1; font-style: italic;">"${item.note}"</div>
-            <button class="phone-listing-btn" id="btn-buy-${item.id}" ${isBought ? 'disabled style="background: #334155; border-color: #475569; cursor: default;"' : ''}>
-              ${isBought ? '✅ Purchased & Collected' : `🤝 Meet & Buy (${this.formatMoney(item.price)})`}
-            </button>
-          `;
-          const buyBtn = cardEl.querySelector(`#btn-buy-${item.id}`);
-          if (buyBtn && !isBought) {
-            buyBtn.addEventListener('click', () => {
-              this.buyMarketListing(item);
-            });
-          }
-          container.appendChild(cardEl);
-        });
-      } else {
-        // Player Sell Offers
-        currentListings.forEach(item => {
-          const isSold = this.phoneListingsSold.includes(item.id);
-          // Check if player has this card in inventory
-          const playerHasCard = (this.inventory || []).some(i => i.beastId === item.beastId && (i.qty || 1) > 0);
-
-          const cardEl = document.createElement('div');
-          cardEl.className = 'phone-listing-card';
-          cardEl.innerHTML = `
-            <div class="phone-listing-top">
-              <div>
-                <span class="phone-listing-card-title">${item.cardName}</span>
-                <div style="font-size: 10px; color: #94a3b8;">Wanted by ${item.buyer}</div>
-              </div>
-              <span class="phone-listing-price">+${this.formatMoney(item.payout)} Payout</span>
-            </div>
-            <div class="phone-listing-seller">
-              ${item.avatar} Buyer: <strong>${item.buyer}</strong>
-            </div>
-            <div class="phone-listing-meetup">
-              📍 Meetup Location: <b>${item.location}</b>
-            </div>
-            <div style="font-size: 11px; color: #cbd5e1; font-style: italic;">"${item.note}"</div>
-            <button class="phone-listing-btn" id="btn-sell-${item.id}" ${isSold || !playerHasCard ? 'disabled style="background: #334155; border-color: #475569; cursor: default;"' : 'style="background: linear-gradient(135deg, #059669, #10b981); border-color: #34d399;"'}>
-              ${isSold ? '✅ Fulfilled & Paid' : (playerHasCard ? `💰 Sell to ${item.buyer} (+${this.formatMoney(item.payout)})` : '❌ Card Not in Backpack')}
-            </button>
-          `;
-          const sellBtn = cardEl.querySelector(`#btn-sell-${item.id}`);
-          if (sellBtn && !isSold && playerHasCard) {
-            sellBtn.addEventListener('click', () => {
-              this.sellMarketListing(item);
-            });
-          }
-          container.appendChild(cardEl);
-        });
-      }
+      this.renderNegotiationPane();
     }
 
-    buyMarketListing(item) {
-      if ((this.gold || 0) < item.price) {
-        if (window.sounds?.playError) window.sounds.playError();
-        alert(`You don't have enough cash! (Wallet: ${this.formatMoney(this.gold || 0)}). Earn cash from Mom, duel Pluto, or sell extra cards first.`);
-        return;
-      }
-      this.gold = Math.round(((this.gold || 0) - item.price) * 100) / 100;
-      this.phoneListingsBought.push(item.id);
-
-      // Add purchased card to inventory
-      const cardDef = this.getBaseSetCardCatalog().find(c => c.beastId === item.beastId);
-      if (cardDef) {
-        this.addCardToInventory(cardDef);
-      }
-
+    acceptCurrentNegotiationPrice() {
+      const neg = this.activeNegotiation;
+      if (!neg || neg.status !== 'negotiating') return;
+      neg.agreedPrice = neg.npcCurrentOffer;
+      neg.status = 'agreed';
+      neg.messages.push({
+        sender: 'player',
+        text: `Agreed — ${this.formatMoney(neg.agreedPrice)} works for me!`
+      });
+      neg.messages.push({
+        sender: 'npc',
+        text: `Awesome! Click Confirm & Schedule Meetup below and I'll see you on Day ${neg.scheduledDay}!`
+      });
       if (window.sounds?.playCollect) window.sounds.playCollect();
-      this.saveWorldData(this.draftAppearance);
-      this.updateHUDSaveInfo();
-      this.renderMarketApp();
-      this.showAutosaveIndicator(`🤝 Meetup Complete: Received ${item.cardName} from ${item.seller}!`);
+      this.renderNegotiationPane();
     }
 
-    sellMarketListing(item) {
-      const idx = (this.inventory || []).findIndex(i => i.beastId === item.beastId && (i.qty || 1) > 0);
+    confirmAgreedMeetup() {
+      const neg = this.activeNegotiation;
+      if (!neg || neg.status !== 'agreed' || !neg.agreedPrice) return;
+
+      const target = this.getMeetupTargetDetails(neg.npcId, neg.venueType, neg.landmarkId);
+      const meetupRecord = {
+        id: neg.editingMeetupId || `mp_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        listingId: neg.listingId,
+        type: neg.type,
+        beastId: neg.beastId,
+        cardName: neg.cardName,
+        npcId: neg.npcId,
+        npcName: neg.npcName,
+        npcAvatar: neg.npcAvatar,
+        basePrice: neg.basePrice,
+        agreedPrice: neg.agreedPrice,
+        scheduledDay: neg.scheduledDay,
+        venueType: target.venueType,
+        landmarkId: target.landmarkId,
+        area: target.area,
+        venueLabel: target.venueLabel,
+        shortVenueLabel: target.shortVenueLabel,
+        meetupPos: target.meetupPos,
+        status: 'scheduled'
+      };
+
+      this.scheduledMeetups = (this.scheduledMeetups || []).filter(
+        m => !(m.status === 'scheduled' && (m.id === meetupRecord.id || m.listingId === neg.listingId))
+      );
+      this.scheduledMeetups.push(meetupRecord);
+      this.activeNegotiation = null;
+      this.marketTab = 'meetups';
+
+      this.saveWorldData(this.draftAppearance);
+      this.updateMeetupBadgeCount();
+      this.renderMarketApp();
+      this.showAutosaveIndicator(
+        `📅 Meetup Scheduled: ${meetupRecord.npcName} @ ${meetupRecord.shortVenueLabel} on Day ${meetupRecord.scheduledDay}!`
+      );
+    }
+
+    cancelScheduledMeetup(meetupId) {
+      this.scheduledMeetups = (this.scheduledMeetups || []).filter(m => m.id !== meetupId);
+      this.saveWorldData(this.draftAppearance);
+      this.updateMeetupBadgeCount();
+      this.renderMarketApp();
+      this.showAutosaveIndicator('❌ Card Meetup Cancelled');
+    }
+
+    completeScheduledMeetup(meetupId) {
+      const m = (this.scheduledMeetups || []).find(item => item.id === meetupId && item.status === 'scheduled');
+      if (!m) {
+        return { ok: false, message: 'That card meetup was already completed or cancelled.' };
+      }
+
+      if (m.type === 'buy') {
+        if ((this.gold || 0) < m.agreedPrice) {
+          if (window.sounds?.playError) window.sounds.playError();
+          return {
+            ok: false,
+            message: `You need ${this.formatMoney(m.agreedPrice)} to complete this trade (Wallet: ${this.formatMoney(this.gold || 0)}). Earn more cash and talk to me again today!`
+          };
+        }
+        this.gold = Math.round(((this.gold || 0) - m.agreedPrice) * 100) / 100;
+        if (!this.phoneListingsBought.includes(m.listingId)) {
+          this.phoneListingsBought.push(m.listingId);
+        }
+        const cardDef = this.getBaseSetCardCatalog().find(c => c.beastId === m.beastId);
+        if (cardDef) {
+          this.addCardToInventory(cardDef);
+        }
+        m.status = 'completed';
+        if (window.sounds?.playCollect) window.sounds.playCollect();
+        this.saveWorldData(this.draftAppearance);
+        this.updateHUDSaveInfo();
+        this.renderInventoryModal?.();
+        this.updateMeetupBadgeCount();
+        this.showAutosaveIndicator(`🤝 Bought ${m.cardName} from ${m.npcName} for ${this.formatMoney(m.agreedPrice)}!`);
+        const buySuccessMsg = `Awesome meeting up at ${m.shortVenueLabel}! Here's your <b>${m.cardName}</b> card for <b>${this.formatMoney(m.agreedPrice)}</b>!`;
+        this._justCompletedMeetup = { meetup: m, message: buySuccessMsg };
+        return {
+          ok: true,
+          message: buySuccessMsg
+        };
+      }
+
+      // Sell completion
+      const idx = (this.inventory || []).findIndex(i => i.beastId === m.beastId && (i.qty || 1) > 0);
       if (idx === -1) {
         if (window.sounds?.playError) window.sounds.playError();
-        alert(`You don't have a ${item.cardName} in your backpack to sell!`);
-        return;
+        return {
+          ok: false,
+          message: `Wait — you don't have a <b>${m.cardName}</b> in your backpack right now! Move it out of your card binder first if it's slotted there.`
+        };
       }
-
-      // Remove 1 card or decrement quantity
       const invItem = this.inventory[idx];
       if (invItem.qty && invItem.qty > 1) {
         invItem.qty--;
       } else {
         this.inventory.splice(idx, 1);
       }
-
-      this.gold = Math.round(((this.gold || 0) + item.payout) * 100) / 100;
-      this.phoneListingsSold.push(item.id);
-
+      this.gold = Math.round(((this.gold || 0) + m.agreedPrice) * 100) / 100;
+      if (!this.phoneListingsSold.includes(m.listingId)) {
+        this.phoneListingsSold.push(m.listingId);
+      }
+      m.status = 'completed';
       if (window.sounds?.playCoins) window.sounds.playCoins();
       this.saveWorldData(this.draftAppearance);
       this.updateHUDSaveInfo();
-      this.renderMarketApp();
-      this.showAutosaveIndicator(`💰 Sold ${item.cardName} to ${item.buyer} for +${this.formatMoney(item.payout)}!`);
+      this.renderInventoryModal?.();
+      this.updateMeetupBadgeCount();
+      this.showAutosaveIndicator(`💰 Sold ${m.cardName} to ${m.npcName} for +${this.formatMoney(m.agreedPrice)}!`);
+      const sellSuccessMsg = `Thanks for meeting at ${m.shortVenueLabel}! Here's your <b>+${this.formatMoney(m.agreedPrice)}</b> for the <b>${m.cardName}</b> card!`;
+      this._justCompletedMeetup = { meetup: m, message: sellSuccessMsg };
+      return {
+        ok: true,
+        message: sellSuccessMsg
+      };
     }
 
     renderShopFeedApp() {
@@ -1500,6 +2329,15 @@
       this.autoSave('item_added');
       this.renderInventoryModal();
       this.updateHUDSaveInfo();
+    }
+
+    addCardToInventory(cardDef) {
+      if (!cardDef) return;
+      this.addInventoryItem({
+        ...cardDef,
+        type: 'mythos_card',
+        qty: 1
+      });
     }
 
     getTotalInventoryCount() {
@@ -3333,6 +4171,14 @@
       this.inventory = [];
       this.selectedInventoryItemId = null;
       this.binderSlots = Array(9).fill(null);
+      this.phoneListingsBought = [];
+      this.phoneListingsSold = [];
+      this.scheduledMeetups = [];
+      this.registeredTournaments = [];
+      this.phoneChatHistories = {};
+      this.activeNegotiation = null;
+      this.phoneUnreadShop = true;
+      this.updateMeetupBadgeCount?.();
       this.npcs = [this.createFriendNpc(this.friendName)];
       this.saveWorldData(this.draftAppearance);
       this.renderInventoryModal();
@@ -3526,7 +4372,9 @@
 
     isNpc(interactable) {
       if (!interactable) return false;
+      if (interactable.isMeetupVisitor) return true;
       const id = interactable.id;
+      if (typeof id === 'string' && id.startsWith('meetup_')) return true;
       const friend = this.getFriendNpc();
       return id === 'friend' || id === 'best_friend' || id === 'friend_duel' || id === 'mom' || id === 'shopkeeper' || id === 'pluto' || id === 'nova' || id === 'silas' || id === 'maya' || id === 'chloe' || id === 'rowan' || id === 'jasper' || interactable === friend || interactable === this.shopkeeperNpc || interactable === this.plutoNpc || interactable === this.novaNpc || interactable === this.silasNpc || interactable === this.mayaNpc || interactable === this.chloeNpc || interactable === this.rowanNpc || interactable === this.jasperNpc;
     }
@@ -3555,6 +4403,7 @@
 
     closeDialogue() {
       this.activeDialogueNpc = null;
+      this._justCompletedMeetup = null;
       this.clearPendingBattleResults();
       if (this.storyState === 'intro_bored') {
         this.storyState = 'intro_waiting';
@@ -3820,6 +4669,167 @@
       }
     }
 
+    getMeetupChoiceObjectsForNpc(npcId, area, dialogueNpcId = npcId) {
+      if (this.storyState !== 'free_roam') {
+        return { choices: [], keySuffix: '', greetingOverride: null };
+      }
+      const curDay = this.dayNumber || 1;
+      const todayMeetups = this.getScheduledMeetupsForNpc(npcId, area, curDay);
+      const otherDayMeetups = (this.scheduledMeetups || []).filter(m =>
+        m.status === 'scheduled' &&
+        m.npcId === npcId &&
+        m.area === area &&
+        m.scheduledDay !== curDay
+      );
+
+      const justDone = this._justCompletedMeetup;
+      const showDoneBanner = !!(
+        justDone &&
+        justDone.meetup.npcId === npcId &&
+        justDone.meetup.area === area &&
+        (this.activeDialogueNpc === dialogueNpcId || this.activeDialogueNpc === npcId)
+      );
+
+      const choices = todayMeetups.map(m => {
+        const isBuy = m.type === 'buy';
+        const priceTxt = `${isBuy ? '' : '+'}${this.formatMoney(m.agreedPrice)}`;
+        return {
+          label: `🤝 Meetup Trade: ${isBuy ? 'Buy' : 'Sell'} ${m.cardName} (${priceTxt})`,
+          primary: true,
+          onSelect: (el) => {
+            const res = this.completeScheduledMeetup(m.id);
+            if (res.ok) {
+              this.lastShopPromptKey = null;
+              this.updateFreeRoamPrompt();
+            } else {
+              el.innerHTML = `<b>${m.npcName}:</b> "${res.message}"`;
+            }
+          }
+        };
+      });
+
+      otherDayMeetups.forEach(m => {
+        const isFuture = m.scheduledDay > curDay;
+        choices.push({
+          label: `📅 Meetup Info: ${m.cardName} (${isFuture ? `Day ${m.scheduledDay}` : `Missed Day ${m.scheduledDay}`})`,
+          onSelect: (el) => {
+            el.innerHTML = isFuture
+              ? `<b>${m.npcName}:</b> "Our meetup for <b>${m.cardName}</b> is set for <b>Day ${m.scheduledDay}</b>! Come back on Day ${m.scheduledDay} (or reschedule in Card Exchange)."`
+              : `<b>${m.npcName}:</b> "Looks like Day ${m.scheduledDay} already passed! Open Card Exchange -> Meetups on your phone to reschedule our <b>${m.cardName}</b> trade."`;
+          }
+        });
+      });
+
+      const keySuffix = [
+        todayMeetups.map(m => m.id).join(','),
+        otherDayMeetups.map(m => `${m.id}:${m.scheduledDay}`).join(','),
+        showDoneBanner ? `done_${justDone.meetup.id}` : ''
+      ].filter(Boolean).join('|');
+
+      return {
+        choices,
+        keySuffix: keySuffix ? `_${keySuffix}` : '',
+        greetingOverride: showDoneBanner
+          ? `<b>${justDone.meetup.npcName}:</b> "${justDone.message}"`
+          : null
+      };
+    }
+
+    tryRenderMeetupVisitorPrompt({ maxDist = 1.85, topPosition = false } = {}) {
+      if (this.storyState !== 'free_roam') return false;
+      const justDone = this._justCompletedMeetup;
+      if (justDone && justDone.meetup.area === this.currentArea && justDone.meetup.venueType !== 'npc_house') {
+        const jm = justDone.meetup;
+        const pos = jm.meetupPos || this.getMeetupTargetDetails(jm.npcId, jm.venueType, jm.landmarkId).meetupPos;
+        if (pos && Math.hypot(this.player.x - pos.x, this.player.y - pos.y) < maxDist + 0.4) {
+          const visitorNpc = {
+            id: `meetup_${jm.id}`,
+            meetupId: jm.id,
+            isMeetupVisitor: true,
+            npcId: jm.npcId,
+            name: jm.npcName,
+            x: pos.x,
+            y: pos.y
+          };
+          this.nearInteractable = visitorNpc;
+          this.renderNpcChoicePrompt({
+            npcId: visitorNpc.id,
+            promptKey: `meetup_done_${jm.id}`,
+            speakerText: `🤝 ${jm.npcName.toUpperCase()} — MEETUP COMPLETE`,
+            talkPromptHtml: `<b>${jm.npcName}</b> finished trading with you.`,
+            greetingHtml: `<b>${jm.npcName}:</b> "${justDone.message}"`,
+            choices: [
+              {
+                label: `👋 "Thanks, ${jm.npcName}! See you around!"`,
+                primary: true,
+                onSelect: () => this.closeDialogue()
+              }
+            ],
+            challengeText: '👋 Leave (Space)',
+            topPosition
+          });
+          return true;
+        }
+        this._justCompletedMeetup = null;
+      }
+
+      const visitors = this.getActiveMeetupVisitorsForArea(this.currentArea);
+      if (visitors.length === 0) return false;
+      let nearest = null;
+      let bestDist = Infinity;
+      visitors.forEach(v => {
+        const d = Math.hypot(this.player.x - v.x, this.player.y - v.y);
+        if (d < bestDist) {
+          bestDist = d;
+          nearest = v;
+        }
+      });
+      if (!nearest || bestDist >= maxDist) return false;
+
+      const m = nearest.meetup;
+      const isBuy = m.type === 'buy';
+      const priceTxt = `${isBuy ? '' : '+'}${this.formatMoney(m.agreedPrice)}`;
+      this.nearInteractable = nearest;
+
+      const venueFlavor = m.venueType === 'player_house'
+        ? `<b>${m.npcName}:</b> "Nice living room! Glad I could bring the meetup right to your house (+25% delivery rate)!"`
+        : `<b>${m.npcName}:</b> "${m.shortVenueLabel} is such a clean meeting spot! Right on time for Day ${m.scheduledDay}."`;
+
+      this.renderNpcChoicePrompt({
+        npcId: nearest.id,
+        promptKey: `meetup_vis_${m.id}_${this.gold}_${(this.inventory || []).length}`,
+        speakerText: `🤝 ${m.npcName.toUpperCase()} — SCHEDULED MEETUP`,
+        talkPromptHtml: `Press <b>Talk</b> to meet <b>${m.npcName}</b> for your <b>${m.cardName}</b> exchange (${priceTxt}).`,
+        greetingHtml: `<b>${m.npcName}:</b> "Hey! Thanks for meeting at <b>${m.shortVenueLabel}</b> on Day ${m.scheduledDay}! Ready to ${isBuy ? 'buy' : 'sell'} <b>${m.cardName}</b> for <b>${priceTxt}</b>?"`,
+        choices: [
+          {
+            label: `1. 🤝 Complete Exchange: ${isBuy ? 'Buy' : 'Sell'} ${m.cardName} (${priceTxt})`,
+            primary: true,
+            onSelect: (el) => {
+              const res = this.completeScheduledMeetup(m.id);
+              if (res.ok) {
+                this.lastShopPromptKey = null;
+                this.updateFreeRoamPrompt();
+              } else {
+                el.innerHTML = `<b>${m.npcName}:</b> "${res.message}"`;
+              }
+            }
+          },
+          {
+            label: `2. 💬 "Appreciate you meeting at ${m.shortVenueLabel}!"`,
+            onSelect: (el) => { el.innerHTML = venueFlavor; }
+          },
+          {
+            label: `3. 👋 "Catch you in a sec! (Leave)"`,
+            onSelect: () => this.closeDialogue()
+          }
+        ],
+        challengeText: `🤝 Complete Trade (${priceTxt})`,
+        topPosition
+      });
+      return true;
+    }
+
     updateFreeRoamPrompt() {
       if (this.storyState !== 'free_roam' && this.storyState !== 'intro_waiting') return;
       const bar = document.getElementById('ow-dialog-bar');
@@ -3851,7 +4861,9 @@
         const distToTv = Math.hypot(this.player.x - 7.3, this.player.y - 4.3);
         const distToBed = Math.hypot(this.player.x - 3.2, this.player.y - 5.3);
 
-        if (mom && distToMom < 1.85) {
+        if (this.tryRenderMeetupVisitorPrompt({ maxDist: 1.85, topPosition: this.player.y >= 7.5 })) {
+          // Handled player-house meetup visitor
+        } else if (mom && distToMom < 1.85) {
           this.nearInteractable = mom;
           const momChoices = !this.hasMomBoosterMoney
             ? [
@@ -4059,15 +5071,16 @@
                 }
               ];
 
+          const friendMeetup = this.getMeetupChoiceObjectsForNpc('friend', 'friend_interior', 'friend_duel');
           this.renderNpcChoicePrompt({
             npcId: 'friend_duel',
-            promptKey: `friend_interior_duel_${fName}_${pName}_${this.hasOldCardBinder}`,
+            promptKey: `friend_interior_duel_${fName}_${pName}_${this.hasOldCardBinder}${friendMeetup.keySuffix}`,
             speakerText: `⚔️ ${fName.toUpperCase()} — READY TO BATTLE AT ${fName.toUpperCase()}'S HOUSE!`,
             talkPromptHtml: `Press <b>Talk</b> to speak with <b>${fName}</b> at the duel table.`,
-            greetingHtml: this.hasOldCardBinder
+            greetingHtml: friendMeetup.greetingOverride || (this.hasOldCardBinder
               ? `<b>${fName}:</b> "That was such an awesome match, ${pName}! How is that <b>Old Card Binder</b> working out for you? You can slot up to 9 cards into it, inspect their standalone art, and test new builds in battle! Want a rematch?!"`
-              : `<b>${fName}:</b> "Welcome to my house, ${pName}!! I've got the <b>MYTHOS Tabletop Arena</b> set up right here on my table with the 3 cards I pulled from Leo's pack! Defeat me and I'll give you my brother's <b>Old Card Binder</b>! Ready to battle?!"`,
-            choices: friendDuelChoices,
+              : `<b>${fName}:</b> "Welcome to my house, ${pName}!! I've got the <b>MYTHOS Tabletop Arena</b> set up right here on my table with the 3 cards I pulled from Leo's pack! Defeat me and I'll give you my brother's <b>Old Card Binder</b>! Ready to battle?!"`),
+            choices: [...friendMeetup.choices, ...friendDuelChoices],
             challengeText: this.hasOldCardBinder ? `⚔️ Rematch ${fName}!` : `⚔️ Battle ${fName}!`
           });
         } else {
@@ -4086,7 +5099,9 @@
         const distToCase = Math.hypot(this.player.x - 11.8, this.player.y - 5.2);
         const distToTable = Math.hypot(this.player.x - 10.6, this.player.y - 7.1);
 
-        if (distToKeeper < 1.9) {
+        if (this.tryRenderMeetupVisitorPrompt({ maxDist: 1.75 })) {
+          // Handled Leo's Card Shop landmark meetup visitor
+        } else if (distToKeeper < 1.9) {
           this.nearInteractable = { id: 'shopkeeper', name: 'Shopkeeper Leo' };
           if (!this.hasBoughtCardShopPacks) {
             const hasMoney = (this.gold || 0) >= 20;
@@ -4290,13 +5305,14 @@
                 ? `<b>Pluto:</b> "Good game, ${pName}! My deck held strong this round! That'll be <b>-$1.00</b> for the wager! Ready to try again and win your dollar back?"`
                 : `<b>Pluto:</b> "Hey ${pName}! Welcome to my room! I was just researching Mythos card deck strategies on my computer. How about a tabletop duel right now? Let's set the stakes to <b>$1.00</b> — if you win you get <b>$1.00</b>, and if you lose you lose <b>$1.00</b>! Ready?"`);
 
+          const plutoMeetup = this.getMeetupChoiceObjectsForNpc('pluto', 'pluto_interior');
           this.renderNpcChoicePrompt({
             npcId: 'pluto',
-            promptKey: `pluto_dialogue_${pName}_${hasDollar}_${this.hasBoughtBase2v2Map}_${res || 'none'}`,
+            promptKey: `pluto_dialogue_${pName}_${hasDollar}_${this.hasBoughtBase2v2Map}_${res || 'none'}${plutoMeetup.keySuffix}`,
             speakerText: '💻 PLUTO — BEDROOM COMPUTER DESK',
             talkPromptHtml: `Press <b>Talk</b> to speak with <b>Pluto</b> at his computer desk.`,
-            greetingHtml: plutoGreeting,
-            choices: plutoChoices,
+            greetingHtml: plutoMeetup.greetingOverride || plutoGreeting,
+            choices: [...plutoMeetup.choices, ...plutoChoices],
             challengeText: hasDollar ? '⚔️ Battle Pluto ($1.00 Wager)' : '💵 Need $1.00 Wager'
           });
         } else if (distToBed < 1.5) {
@@ -4342,15 +5358,17 @@
         if (distToNova < 1.95 || distToScope < 1.4) {
           this.nearInteractable = nova;
           const nRes = this.novaBattleResult;
+          const novaMeetup = this.getMeetupChoiceObjectsForNpc('nova', 'nova_interior');
           this.renderNpcChoicePrompt({
             npcId: 'nova',
-            promptKey: `nova_dialogue_${pName}_${nRes || 'none'}`,
+            promptKey: `nova_dialogue_${pName}_${nRes || 'none'}${novaMeetup.keySuffix}`,
             speakerText: '✨ NOVA — STARGAZER OBSERVATORY',
             talkPromptHtml: `Press <b>Talk</b> to speak with <b>Nova</b> by her brass telescope and star charts.`,
-            greetingHtml: nRes === 'won'
+            greetingHtml: novaMeetup.greetingOverride || (nRes === 'won'
               ? `<b>Nova:</b> "Written in the constellations, ${pName}! What brilliant celestial synergy! Here is your <b>$2.00</b> stargazer prize and my <b>Pegasus (Holo)</b> card! Care for another match?"`
-              : `<b>Nova:</b> "Greetings, ${pName}! Welcome to my observatory home! The celestial currents are shimmering today. Are you here to study constellation card affinities, or would you like to test your deck in a <b>MYTHOS Tabletop Battle</b>?"`,
+              : `<b>Nova:</b> "Greetings, ${pName}! Welcome to my observatory home! The celestial currents are shimmering today. Are you here to study constellation card affinities, or would you like to test your deck in a <b>MYTHOS Tabletop Battle</b>?"`),
             choices: [
+              ...novaMeetup.choices,
               {
                 label: `1. ⚔️ "Let's battle in MYTHOS, Nova!"`,
                 primary: true,
@@ -4419,15 +5437,17 @@
         if (distToSilas < 1.95 || distToFire < 1.4) {
           this.nearInteractable = silas;
           const sRes = this.silasBattleResult;
+          const silasMeetup = this.getMeetupChoiceObjectsForNpc('silas', 'silas_interior');
           this.renderNpcChoicePrompt({
             npcId: 'silas',
-            promptKey: `silas_dialogue_${pName}_${sRes || 'none'}`,
+            promptKey: `silas_dialogue_${pName}_${sRes || 'none'}${silasMeetup.keySuffix}`,
             speakerText: '🪵 SILAS — CRAFTSMAN WORKSHOP',
             talkPromptHtml: `Press <b>Talk</b> to speak with <b>Silas</b> by his stone hearth and artisan woodworking bench.`,
-            greetingHtml: sRes === 'won'
+            greetingHtml: silasMeetup.greetingOverride || (sRes === 'won'
               ? `<b>Silas:</b> "Fine craftsmanship in your maneuvering, ${pName}! Take this <b>$2.00</b> purse and my reinforced <b>Dwarf Warden (Holo)</b> card! Up for another round?"`
-              : `<b>Silas:</b> "Welcome, ${pName}! Come warm yourself by the hearth. I've been hand-planing cedar deck boxes all morning. How's your collection looking? Up for a friendly <b>MYTHOS Tabletop Battle</b>?"`,
+              : `<b>Silas:</b> "Welcome, ${pName}! Come warm yourself by the hearth. I've been hand-planing cedar deck boxes all morning. How's your collection looking? Up for a friendly <b>MYTHOS Tabletop Battle</b>?"`),
             choices: [
+              ...silasMeetup.choices,
               {
                 label: `1. ⚔️ "Let's battle in MYTHOS, Silas!"`,
                 primary: true,
@@ -4496,15 +5516,17 @@
         if (distToMaya < 1.95 || distToGreenhouse < 1.4) {
           this.nearInteractable = maya;
           const mRes = this.mayaBattleResult;
+          const mayaMeetup = this.getMeetupChoiceObjectsForNpc('maya', 'maya_interior');
           this.renderNpcChoicePrompt({
             npcId: 'maya',
-            promptKey: `maya_dialogue_${pName}_${mRes || 'none'}`,
+            promptKey: `maya_dialogue_${pName}_${mRes || 'none'}${mayaMeetup.keySuffix}`,
             speakerText: '🌿 MAYA — BOTANICAL CONSERVATORY',
             talkPromptHtml: `Press <b>Talk</b> to speak with <b>Maya</b> in her sunlit greenhouse conservatory.`,
-            greetingHtml: mRes === 'won'
+            greetingHtml: mayaMeetup.greetingOverride || (mRes === 'won'
               ? `<b>Maya:</b> "Breathtaking tactics, ${pName}! Your beasts flourished like a wild canopy! Come back to the greenhouse anytime for another friendly match!"`
-              : `<b>Maya:</b> "Hey ${pName}! Take a deep breath—fresh sweet jasmine and fern moss! I've been cultivating botanicals that nourish earth Beasts. Are you ready for a spirited <b>MYTHOS Tabletop Battle</b>?"`,
+              : `<b>Maya:</b> "Hey ${pName}! Take a deep breath—fresh sweet jasmine and fern moss! I've been cultivating botanicals that nourish earth Beasts. Are you ready for a spirited <b>MYTHOS Tabletop Battle</b>?"`),
             choices: [
+              ...mayaMeetup.choices,
               {
                 label: `1. ⚔️ "Let's battle in MYTHOS, Maya!"`,
                 primary: true,
@@ -4722,6 +5744,8 @@
 
         if ((this.activeDialogueNpc === 'friend' || this.activeDialogueNpc === fName) && distFriendExt < 1.55) {
           renderExtFriend();
+        } else if (this.tryRenderMeetupVisitorPrompt({ maxDist: 1.75 })) {
+          // Handled landmark meetup visitor
         } else if (distCardShopDoor < 1.15) {
           showStaticPrompt(
             'card_shop',
@@ -4908,6 +5932,9 @@
           bar.classList.add('hidden');
         }
       }
+      if (bar.classList.contains('hidden')) {
+        this._justCompletedMeetup = null;
+      }
       this.updateMobileActionLabel();
     }
 
@@ -4954,6 +5981,23 @@
       }
 
       if (active) {
+        if (typeof active === 'string' && active.startsWith('meetup_')) {
+          if (this._justCompletedMeetup && this._justCompletedMeetup.meetup.area === this.currentArea) {
+            if (window.sounds?.playClick) window.sounds.playClick();
+            this.closeDialogue();
+            return true;
+          }
+          const meetupId = active.slice('meetup_'.length);
+          const res = this.completeScheduledMeetup(meetupId);
+          if (res.ok) {
+            this.lastShopPromptKey = null;
+            this.updateFreeRoamPrompt();
+          } else {
+            const textEl = document.getElementById('ow-dialog-text');
+            if (textEl) textEl.innerHTML = res.message;
+          }
+          return true;
+        }
         if (active === 'chloe' || active === 'rowan' || active === 'jasper') {
           if (window.sounds?.playClick) window.sounds.playClick();
           this.closeDialogue();
@@ -5084,7 +6128,11 @@
         btnA?.classList.add('dialogue-mode');
         const active = this.activeDialogueNpc;
         const friendName = this.getFriendNpc()?.name || this.friendName || 'Mike';
-        if (active === 'chloe' || active === 'rowan' || active === 'jasper' || ((active === 'friend' || active === friendName) && this.currentArea !== 'friend_interior')) {
+        if (typeof active === 'string' && active.startsWith('meetup_')) {
+          labelEl.textContent = (this._justCompletedMeetup && this._justCompletedMeetup.meetup.area === this.currentArea)
+            ? 'LEAVE 👋'
+            : 'TRADE 🤝';
+        } else if (active === 'chloe' || active === 'rowan' || active === 'jasper' || ((active === 'friend' || active === friendName) && this.currentArea !== 'friend_interior')) {
           labelEl.textContent = 'LEAVE 👋';
         } else if (active === 'mom') {
           labelEl.textContent = this.hasMomBoosterMoney ? 'LEAVE 👋' : 'ASK 💵';
@@ -5505,6 +6553,7 @@
         phoneChatHistories: this.phoneChatHistories || {},
         phoneListingsBought: this.phoneListingsBought || [],
         phoneListingsSold: this.phoneListingsSold || [],
+        scheduledMeetups: this.scheduledMeetups || [],
         registeredTournaments: this.registeredTournaments || [],
         updatedAt: new Date().toLocaleDateString()
       };
@@ -5737,12 +6786,20 @@
       // Market Tab Switches
       document.getElementById('tab-market-buy')?.addEventListener('click', () => {
         if (window.sounds?.playClick) window.sounds.playClick();
+        this.activeNegotiation = null;
         this.marketTab = 'buy';
         this.renderMarketApp();
       });
       document.getElementById('tab-market-sell')?.addEventListener('click', () => {
         if (window.sounds?.playClick) window.sounds.playClick();
+        this.activeNegotiation = null;
         this.marketTab = 'sell';
+        this.renderMarketApp();
+      });
+      document.getElementById('tab-market-meetups')?.addEventListener('click', () => {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        this.activeNegotiation = null;
+        this.marketTab = 'meetups';
         this.renderMarketApp();
       });
 
@@ -5997,6 +7054,7 @@
       this.hasOldCardBinder = this.worldSave.hasOldCardBinder ?? false;
       this.dayNumber = this.worldSave.dayNumber || 1;
       this.friendDefeatedRewardPending = false;
+      this.initPhoneSystem();
 
       // Restore Inventory & Reactive Proxy
       const rawInv = Array.isArray(this.worldSave.inventory) ? [...this.worldSave.inventory] : [];
@@ -6039,6 +7097,8 @@
         if (this.hasMomBoosterMoney) {
           mom.x = 14.8;
           mom.y = 6.2;
+          mom.targetX = null;
+          mom.targetY = null;
           mom.dir = 'left';
           mom.bubble = '🍳';
 
@@ -6519,7 +7579,15 @@
             tapRadius: 1.5,
             reachRadius: 2.0,
             yOffset: 0
-          }
+          },
+          ...this.getActiveMeetupVisitorsForArea().map(v => ({
+            active: true,
+            npc: v,
+            talkId: v.id,
+            tapRadius: 1.5,
+            reachRadius: 2.0,
+            yOffset: 0
+          }))
         ];
 
         for (const entry of clickableNpcs) {
@@ -13381,6 +14449,8 @@
           mom = this.createMomNpc();
           mom.x = 14.8;
           mom.y = 6.2;
+          mom.targetX = null;
+          mom.targetY = null;
           mom.dir = 'left';
           mom.bubble = '🍳';
           this.npcs.push(mom);
@@ -13441,6 +14511,17 @@
         if (!this.jasperNpc) this.jasperNpc = this.createJasperNpc();
         active.push(this.chloeNpc, this.rowanNpc, this.jasperNpc);
       }
+
+      const curDay = this.dayNumber || 1;
+      active.forEach(npc => {
+        const homeId = (npc.id === 'best_friend' || npc.id === 'friend') ? 'friend' : npc.id;
+        if (['friend', 'pluto', 'nova', 'silas', 'maya'].includes(homeId)) {
+          if (npc._baseBubble === undefined) npc._baseBubble = npc.bubble;
+          const hasMeetupToday = this.storyState === 'free_roam' && this.getScheduledMeetupsForNpc(homeId, area, curDay).length > 0;
+          npc.bubble = hasMeetupToday ? '🤝' : npc._baseBubble;
+        }
+      });
+      active.push(...this.getActiveMeetupVisitorsForArea(area));
 
       return active;
     }

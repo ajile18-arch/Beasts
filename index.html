@@ -1241,24 +1241,30 @@
             </div>
           </div>
 
-          <!-- App View 2: Mythos Marketplace (Card Listings) -->
+          <!-- App View 2: Mythos Marketplace (Card Listings, Negotiation & Meetups) -->
           <div class="phone-view phone-sub-view hidden" id="phone-view-market">
             <div class="phone-app-header">
               <button class="phone-back-btn" id="btn-market-back">‹ Home</button>
               <div class="phone-app-title">🤝 Card Exchange</div>
               <span style="width: 36px;"></span>
             </div>
-            <div class="phone-market-tabs">
-              <button class="phone-market-tab-btn active" id="tab-market-buy">🛒 Buy Offers</button>
-              <button class="phone-market-tab-btn" id="tab-market-sell">💰 Sell Offers</button>
+            <div id="phone-market-browse" class="phone-market-browse">
+              <div class="phone-market-tabs">
+                <button class="phone-market-tab-btn active" id="tab-market-buy">🛒 Buy</button>
+                <button class="phone-market-tab-btn" id="tab-market-sell">💰 Sell</button>
+                <button class="phone-market-tab-btn" id="tab-market-meetups">📅 Meetups <span id="market-meetups-count"></span></button>
+              </div>
+              <div class="phone-market-body">
+                <div class="phone-market-notice" id="phone-market-notice">
+                  Arrange a day, venue (NPC's house = lower price, your house = higher price), and negotiate before meeting in town!
+                </div>
+                <div class="phone-listings-container" id="phone-listings-container">
+                  <!-- Dynamically rendered card listings & scheduled meetups -->
+                </div>
+              </div>
             </div>
-            <div class="phone-market-body">
-              <div class="phone-market-notice">
-                Arrange direct town meetups to trade, buy rare singles, or sell your duplicates for cash!
-              </div>
-              <div class="phone-listings-container" id="phone-listings-container">
-                <!-- Dynamically rendered card listings -->
-              </div>
+            <div id="phone-negotiate-pane" class="phone-negotiate-pane hidden">
+              <!-- Dynamically rendered negotiation & meetup arrangement panel -->
             </div>
           </div>
 
