@@ -3,16 +3,16 @@
    ========================================================================== */
 
 :root {
-  --bg-dark: #0d0f14;
-  --bg-surface: #161822;
-  --bg-card: #1d202e;
-  --bg-hover: #262a3d;
-  --border-bronze: #8f7447;
-  --border-gold: #d4af37;
-  --border-light: rgba(212, 175, 55, 0.25);
-  --text-main: #f0e6d2;
-  --text-muted: #a19d92;
-  --text-gold: #f3cf7a;
+  --bg-dark: #160f0b;
+  --bg-surface: #281b14;
+  --bg-card: #36241b;
+  --bg-hover: #473023;
+  --border-bronze: #a37640;
+  --border-gold: #dfb456;
+  --border-light: rgba(223, 180, 86, 0.30);
+  --text-main: #f7edda;
+  --text-muted: #c2ae8e;
+  --text-gold: #fae088;
 
   --color-team1: #38bdf8;
   --color-team1-glow: rgba(56, 189, 248, 0.4);
@@ -40,7 +40,7 @@
 
 body {
   background-color: var(--bg-dark);
-  background-image: radial-gradient(circle at 50% 20%, #1c2030 0%, #0c0e13 85%);
+  background-image: radial-gradient(circle at 50% 20%, #2d1e15 0%, #140d09 85%);
   color: var(--text-main);
   font-family: var(--font-body);
   height: 100vh;
@@ -62,13 +62,13 @@ body {
    -------------------------------------------------------------------------- */
 .game-header {
   height: 64px;
-  background: linear-gradient(180deg, #181b26 0%, #10121a 100%);
+  background: linear-gradient(180deg, #332217 0%, #20150e 100%);
   border-bottom: 2px solid var(--border-bronze);
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 24px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+  box-shadow: inset 0 1px 0 rgba(255, 232, 185, 0.14), 0 4px 20px rgba(0, 0, 0, 0.65);
   z-index: 20;
 }
 
@@ -111,6 +111,31 @@ body {
   letter-spacing: 2px;
   text-transform: uppercase;
   color: var(--text-muted);
+}
+
+@media (max-width: 1440px) {
+  .game-header {
+    padding: 0 12px;
+    gap: 8px;
+  }
+  .game-title {
+    font-size: 21px;
+    letter-spacing: 2.5px;
+  }
+  .subtitle {
+    display: none;
+  }
+  .overworld-toolbar {
+    gap: 4px;
+    padding: 3px 6px;
+  }
+  .overworld-toolbar .ui-btn {
+    padding: 4px 6px !important;
+    font-size: 10.5px !important;
+  }
+  .ow-location-pill {
+    display: none;
+  }
 }
 
 .turn-tracker {
@@ -262,19 +287,19 @@ body {
 }
 
 .side-panel {
-  background: var(--bg-surface);
-  border: 1px solid var(--border-bronze);
+  background: linear-gradient(180deg, #2d1e15 0%, #211610 100%);
+  border: 2px solid var(--border-bronze);
   border-radius: 10px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  box-shadow: inset 0 1px 0 rgba(255, 232, 185, 0.10), 0 8px 24px rgba(0, 0, 0, 0.55);
 }
 
 .panel-header {
   padding: 12px 16px;
-  background: linear-gradient(180deg, #222533 0%, #181a24 100%);
-  border-bottom: 1px solid var(--border-light);
+  background: linear-gradient(180deg, #3e291d 0%, #2a1b13 100%);
+  border-bottom: 1.5px solid var(--border-bronze);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -1213,15 +1238,15 @@ body {
    Action Command Dock
    -------------------------------------------------------------------------- */
 .action-dock {
-  background: var(--bg-surface);
-  border: 1px solid var(--border-bronze);
-  border-radius: 10px;
+  background: linear-gradient(180deg, #322117 0%, #20150e 100%);
+  border: 2px solid var(--border-bronze);
+  border-radius: 12px;
   padding: 10px 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 224, 150, 0.14);
   min-height: 72px;
 }
 
@@ -1535,7 +1560,7 @@ body {
 }
 
 .modal-card {
-  background: var(--bg-surface);
+  background: linear-gradient(180deg, #322117 0%, #20150e 100%);
   border: 2px solid var(--border-gold);
   border-radius: 16px;
   padding: 40px;
@@ -1545,7 +1570,7 @@ body {
   align-items: center;
   gap: 16px;
   max-width: 420px;
-  box-shadow: 0 0 50px rgba(212, 175, 55, 0.5);
+  box-shadow: 0 0 50px rgba(212, 162, 74, 0.45), inset 0 1px 0 rgba(255, 224, 150, 0.16);
   animation: modalPop 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28);
 }
 
@@ -1575,7 +1600,7 @@ body {
    Interactive Team Draft System
    -------------------------------------------------------------------------- */
 .draft-modal-dialog {
-  background: linear-gradient(180deg, #1c1f2e 0%, #11131a 100%);
+  background: linear-gradient(180deg, #322117 0%, #20150e 100%);
   border: 2px solid var(--border-gold);
   border-radius: 16px;
   padding: 24px;
@@ -2563,36 +2588,55 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
 .overworld-toolbar {
   display: flex;
   align-items: center;
-  gap: 12px;
-  background: rgba(0, 0, 0, 0.35);
-  border: 1px solid var(--border-light);
-  padding: 5px 12px;
+  gap: 5px;
+  background: rgba(24, 15, 10, 0.72);
+  border: 1px solid var(--border-bronze);
+  padding: 4px 8px;
   border-radius: 8px;
+  flex-wrap: nowrap;
+  overflow: hidden;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.overworld-toolbar .ui-btn {
+  padding: 4px 7px !important;
+  font-size: 11px !important;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .ow-location-pill {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   color: var(--text-gold);
-  letter-spacing: 0.5px;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  flex-shrink: 1;
 }
 
 .ow-select {
-  background: var(--bg-panel);
+  background: #2b1d14;
   color: var(--text-main);
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--border-bronze);
   border-radius: 6px;
-  padding: 3px 8px;
-  font-size: 12px;
+  padding: 3px 6px;
+  font-size: 11px;
   font-weight: 600;
   cursor: pointer;
+  flex-shrink: 0;
 }
 
 .ow-check-label {
   display: flex;
   align-items: center;
-  gap: 5px;
-  font-size: 12px;
+  gap: 3px;
+  font-size: 11px;
+  white-space: nowrap;
+  flex-shrink: 0;
   color: var(--text-muted);
   cursor: pointer;
   user-select: none;
@@ -2609,7 +2653,7 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   justify-content: center;
   padding: 14px;
   overflow: hidden;
-  background: radial-gradient(circle at center, #141824 0%, #090b10 100%);
+  background: radial-gradient(circle at center, #2d1f16 0%, #130d09 100%);
 }
 
 .overworld-stage {
@@ -2620,11 +2664,11 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   justify-content: center;
   max-width: 100%;
   max-height: 100%;
-  border: 2px solid var(--border-gold);
+  border: 3px solid var(--border-gold);
   border-radius: 12px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.85), 0 0 25px rgba(212, 175, 55, 0.2);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.85), inset 0 0 0 2px #4a2f1d, 0 0 22px rgba(223, 180, 86, 0.2);
   overflow: hidden;
-  background: #000;
+  background: #140e0a;
 }
 
 #overworld-canvas {
@@ -2635,30 +2679,48 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   height: auto;
   aspect-ratio: 16 / 12;
   cursor: pointer;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
 }
 
-/* Pokémon / Stardew Style Bottom Dialogue & 3-Choice Box */
+#cc-preview-canvas,
+#continue-avatar-canvas {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+/* Warm Illustrated RPG Parchment & Carved Walnut Dialogue Box */
+@keyframes owDialogPop {
+  0% { transform: translateX(-50%) scale(0.92); opacity: 0; }
+  100% { transform: translateX(-50%) scale(1); opacity: 1; }
+}
+
 .ow-dialog-bar {
   position: absolute;
   bottom: 34px;
   left: 50%;
   transform: translateX(-50%);
   width: min(94%, 780px);
-  background: rgba(14, 18, 28, 0.96);
-  border: 3px solid var(--border-gold);
+  background: linear-gradient(180deg, #faf0dc 0%, #eeddbb 100%);
+  border: 3px solid #4a2e1a;
   border-radius: 12px;
   padding: 14px 18px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.92), 0 0 20px rgba(212, 175, 55, 0.25);
-  animation: modalPop 0.2s ease-out;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.82), 0 0 0 2px var(--border-gold), inset 0 2px 0 rgba(255, 255, 255, 0.68);
+  animation: owDialogPop 0.2s ease-out;
 }
 
 .ow-dialog-bar.tv-broadcast {
+  background: linear-gradient(180deg, #1b2436 0%, #111827 100%);
   border-color: #38bdf8;
   box-shadow: 0 10px 35px rgba(0, 0, 0, 0.92), 0 0 30px rgba(56, 189, 248, 0.55);
+}
+
+.ow-dialog-bar.tv-broadcast .ow-dialog-text {
+  color: #f8fafc;
 }
 
 .ow-dialog-bar.top-position {
@@ -2679,11 +2741,11 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 1px;
-  padding: 2px 10px;
-  border-radius: 20px;
-  background: rgba(212, 175, 55, 0.2);
+  padding: 3px 10px;
+  border-radius: 18px;
+  background: #3d2516;
   color: var(--text-gold);
-  border: 1px solid var(--border-gold);
+  border: 1.5px solid #9e7340;
 }
 
 .ow-speaker-tag.tv {
@@ -2694,8 +2756,8 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
 
 .ow-dialog-text {
   font-size: 14px;
-  font-weight: 600;
-  color: #f8fafc;
+  font-weight: 700;
+  color: #2b180c;
   line-height: 1.45;
 }
 
@@ -2708,19 +2770,19 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
 
 .ow-choice-btn {
   text-align: left;
-  background: rgba(255, 255, 255, 0.06);
-  color: #f8fafc;
-  border: 1px solid rgba(212, 175, 55, 0.4);
+  background: rgba(92, 56, 30, 0.10);
+  color: #2c190d;
+  border: 1.5px solid #8a623a;
   border-radius: 8px;
   padding: 8px 12px;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .ow-choice-btn:hover {
-  background: rgba(212, 175, 55, 0.22);
+  background: #3d2516;
   border-color: var(--border-gold);
   color: var(--text-gold);
   transform: translateX(4px);
@@ -3025,7 +3087,7 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
    Mythos Intro Title Screen & World Save Slot
    -------------------------------------------------------------------------- */
 .intro-modal-card {
-  background: linear-gradient(180deg, #1b2234 0%, #0f131d 100%);
+  background: linear-gradient(180deg, #322117 0%, #1d130d 100%);
   border: 2px solid var(--border-gold);
   border-radius: 18px;
   padding: 36px 40px;
@@ -3036,7 +3098,7 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   flex-direction: column;
   align-items: center;
   gap: 14px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.95), 0 0 40px rgba(212, 175, 55, 0.3);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.95), 0 0 40px rgba(212, 162, 74, 0.35), inset 0 1px 0 rgba(255, 224, 150, 0.16);
   animation: modalPop 0.35s cubic-bezier(0.18, 0.89, 0.32, 1.28);
 }
 
@@ -3113,7 +3175,7 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
    Stardew Valley / Pokémon Style Character Creator Modal
    -------------------------------------------------------------------------- */
 .creator-modal-dialog {
-  background: linear-gradient(180deg, #1b2234 0%, #10141f 100%);
+  background: linear-gradient(180deg, #322117 0%, #20150e 100%);
   border: 2px solid var(--border-gold);
   border-radius: 16px;
   padding: 22px 26px;
@@ -3124,7 +3186,7 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.95), 0 0 35px rgba(212, 175, 55, 0.25);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.95), 0 0 35px rgba(212, 162, 74, 0.35), inset 0 1px 0 rgba(255, 224, 150, 0.16);
   animation: modalPop 0.3s ease-out;
 }
 
@@ -5917,6 +5979,7 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
     bottom: auto !important;
     left: auto !important;
     transform: none !important;
+    animation: modalPop 0.2s ease-out;
     width: 100% !important;
     max-width: 100% !important;
     background: linear-gradient(180deg, rgba(18, 24, 38, 0.98), rgba(10, 14, 24, 0.99)) !important;
@@ -6691,18 +6754,18 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
    Mythos Coin Toss Modal & 3D Celestial Coin Flip
    -------------------------------------------------------------------------- */
 .coin-toss-card {
-  background: linear-gradient(165deg, rgba(15, 23, 42, 0.96) 0%, rgba(30, 41, 59, 0.98) 100%);
-  border: 2px solid #d4af37;
+  background: linear-gradient(165deg, rgba(50, 33, 23, 0.98) 0%, rgba(26, 17, 11, 0.99) 100%);
+  border: 2px solid var(--border-gold);
   border-radius: 20px;
-  padding: 26px 30px;
+  padding: 26px 28px;
   text-align: center;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 14px;
-  max-width: 480px;
+  max-width: 540px;
   width: 92vw;
-  box-shadow: 0 0 50px rgba(0, 0, 0, 0.92), 0 0 35px rgba(212, 175, 55, 0.4);
+  box-shadow: 0 0 50px rgba(0, 0, 0, 0.92), 0 0 35px rgba(212, 162, 74, 0.35), inset 0 1px 0 rgba(255, 224, 150, 0.16);
   animation: modalPop 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28);
   position: relative;
   overflow: hidden;
@@ -6768,13 +6831,14 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
 
 .coin-team-card {
   flex: 1;
+  min-width: 0;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 14px;
+  gap: 8px;
+  padding: 10px 12px;
   border-radius: 12px;
-  background: rgba(15, 23, 42, 0.7);
-  border: 1.5px solid rgba(255, 255, 255, 0.12);
+  background: rgba(24, 15, 10, 0.72);
+  border: 1.5px solid rgba(255, 224, 150, 0.16);
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 

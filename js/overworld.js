@@ -24,12 +24,17 @@
       this.ROWS = 12;
       this.EXT_ROWS = 18.5; // Expanded South Block neighborhood height
       this.EXT_COLS = 26;   // Expanded East Central Park width (1664px)
+      this.EXT_ZOOM = 1.28; // Cozy RPG closer framing (~12.5x9.4 tiles) matching illustrated pixel style
       this.cameraY = 0;
       this.cameraX = 0;
       this.cobblePattern = null;
+      this.woodFloorPattern = null;
+      this.owSprites = {};
       this.LOGICAL_TILE = 32;
       this.RENDER_SCALE = 2;
       this.TILE = this.LOGICAL_TILE * this.RENDER_SCALE; // 64px
+
+      this.loadOverworldSprites();
 
       this.settings = {
         timeOfDay: 'day',
@@ -332,7 +337,7 @@
         id: 'shopkeeper',
         name: 'Shopkeeper Leo',
         x: 6.2,
-        y: 4.55,
+        y: 4.42,
         dir: 'down',
         walkTick: 0,
         bubble: '🤩',
@@ -1925,7 +1930,7 @@
           statusEl.textContent = `⚠️ You don't have enough money! A Base Card Pack costs ${this.formatMoney(cost)}.`;
           statusEl.className = 'shop-buy-status error';
         }
-        return;
+        return false;
       }
 
       if (window.sounds?.playVictory) {
@@ -1964,6 +1969,7 @@
         footerMsg.innerHTML = `🛒 Purchased 1x Base Card Pack for ${this.formatMoney(cost)}! Remaining Wallet: <b>${this.formatMoney(this.gold)}</b>`;
         footerMsg.className = 'shop-footer-hint highlight';
       }
+      return true;
     }
 
     buyBase2v2Map() {
@@ -3506,18 +3512,35 @@
       this.renderDialogueUI();
     }
 
+    getFriendNpc() {
+      return this.npcs.find(n => n.id === 'best_friend' || n.id === 'friend') || this.npcs[0];
+    }
+
+    clearPendingBattleResults() {
+      this.plutoBattleResult = null;
+      this.novaBattleResult = null;
+      this.silasBattleResult = null;
+      this.mayaBattleResult = null;
+      this._leoRecentPackPurchase = false;
+    }
+
     isNpc(interactable) {
       if (!interactable) return false;
       const id = interactable.id;
-      return id === 'friend' || id === 'best_friend' || id === 'friend_duel' || id === 'mom' || id === 'shopkeeper' || id === 'pluto' || id === 'nova' || id === 'silas' || id === 'maya' || id === 'chloe' || id === 'rowan' || id === 'jasper' || interactable === this.npcs[0] || interactable === this.shopkeeperNpc || interactable === this.plutoNpc || interactable === this.novaNpc || interactable === this.silasNpc || interactable === this.mayaNpc || interactable === this.chloeNpc || interactable === this.rowanNpc || interactable === this.jasperNpc;
+      const friend = this.getFriendNpc();
+      return id === 'friend' || id === 'best_friend' || id === 'friend_duel' || id === 'mom' || id === 'shopkeeper' || id === 'pluto' || id === 'nova' || id === 'silas' || id === 'maya' || id === 'chloe' || id === 'rowan' || id === 'jasper' || interactable === friend || interactable === this.shopkeeperNpc || interactable === this.plutoNpc || interactable === this.novaNpc || interactable === this.silasNpc || interactable === this.mayaNpc || interactable === this.chloeNpc || interactable === this.rowanNpc || interactable === this.jasperNpc;
     }
 
     startTalkingToNpc(npcId) {
       if (window.sounds?.playClick) window.sounds.playClick();
-      const actualId = (npcId === 'friend' || npcId === 'best_friend' || npcId === this.friendName || (this.npcs[0] && npcId === this.npcs[0].id))
+      const friend = this.getFriendNpc();
+      const actualId = (npcId === 'friend' || npcId === 'best_friend' || npcId === this.friendName || (friend && npcId === friend.id))
         ? (this.currentArea === 'friend_interior' ? 'friend_duel' : 'friend')
         : npcId;
 
+      if (this.activeDialogueNpc && this.activeDialogueNpc !== actualId) {
+        this.clearPendingBattleResults();
+      }
       this.activeDialogueNpc = actualId;
 
       if (this.storyState === 'intro_waiting' && (actualId === 'friend' || actualId === 'best_friend' || actualId === this.friendName)) {
@@ -3532,6 +3555,7 @@
 
     closeDialogue() {
       this.activeDialogueNpc = null;
+      this.clearPendingBattleResults();
       if (this.storyState === 'intro_bored') {
         this.storyState = 'intro_waiting';
       }
@@ -3550,7 +3574,7 @@
       if (!bar || !speakerEl || !textEl || !choicesEl || !nextBtn || !challengeBtn) return;
 
       bar.classList.remove('top-position');
-      const friendName = this.npcs[0].name;
+      const friendName = this.getFriendNpc()?.name || this.friendName || 'Mike';
       const playerName = this.draftAppearance?.name || 'Asher';
 
       if (this.storyState === 'intro_waiting') {
@@ -3734,6 +3758,68 @@
       this.updateMobileActionLabel();
     }
 
+    renderNpcChoicePrompt({
+      npcId,
+      altActiveIds = null,
+      promptKey,
+      speakerText,
+      speakerClass = 'ow-speaker-tag friend',
+      talkPromptHtml,
+      greetingHtml,
+      choices = [],
+      challengeText = '👋 Leave (Space)',
+      showChallenge = true,
+      topPosition = false
+    }) {
+      const bar = document.getElementById('ow-dialog-bar');
+      const speakerEl = document.getElementById('ow-speaker-tag');
+      const textEl = document.getElementById('ow-dialog-text');
+      const choicesEl = document.getElementById('ow-choices-container');
+      const challengeBtn = document.getElementById('ow-btn-challenge');
+      if (!bar || !speakerEl || !textEl || !choicesEl || !challengeBtn) return;
+
+      bar.classList.remove('hidden', 'tv-broadcast');
+      bar.classList.toggle('top-position', !!topPosition);
+      speakerEl.textContent = speakerText;
+      speakerEl.className = speakerClass;
+
+      const isActive = this.activeDialogueNpc === npcId
+        || (Array.isArray(altActiveIds) && altActiveIds.includes(this.activeDialogueNpc));
+
+      if (isActive) {
+        challengeBtn.classList.remove('ow-talk-btn');
+        if (this.lastShopPromptKey !== promptKey) {
+          this.lastShopPromptKey = promptKey;
+          choicesEl.innerHTML = '';
+          textEl.innerHTML = greetingHtml;
+          choices.forEach((choice) => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = `ow-choice-btn${choice.primary ? ' primary' : ''}`;
+            btn.innerHTML = choice.label;
+            btn.addEventListener('click', (ev) => {
+              ev.stopPropagation();
+              if (!choice.silentClick && window.sounds?.playClick) {
+                window.sounds.playClick();
+              }
+              if (choice.onSelect) choice.onSelect(textEl, btn);
+            });
+            choicesEl.appendChild(btn);
+          });
+        }
+        choicesEl.classList.toggle('hidden', choicesEl.children.length === 0);
+        challengeBtn.textContent = challengeText;
+        challengeBtn.classList.toggle('hidden', !showChallenge);
+      } else {
+        this.lastShopPromptKey = null;
+        choicesEl.classList.add('hidden');
+        textEl.innerHTML = talkPromptHtml;
+        challengeBtn.textContent = '💬 Talk (Space)';
+        challengeBtn.classList.add('ow-talk-btn');
+        challengeBtn.classList.remove('hidden');
+      }
+    }
+
     updateFreeRoamPrompt() {
       if (this.storyState !== 'free_roam' && this.storyState !== 'intro_waiting') return;
       const bar = document.getElementById('ow-dialog-bar');
@@ -3756,8 +3842,9 @@
       nextBtn?.classList.add('hidden');
 
       if (this.currentArea === 'interior') {
-        this.lastShopPromptKey = null;
-        const friend = this.npcs[0];
+        const friend = this.getFriendNpc();
+        const fName = friend?.name || this.friendName || 'Mike';
+        const pName = this.draftAppearance?.name || 'Asher';
         const mom = this.npcs.find(n => n.id === 'mom');
         const distToMom = mom ? Math.hypot(this.player.x - mom.x, this.player.y - mom.y) : 999;
         const distToFriend = (friend && !this.friendWaitingAtHouse) ? Math.hypot(this.player.x - friend.x, this.player.y - friend.y) : 999;
@@ -3766,63 +3853,128 @@
 
         if (mom && distToMom < 1.85) {
           this.nearInteractable = mom;
-          bar.classList.remove('hidden');
-          bar.classList.remove('tv-broadcast');
-          bar.classList.add('top-position');
-          speakerEl.textContent = '💼 MOM';
-          speakerEl.className = 'ow-speaker-tag friend';
+          const momChoices = !this.hasMomBoosterMoney
+            ? [
+                {
+                  label: `1. 💵 "Mom, could we get $25 for 2 MYTHOS Booster Packs?"`,
+                  primary: true,
+                  silentClick: true,
+                  onSelect: () => this.askMomForBoosterMoney()
+                },
+                {
+                  label: `2. 💼 "How was work today, Mom?"`,
+                  onSelect: (el) => {
+                    el.innerHTML = `<b>Mom:</b> "Busy as always, sweetheart! Coming home and seeing you and ${fName} so fired up makes it all worth it."`;
+                  }
+                },
+                {
+                  label: `3. 👋 "Talk to you in a sec, Mom! (Leave)"`,
+                  onSelect: () => this.closeDialogue()
+                }
+              ]
+            : [
+                {
+                  label: `1. 🗺️ "Which way is Leo's Card Shop again?"`,
+                  primary: true,
+                  onSelect: (el) => {
+                    el.innerHTML = `<b>Mom:</b> "Step out the front door, walk south down the road, and head east past the town square to <b>Leo's Card Shop</b>! With $25 you'll still have $5 left over!"`;
+                  }
+                },
+                {
+                  label: `2. 🍳 "What's cooking in the kitchen?"`,
+                  onSelect: (el) => {
+                    el.innerHTML = `<b>Mom:</b> "Fresh dinner prep! Come back inside and get some rest in your bed upstairs whenever you finish card hunting."`;
+                  }
+                },
+                {
+                  label: `3. 👋 "Thanks again, Mom! (Leave)"`,
+                  onSelect: () => this.closeDialogue()
+                }
+              ];
 
-          if (this.activeDialogueNpc === 'mom') {
-            challengeBtn.classList.remove('ow-talk-btn');
-            if (!this.hasMomBoosterMoney) {
-              textEl.textContent = `"Hey sweetheart! You and ${friend.name} look like you're about to burst with excitement. Did you want to ask me something?"`;
-              challengeBtn.textContent = '💵 Ask Mom for Booster Money ($25)';
-              challengeBtn.classList.remove('hidden');
-            } else if (this.hasOpenedStarterPack) {
-              textEl.textContent = `"You pulled 3 MYTHOS cards from Leo's Card Shop? Have fun battling ${friend.name} next door at his house!"`;
-              challengeBtn.classList.add('hidden');
-            } else {
-              textEl.textContent = `"Have fun at Leo's Card Shop down the road! You'll still have $5 left over after buying both booster packs with that $25!"`;
-              challengeBtn.classList.add('hidden');
-            }
-          } else {
-            textEl.innerHTML = `Press <b>Talk</b> to speak with <b>Mom</b>.`;
-            challengeBtn.textContent = '💬 Talk (Space)';
-            challengeBtn.classList.add('ow-talk-btn');
-            challengeBtn.classList.remove('hidden');
-          }
+          this.renderNpcChoicePrompt({
+            npcId: 'mom',
+            promptKey: `mom_interior_${pName}_${fName}_${this.hasMomBoosterMoney}_${this.hasOpenedStarterPack}`,
+            speakerText: '💼 MOM',
+            talkPromptHtml: `Press <b>Talk</b> to speak with <b>Mom</b>.`,
+            greetingHtml: !this.hasMomBoosterMoney
+              ? `<b>Mom:</b> "Hey sweetheart! You and ${fName} look like you're about to burst with excitement. Did you want to ask me something?"`
+              : (this.hasOpenedStarterPack
+                  ? `<b>Mom:</b> "You pulled 3 MYTHOS cards from Leo's Card Shop? Have fun battling ${fName} next door at his house!"`
+                  : `<b>Mom:</b> "Have fun at Leo's Card Shop down the road! You'll still have $5 left over after buying both booster packs with that $25!"`),
+            choices: momChoices,
+            challengeText: !this.hasMomBoosterMoney ? '💵 Ask Mom for Booster Money ($25)' : '👋 Leave (Space)',
+            topPosition: true
+          });
         } else if (distToFriend < 1.8) {
           this.nearInteractable = friend;
-          bar.classList.remove('hidden');
-          bar.classList.remove('tv-broadcast');
-          if (this.player.y >= 7.5 || friend.y >= 7.5) {
-            bar.classList.add('top-position');
-          }
-          speakerEl.textContent = friend.name.toUpperCase();
-          speakerEl.className = 'ow-speaker-tag friend';
-
           if (this.storyState === 'intro_waiting') {
-            textEl.innerHTML = `Press <b>Talk</b> to speak with <b>${friend.name}</b>.`;
-            challengeBtn.textContent = '💬 Talk (Space)';
-            challengeBtn.classList.add('ow-talk-btn');
-            challengeBtn.classList.remove('hidden');
-          } else if (this.activeDialogueNpc === 'friend' || this.activeDialogueNpc === friend.name) {
-            challengeBtn.classList.remove('ow-talk-btn');
-            if (!this.hasMomBoosterMoney) {
-              textEl.textContent = `"Dude, your Mom just got home from work! Go ask her if we can get enough money to buy 2 MYTHOS Booster Packs at Leo's Card Shop!"`;
-            } else if (this.hasOpenedStarterPack) {
-              textEl.textContent = `"We both pulled 3 awesome cards from Leo's Card Shop! Let's head next door to my house so we can battle!"`;
-            } else {
-              textEl.textContent = `"YES!! Your Mom gave us $25! That's enough for both $10 packs plus $5 left over! Let's head out the front door, walk south, and follow the road east to Leo's Card Shop!"`;
-            }
-            challengeBtn.classList.add('hidden');
+            this.renderNpcChoicePrompt({
+              npcId: 'friend',
+              altActiveIds: [fName],
+              promptKey: `friend_intro_wait_${fName}`,
+              speakerText: fName.toUpperCase(),
+              talkPromptHtml: `Press <b>Talk</b> to speak with <b>${fName}</b>.`,
+              greetingHtml: '',
+              choices: [],
+              showChallenge: true,
+              topPosition: this.player.y >= 7.5 || friend.y >= 7.5
+            });
           } else {
-            textEl.innerHTML = `Press <b>Talk</b> to speak with <b>${friend.name}</b>.`;
-            challengeBtn.textContent = '💬 Talk (Space)';
-            challengeBtn.classList.add('ow-talk-btn');
-            challengeBtn.classList.remove('hidden');
+            const friendInteriorChoices = !this.hasMomBoosterMoney
+              ? [
+                  {
+                    label: `1. 💵 "Let's ask Mom for $25!"`,
+                    primary: true,
+                    onSelect: (el) => {
+                      el.innerHTML = `<b>${fName}:</b> "Seriously! Walk right over to your Mom and tell her we saw the commercial for MYTHOS Packs!"`;
+                    }
+                  },
+                  {
+                    label: `2. 📺 "That Mythos TV commercial was hyped!"`,
+                    onSelect: (el) => {
+                      el.innerHTML = `<b>${fName}:</b> "Right?! Those Beasts battling across the grid looked unreal — we gotta grab our first packs today!"`;
+                    }
+                  },
+                  {
+                    label: `3. 👋 "Wait right here! (Leave)"`,
+                    onSelect: () => this.closeDialogue()
+                  }
+                ]
+              : [
+                  {
+                    label: `1. 🗺️ "Where to next, ${fName}?"`,
+                    primary: true,
+                    onSelect: (el) => {
+                      el.innerHTML = this.hasOpenedStarterPack
+                        ? `<b>${fName}:</b> "Head next door to my cottage right east of yours! I've got the Mythos Tabletop Arena waiting!"`
+                        : `<b>${fName}:</b> "Step out the front door, head south past the plaza, and walk east along the road straight to <b>Leo's Card Shop</b>!"`;
+                    }
+                  },
+                  {
+                    label: `2. 👋 "Let's roll! (Leave)"`,
+                    onSelect: () => this.closeDialogue()
+                  }
+                ];
+
+            this.renderNpcChoicePrompt({
+              npcId: 'friend',
+              altActiveIds: [fName],
+              promptKey: `friend_interior_${fName}_${this.hasMomBoosterMoney}_${this.hasOpenedStarterPack}`,
+              speakerText: fName.toUpperCase(),
+              talkPromptHtml: `Press <b>Talk</b> to speak with <b>${fName}</b>.`,
+              greetingHtml: !this.hasMomBoosterMoney
+                ? `<b>${fName}:</b> "Dude, your Mom just got home from work! Go ask her if we can get enough money to buy 2 MYTHOS Booster Packs at Leo's Card Shop!"`
+                : (this.hasOpenedStarterPack
+                    ? `<b>${fName}:</b> "We both pulled 3 awesome cards from Leo's Card Shop! Let's head next door to my house so we can battle!"`
+                    : `<b>${fName}:</b> "YES!! Your Mom gave us $25! That's enough for both $10 packs plus $5 left over! Let's head out the front door to Leo's Card Shop!"`),
+              choices: friendInteriorChoices,
+              challengeText: '👋 Leave (Space)',
+              topPosition: this.player.y >= 7.5 || friend.y >= 7.5
+            });
           }
         } else if (distToTv < 1.6) {
+          this.lastShopPromptKey = null;
           this.nearInteractable = { id: 'tv', name: 'TV' };
           this.activeDialogueNpc = null;
           challengeBtn.classList.remove('ow-talk-btn');
@@ -3833,6 +3985,7 @@
           textEl.innerHTML = `<i>"🔥 MYTHOS BOOSTER PACKS: Just $10 a pack at Leo's Card Shop! Collect Phoenix, Earth Golem, Hydra, Werewolf & more!"</i>`;
           challengeBtn.classList.add('hidden');
         } else if (distToBed < 1.7) {
+          this.lastShopPromptKey = null;
           this.nearInteractable = { id: 'player_bed', name: 'Bed' };
           this.activeDialogueNpc = null;
           challengeBtn.classList.remove('ow-talk-btn');
@@ -3849,6 +4002,7 @@
           challengeBtn.textContent = '💤 Sleep & Advance Day (Space)';
           challengeBtn.classList.remove('hidden');
         } else {
+          this.lastShopPromptKey = null;
           this.nearInteractable = null;
           this.activeDialogueNpc = null;
           challengeBtn.classList.remove('ow-talk-btn');
@@ -3857,66 +4011,65 @@
       } else if (this.currentArea === 'friend_interior') {
         const fName = this.friendName || 'Mike';
         const pName = this.draftAppearance?.name || 'Asher';
-        const friend = this.npcs[0];
+        const friend = this.getFriendNpc();
         const distToFriend = friend ? Math.hypot(this.player.x - friend.x, this.player.y - friend.y) : 999;
         const distToTable = Math.hypot(this.player.x - 5.5, this.player.y - 6.8);
 
         if (distToFriend < 2.2 || distToTable < 1.85) {
           this.nearInteractable = { id: 'friend_duel', name: fName };
-          bar.classList.remove('hidden');
-          bar.classList.remove('tv-broadcast');
-          speakerEl.textContent = `⚔️ ${fName.toUpperCase()} — READY TO BATTLE AT ${fName.toUpperCase()}'S HOUSE!`;
-          speakerEl.className = 'ow-speaker-tag friend';
+          const friendDuelChoices = this.hasOldCardBinder
+            ? [
+                {
+                  label: `1. ⚔️ "I'm ready for a rematch, ${fName}! Let's battle!"`,
+                  primary: true,
+                  silentClick: true,
+                  onSelect: () => this.triggerDuel(friend)
+                },
+                {
+                  label: `2. 📖 "Open the Old Card Binder (Press B)"`,
+                  onSelect: () => this.toggleBinderModal(true)
+                },
+                {
+                  label: `3. 🃏 "How's your deck holding up since our first match?"`,
+                  onSelect: (el) => {
+                    el.innerHTML = `<b>${fName}:</b> "I've been tweaking my opening placement! If you slot your pulled Beasts into your Old Card Binder, you can mix up your strategy anytime!"`;
+                  }
+                },
+                {
+                  label: `4. 👋 "Catch you later, ${fName}! (Leave)"`,
+                  onSelect: () => this.closeDialogue()
+                }
+              ]
+            : [
+                {
+                  label: `1. ⚔️ "I'm ready, ${fName}! Let's battle in MYTHOS!"`,
+                  primary: true,
+                  silentClick: true,
+                  onSelect: () => this.triggerDuel(friend)
+                },
+                {
+                  label: `2. 🃏 "Which Beasts are you bringing to the board?"`,
+                  onSelect: (el) => {
+                    el.innerHTML = `<b>${fName}:</b> "No peeking until draft phase! Pick your 3 Mythos Beasts wisely—whoever takes me down wins my brother's <b>Old Card Binder</b>!"`;
+                  }
+                },
+                {
+                  label: `3. 👋 "Let me get my cards ready first. (Leave)"`,
+                  onSelect: () => this.closeDialogue()
+                }
+              ];
 
-          if (this.activeDialogueNpc === 'friend_duel') {
-            challengeBtn.classList.remove('ow-talk-btn');
-            const friendDuelKey = `friend_interior_duel_${fName}_${pName}_${this.hasOldCardBinder}`;
-            if (this.lastShopPromptKey !== friendDuelKey) {
-              this.lastShopPromptKey = friendDuelKey;
-              choicesEl.innerHTML = '';
-              if (this.hasOldCardBinder) {
-                textEl.innerHTML = `<b>${fName}:</b> "That was such an awesome match, ${pName}! How is that <b>Old Card Binder</b> working out for you? You can slot up to 9 cards into it, inspect their standalone art, and test new builds in battle! Want a rematch?!"`;
-                const binderBtn = document.createElement('button');
-                binderBtn.type = 'button';
-                binderBtn.className = 'ow-choice-btn';
-                binderBtn.innerHTML = `📖 Open the <b>Old Card Binder</b> (Press B)`;
-                binderBtn.addEventListener('click', (ev) => {
-                  ev.stopPropagation();
-                  this.toggleBinderModal(true);
-                });
-                const rematchBtn = document.createElement('button');
-                rematchBtn.type = 'button';
-                rematchBtn.className = 'ow-choice-btn';
-                rematchBtn.innerHTML = `⚔️ "I'm ready for a rematch, ${fName}! Let's battle!"`;
-                rematchBtn.addEventListener('click', (ev) => {
-                  ev.stopPropagation();
-                  this.triggerDuel();
-                });
-                choicesEl.appendChild(binderBtn);
-                choicesEl.appendChild(rematchBtn);
-              } else {
-                textEl.innerHTML = `<b>${fName}:</b> "Welcome to my house, ${pName}!! I've got the <b>MYTHOS Tabletop Arena</b> set up right here on my table with the 3 cards I pulled from Leo's pack! Defeat me and I'll give you my brother's <b>Old Card Binder</b>! Ready to battle?!"`;
-                const duelBtn = document.createElement('button');
-                duelBtn.type = 'button';
-                duelBtn.className = 'ow-choice-btn';
-                duelBtn.innerHTML = `⚔️ "I'm ready, ${fName}! Let's battle in <b>MYTHOS</b>!"`;
-                duelBtn.addEventListener('click', (ev) => {
-                  ev.stopPropagation();
-                  this.triggerDuel();
-                });
-                choicesEl.appendChild(duelBtn);
-              }
-            }
-            choicesEl.classList.remove('hidden');
-            challengeBtn.textContent = this.hasOldCardBinder ? `⚔️ Rematch ${fName}!` : `⚔️ Battle ${fName}!`;
-            challengeBtn.classList.remove('hidden');
-          } else {
-            this.lastShopPromptKey = null;
-            textEl.innerHTML = `Press <b>Talk</b> to speak with <b>${fName}</b> at the duel table.`;
-            challengeBtn.textContent = '💬 Talk (Space)';
-            challengeBtn.classList.add('ow-talk-btn');
-            challengeBtn.classList.remove('hidden');
-          }
+          this.renderNpcChoicePrompt({
+            npcId: 'friend_duel',
+            promptKey: `friend_interior_duel_${fName}_${pName}_${this.hasOldCardBinder}`,
+            speakerText: `⚔️ ${fName.toUpperCase()} — READY TO BATTLE AT ${fName.toUpperCase()}'S HOUSE!`,
+            talkPromptHtml: `Press <b>Talk</b> to speak with <b>${fName}</b> at the duel table.`,
+            greetingHtml: this.hasOldCardBinder
+              ? `<b>${fName}:</b> "That was such an awesome match, ${pName}! How is that <b>Old Card Binder</b> working out for you? You can slot up to 9 cards into it, inspect their standalone art, and test new builds in battle! Want a rematch?!"`
+              : `<b>${fName}:</b> "Welcome to my house, ${pName}!! I've got the <b>MYTHOS Tabletop Arena</b> set up right here on my table with the 3 cards I pulled from Leo's pack! Defeat me and I'll give you my brother's <b>Old Card Binder</b>! Ready to battle?!"`,
+            choices: friendDuelChoices,
+            challengeText: this.hasOldCardBinder ? `⚔️ Rematch ${fName}!` : `⚔️ Battle ${fName}!`
+          });
         } else {
           this.lastShopPromptKey = null;
           this.nearInteractable = null;
@@ -3935,128 +4088,102 @@
 
         if (distToKeeper < 1.9) {
           this.nearInteractable = { id: 'shopkeeper', name: 'Shopkeeper Leo' };
-          bar.classList.remove('hidden');
-          bar.classList.remove('tv-broadcast');
-          speakerEl.textContent = "🃏 SHOPKEEPER LEO — LEO'S CARD SHOP";
-          speakerEl.className = 'ow-speaker-tag tv';
-
-          if (this.activeDialogueNpc === 'shopkeeper') {
-            challengeBtn.classList.remove('ow-talk-btn');
-
-            if (!this.hasBoughtCardShopPacks) {
-              // ---------------------------------------------------------------
-              // INTRO QUEST: Buy 2 Booster Packs ($20) for Asher & Best Friend
-              // ---------------------------------------------------------------
-              const hasMoney = (this.gold || 0) >= 20;
-              const shopKey = `keeper_intro_${hasMoney}_${pName}_${fName}`;
-              if (this.lastShopPromptKey !== shopKey) {
-                this.lastShopPromptKey = shopKey;
-                textEl.innerHTML = `"Welcome to <b>Leo's Card Shop</b>, ${pName} and ${fName}!! Have you seen the new <b>MYTHOS</b> game?! It's unbelievable — elemental Beasts, tactical grid movement, and high-impact abilities! Every duelist in town is losing their minds over the Base Set!"`;
-                choicesEl.innerHTML = '';
-
-                const buyBtn = document.createElement('button');
-                buyBtn.type = 'button';
-                buyBtn.className = 'ow-choice-btn primary';
-                if (hasMoney) {
-                  buyBtn.innerHTML = `💬 "We saw the commercial! Can we buy <b>2 MYTHOS Base Set Booster Packs ($20)</b> — one for me and one for ${fName}?"`;
-                  buyBtn.addEventListener('click', (ev) => {
-                    ev.stopPropagation();
-                    this.buyTwoBoosterPacks();
-                  });
-                } else {
-                  buyBtn.innerHTML = `💬 "We want to buy 2 Booster Packs ($20), one for me and one for ${fName}! <i>(Need $20 — ask Mom at home first!)</i>"`;
-                  buyBtn.addEventListener('click', (ev) => {
-                    ev.stopPropagation();
-                    if (window.sounds?.playClick) window.sounds.playClick();
-                  });
+          if (!this.hasBoughtCardShopPacks) {
+            const hasMoney = (this.gold || 0) >= 20;
+            this.renderNpcChoicePrompt({
+              npcId: 'shopkeeper',
+              promptKey: `keeper_intro_${hasMoney}_${pName}_${fName}`,
+              speakerText: "🃏 SHOPKEEPER LEO — LEO'S CARD SHOP",
+              speakerClass: 'ow-speaker-tag tv',
+              talkPromptHtml: `Press <b>Talk</b> to speak with <b>Shopkeeper Leo</b> across the counter.`,
+              greetingHtml: `"Welcome to <b>Leo's Card Shop</b>, ${pName} and ${fName}!! Have you seen the new <b>MYTHOS</b> game?! It's unbelievable — elemental Beasts, tactical grid movement, and high-impact abilities! Every duelist in town is losing their minds over the Base Set!"`,
+              choices: [
+                hasMoney
+                  ? {
+                      label: `1. 💬 "Buy 2 MYTHOS Base Set Booster Packs ($20)" — one for me and ${fName}!`,
+                      primary: true,
+                      silentClick: true,
+                      onSelect: () => this.buyTwoBoosterPacks()
+                    }
+                  : {
+                      label: `1. 💬 "We want to buy 2 Booster Packs ($20)!" <i>(Need $20)</i>`,
+                      primary: true,
+                      onSelect: (el) => {
+                        el.innerHTML = `<b>Shopkeeper Leo:</b> "Two Base Set packs come to <b>$20</b>! Looks like your wallet has ${this.formatMoney(this.gold || 0)} right now—check in with your Mom back at home first!"`;
+                      }
+                    },
+                {
+                  label: `2. ✨ "What makes MYTHOS cards so special, Leo?"`,
+                  onSelect: (el) => {
+                    el.innerHTML = `<b>Shopkeeper Leo:</b> "Every 1st-Edition Booster Pack holds <b>3 Beast cards</b> — from blazing Phoenixes to soaring Pegasus and armored Golems! Rip them right here at the counter to build your first squad!"`;
+                  }
+                },
+                {
+                  label: `3. 👋 "We'll browse around a bit! (Leave)"`,
+                  onSelect: () => this.closeDialogue()
                 }
-                choicesEl.appendChild(buyBtn);
-              }
-              choicesEl.classList.remove('hidden');
-              challengeBtn.textContent = hasMoney ? '💵 Buy 2 Packs ($20)' : '💵 Need $20';
-              challengeBtn.classList.toggle('hidden', !hasMoney);
-            } else {
-              // ---------------------------------------------------------------
-              // UNLOCKED: Leo's Buy & Sell Counter ($10 packs / 10¢-50¢ buyback)
-              // ---------------------------------------------------------------
-              const hasMoneyForPack = (this.gold || 0) >= 10;
-              const hasUnopenedPack = (this.inventory || []).some(i => i.id === 'unopened_base_pack' && i.qty > 0);
-              const looseCardCount = (this.inventory || []).filter(i => i.type === 'mythos_card' && i.qty > 0).reduce((s, i) => s + (i.qty || 0), 0);
-
-              const shopKey = `keeper_unlocked_${hasMoneyForPack}_${hasUnopenedPack}_${looseCardCount}_${pName}_${fName}`;
-              if (this.lastShopPromptKey !== shopKey) {
-                this.lastShopPromptKey = shopKey;
-                textEl.innerHTML = `"Welcome back to the counter, ${pName}! Now that you and ${fName} have your starter packs, feel free to use our <b>Buy &amp; Sell Counter</b>: grab more 1st-Edition <b>Mythos Base Card Packs for $10</b>, or trade in extra cards from your backpack for cash (10¢ for 1★ up to 50¢ for 4★)!"`;
-
-                choicesEl.innerHTML = '';
-
-                // Choice 1: Open Shop (Buy & Sell)
-                const openShopBtn = document.createElement('button');
-                openShopBtn.type = 'button';
-                openShopBtn.className = 'ow-choice-btn primary';
-                openShopBtn.innerHTML = `🛒 "Let's check out your <b>Buy &amp; Sell Counter</b>!"`;
-                openShopBtn.addEventListener('click', (ev) => {
-                  ev.stopPropagation();
-                  this.toggleShopModal(true);
-                });
-                choicesEl.appendChild(openShopBtn);
-
-                // Choice 2: Buy Base Card Pack ($10)
-                const buyPackBtn = document.createElement('button');
-                buyPackBtn.type = 'button';
-                buyPackBtn.className = 'ow-choice-btn';
-                if (hasMoneyForPack) {
-                  buyPackBtn.innerHTML = `📦 "I'd like to buy a <b>1st-Edition Base Card Pack ($10.00)</b>!"`;
-                  buyPackBtn.addEventListener('click', (ev) => {
-                    ev.stopPropagation();
-                    this.buyBaseCardPack();
-                  });
-                } else {
-                  buyPackBtn.innerHTML = `📦 "I'd like a Base Card Pack ($10.00)..." <i>(Wallet: ${this.formatMoney(this.gold || 0)} — need $10.00)</i>`;
-                  buyPackBtn.addEventListener('click', (ev) => {
-                    ev.stopPropagation();
-                    this.toggleShopModal(true, 'buy');
-                  });
-                }
-                choicesEl.appendChild(buyPackBtn);
-
-                // Choice 3: Sell Cards (if player has loose cards)
-                if (looseCardCount > 0) {
-                  const sellCardsBtn = document.createElement('button');
-                  sellCardsBtn.type = 'button';
-                  sellCardsBtn.className = 'ow-choice-btn';
-                  sellCardsBtn.innerHTML = `💵 "I have <b>${looseCardCount} card${looseCardCount > 1 ? 's' : ''}</b> in my backpack to sell!"`;
-                  sellCardsBtn.addEventListener('click', (ev) => {
-                    ev.stopPropagation();
-                    this.toggleShopModal(true, 'sell');
-                  });
-                  choicesEl.appendChild(sellCardsBtn);
-                }
-
-                // Choice 4: Rip Unopened Pack (if player has unopened pack)
-                if (hasUnopenedPack) {
-                  const openPackChoice = document.createElement('button');
-                  openPackChoice.type = 'button';
-                  openPackChoice.className = 'ow-choice-btn';
-                  openPackChoice.innerHTML = `✨ "Let's rip open my <b>Mythos Base Card Pack</b> right here!"`;
-                  openPackChoice.addEventListener('click', (ev) => {
-                    ev.stopPropagation();
-                    this.startBoosterPackOpening('unopened_base_pack');
-                  });
-                  choicesEl.appendChild(openPackChoice);
-                }
-              }
-
-              choicesEl.classList.remove('hidden');
-              challengeBtn.textContent = '🛒 Buy & Sell Counter (Space)';
-              challengeBtn.classList.remove('hidden');
-            }
+              ],
+              challengeText: hasMoney ? '💵 Buy 2 Packs ($20)' : '👋 Leave (Space)'
+            });
           } else {
-            this.lastShopPromptKey = null;
-            textEl.innerHTML = `Press <b>Talk</b> to speak with <b>Shopkeeper Leo</b> across the counter.`;
-            challengeBtn.textContent = '💬 Talk (Space)';
-            challengeBtn.classList.add('ow-talk-btn');
-            challengeBtn.classList.remove('hidden');
+            const activeEvent = this.getCurrentDayEvent();
+            const packCost = activeEvent?.id === 'weekend_market' ? 8 : 10;
+            const hasMoneyForPack = (this.gold || 0) >= packCost;
+            const hasUnopenedPack = (this.inventory || []).some(i => i.id === 'unopened_base_pack' && i.qty > 0);
+            const looseCardCount = (this.inventory || []).filter(i => i.type === 'mythos_card' && i.qty > 0).reduce((s, i) => s + (i.qty || 0), 0);
+
+            const leoChoices = [
+              {
+                label: `1. 🛒 "Let's check out your Buy &amp; Sell Counter!"`,
+                primary: true,
+                onSelect: () => this.toggleShopModal(true)
+              },
+              hasMoneyForPack
+                ? {
+                    label: `2. 📦 "Buy a 1st-Edition Base Card Pack (${this.formatMoney(packCost)})!"`,
+                    silentClick: true,
+                    onSelect: (el) => {
+                      if (this.buyBaseCardPack()) {
+                        this._leoRecentPackPurchase = true;
+                        el.innerHTML = `<b>Shopkeeper Leo:</b> "Added a sealed <b>1st-Edition Mythos Base Card Pack</b> (${this.formatMoney(packCost)}) to your backpack! Ready to rip it open?"`;
+                      }
+                    }
+                  }
+                : {
+                    label: `2. 📦 "I'd like a Base Card Pack (${this.formatMoney(packCost)})..." <i>(Wallet: ${this.formatMoney(this.gold || 0)})</i>`,
+                    onSelect: () => this.toggleShopModal(true, 'buy')
+                  }
+            ];
+            let nextNum = 3;
+            if (looseCardCount > 0) {
+              leoChoices.push({
+                label: `${nextNum++}. 💵 "Sell cards from my backpack (${looseCardCount} available)"`,
+                onSelect: () => this.toggleShopModal(true, 'sell')
+              });
+            }
+            if (hasUnopenedPack) {
+              leoChoices.push({
+                label: `${nextNum++}. ✨ "Rip open my Mythos Base Card Pack right here!"`,
+                onSelect: () => this.startBoosterPackOpening('unopened_base_pack')
+              });
+            }
+            leoChoices.push({
+              label: `${nextNum}. 👋 "Thanks, Leo! (Leave)"`,
+              onSelect: () => this.closeDialogue()
+            });
+
+            this.renderNpcChoicePrompt({
+              npcId: 'shopkeeper',
+              promptKey: `keeper_unlocked_${hasMoneyForPack}_${packCost}_${hasUnopenedPack}_${looseCardCount}_${this._leoRecentPackPurchase ? 1 : 0}_${pName}_${fName}`,
+              speakerText: "🃏 SHOPKEEPER LEO — LEO'S CARD SHOP",
+              speakerClass: 'ow-speaker-tag tv',
+              talkPromptHtml: `Press <b>Talk</b> to speak with <b>Shopkeeper Leo</b> across the counter.`,
+              greetingHtml: this._leoRecentPackPurchase
+                ? `<b>Shopkeeper Leo:</b> "Added a sealed <b>1st-Edition Mythos Base Card Pack</b> (${this.formatMoney(packCost)}) to your backpack! Want to rip it open right here or grab another?"`
+                : `"Welcome back to the counter, ${pName}! Now that you and ${fName} have your starter packs, feel free to use our <b>Buy &amp; Sell Counter</b>: grab more 1st-Edition <b>Mythos Base Card Packs for ${this.formatMoney(packCost)}</b>, or trade in extra cards from your backpack for cash (10¢ for 1★ up to 50¢ for 4★)!"`,
+              choices: leoChoices,
+              challengeText: '🛒 Buy & Sell Counter (Space)'
+            });
           }
         } else if (distToCase < 1.55) {
           this.lastShopPromptKey = null;
@@ -4088,6 +4215,7 @@
           this.lastShopPromptKey = null;
           this.nearInteractable = null;
           this.activeDialogueNpc = null;
+          this.clearPendingBattleResults();
           challengeBtn.classList.remove('ow-talk-btn');
           bar.classList.add('hidden');
         }
@@ -4101,107 +4229,80 @@
 
         if (distToPluto < 1.95 || distToDesk < 1.4) {
           this.nearInteractable = pluto;
-          bar.classList.remove('hidden');
-          bar.classList.remove('tv-broadcast');
-          speakerEl.textContent = "💻 PLUTO — BEDROOM COMPUTER DESK";
-          speakerEl.className = 'ow-speaker-tag friend';
-
-          if (this.activeDialogueNpc === 'pluto') {
-            challengeBtn.classList.remove('ow-talk-btn');
-            const hasDollar = (this.gold || 0) >= 1.00;
-            const res = this.plutoBattleResult;
-            const plutoKey = `pluto_dialogue_${pName}_${hasDollar}_${res || 'none'}`;
-
-            if (this.lastShopPromptKey !== plutoKey) {
-              this.lastShopPromptKey = plutoKey;
-              choicesEl.innerHTML = '';
-
-              if (res === 'won') {
-                textEl.innerHTML = `<b>Pluto:</b> "Whoa, amazing match, ${pName}! You completely outplayed my Beasts! Here is your <b>+$1.00</b> stake! Want a rematch for another dollar?"`;
-                this.plutoBattleResult = null;
-              } else if (res === 'lost') {
-                textEl.innerHTML = `<b>Pluto:</b> "Good game, ${pName}! My deck held strong this round! That'll be <b>-$1.00</b> for the wager! Ready to try again and win your dollar back?"`;
-                this.plutoBattleResult = null;
-              } else {
-                textEl.innerHTML = `<b>Pluto:</b> "Hey ${pName}! Welcome to my room! I was just researching Mythos card deck strategies on my computer. How about a tabletop duel right now? Let's set the stakes to <b>$1.00</b> — if you win you get <b>$1.00</b>, and if you lose you lose <b>$1.00</b>! Ready?"`;
-              }
-
-              const btnDuel = document.createElement('button');
-              btnDuel.type = 'button';
-              btnDuel.className = 'ow-choice-btn primary';
-              if (hasDollar) {
-                btnDuel.innerHTML = `⚔️ "You're on, Pluto! Let's battle in <b>MYTHOS for $1.00</b>!"`;
-                btnDuel.addEventListener('click', (ev) => {
-                  ev.stopPropagation();
-                  this.triggerDuel(this.plutoNpc);
-                });
-              } else {
-                btnDuel.innerHTML = `⚔️ "Let's battle for $1.00!" <i>(Need $1.00 — Wallet: ${this.formatMoney(this.gold || 0)})</i>`;
-                btnDuel.addEventListener('click', (ev) => {
-                  ev.stopPropagation();
-                  if (window.sounds?.playClick) window.sounds.playClick();
-                  textEl.innerHTML = `<b>Pluto:</b> "Looks like you don't have $1.00 on you right now! <i>(Wallet: ${this.formatMoney(this.gold || 0)})</i> Go sell an extra card to Shopkeeper Leo down the road or ask Mom for allowance first, then come back!"`;
-                });
-              }
-              choicesEl.appendChild(btnDuel);
-
-              // 2v2 Wager Option if Base2v2 map is owned
-              if (this.hasBoughtBase2v2Map) {
-                const btn2v2 = document.createElement('button');
-                btn2v2.type = 'button';
-                btn2v2.className = 'ow-choice-btn primary';
-                if (hasDollar) {
-                  btn2v2.innerHTML = `🏟️ "Let's duel on <b>Base2v2 for $1.00</b> (Select 2 Beasts)!"`;
-                  btn2v2.addEventListener('click', (ev) => {
-                    ev.stopPropagation();
-                    this.open2v2BeastSelect(this.plutoNpc);
-                  });
-                } else {
-                  btn2v2.innerHTML = `🏟️ "Let's duel on Base2v2 for $1.00!" <i>(Need $1.00)</i>`;
-                  btn2v2.addEventListener('click', (ev) => {
-                    ev.stopPropagation();
-                    if (window.sounds?.playClick) window.sounds.playClick();
-                    textEl.innerHTML = `<b>Pluto:</b> "We need at least $1.00 each for the wager! Go sell an extra card to Shopkeeper Leo or earn some cash, then let's play Base2v2!"`;
-                  });
+          const hasDollar = (this.gold || 0) >= 1.00;
+          const res = this.plutoBattleResult;
+          const plutoChoices = [
+            hasDollar
+              ? {
+                  label: `1. ⚔️ "You're on, Pluto! Let's battle in MYTHOS for $1.00!"`,
+                  primary: true,
+                  silentClick: true,
+                  onSelect: () => this.triggerDuel(this.plutoNpc)
                 }
-                choicesEl.appendChild(btn2v2);
-              }
-
-              const btnComputer = document.createElement('button');
-              btnComputer.type = 'button';
-              btnComputer.className = 'ow-choice-btn';
-              btnComputer.innerHTML = `💻 "What are you researching on your computer?"`;
-              btnComputer.addEventListener('click', (ev) => {
-                ev.stopPropagation();
-                if (window.sounds?.playClick) window.sounds.playClick();
-                textEl.innerHTML = `<b>Pluto:</b> "I have Leo's Card Shop catalog open and a spreadsheet of Beast stats! Phoenix has 120 HP with 30-damage Flaming Talons, while Earth Golem has a massive 200 HP pool. Ready to test your deck against mine for $1.00?"`;
-              });
-              choicesEl.appendChild(btnComputer);
-
-              const btnRoom = document.createElement('button');
-              btnRoom.type = 'button';
-              btnRoom.className = 'ow-choice-btn';
-              btnRoom.innerHTML = `🏠 "Your bedroom looks really cozy!"`;
-              btnRoom.addEventListener('click', (ev) => {
-                ev.stopPropagation();
-                if (window.sounds?.playClick) window.sounds.playClick();
-                textEl.innerHTML = `<b>Pluto:</b> "Thanks! My bed is super comfortable, and I like having my computer desk set up right here in my room. Whenever you want to wager that dollar, let's battle!"`;
-              });
-              choicesEl.appendChild(btnRoom);
-            }
-            choicesEl.classList.remove('hidden');
-            challengeBtn.textContent = hasDollar ? '⚔️ Battle Pluto ($1.00 Wager)' : '💵 Need $1.00 Wager';
-            challengeBtn.classList.remove('hidden');
-          } else {
-            this.lastShopPromptKey = null;
-            textEl.innerHTML = `Press <b>Talk</b> to speak with <b>Pluto</b> at his computer desk.`;
-            challengeBtn.textContent = '💬 Talk (Space)';
-            challengeBtn.classList.add('ow-talk-btn');
-            challengeBtn.classList.remove('hidden');
+              : {
+                  label: `1. ⚔️ "Let's battle for $1.00!" <i>(Need $1.00 — Wallet: ${this.formatMoney(this.gold || 0)})</i>`,
+                  primary: true,
+                  onSelect: (el) => {
+                    el.innerHTML = `<b>Pluto:</b> "Looks like you don't have $1.00 on you right now! <i>(Wallet: ${this.formatMoney(this.gold || 0)})</i> Go sell an extra card to Shopkeeper Leo down the road or ask Mom for allowance first, then come back!"`;
+                  }
+                }
+          ];
+          let optNum = 2;
+          if (this.hasBoughtBase2v2Map) {
+            plutoChoices.push(
+              hasDollar
+                ? {
+                    label: `${optNum++}. 🏟️ "Let's duel on Base2v2 for $1.00 (Select 2 Beasts)!"`,
+                    primary: true,
+                    silentClick: true,
+                    onSelect: () => this.open2v2BeastSelect(this.plutoNpc)
+                  }
+                : {
+                    label: `${optNum++}. 🏟️ "Let's duel on Base2v2 for $1.00!" <i>(Need $1.00)</i>`,
+                    onSelect: (el) => {
+                      el.innerHTML = `<b>Pluto:</b> "We need at least $1.00 each for the wager! Go sell an extra card to Shopkeeper Leo or earn some cash, then let's play Base2v2!"`;
+                    }
+                  }
+            );
           }
+          plutoChoices.push(
+            {
+              label: `${optNum++}. 💻 "What are you researching on your computer?"`,
+              onSelect: (el) => {
+                el.innerHTML = `<b>Pluto:</b> "I have Leo's Card Shop catalog open and a spreadsheet of Beast stats! Phoenix has 120 HP with 30-damage Flaming Talons, while Earth Golem has a massive 200 HP pool. Ready to test your deck against mine for $1.00?"`;
+              }
+            },
+            {
+              label: `${optNum++}. 🏠 "Your bedroom looks really cozy!"`,
+              onSelect: (el) => {
+                el.innerHTML = `<b>Pluto:</b> "Thanks! My bed is super comfortable, and I like having my computer desk set up right here in my room. Whenever you want to wager that dollar, let's battle!"`;
+              }
+            },
+            {
+              label: `${optNum}. 👋 "Talk later, Pluto! (Leave)"`,
+              onSelect: () => this.closeDialogue()
+            }
+          );
+
+          const plutoGreeting = res === 'won'
+            ? `<b>Pluto:</b> "Whoa, amazing match, ${pName}! You completely outplayed my Beasts! Here is your <b>+$1.00</b> stake! Want a rematch for another dollar?"`
+            : (res === 'lost'
+                ? `<b>Pluto:</b> "Good game, ${pName}! My deck held strong this round! That'll be <b>-$1.00</b> for the wager! Ready to try again and win your dollar back?"`
+                : `<b>Pluto:</b> "Hey ${pName}! Welcome to my room! I was just researching Mythos card deck strategies on my computer. How about a tabletop duel right now? Let's set the stakes to <b>$1.00</b> — if you win you get <b>$1.00</b>, and if you lose you lose <b>$1.00</b>! Ready?"`);
+
+          this.renderNpcChoicePrompt({
+            npcId: 'pluto',
+            promptKey: `pluto_dialogue_${pName}_${hasDollar}_${this.hasBoughtBase2v2Map}_${res || 'none'}`,
+            speakerText: '💻 PLUTO — BEDROOM COMPUTER DESK',
+            talkPromptHtml: `Press <b>Talk</b> to speak with <b>Pluto</b> at his computer desk.`,
+            greetingHtml: plutoGreeting,
+            choices: plutoChoices,
+            challengeText: hasDollar ? '⚔️ Battle Pluto ($1.00 Wager)' : '💵 Need $1.00 Wager'
+          });
         } else if (distToBed < 1.5) {
           this.lastShopPromptKey = null;
           this.activeDialogueNpc = null;
+          this.clearPendingBattleResults();
           challengeBtn.classList.remove('ow-talk-btn');
           this.nearInteractable = { id: 'pluto_bed', name: "Pluto's Bed" };
           bar.classList.remove('hidden');
@@ -4213,6 +4314,7 @@
         } else if (distToWardrobe < 1.55) {
           this.lastShopPromptKey = null;
           this.activeDialogueNpc = null;
+          this.clearPendingBattleResults();
           challengeBtn.classList.remove('ow-talk-btn');
           this.nearInteractable = { id: 'pluto_wardrobe', name: "Pluto's Wardrobe" };
           bar.classList.remove('hidden');
@@ -4225,6 +4327,7 @@
           this.lastShopPromptKey = null;
           this.nearInteractable = null;
           this.activeDialogueNpc = null;
+          this.clearPendingBattleResults();
           challengeBtn.classList.remove('ow-talk-btn');
           bar.classList.add('hidden');
         }
@@ -4238,64 +4341,45 @@
 
         if (distToNova < 1.95 || distToScope < 1.4) {
           this.nearInteractable = nova;
-          bar.classList.remove('hidden');
-          bar.classList.remove('tv-broadcast');
-          speakerEl.textContent = "✨ NOVA — STARGAZER OBSERVATORY";
-          speakerEl.className = 'ow-speaker-tag friend';
-
-          if (this.activeDialogueNpc === 'nova') {
-            challengeBtn.classList.remove('ow-talk-btn');
-            const novaKey = `nova_dialogue_${pName}`;
-            if (this.lastShopPromptKey !== novaKey) {
-              this.lastShopPromptKey = novaKey;
-              choicesEl.innerHTML = '';
-              textEl.innerHTML = `<b>Nova:</b> "Greetings, ${pName}! Welcome to my observatory home! The celestial currents are shimmering today. Are you here to study constellation card affinities, or would you like to test your deck in a <b>MYTHOS Tabletop Battle</b>?"`;
-
-              const btnDuel = document.createElement('button');
-              btnDuel.type = 'button';
-              btnDuel.className = 'ow-choice-btn primary';
-              btnDuel.innerHTML = `⚔️ "Let's battle in <b>MYTHOS</b>, Nova!"`;
-              btnDuel.addEventListener('click', (ev) => {
-                ev.stopPropagation();
-                this.triggerDuel(this.novaNpc);
-              });
-              choicesEl.appendChild(btnDuel);
-
-              const btnScope = document.createElement('button');
-              btnScope.type = 'button';
-              btnScope.className = 'ow-choice-btn';
-              btnScope.innerHTML = `🔭 "What constellations are you tracking today?"`;
-              btnScope.addEventListener('click', (ev) => {
-                ev.stopPropagation();
-                if (window.sounds?.playClick) window.sounds.playClick();
-                textEl.innerHTML = `<b>Nova:</b> "I am tracking the <b>Pegasus Star Cluster</b>! In MYTHOS lore, aerial beasts gain unmatched flight mobility when the wind stars align. If you pair Pegasus with high-speed tactical moves, your opponent won't be able to pin you down!"`;
-              });
-              choicesEl.appendChild(btnScope);
-
-              const btnDeck = document.createElement('button');
-              btnDeck.type = 'button';
-              btnDeck.className = 'ow-choice-btn';
-              btnDeck.innerHTML = `✨ "What strategy do you recommend for deck building?"`;
-              btnDeck.addEventListener('click', (ev) => {
-                ev.stopPropagation();
-                if (window.sounds?.playClick) window.sounds.playClick();
-                textEl.innerHTML = `<b>Nova:</b> "Synergy over brute force! Having both flying agility like <b>Pegasus</b> and raw tank power like <b>Dreadnaught</b> creates tactical balance. Don't be afraid to experiment with different beast pairings!"`;
-              });
-              choicesEl.appendChild(btnDeck);
-            }
-            choicesEl.classList.remove('hidden');
-            challengeBtn.textContent = '⚔️ Battle Nova!';
-            challengeBtn.classList.remove('hidden');
-          } else {
-            this.lastShopPromptKey = null;
-            textEl.innerHTML = `Press <b>Talk</b> to speak with <b>Nova</b> by her brass telescope and star charts.`;
-            challengeBtn.textContent = '💬 Talk (Space)';
-            challengeBtn.classList.add('ow-talk-btn');
-            challengeBtn.classList.remove('hidden');
-          }
+          const nRes = this.novaBattleResult;
+          this.renderNpcChoicePrompt({
+            npcId: 'nova',
+            promptKey: `nova_dialogue_${pName}_${nRes || 'none'}`,
+            speakerText: '✨ NOVA — STARGAZER OBSERVATORY',
+            talkPromptHtml: `Press <b>Talk</b> to speak with <b>Nova</b> by her brass telescope and star charts.`,
+            greetingHtml: nRes === 'won'
+              ? `<b>Nova:</b> "Written in the constellations, ${pName}! What brilliant celestial synergy! Here is your <b>$2.00</b> stargazer prize and my <b>Pegasus (Holo)</b> card! Care for another match?"`
+              : `<b>Nova:</b> "Greetings, ${pName}! Welcome to my observatory home! The celestial currents are shimmering today. Are you here to study constellation card affinities, or would you like to test your deck in a <b>MYTHOS Tabletop Battle</b>?"`,
+            choices: [
+              {
+                label: `1. ⚔️ "Let's battle in MYTHOS, Nova!"`,
+                primary: true,
+                silentClick: true,
+                onSelect: () => this.triggerDuel(this.novaNpc)
+              },
+              {
+                label: `2. 🔭 "What constellations are you tracking today?"`,
+                onSelect: (el) => {
+                  el.innerHTML = `<b>Nova:</b> "I am tracking the <b>Pegasus Star Cluster</b>! In MYTHOS lore, aerial beasts gain unmatched flight mobility when the wind stars align. If you pair Pegasus with high-speed tactical moves, your opponent won't be able to pin you down!"`;
+                }
+              },
+              {
+                label: `3. ✨ "What strategy do you recommend for deck building?"`,
+                onSelect: (el) => {
+                  el.innerHTML = `<b>Nova:</b> "Synergy over brute force! Having both flying agility like <b>Pegasus</b> and raw tank power like <b>Dreadnaught</b> creates tactical balance. Don't be afraid to experiment with different beast pairings!"`;
+                }
+              },
+              {
+                label: `4. 👋 "See you under the stars, Nova! (Leave)"`,
+                onSelect: () => this.closeDialogue()
+              }
+            ],
+            challengeText: '⚔️ Battle Nova!'
+          });
         } else if (distToBed < 1.5) {
           this.lastShopPromptKey = null;
           this.activeDialogueNpc = null;
+          this.clearPendingBattleResults();
           challengeBtn.classList.remove('ow-talk-btn');
           this.nearInteractable = { id: 'nova_bed', name: "Nova's Bed" };
           bar.classList.remove('hidden');
@@ -4307,6 +4391,7 @@
         } else if (distToCharts < 1.55) {
           this.lastShopPromptKey = null;
           this.activeDialogueNpc = null;
+          this.clearPendingBattleResults();
           challengeBtn.classList.remove('ow-talk-btn');
           this.nearInteractable = { id: 'nova_charts', name: "Astronomy Desk" };
           bar.classList.remove('hidden');
@@ -4319,6 +4404,7 @@
           this.lastShopPromptKey = null;
           this.nearInteractable = null;
           this.activeDialogueNpc = null;
+          this.clearPendingBattleResults();
           challengeBtn.classList.remove('ow-talk-btn');
           bar.classList.add('hidden');
         }
@@ -4332,64 +4418,45 @@
 
         if (distToSilas < 1.95 || distToFire < 1.4) {
           this.nearInteractable = silas;
-          bar.classList.remove('hidden');
-          bar.classList.remove('tv-broadcast');
-          speakerEl.textContent = "🪵 SILAS — CRAFTSMAN WORKSHOP";
-          speakerEl.className = 'ow-speaker-tag friend';
-
-          if (this.activeDialogueNpc === 'silas') {
-            challengeBtn.classList.remove('ow-talk-btn');
-            const silasKey = `silas_dialogue_${pName}`;
-            if (this.lastShopPromptKey !== silasKey) {
-              this.lastShopPromptKey = silasKey;
-              choicesEl.innerHTML = '';
-              textEl.innerHTML = `<b>Silas:</b> "Welcome, ${pName}! Come warm yourself by the hearth. I've been hand-planing cedar deck boxes all morning. How's your collection looking? Up for a friendly <b>MYTHOS Tabletop Battle</b>?"`;
-
-              const btnDuel = document.createElement('button');
-              btnDuel.type = 'button';
-              btnDuel.className = 'ow-choice-btn primary';
-              btnDuel.innerHTML = `⚔️ "Let's battle in <b>MYTHOS</b>, Silas!"`;
-              btnDuel.addEventListener('click', (ev) => {
-                ev.stopPropagation();
-                this.triggerDuel(this.silasNpc);
-              });
-              choicesEl.appendChild(btnDuel);
-
-              const btnCarving = document.createElement('button');
-              btnCarving.type = 'button';
-              btnCarving.className = 'ow-choice-btn';
-              btnCarving.innerHTML = `🪵 "What are you carving at your workbench?"`;
-              btnCarving.addEventListener('click', (ev) => {
-                ev.stopPropagation();
-                if (window.sounds?.playClick) window.sounds.playClick();
-                textEl.innerHTML = `<b>Silas:</b> "I'm sculpting a miniature <b>Dreadnaught</b> out of heartwood oak! Centuries ago, ancient builders carved colossal stone Dreadnaughts to protect the mountain passes. Their ironclad armor plate remains unmatched!"`;
-              });
-              choicesEl.appendChild(btnCarving);
-
-              const btnRelics = document.createElement('button');
-              btnRelics.type = 'button';
-              btnRelics.className = 'ow-choice-btn';
-              btnRelics.innerHTML = `🛡️ "Any advice for battling with heavy Beasts?"`;
-              btnRelics.addEventListener('click', (ev) => {
-                ev.stopPropagation();
-                if (window.sounds?.playClick) window.sounds.playClick();
-                textEl.innerHTML = `<b>Silas:</b> "Patience, lad! A heavy tank like Dreadnaught doesn't need to rush across the board. Position your fortress on high ground and let your opponent break their claws against your armor!"`;
-              });
-              choicesEl.appendChild(btnRelics);
-            }
-            choicesEl.classList.remove('hidden');
-            challengeBtn.textContent = '⚔️ Battle Silas!';
-            challengeBtn.classList.remove('hidden');
-          } else {
-            this.lastShopPromptKey = null;
-            textEl.innerHTML = `Press <b>Talk</b> to speak with <b>Silas</b> by his stone hearth and artisan woodworking bench.`;
-            challengeBtn.textContent = '💬 Talk (Space)';
-            challengeBtn.classList.add('ow-talk-btn');
-            challengeBtn.classList.remove('hidden');
-          }
+          const sRes = this.silasBattleResult;
+          this.renderNpcChoicePrompt({
+            npcId: 'silas',
+            promptKey: `silas_dialogue_${pName}_${sRes || 'none'}`,
+            speakerText: '🪵 SILAS — CRAFTSMAN WORKSHOP',
+            talkPromptHtml: `Press <b>Talk</b> to speak with <b>Silas</b> by his stone hearth and artisan woodworking bench.`,
+            greetingHtml: sRes === 'won'
+              ? `<b>Silas:</b> "Fine craftsmanship in your maneuvering, ${pName}! Take this <b>$2.00</b> purse and my reinforced <b>Dwarf Warden (Holo)</b> card! Up for another round?"`
+              : `<b>Silas:</b> "Welcome, ${pName}! Come warm yourself by the hearth. I've been hand-planing cedar deck boxes all morning. How's your collection looking? Up for a friendly <b>MYTHOS Tabletop Battle</b>?"`,
+            choices: [
+              {
+                label: `1. ⚔️ "Let's battle in MYTHOS, Silas!"`,
+                primary: true,
+                silentClick: true,
+                onSelect: () => this.triggerDuel(this.silasNpc)
+              },
+              {
+                label: `2. 🪵 "What are you carving at your workbench?"`,
+                onSelect: (el) => {
+                  el.innerHTML = `<b>Silas:</b> "I'm sculpting a miniature <b>Dreadnaught</b> out of heartwood oak! Centuries ago, ancient builders carved colossal stone Dreadnaughts to protect the mountain passes. Their ironclad armor plate remains unmatched!"`;
+                }
+              },
+              {
+                label: `3. 🛡️ "Any advice for battling with heavy Beasts?"`,
+                onSelect: (el) => {
+                  el.innerHTML = `<b>Silas:</b> "Patience, lad! A heavy tank like Dreadnaught doesn't need to rush across the board. Position your fortress on high ground and let your opponent break their claws against your armor!"`;
+                }
+              },
+              {
+                label: `4. 👋 "Catch you by the hearth, Silas! (Leave)"`,
+                onSelect: () => this.closeDialogue()
+              }
+            ],
+            challengeText: '⚔️ Battle Silas!'
+          });
         } else if (distToBench < 1.5) {
           this.lastShopPromptKey = null;
           this.activeDialogueNpc = null;
+          this.clearPendingBattleResults();
           challengeBtn.classList.remove('ow-talk-btn');
           this.nearInteractable = { id: 'silas_bench', name: "Woodworking Bench" };
           bar.classList.remove('hidden');
@@ -4401,6 +4468,7 @@
         } else if (distToShelf < 1.55) {
           this.lastShopPromptKey = null;
           this.activeDialogueNpc = null;
+          this.clearPendingBattleResults();
           challengeBtn.classList.remove('ow-talk-btn');
           this.nearInteractable = { id: 'silas_shelf', name: "Grandfather Clock & Relics" };
           bar.classList.remove('hidden');
@@ -4413,6 +4481,7 @@
           this.lastShopPromptKey = null;
           this.nearInteractable = null;
           this.activeDialogueNpc = null;
+          this.clearPendingBattleResults();
           challengeBtn.classList.remove('ow-talk-btn');
           bar.classList.add('hidden');
         }
@@ -4426,64 +4495,45 @@
 
         if (distToMaya < 1.95 || distToGreenhouse < 1.4) {
           this.nearInteractable = maya;
-          bar.classList.remove('hidden');
-          bar.classList.remove('tv-broadcast');
-          speakerEl.textContent = "🌿 MAYA — BOTANICAL CONSERVATORY";
-          speakerEl.className = 'ow-speaker-tag friend';
-
-          if (this.activeDialogueNpc === 'maya') {
-            challengeBtn.classList.remove('ow-talk-btn');
-            const mayaKey = `maya_dialogue_${pName}`;
-            if (this.lastShopPromptKey !== mayaKey) {
-              this.lastShopPromptKey = mayaKey;
-              choicesEl.innerHTML = '';
-              textEl.innerHTML = `<b>Maya:</b> "Hey ${pName}! Take a deep breath—fresh sweet jasmine and fern moss! I've been cultivating botanicals that nourish earth Beasts. Are you ready for a spirited <b>MYTHOS Tabletop Battle</b>?"`;
-
-              const btnDuel = document.createElement('button');
-              btnDuel.type = 'button';
-              btnDuel.className = 'ow-choice-btn primary';
-              btnDuel.innerHTML = `⚔️ "Let's battle in <b>MYTHOS</b>, Maya!"`;
-              btnDuel.addEventListener('click', (ev) => {
-                ev.stopPropagation();
-                this.triggerDuel(this.mayaNpc);
-              });
-              choicesEl.appendChild(btnDuel);
-
-              const btnFlora = document.createElement('button');
-              btnFlora.type = 'button';
-              btnFlora.className = 'ow-choice-btn';
-              btnFlora.innerHTML = `🌿 "What species are you researching right now?"`;
-              btnFlora.addEventListener('click', (ev) => {
-                ev.stopPropagation();
-                if (window.sounds?.playClick) window.sounds.playClick();
-                textEl.innerHTML = `<b>Maya:</b> "I am studying spore vitality from the <b>Verdant Guardian</b>'s grove! Earth and nature beasts possess tremendous regenerative stamina. If you anchor your defenses early, nature will outlast any aggressive push!"`;
-              });
-              choicesEl.appendChild(btnFlora);
-
-              const btnTips = document.createElement('button');
-              btnTips.type = 'button';
-              btnTips.className = 'ow-choice-btn';
-              btnTips.innerHTML = `🌸 "How do you preserve your foil cards from humidity?"`;
-              btnTips.addEventListener('click', (ev) => {
-                ev.stopPropagation();
-                if (window.sounds?.playClick) window.sounds.playClick();
-                textEl.innerHTML = `<b>Maya:</b> "Double-sleeving in hard-shell matte sleeves! Silas made me airtight cedar cases so my rarest Mythos cards stay in gem-mint condition even in the greenhouse!"`;
-              });
-              choicesEl.appendChild(btnTips);
-            }
-            choicesEl.classList.remove('hidden');
-            challengeBtn.textContent = '⚔️ Battle Maya!';
-            challengeBtn.classList.remove('hidden');
-          } else {
-            this.lastShopPromptKey = null;
-            textEl.innerHTML = `Press <b>Talk</b> to speak with <b>Maya</b> in her sunlit greenhouse conservatory.`;
-            challengeBtn.textContent = '💬 Talk (Space)';
-            challengeBtn.classList.add('ow-talk-btn');
-            challengeBtn.classList.remove('hidden');
-          }
+          const mRes = this.mayaBattleResult;
+          this.renderNpcChoicePrompt({
+            npcId: 'maya',
+            promptKey: `maya_dialogue_${pName}_${mRes || 'none'}`,
+            speakerText: '🌿 MAYA — BOTANICAL CONSERVATORY',
+            talkPromptHtml: `Press <b>Talk</b> to speak with <b>Maya</b> in her sunlit greenhouse conservatory.`,
+            greetingHtml: mRes === 'won'
+              ? `<b>Maya:</b> "Breathtaking tactics, ${pName}! Your beasts flourished like a wild canopy! Come back to the greenhouse anytime for another friendly match!"`
+              : `<b>Maya:</b> "Hey ${pName}! Take a deep breath—fresh sweet jasmine and fern moss! I've been cultivating botanicals that nourish earth Beasts. Are you ready for a spirited <b>MYTHOS Tabletop Battle</b>?"`,
+            choices: [
+              {
+                label: `1. ⚔️ "Let's battle in MYTHOS, Maya!"`,
+                primary: true,
+                silentClick: true,
+                onSelect: () => this.triggerDuel(this.mayaNpc)
+              },
+              {
+                label: `2. 🌿 "What species are you researching right now?"`,
+                onSelect: (el) => {
+                  el.innerHTML = `<b>Maya:</b> "I am studying spore vitality from the <b>Verdant Guardian</b>'s grove! Earth and nature beasts possess tremendous regenerative stamina. If you anchor your defenses early, nature will outlast any aggressive push!"`;
+                }
+              },
+              {
+                label: `3. 🌸 "How do you preserve your foil cards from humidity?"`,
+                onSelect: (el) => {
+                  el.innerHTML = `<b>Maya:</b> "Double-sleeving in hard-shell matte sleeves! Silas made me airtight cedar cases so my rarest Mythos cards stay in gem-mint condition even in the greenhouse!"`;
+                }
+              },
+              {
+                label: `4. 👋 "Enjoy the conservatory, Maya! (Leave)"`,
+                onSelect: () => this.closeDialogue()
+              }
+            ],
+            challengeText: '⚔️ Battle Maya!'
+          });
         } else if (distToBench < 1.5) {
           this.lastShopPromptKey = null;
           this.activeDialogueNpc = null;
+          this.clearPendingBattleResults();
           challengeBtn.classList.remove('ow-talk-btn');
           this.nearInteractable = { id: 'maya_bench', name: "Potting Workbench" };
           bar.classList.remove('hidden');
@@ -4495,6 +4545,7 @@
         } else if (distToDesk < 1.55) {
           this.lastShopPromptKey = null;
           this.activeDialogueNpc = null;
+          this.clearPendingBattleResults();
           challengeBtn.classList.remove('ow-talk-btn');
           this.nearInteractable = { id: 'maya_desk', name: "Botanical Research Desk" };
           bar.classList.remove('hidden');
@@ -4507,6 +4558,7 @@
           this.lastShopPromptKey = null;
           this.nearInteractable = null;
           this.activeDialogueNpc = null;
+          this.clearPendingBattleResults();
           challengeBtn.classList.remove('ow-talk-btn');
           bar.classList.add('hidden');
         }
@@ -4515,7 +4567,7 @@
         const pName = this.draftAppearance?.name || 'Asher';
         const fName = this.friendName || 'Mike';
         const wName = this.draftAppearance?.worldName || 'Oakhaven';
-        const friend = this.npcs[0];
+        const friend = this.getFriendNpc();
         const distFriendExt = (friend && friend.following) ? Math.hypot(this.player.x - friend.x, this.player.y - friend.y) : 999;
 
         const distFriendMailbox = Math.hypot(this.player.x - 8.15, this.player.y - 3.95);
@@ -4525,7 +4577,6 @@
         const distPlutoDoor = Math.hypot(this.player.x - 1.98, this.player.y - 8.85);
         const distPlutoMailbox = Math.hypot(this.player.x - 4.75, this.player.y - 9.25);
         const distRoadSign = Math.hypot(this.player.x - 7.35, this.player.y - 5.45);
-        const distEastSign = Math.hypot(this.player.x - 10.65, this.player.y - 9.25);
         const distCardShopDoor = Math.hypot(this.player.x - 13.65, this.player.y - 9.25);
         const distNovaDoor = Math.hypot(this.player.x - 1.98, this.player.y - 14.10);
         const distNovaMailbox = Math.hypot(this.player.x - 4.75, this.player.y - 14.50);
@@ -4540,96 +4591,176 @@
         const distParkFountain = Math.hypot(this.player.x - 21.1, this.player.y - 9.0);
         const distParkSign = Math.hypot(this.player.x - 16.6, this.player.y - 9.25);
 
-        if (distFriendExt < 1.55) {
-          this.lastShopPromptKey = null;
+        const renderExtFriend = () => {
           this.nearInteractable = friend;
-          bar.classList.remove('hidden');
-          bar.classList.remove('tv-broadcast');
-          speakerEl.textContent = fName.toUpperCase();
-          speakerEl.className = 'ow-speaker-tag friend';
+          const greetingHtml = this.hasOpenedStarterPack
+            ? `<b>${fName}:</b> "I can't wait to battle you at my house! Head north up the road to <b>${fName}'s House</b>!"`
+            : (this.hasBoughtCardShopPacks
+              ? `<b>${fName}:</b> "We got our packs! Let's open them or head inside my house to duel!"`
+              : `<b>${fName}:</b> "We're on our way to <b>Leo's Card Shop</b>! Follow the road east to grab our 2 Booster Packs!"`);
+          this.renderNpcChoicePrompt({
+            npcId: 'friend',
+            altActiveIds: [fName],
+            promptKey: `ext_friend_${fName}_${this.hasOpenedStarterPack ? 2 : (this.hasBoughtCardShopPacks ? 1 : 0)}`,
+            speakerText: fName.toUpperCase(),
+            speakerClass: 'ow-speaker-tag friend',
+            talkPromptHtml: `Press <b>Talk</b> to speak with <b>${fName}</b>.`,
+            greetingHtml,
+            choices: [
+              {
+                label: `1. 🧭 "Where are we heading right now, ${fName}?"`,
+                primary: true,
+                onSelect: (tEl) => {
+                  tEl.innerHTML = this.hasOpenedStarterPack
+                    ? `<b>${fName}:</b> "Head north up to <b>104 ${wName} Lane</b> and walk through my front door — I'll meet you at the duel table!"`
+                    : (this.hasBoughtCardShopPacks
+                      ? `<b>${fName}:</b> "Open our new packs first using the <b>Pack / Inventory</b> button, then meet me inside my house to battle!"`
+                      : `<b>${fName}:</b> "Follow the road south and walk east past the crossroads to <b>Leo's Card Shop</b>! Let's grab 2 Base Set packs!"`);
+                }
+              },
+              {
+                label: `2. 👋 "Got it — lead the way!" (Leave)`,
+                onSelect: () => this.closeDialogue()
+              }
+            ]
+          });
+        };
 
-          if (this.activeDialogueNpc === 'friend' || this.activeDialogueNpc === fName) {
-            challengeBtn.classList.remove('ow-talk-btn');
-            if (this.hasOpenedStarterPack) {
-              textEl.innerHTML = `<b>${fName}:</b> "I can't wait to battle you at my house! Head north up the road to <b>${fName}'s House</b>!"`;
-            } else if (this.hasBoughtCardShopPacks) {
-              textEl.innerHTML = `<b>${fName}:</b> "We got our packs! Let's open them or head inside my house to duel!"`;
-            } else {
-              textEl.innerHTML = `<b>${fName}:</b> "We're on our way to <b>Leo's Card Shop</b>! Follow the road east to grab our 2 Booster Packs!"`;
-            }
-            challengeBtn.classList.add('hidden');
-          } else {
-            textEl.innerHTML = `Press <b>Talk</b> to speak with <b>${fName}</b>.`;
-            challengeBtn.textContent = '💬 Talk (Space)';
-            challengeBtn.classList.add('ow-talk-btn');
+        const showStaticPrompt = (id, name, speakerText, bodyHtml, { speakerClass = 'ow-speaker-tag friend', challengeText = null } = {}) => {
+          this.lastShopPromptKey = null;
+          this.activeDialogueNpc = null;
+          challengeBtn.classList.remove('ow-talk-btn');
+          choicesEl.classList.add('hidden');
+          this.nearInteractable = { id, name };
+          bar.classList.remove('hidden', 'tv-broadcast');
+          speakerEl.textContent = speakerText;
+          speakerEl.className = speakerClass;
+          textEl.innerHTML = bodyHtml;
+          if (challengeText) {
+            challengeBtn.textContent = challengeText;
             challengeBtn.classList.remove('hidden');
+          } else {
+            challengeBtn.classList.add('hidden');
           }
+        };
+
+        const parkNpcs = [
+          {
+            npc: this.chloeNpc,
+            dist: distChloe,
+            id: 'chloe',
+            speakerText: '🧺 CHLOE — PARK COURTYARD PICNIC',
+            talkPrompt: `Press <b>Talk</b> to speak with <b>Chloe</b> at the picnic table.`,
+            greeting: `<b>Chloe:</b> "Oh, hello ${pName}! It's such a gorgeous sunny afternoon in Central Park! I packed a whole basket of lemon bars and berry iced tea. Are you out exploring the town?"`,
+            options: [
+              {
+                label: `1. 🍋 "That picnic spread looks delicious, Chloe!"`,
+                primary: true,
+                reply: `<b>Chloe:</b> "Help yourself to a lemon bar! There's nothing better than fresh baked treats outdoors while watching the water fountain shimmer in the breeze."`
+              },
+              {
+                label: `2. 🌳 "What brings you to Central Park today?"`,
+                reply: `<b>Chloe:</b> "I love the fresh air and the peaceful courtyard! Rowan over at table two has been deep into his card binders, and Jasper's doing landscape sketches. It's the liveliest spot in town!"`
+              },
+              {
+                label: `3. 🌸 "Do you collect Mythos cards too?"`,
+                reply: `<b>Chloe:</b> "I love the Flora and Nature-type cards! Maya showed me some rare floral beast cards earlier this week. They have such gentle, beautiful foil art!"`
+              }
+            ],
+            leaveLabel: `4. 👋 "Enjoy your picnic, Chloe! (Leave)"`
+          },
+          {
+            npc: this.rowanNpc,
+            dist: distRowan,
+            id: 'rowan',
+            speakerText: '🃏 ROWAN — MYTHOS DECK THEORIST',
+            talkPrompt: `Press <b>Talk</b> to speak with <b>Rowan</b> by his card binder and deckboxes.`,
+            greeting: `<b>Rowan:</b> "Hey ${pName}! Check out this spread — I'm organizing my tactical beast pairings for the upcoming Oakhaven tournament. What kind of deck archetype are you running?"`,
+            options: [
+              {
+                label: `1. 🃏 "What cards are you sorting through?"`,
+                primary: true,
+                reply: `<b>Rowan:</b> "I'm testing an aerial mobility combo with <b>Pegasus</b> and frontline pressure with <b>Dreadnaught</b>. If you control the center tiles and protect your backline, you dictate the entire tempo of the match!"`
+              },
+              {
+                label: `2. 🪙 "How do you decide who goes first in matches?"`,
+                reply: `<b>Rowan:</b> "The official Mythos coin flip! Whoever calls the golden coin gets first strike advantage. But going second gives you defensive counter-positioning, so both sides have a strong gameplan!"`
+              },
+              {
+                label: `3. 🏪 "Have you been to Leo's Card Shop today?"`,
+                reply: `<b>Rowan:</b> "Leo's got fresh booster packs just west of here! If you haven't opened a Base Set pack yet, you definitely should. Nothing beats the thrill of peeling a rare foil card!"`
+              }
+            ],
+            leaveLabel: `4. 👋 "Good luck with your deck, Rowan! (Leave)"`
+          },
+          {
+            npc: this.jasperNpc,
+            dist: distJasper,
+            id: 'jasper',
+            speakerText: '🎨 JASPER — WILDLIFE SKETCHER',
+            talkPrompt: `Press <b>Talk</b> to speak with <b>Jasper</b> by his wildlife sketchpad.`,
+            greeting: `<b>Jasper:</b> "Shh... look up through the maple and oak canopies! A flock of cedar waxwings just landed among the high boughs. I'm finishing up a wildlife sketch. Want to see?"`,
+            options: [
+              {
+                label: `1. 🎨 "What are you sketching right now, Jasper?"`,
+                primary: true,
+                reply: `<b>Jasper:</b> "I'm drawing field studies of the park birds and imagining them as winged Mythos beasts! Look at those feathers and wing spans — nature gives the best inspiration for beast card artwork."`
+              },
+              {
+                label: `2. 🔭 "Can I borrow your binoculars to scan the treetops?"`,
+                reply: `<b>Jasper:</b> "Sure! Focus near the highest oak branches. If you look closely across the leaves, you can spot songbirds and golden dragonflies darting through the sunbeams."`
+              },
+              {
+                label: `3. 🌳 "How long have you been in the park courtyard?"`,
+                reply: `<b>Jasper:</b> "Since early morning! The morning light on the fountain stones was breathtaking. This courtyard is the heart of Oakhaven — everyone passes through sooner or later."`
+              }
+            ],
+            leaveLabel: `4. 👋 "Keep up the great sketching, Jasper! (Leave)"`
+          }
+        ];
+        const nearParkNpc = parkNpcs.find(p => p.npc && p.dist < 1.6);
+
+        if ((this.activeDialogueNpc === 'friend' || this.activeDialogueNpc === fName) && distFriendExt < 1.55) {
+          renderExtFriend();
         } else if (distCardShopDoor < 1.15) {
-          this.lastShopPromptKey = null;
-          this.activeDialogueNpc = null;
-          challengeBtn.classList.remove('ow-talk-btn');
-          this.nearInteractable = { id: 'card_shop', name: "Leo's Card Shop" };
-          bar.classList.remove('hidden');
-          bar.classList.remove('tv-broadcast');
-          speakerEl.textContent = `🃏 LEO'S CARD SHOP`;
-          speakerEl.className = 'ow-speaker-tag tv';
-          textEl.innerHTML = this.hasOpenedStarterPack
-            ? `<b>Leo's Card Shop</b> — ${fName} already headed back to <b>${fName}'s House</b> on the north residential road to wait for your Mythos Battle!`
-            : `<b>${fName}:</b> "We made it to <b>Leo's Card Shop</b> on the far east block!! Walk right up through the front doors to head inside!"`;
-          challengeBtn.classList.add('hidden');
-        } else if (distEastSign < 1.0) {
-          this.lastShopPromptKey = null;
-          this.activeDialogueNpc = null;
-          challengeBtn.classList.remove('ow-talk-btn');
-          this.nearInteractable = { id: 'east_sign', name: 'East Block Sign' };
-          bar.classList.remove('hidden');
-          bar.classList.remove('tv-broadcast');
-          speakerEl.textContent = `🪧 EAST MARKET BLOCK`;
-          speakerEl.className = 'ow-speaker-tag friend';
-          textEl.innerHTML = `<b>◄ West:</b> ${wName} Connector Ave &nbsp;|&nbsp; <b>► East Block:</b> Leo's Card Shop`;
-          challengeBtn.classList.add('hidden');
+          showStaticPrompt(
+            'card_shop',
+            "Leo's Card Shop",
+            `🃏 LEO'S CARD SHOP`,
+            this.hasOpenedStarterPack
+              ? `<b>Leo's Card Shop</b> — ${fName} already headed back to <b>${fName}'s House</b> on the north residential road to wait for your Mythos Battle!`
+              : `<b>${fName}:</b> "We made it to <b>Leo's Card Shop</b> on the far east block!! Walk right up through the front doors to head inside!"`,
+            { speakerClass: 'ow-speaker-tag tv' }
+          );
         } else if (distFriendMailbox < 1.0) {
-          this.lastShopPromptKey = null;
-          this.activeDialogueNpc = null;
-          challengeBtn.classList.remove('ow-talk-btn');
-          this.nearInteractable = { id: 'friend_mailbox', name: `${fName}'s Mailbox` };
-          bar.classList.remove('hidden');
-          bar.classList.remove('tv-broadcast');
-          speakerEl.textContent = `📬 MAILBOX — 104 ${wName.toUpperCase()} LANE`;
-          speakerEl.className = 'ow-speaker-tag friend';
-          textEl.innerHTML = `<b>"${fName}'s House"</b> — Hand-painted on the wooden post. ${this.hasOpenedStarterPack ? `<b>${fName}</b> is waiting inside his house for your Mythos Battle!` : `Inside is a flyer for the <b>MYTHOS Summer Launch Event at Leo's Card Shop</b>!`}`;
-          challengeBtn.classList.add('hidden');
+          showStaticPrompt(
+            'friend_mailbox',
+            `${fName}'s Mailbox`,
+            `📬 MAILBOX — 104 ${wName.toUpperCase()} LANE`,
+            `<b>"${fName}'s House"</b> — Hand-painted on the wooden post. ${this.hasOpenedStarterPack ? `<b>${fName}</b> is waiting inside his house for your Mythos Battle!` : `Inside is a flyer for the <b>MYTHOS Summer Launch Event at Leo's Card Shop</b>!`}`
+          );
         } else if (distPlayerMailbox < 1.0) {
-          this.lastShopPromptKey = null;
-          this.activeDialogueNpc = null;
-          challengeBtn.classList.remove('ow-talk-btn');
-          this.nearInteractable = { id: 'player_mailbox', name: `${pName}'s Mailbox` };
-          bar.classList.remove('hidden');
-          bar.classList.remove('tv-broadcast');
-          speakerEl.textContent = `📬 MAILBOX — 102 ${wName.toUpperCase()} LANE`;
-          speakerEl.className = 'ow-speaker-tag friend';
-          textEl.innerHTML = `<b>"${pName}'s House"</b> — Your family mailbox. No new mail since morning.`;
-          challengeBtn.classList.add('hidden');
+          showStaticPrompt(
+            'player_mailbox',
+            `${pName}'s Mailbox`,
+            `📬 MAILBOX — 102 ${wName.toUpperCase()} LANE`,
+            `<b>"${pName}'s House"</b> — Your family mailbox. No new mail since morning.`
+          );
         } else if (distPlayerDoor < 1.15) {
-          this.lastShopPromptKey = null;
-          this.activeDialogueNpc = null;
-          challengeBtn.classList.remove('ow-talk-btn');
-          this.nearInteractable = { id: 'player_door', name: `${pName}'s Front Door` };
-          bar.classList.remove('hidden');
-          bar.classList.remove('tv-broadcast');
-          speakerEl.textContent = `🚪 ${pName.toUpperCase()}'S HOUSE`;
-          speakerEl.className = 'ow-speaker-tag friend';
-          textEl.innerHTML = `<b>Your House</b> — Press Space or walk through the screen door to head inside (Auto-Saves game).`;
-          challengeBtn.classList.add('hidden');
+          showStaticPrompt(
+            'player_door',
+            `${pName}'s Front Door`,
+            `🚪 ${pName.toUpperCase()}'S HOUSE`,
+            `<b>Your House</b> — Press Space or walk through the screen door to head inside (Auto-Saves game).`
+          );
         } else if (distFriendDoor < 1.1) {
-          this.activeDialogueNpc = null;
-          challengeBtn.classList.remove('ow-talk-btn');
-          this.nearInteractable = { id: 'friend_door', name: `${fName}'s Front Door` };
-          bar.classList.remove('hidden');
-          bar.classList.remove('tv-broadcast');
-          speakerEl.textContent = `🚪 ${fName.toUpperCase()}'S HOUSE`;
-          speakerEl.className = 'ow-speaker-tag friend';
           if (this.hasOpenedStarterPack) {
+            this.activeDialogueNpc = null;
+            challengeBtn.classList.remove('ow-talk-btn');
+            this.nearInteractable = { id: 'friend_door', name: `${fName}'s Front Door` };
+            bar.classList.remove('hidden', 'tv-broadcast');
+            speakerEl.textContent = `🚪 ${fName.toUpperCase()}'S HOUSE`;
+            speakerEl.className = 'ow-speaker-tag friend';
             const doorKey = `friend_door_ready_${fName}`;
             if (this.lastShopPromptKey !== doorKey) {
               this.lastShopPromptKey = doorKey;
@@ -4641,7 +4772,7 @@
               battleDoorBtn.innerHTML = `⚔️ "I'm ready, ${fName}! Let's battle in <b>MYTHOS</b>!"`;
               battleDoorBtn.addEventListener('click', (ev) => {
                 ev.stopPropagation();
-                this.triggerDuel();
+                this.triggerDuel(this.getFriendNpc());
               });
               choicesEl.appendChild(battleDoorBtn);
             }
@@ -4649,366 +4780,130 @@
             challengeBtn.textContent = `⚔️ Battle ${fName}!`;
             challengeBtn.classList.remove('hidden');
           } else {
-            this.lastShopPromptKey = null;
-            textEl.textContent = `${fName}: "We don't need anything from my house right now — let's follow the road south and walk two blocks east to Leo's Card Shop!"`;
-            challengeBtn.classList.add('hidden');
+            showStaticPrompt(
+              'friend_door',
+              `${fName}'s Front Door`,
+              `🚪 ${fName.toUpperCase()}'S HOUSE`,
+              `${fName}: "We don't need anything from my house right now — let's follow the road south and walk two blocks east to Leo's Card Shop!"`
+            );
           }
         } else if (distRoadSign < 1.05) {
-          this.lastShopPromptKey = null;
-          this.activeDialogueNpc = null;
-          challengeBtn.classList.remove('ow-talk-btn');
-          this.nearInteractable = { id: 'road_sign', name: 'Crossroads Sign' };
-          bar.classList.remove('hidden');
-          bar.classList.remove('tv-broadcast');
-          speakerEl.textContent = `🪧 ${wName.toUpperCase()} CROSSROADS`;
-          speakerEl.className = 'ow-speaker-tag friend';
-          textEl.innerHTML = `<b>◄ West:</b> Player's House &nbsp;|&nbsp; <b>► East:</b> ${fName}'s Cottage & North Turn &nbsp;|&nbsp; <b>▼ South to East Market Block:</b> Leo's Card Shop`;
-          challengeBtn.classList.add('hidden');
+          showStaticPrompt(
+            'road_sign',
+            'Crossroads Sign',
+            `🪧 ${wName.toUpperCase()} CROSSROADS`,
+            `<b>◄ West:</b> Player's House &nbsp;|&nbsp; <b>► East:</b> ${fName}'s Cottage & North Turn &nbsp;|&nbsp; <b>▼ South to East Market Block:</b> Leo's Card Shop`
+          );
         } else if (distPlutoDoor < 1.15) {
-          this.lastShopPromptKey = null;
-          this.activeDialogueNpc = null;
-          challengeBtn.classList.remove('ow-talk-btn');
-          this.nearInteractable = { id: 'pluto_door', name: "Pluto's House" };
-          bar.classList.remove('hidden');
-          bar.classList.remove('tv-broadcast');
-          speakerEl.textContent = `🚪 PLUTO'S HOUSE`;
-          speakerEl.className = 'ow-speaker-tag friend';
-          textEl.innerHTML = `<b>Pluto's House</b> — A sleek craftsman cottage with deep cosmic-indigo shingles and glowing cyan windowpanes. Step through the front door to visit Pluto in his bedroom!`;
-          challengeBtn.textContent = "🚪 Enter Pluto's House (Space)";
-          challengeBtn.classList.remove('hidden');
+          showStaticPrompt(
+            'pluto_door',
+            "Pluto's House",
+            `🚪 PLUTO'S HOUSE`,
+            `<b>Pluto's House</b> — A sleek craftsman cottage with deep cosmic-indigo shingles and glowing cyan windowpanes. Step through the front door to visit Pluto in his bedroom!`,
+            { challengeText: "🚪 Enter Pluto's House (Space)" }
+          );
         } else if (distPlutoMailbox < 1.0) {
-          this.lastShopPromptKey = null;
-          this.activeDialogueNpc = null;
-          challengeBtn.classList.remove('ow-talk-btn');
-          this.nearInteractable = { id: 'pluto_mailbox', name: "Pluto's Mailbox" };
-          bar.classList.remove('hidden');
-          bar.classList.remove('tv-broadcast');
-          speakerEl.textContent = `📬 MAILBOX — 201 SOUTH CONNECTOR AVE`;
-          speakerEl.className = 'ow-speaker-tag friend';
-          textEl.innerHTML = `<b>"Pluto's House"</b> — Sleek purple metallic mailbox with digital address readouts and tech decals.`;
-          challengeBtn.classList.add('hidden');
+          showStaticPrompt(
+            'pluto_mailbox',
+            "Pluto's Mailbox",
+            `📬 MAILBOX — 201 SOUTH CONNECTOR AVE`,
+            `<b>"Pluto's House"</b> — Sleek purple metallic mailbox with digital address readouts and tech decals.`
+          );
         } else if (distNovaDoor < 1.15) {
-          this.lastShopPromptKey = null;
-          this.activeDialogueNpc = null;
-          challengeBtn.classList.remove('ow-talk-btn');
-          this.nearInteractable = { id: 'nova_door', name: "Nova's House" };
-          bar.classList.remove('hidden');
-          bar.classList.remove('tv-broadcast');
-          speakerEl.textContent = `🚪 NOVA'S HOUSE`;
-          speakerEl.className = 'ow-speaker-tag friend';
-          textEl.innerHTML = `<b>Nova's House</b> — A handsome celestial navy craftsman cottage with starlight-glowing windows. Step through the front door to visit Nova in her observatory!`;
-          challengeBtn.textContent = "🚪 Enter Nova's House (Space)";
-          challengeBtn.classList.remove('hidden');
+          showStaticPrompt(
+            'nova_door',
+            "Nova's House",
+            `🚪 NOVA'S HOUSE`,
+            `<b>Nova's House</b> — A handsome celestial navy craftsman cottage with starlight-glowing windows. Step through the front door to visit Nova in her observatory!`,
+            { challengeText: "🚪 Enter Nova's House (Space)" }
+          );
         } else if (distNovaMailbox < 1.0) {
-          this.lastShopPromptKey = null;
-          this.activeDialogueNpc = null;
-          challengeBtn.classList.remove('ow-talk-btn');
-          this.nearInteractable = { id: 'nova_mailbox', name: "Nova's Mailbox" };
-          bar.classList.remove('hidden');
-          bar.classList.remove('tv-broadcast');
-          speakerEl.textContent = `📬 MAILBOX — 301 SOUTH COBBLESTONE WAY`;
-          speakerEl.className = 'ow-speaker-tag friend';
-          textEl.innerHTML = `<b>"Nova's House"</b> — Midnight-blue painted mailbox adorned with celestial constellation decals.`;
-          challengeBtn.classList.add('hidden');
+          showStaticPrompt(
+            'nova_mailbox',
+            "Nova's Mailbox",
+            `📬 MAILBOX — 301 SOUTH COBBLESTONE WAY`,
+            `<b>"Nova's House"</b> — Midnight-blue painted mailbox adorned with celestial constellation decals.`
+          );
         } else if (distSilasDoor < 1.15) {
-          this.lastShopPromptKey = null;
-          this.activeDialogueNpc = null;
-          challengeBtn.classList.remove('ow-talk-btn');
-          this.nearInteractable = { id: 'silas_door', name: "Silas's House" };
-          bar.classList.remove('hidden');
-          bar.classList.remove('tv-broadcast');
-          speakerEl.textContent = `🚪 SILAS'S HOUSE`;
-          speakerEl.className = 'ow-speaker-tag friend';
-          textEl.innerHTML = `<b>Silas's House</b> — A warm cedar craftsman cottage with a stone hearth chimney and hand-carved gables. Step through the front door to visit Silas in his workshop!`;
-          challengeBtn.textContent = "🚪 Enter Silas's House (Space)";
-          challengeBtn.classList.remove('hidden');
+          showStaticPrompt(
+            'silas_door',
+            "Silas's House",
+            `🚪 SILAS'S HOUSE`,
+            `<b>Silas's House</b> — A warm cedar craftsman cottage with a stone hearth chimney and hand-carved gables. Step through the front door to visit Silas in his workshop!`,
+            { challengeText: "🚪 Enter Silas's House (Space)" }
+          );
         } else if (distSilasMailbox < 1.0) {
-          this.lastShopPromptKey = null;
-          this.activeDialogueNpc = null;
-          challengeBtn.classList.remove('ow-talk-btn');
-          this.nearInteractable = { id: 'silas_mailbox', name: "Silas's Mailbox" };
-          bar.classList.remove('hidden');
-          bar.classList.remove('tv-broadcast');
-          speakerEl.textContent = `📬 MAILBOX — 303 SOUTH COBBLESTONE WAY`;
-          speakerEl.className = 'ow-speaker-tag friend';
-          textEl.innerHTML = `<b>"Silas's House"</b> — Solid heartwood oak mailbox hand-carved with Dreadnaught and ancient beast motifs.`;
-          challengeBtn.classList.add('hidden');
+          showStaticPrompt(
+            'silas_mailbox',
+            "Silas's Mailbox",
+            `📬 MAILBOX — 303 SOUTH COBBLESTONE WAY`,
+            `<b>"Silas's House"</b> — Solid heartwood oak mailbox hand-carved with Dreadnaught and ancient beast motifs.`
+          );
         } else if (distMayaDoor < 1.15) {
-          this.lastShopPromptKey = null;
-          this.activeDialogueNpc = null;
-          challengeBtn.classList.remove('ow-talk-btn');
-          this.nearInteractable = { id: 'maya_door', name: "Maya's House" };
-          bar.classList.remove('hidden');
-          bar.classList.remove('tv-broadcast');
-          speakerEl.textContent = `🚪 MAYA'S HOUSE`;
-          speakerEl.className = 'ow-speaker-tag friend';
-          textEl.innerHTML = `<b>Maya's House</b> — A vibrant sage cottage framed by blooming orchid flower boxes and a glass conservatory. Step through the front door to visit Maya!`;
-          challengeBtn.textContent = "🚪 Enter Maya's House (Space)";
-          challengeBtn.classList.remove('hidden');
+          showStaticPrompt(
+            'maya_door',
+            "Maya's House",
+            `🚪 MAYA'S HOUSE`,
+            `<b>Maya's House</b> — A vibrant sage cottage framed by blooming orchid flower boxes and a glass conservatory. Step through the front door to visit Maya!`,
+            { challengeText: "🚪 Enter Maya's House (Space)" }
+          );
         } else if (distMayaMailbox < 1.0) {
-          this.lastShopPromptKey = null;
-          this.activeDialogueNpc = null;
-          challengeBtn.classList.remove('ow-talk-btn');
-          this.nearInteractable = { id: 'maya_mailbox', name: "Maya's Mailbox" };
-          bar.classList.remove('hidden');
-          bar.classList.remove('tv-broadcast');
-          speakerEl.textContent = `📬 MAILBOX — 305 SOUTH COBBLESTONE WAY`;
-          speakerEl.className = 'ow-speaker-tag friend';
-          textEl.innerHTML = `<b>"Maya's House"</b> — Cheerful emerald mailbox twined with sweet-pea vines and miniature clay pots.`;
-          challengeBtn.classList.add('hidden');
+          showStaticPrompt(
+            'maya_mailbox',
+            "Maya's Mailbox",
+            `📬 MAILBOX — 305 SOUTH COBBLESTONE WAY`,
+            `<b>"Maya's House"</b> — Cheerful emerald mailbox twined with sweet-pea vines and miniature clay pots.`
+          );
         } else if (distSouthSign < 1.0) {
-          this.lastShopPromptKey = null;
-          this.activeDialogueNpc = null;
-          challengeBtn.classList.remove('ow-talk-btn');
-          this.nearInteractable = { id: 'south_sign', name: 'South Block Signpost' };
-          bar.classList.remove('hidden');
-          bar.classList.remove('tv-broadcast');
-          speakerEl.textContent = `🪧 COBBLESTONE WAY`;
-          speakerEl.className = 'ow-speaker-tag friend';
-          textEl.innerHTML = `<b>◄ West:</b> Nova's House &nbsp;|&nbsp; <b>▲ North:</b> Leo's Card Shop & Town Green &nbsp;|&nbsp; <b>► East:</b> Silas & Maya's Cottages & Cobblestone Way East End`;
-          challengeBtn.classList.add('hidden');
-        } else if (distChloe < 1.6) {
-          this.lastShopPromptKey = null;
-          this.nearInteractable = this.chloeNpc;
-          bar.classList.remove('hidden');
-          bar.classList.remove('tv-broadcast');
-          speakerEl.textContent = "🧺 CHLOE — PARK COURTYARD PICNIC";
-          speakerEl.className = 'ow-speaker-tag friend';
-
-          if (this.activeDialogueNpc === 'chloe') {
-            challengeBtn.classList.remove('ow-talk-btn');
-            const chloeKey = `chloe_dialogue_${pName}`;
-            if (this.lastShopPromptKey !== chloeKey) {
-              this.lastShopPromptKey = chloeKey;
-              choicesEl.innerHTML = '';
-              textEl.innerHTML = `<b>Chloe:</b> "Oh, hello ${pName}! It's such a gorgeous sunny afternoon in Central Park! I packed a whole basket of lemon bars and berry iced tea. Are you out exploring the town?"`;
-
-              const btnSnack = document.createElement('button');
-              btnSnack.type = 'button';
-              btnSnack.className = 'ow-choice-btn primary';
-              btnSnack.innerHTML = `1. 🍋 "That picnic spread looks delicious, Chloe!"`;
-              btnSnack.addEventListener('click', (ev) => {
-                ev.stopPropagation();
-                if (window.sounds?.playClick) window.sounds.playClick();
-                textEl.innerHTML = `<b>Chloe:</b> "Help yourself to a lemon bar! There's nothing better than fresh baked treats outdoors while watching the water fountain shimmer in the breeze."`;
-              });
-              choicesEl.appendChild(btnSnack);
-
-              const btnPark = document.createElement('button');
-              btnPark.type = 'button';
-              btnPark.className = 'ow-choice-btn';
-              btnPark.innerHTML = `2. 🌳 "What brings you to Central Park today?"`;
-              btnPark.addEventListener('click', (ev) => {
-                ev.stopPropagation();
-                if (window.sounds?.playClick) window.sounds.playClick();
-                textEl.innerHTML = `<b>Chloe:</b> "I love the fresh air and the peaceful courtyard! Rowan over at table two has been deep into his card binders, and Jasper's doing landscape sketches. It's the liveliest spot in town!"`;
-              });
-              choicesEl.appendChild(btnPark);
-
-              const btnTips = document.createElement('button');
-              btnTips.type = 'button';
-              btnTips.className = 'ow-choice-btn';
-              btnTips.innerHTML = `3. 🌸 "Do you collect Mythos cards too?"`;
-              btnTips.addEventListener('click', (ev) => {
-                ev.stopPropagation();
-                if (window.sounds?.playClick) window.sounds.playClick();
-                textEl.innerHTML = `<b>Chloe:</b> "I love the Flora and Nature-type cards! Maya showed me some rare floral beast cards earlier this week. They have such gentle, beautiful foil art!"`;
-              });
-              choicesEl.appendChild(btnTips);
-
-              const btnLeave = document.createElement('button');
-              btnLeave.type = 'button';
-              btnLeave.className = 'ow-choice-btn';
-              btnLeave.innerHTML = `4. 👋 "Enjoy your picnic, Chloe! (Leave)"`;
-              btnLeave.addEventListener('click', (ev) => {
-                ev.stopPropagation();
-                if (window.sounds?.playClick) window.sounds.playClick();
-                this.activeDialogueNpc = null;
-                this.lastShopPromptKey = null;
-                this.updateFreeRoamPrompt();
-              });
-              choicesEl.appendChild(btnLeave);
-            }
-            choicesEl.classList.remove('hidden');
-            challengeBtn.textContent = '👋 Leave (Space)';
-            challengeBtn.classList.remove('hidden');
-          } else {
-            this.lastShopPromptKey = null;
-            textEl.innerHTML = `Press <b>Talk</b> to speak with <b>Chloe</b> at the picnic table.`;
-            challengeBtn.textContent = '💬 Talk (Space)';
-            challengeBtn.classList.add('ow-talk-btn');
-            challengeBtn.classList.remove('hidden');
-          }
-        } else if (distRowan < 1.6) {
-          this.lastShopPromptKey = null;
-          this.nearInteractable = this.rowanNpc;
-          bar.classList.remove('hidden');
-          bar.classList.remove('tv-broadcast');
-          speakerEl.textContent = "🃏 ROWAN — MYTHOS DECK THEORIST";
-          speakerEl.className = 'ow-speaker-tag friend';
-
-          if (this.activeDialogueNpc === 'rowan') {
-            challengeBtn.classList.remove('ow-talk-btn');
-            const rowanKey = `rowan_dialogue_${pName}`;
-            if (this.lastShopPromptKey !== rowanKey) {
-              this.lastShopPromptKey = rowanKey;
-              choicesEl.innerHTML = '';
-              textEl.innerHTML = `<b>Rowan:</b> "Hey ${pName}! Check out this spread — I'm organizing my tactical beast pairings for the upcoming Oakhaven tournament. What kind of deck archetype are you running?"`;
-
-              const btnCombos = document.createElement('button');
-              btnCombos.type = 'button';
-              btnCombos.className = 'ow-choice-btn primary';
-              btnCombos.innerHTML = `1. 🃏 "What cards are you sorting through?"`;
-              btnCombos.addEventListener('click', (ev) => {
-                ev.stopPropagation();
-                if (window.sounds?.playClick) window.sounds.playClick();
-                textEl.innerHTML = `<b>Rowan:</b> "I'm testing an aerial mobility combo with <b>Pegasus</b> and frontline pressure with <b>Dreadnaught</b>. If you control the center tiles and protect your backline, you dictate the entire tempo of the match!"`;
-              });
-              choicesEl.appendChild(btnCombos);
-
-              const btnCoin = document.createElement('button');
-              btnCoin.type = 'button';
-              btnCoin.className = 'ow-choice-btn';
-              btnCoin.innerHTML = `2. 🪙 "How do you decide who goes first in matches?"`;
-              btnCoin.addEventListener('click', (ev) => {
-                ev.stopPropagation();
-                if (window.sounds?.playClick) window.sounds.playClick();
-                textEl.innerHTML = `<b>Rowan:</b> "The official Mythos coin flip! Whoever calls the golden coin gets first strike advantage. But going second gives you defensive counter-positioning, so both sides have a strong gameplan!"`;
-              });
-              choicesEl.appendChild(btnCoin);
-
-              const btnLeo = document.createElement('button');
-              btnLeo.type = 'button';
-              btnLeo.className = 'ow-choice-btn';
-              btnLeo.innerHTML = `3. 🏪 "Have you been to Leo's Card Shop today?"`;
-              btnLeo.addEventListener('click', (ev) => {
-                ev.stopPropagation();
-                if (window.sounds?.playClick) window.sounds.playClick();
-                textEl.innerHTML = `<b>Rowan:</b> "Leo's got fresh booster packs just west of here! If you haven't opened a Base Set pack yet, you definitely should. Nothing beats the thrill of peeling a rare foil card!"`;
-              });
-              choicesEl.appendChild(btnLeo);
-
-              const btnLeave = document.createElement('button');
-              btnLeave.type = 'button';
-              btnLeave.className = 'ow-choice-btn';
-              btnLeave.innerHTML = `4. 👋 "Good luck with your deck, Rowan! (Leave)"`;
-              btnLeave.addEventListener('click', (ev) => {
-                ev.stopPropagation();
-                if (window.sounds?.playClick) window.sounds.playClick();
-                this.activeDialogueNpc = null;
-                this.lastShopPromptKey = null;
-                this.updateFreeRoamPrompt();
-              });
-              choicesEl.appendChild(btnLeave);
-            }
-            choicesEl.classList.remove('hidden');
-            challengeBtn.textContent = '👋 Leave (Space)';
-            challengeBtn.classList.remove('hidden');
-          } else {
-            this.lastShopPromptKey = null;
-            textEl.innerHTML = `Press <b>Talk</b> to speak with <b>Rowan</b> by his card binder and deckboxes.`;
-            challengeBtn.textContent = '💬 Talk (Space)';
-            challengeBtn.classList.add('ow-talk-btn');
-            challengeBtn.classList.remove('hidden');
-          }
-        } else if (distJasper < 1.6) {
-          this.lastShopPromptKey = null;
-          this.nearInteractable = this.jasperNpc;
-          bar.classList.remove('hidden');
-          bar.classList.remove('tv-broadcast');
-          speakerEl.textContent = "🎨 JASPER — WILDLIFE SKETCHER";
-          speakerEl.className = 'ow-speaker-tag friend';
-
-          if (this.activeDialogueNpc === 'jasper') {
-            challengeBtn.classList.remove('ow-talk-btn');
-            const jasperKey = `jasper_dialogue_${pName}`;
-            if (this.lastShopPromptKey !== jasperKey) {
-              this.lastShopPromptKey = jasperKey;
-              choicesEl.innerHTML = '';
-              textEl.innerHTML = `<b>Jasper:</b> "Shh... look up through the maple and oak canopies! A flock of cedar waxwings just landed among the high boughs. I'm finishing up a wildlife sketch. Want to see?"`;
-
-              const btnSketch = document.createElement('button');
-              btnSketch.type = 'button';
-              btnSketch.className = 'ow-choice-btn primary';
-              btnSketch.innerHTML = `1. 🎨 "What are you sketching right now, Jasper?"`;
-              btnSketch.addEventListener('click', (ev) => {
-                ev.stopPropagation();
-                if (window.sounds?.playClick) window.sounds.playClick();
-                textEl.innerHTML = `<b>Jasper:</b> "I'm drawing field studies of the park birds and imagining them as winged Mythos beasts! Look at those feathers and wing spans — nature gives the best inspiration for beast card artwork."`;
-              });
-              choicesEl.appendChild(btnSketch);
-
-              const btnBinoc = document.createElement('button');
-              btnBinoc.type = 'button';
-              btnBinoc.className = 'ow-choice-btn';
-              btnBinoc.innerHTML = `2. 🔭 "Can I borrow your binoculars to scan the treetops?"`;
-              btnBinoc.addEventListener('click', (ev) => {
-                ev.stopPropagation();
-                if (window.sounds?.playClick) window.sounds.playClick();
-                textEl.innerHTML = `<b>Jasper:</b> "Sure! Focus near the highest oak branches. If you look closely across the leaves, you can spot songbirds and golden dragonflies darting through the sunbeams."`;
-              });
-              choicesEl.appendChild(btnBinoc);
-
-              const btnPark = document.createElement('button');
-              btnPark.type = 'button';
-              btnPark.className = 'ow-choice-btn';
-              btnPark.innerHTML = `3. 🌳 "How long have you been in the park courtyard?"`;
-              btnPark.addEventListener('click', (ev) => {
-                ev.stopPropagation();
-                if (window.sounds?.playClick) window.sounds.playClick();
-                textEl.innerHTML = `<b>Jasper:</b> "Since early morning! The morning light on the fountain stones was breathtaking. This courtyard is the heart of Oakhaven — everyone passes through sooner or later."`;
-              });
-              choicesEl.appendChild(btnPark);
-
-              const btnLeave = document.createElement('button');
-              btnLeave.type = 'button';
-              btnLeave.className = 'ow-choice-btn';
-              btnLeave.innerHTML = `4. 👋 "Keep up the great sketching, Jasper! (Leave)"`;
-              btnLeave.addEventListener('click', (ev) => {
-                ev.stopPropagation();
-                if (window.sounds?.playClick) window.sounds.playClick();
-                this.activeDialogueNpc = null;
-                this.lastShopPromptKey = null;
-                this.updateFreeRoamPrompt();
-              });
-              choicesEl.appendChild(btnLeave);
-            }
-            choicesEl.classList.remove('hidden');
-            challengeBtn.textContent = '👋 Leave (Space)';
-            challengeBtn.classList.remove('hidden');
-          } else {
-            this.lastShopPromptKey = null;
-            textEl.innerHTML = `Press <b>Talk</b> to speak with <b>Jasper</b> by his wildlife sketchpad.`;
-            challengeBtn.textContent = '💬 Talk (Space)';
-            challengeBtn.classList.add('ow-talk-btn');
-            challengeBtn.classList.remove('hidden');
-          }
+          showStaticPrompt(
+            'south_sign',
+            'South Block Signpost',
+            `🪧 COBBLESTONE WAY`,
+            `<b>◄ West:</b> Nova's House &nbsp;|&nbsp; <b>▲ North:</b> Leo's Card Shop & Town Green &nbsp;|&nbsp; <b>► East:</b> Silas & Maya's Cottages & Cobblestone Way East End`
+          );
+        } else if (nearParkNpc) {
+          this.nearInteractable = nearParkNpc.npc;
+          this.renderNpcChoicePrompt({
+            npcId: nearParkNpc.id,
+            promptKey: `${nearParkNpc.id}_dialogue_${pName}`,
+            speakerText: nearParkNpc.speakerText,
+            speakerClass: 'ow-speaker-tag friend',
+            talkPromptHtml: nearParkNpc.talkPrompt,
+            greetingHtml: nearParkNpc.greeting,
+            choices: [
+              ...nearParkNpc.options.map(opt => ({
+                label: opt.label,
+                primary: !!opt.primary,
+                onSelect: (tEl) => { tEl.innerHTML = opt.reply; }
+              })),
+              {
+                label: nearParkNpc.leaveLabel,
+                onSelect: () => this.closeDialogue()
+              }
+            ]
+          });
         } else if (distParkFountain < 1.45) {
-          this.lastShopPromptKey = null;
-          this.activeDialogueNpc = null;
-          challengeBtn.classList.remove('ow-talk-btn');
-          this.nearInteractable = { id: 'park_fountain', name: 'Courtyard Fountain' };
-          bar.classList.remove('hidden');
-          bar.classList.remove('tv-broadcast');
-          speakerEl.textContent = "⛲ CENTRAL PARK WATER FOUNTAIN";
-          speakerEl.className = 'ow-speaker-tag friend';
-          textEl.innerHTML = `<b>Courtyard Fountain</b> — A grand multi-tiered carved limestone fountain. Crystal-clear water cascades into the stone pool, bubbling cheerfully in the afternoon sunlight.`;
-          challengeBtn.classList.add('hidden');
+          showStaticPrompt(
+            'park_fountain',
+            'Courtyard Fountain',
+            `⛲ CENTRAL PARK WATER FOUNTAIN`,
+            `<b>Courtyard Fountain</b> — A grand multi-tiered carved limestone fountain. Crystal-clear water cascades into the stone pool, bubbling cheerfully in the afternoon sunlight.`
+          );
         } else if (distParkSign < 1.1) {
-          this.lastShopPromptKey = null;
-          this.activeDialogueNpc = null;
-          challengeBtn.classList.remove('ow-talk-btn');
-          this.nearInteractable = { id: 'park_sign', name: 'Central Park Sign' };
-          bar.classList.remove('hidden');
-          bar.classList.remove('tv-broadcast');
-          speakerEl.textContent = "🪧 OAKHAVEN CENTRAL PARK";
-          speakerEl.className = 'ow-speaker-tag friend';
-          textEl.innerHTML = `<b>◄ West:</b> Leo's Card Shop & Town Center &nbsp;|&nbsp; <b>► East:</b> Courtyard Picnic Tables & Central Fountain`;
-          challengeBtn.classList.add('hidden');
+          showStaticPrompt(
+            'park_sign',
+            'Central Park Sign',
+            `🪧 OAKHAVEN CENTRAL PARK`,
+            `<b>◄ West:</b> Leo's Card Shop & Town Center &nbsp;|&nbsp; <b>► East:</b> Courtyard Picnic Tables & Central Fountain`
+          );
+        } else if (distFriendExt < 1.55) {
+          renderExtFriend();
         } else {
           this.lastShopPromptKey = null;
           this.nearInteractable = null;
           this.activeDialogueNpc = null;
+          this.clearPendingBattleResults();
+          choicesEl.classList.add('hidden');
           challengeBtn.classList.remove('ow-talk-btn');
           bar.classList.add('hidden');
         }
@@ -5019,6 +4914,132 @@
     // -------------------------------------------------------------------------
     // Mobile Touch Virtual Gamepad & Dynamic Context Action Logic
     // -------------------------------------------------------------------------
+    enterArea(doorId) {
+      const destinations = {
+        player_door: { area: 'interior', x: 9.8, y: 9.4, saveToast: '💾 Game Saved — Home' },
+        pluto_door: { area: 'pluto_interior', x: 9.8, y: 9.3 },
+        nova_door: { area: 'nova_interior', x: 9.8, y: 9.3 },
+        silas_door: { area: 'silas_interior', x: 9.8, y: 9.3 },
+        maya_door: { area: 'maya_interior', x: 9.8, y: 9.3 }
+      };
+      const dest = destinations[doorId];
+      if (!dest) return false;
+      if (window.sounds?.playMove) window.sounds.playMove();
+      this.currentArea = dest.area;
+      this.player.x = dest.x;
+      this.player.y = dest.y;
+      this.player.dir = 'up';
+      this.player.targetX = null;
+      this.player.targetY = null;
+      this.areaTransitionCooldown = 25;
+      this.closeDialogue();
+      this.updateHUDSaveInfo();
+      if (dest.saveToast) {
+        this.saveWorldData(this.draftAppearance);
+        this.showAutosaveIndicator(dest.saveToast);
+      }
+      return true;
+    }
+
+    handleChallengeOrLeaveAction() {
+      if (!this.nearInteractable && !this.activeDialogueNpc) return false;
+      const id = this.nearInteractable?.id;
+      const active = this.activeDialogueNpc;
+      const friend = this.getFriendNpc();
+      const friendName = friend?.name || this.friendName || 'Mike';
+
+      if (this.nearInteractable && this.isNpc(this.nearInteractable) && !active) {
+        this.startTalkingToNpc(id);
+        return true;
+      }
+
+      if (active) {
+        if (active === 'chloe' || active === 'rowan' || active === 'jasper') {
+          if (window.sounds?.playClick) window.sounds.playClick();
+          this.closeDialogue();
+          return true;
+        }
+        if (active === 'friend' || active === friendName) {
+          if (this.currentArea === 'friend_interior') {
+            this.triggerDuel(friend);
+          } else {
+            if (window.sounds?.playClick) window.sounds.playClick();
+            this.closeDialogue();
+          }
+          return true;
+        }
+        if (active === 'friend_duel' || active === 'best_friend') {
+          this.triggerDuel(friend);
+          return true;
+        }
+        if (active === 'mom') {
+          if (!this.hasMomBoosterMoney) {
+            this.askMomForBoosterMoney();
+          } else {
+            if (window.sounds?.playClick) window.sounds.playClick();
+            this.closeDialogue();
+          }
+          return true;
+        }
+        if (active === 'shopkeeper') {
+          if (!this.hasBoughtCardShopPacks) {
+            if ((this.gold || 0) >= 20) {
+              this.buyTwoBoosterPacks();
+            } else {
+              if (window.sounds?.playClick) window.sounds.playClick();
+              this.closeDialogue();
+            }
+          } else {
+            this.toggleShopModal(true);
+          }
+          return true;
+        }
+        if (active === 'pluto') {
+          if ((this.gold || 0) >= 1.00) {
+            this.triggerDuel(this.plutoNpc);
+          } else {
+            if (window.sounds?.playClick) window.sounds.playClick();
+            const textEl = document.getElementById('ow-dialog-text');
+            if (textEl) {
+              textEl.innerHTML = `<b>Pluto:</b> "Looks like you don't have $1.00 on you right now! <i>(Wallet: ${this.formatMoney(this.gold || 0)})</i> Go sell an extra card to Shopkeeper Leo down the road or ask Mom for allowance first, then come back!"`;
+            }
+          }
+          return true;
+        }
+        if (active === 'nova') {
+          this.triggerDuel(this.novaNpc);
+          return true;
+        }
+        if (active === 'silas') {
+          this.triggerDuel(this.silasNpc);
+          return true;
+        }
+        if (active === 'maya') {
+          this.triggerDuel(this.mayaNpc);
+          return true;
+        }
+      }
+
+      if (id === 'tv') {
+        this.storyState = 'tv_commercial';
+        this.renderDialogueUI();
+        return true;
+      }
+      if (id === 'player_bed') {
+        this.sleepInBed();
+        return true;
+      }
+      if (id === 'friend_door' && this.hasOpenedStarterPack) {
+        this.triggerDuel(friend);
+        return true;
+      }
+      if (this.enterArea(id)) {
+        return true;
+      }
+      if (window.sounds?.playClick) window.sounds.playClick();
+      return false;
+    }
+
     updateMobileActionLabel() {
       const btnA = document.getElementById('ow-btn-a');
       const labelEl = document.getElementById('ow-btn-a-label');
@@ -5047,15 +5068,31 @@
       const dialogBar = document.getElementById('ow-dialog-bar');
       const isDialogVisible = dialogBar && !dialogBar.classList.contains('hidden');
 
-      if (!this.nearInteractable) {
+      if (!this.nearInteractable && !this.activeDialogueNpc) {
         labelEl.textContent = 'TALK';
         btnA?.classList.remove('dialogue-mode');
         return;
       }
 
-      if (this.isNpc(this.nearInteractable) && !this.activeDialogueNpc) {
+      if (this.nearInteractable && this.isNpc(this.nearInteractable) && !this.activeDialogueNpc) {
         labelEl.textContent = 'TALK 💬';
         btnA?.classList.remove('dialogue-mode');
+        return;
+      }
+
+      if (this.activeDialogueNpc) {
+        btnA?.classList.add('dialogue-mode');
+        const active = this.activeDialogueNpc;
+        const friendName = this.getFriendNpc()?.name || this.friendName || 'Mike';
+        if (active === 'chloe' || active === 'rowan' || active === 'jasper' || ((active === 'friend' || active === friendName) && this.currentArea !== 'friend_interior')) {
+          labelEl.textContent = 'LEAVE 👋';
+        } else if (active === 'mom') {
+          labelEl.textContent = this.hasMomBoosterMoney ? 'LEAVE 👋' : 'ASK 💵';
+        } else if (active === 'shopkeeper') {
+          labelEl.textContent = !this.hasBoughtCardShopPacks ? ((this.gold || 0) >= 20 ? 'BUY 🃏' : 'LEAVE 👋') : 'SHOP 🛒';
+        } else {
+          labelEl.textContent = 'DUEL ⚔️';
+        }
         return;
       }
 
@@ -5070,20 +5107,12 @@
       const id = this.nearInteractable.id;
       if (id === 'tv') {
         labelEl.textContent = 'WATCH 📺';
-      } else if (id === 'mom') {
-        labelEl.textContent = this.hasMomBoosterMoney ? 'TALK 💬' : 'ASK 💵';
-      } else if (id === 'shopkeeper') {
-        labelEl.textContent = !this.hasBoughtCardShopPacks ? 'BUY 🃏' : 'TALK 💬';
-      } else if (id === 'friend_duel' || id === 'best_friend') {
-        labelEl.textContent = 'DUEL ⚔️';
       } else if (id === 'friend_door') {
         labelEl.textContent = this.hasOpenedStarterPack ? 'DUEL ⚔️' : 'DOOR 🚪';
       } else if (id === 'booster_display') {
         labelEl.textContent = 'VIEW ✨';
       } else if (id === 'card_shop' || id === 'pluto_door' || id === 'nova_door' || id === 'silas_door' || id === 'maya_door') {
         labelEl.textContent = 'ENTER 🚪';
-      } else if (id === 'pluto' || id === 'nova' || id === 'silas' || id === 'maya' || id === 'chloe' || id === 'rowan' || id === 'jasper') {
-        labelEl.textContent = 'TALK 💬';
       } else {
         labelEl.textContent = 'CHECK 💬';
       }
@@ -5127,6 +5156,11 @@
         return;
       }
 
+      if (this.activeDialogueNpc) {
+        this.handleChallengeOrLeaveAction();
+        return;
+      }
+
       const dialogBar = document.getElementById('ow-dialog-bar');
       const isDialogVisible = dialogBar && !dialogBar.classList.contains('hidden');
 
@@ -5151,91 +5185,7 @@
       }
 
       if (this.storyState === 'free_roam' || this.storyState === 'intro_waiting') {
-        if (this.nearInteractable) {
-          const id = this.nearInteractable.id;
-          if (id === 'tv') {
-            this.storyState = 'tv_commercial';
-            this.renderDialogueUI();
-          } else if (id === 'mom') {
-            if (!this.hasMomBoosterMoney) {
-              this.askMomForBoosterMoney();
-            } else {
-              this.renderDialogueUI();
-            }
-          } else if (id === 'shopkeeper') {
-            if (!this.activeDialogueNpc) {
-              this.startTalkingToNpc('shopkeeper');
-            } else if (!this.hasBoughtCardShopPacks) {
-              if ((this.gold || 0) >= 20) {
-                this.buyTwoBoosterPacks();
-              }
-            } else {
-              this.toggleShopModal(true);
-            }
-          } else if (id === 'friend_duel' || id === 'best_friend' || id === 'friend_door') {
-            this.triggerDuel();
-          } else if (id === 'pluto') {
-            if (!this.activeDialogueNpc) {
-              this.startTalkingToNpc('pluto');
-            } else if ((this.gold || 0) >= 1.00) {
-              this.triggerDuel(this.plutoNpc);
-            }
-          } else if (id === 'pluto_door') {
-            if (window.sounds?.playMove) window.sounds.playMove();
-            this.currentArea = 'pluto_interior';
-            this.player.x = 9.8;
-            this.player.y = 9.3;
-            this.player.dir = 'up';
-            this.player.targetX = null;
-            this.player.targetY = null;
-            this.areaTransitionCooldown = 25;
-            this.updateHUDSaveInfo();
-          } else if (id === 'player_bed') {
-            this.sleepInBed();
-          } else if (id === 'player_door') {
-            if (window.sounds?.playMove) window.sounds.playMove();
-            this.currentArea = 'interior';
-            this.player.x = 9.8;
-            this.player.y = 9.4;
-            this.player.dir = 'up';
-            this.player.targetX = null;
-            this.player.targetY = null;
-            this.areaTransitionCooldown = 25;
-            this.updateHUDSaveInfo();
-            this.saveWorldData(this.draftAppearance);
-            this.showAutosaveIndicator('💾 Game Saved — Home');
-          } else if (id === 'nova_door') {
-            if (window.sounds?.playMove) window.sounds.playMove();
-            this.currentArea = 'nova_interior';
-            this.player.x = 9.8;
-            this.player.y = 9.3;
-            this.player.dir = 'up';
-            this.player.targetX = null;
-            this.player.targetY = null;
-            this.areaTransitionCooldown = 25;
-            this.updateHUDSaveInfo();
-          } else if (id === 'silas_door') {
-            if (window.sounds?.playMove) window.sounds.playMove();
-            this.currentArea = 'silas_interior';
-            this.player.x = 9.8;
-            this.player.y = 9.3;
-            this.player.dir = 'up';
-            this.player.targetX = null;
-            this.player.targetY = null;
-            this.areaTransitionCooldown = 25;
-            this.updateHUDSaveInfo();
-          } else if (id === 'maya_door') {
-            if (window.sounds?.playMove) window.sounds.playMove();
-            this.currentArea = 'maya_interior';
-            this.player.x = 9.8;
-            this.player.y = 9.3;
-            this.player.dir = 'up';
-            this.player.targetX = null;
-            this.player.targetY = null;
-            this.areaTransitionCooldown = 25;
-            this.updateHUDSaveInfo();
-          }
-        }
+        this.handleChallengeOrLeaveAction();
       }
     }
 
@@ -6101,7 +6051,11 @@
             this.npcs = [friend, mom];
           } else {
             friend.following = false;
-            this.npcs = [mom];
+            friend.x = 4.1;
+            friend.y = 6.8;
+            friend.dir = 'right';
+            friend.bubble = '⚔️';
+            this.npcs = [friend, mom];
           }
         } else {
           // Opening table scene
@@ -6395,17 +6349,23 @@
             return;
           }
         }
+        const overlayModalCloseOrder = [
+          { id: 'phone-modal', close: () => this.togglePhoneModal(false) },
+          { id: 'calendar-modal', close: () => this.toggleCalendarModal(false) },
+          { id: 'creature-inspect-modal', close: () => this.closeCreatureInspect() },
+          { id: 'binder-picker-modal', close: () => this.closeBinderCardPicker() },
+          { id: 'binder-modal', close: () => this.toggleBinderModal(false) },
+          { id: 'inventory-modal', close: () => this.toggleInventoryModal(false) },
+          { id: 'shop-modal', close: () => this.toggleShopModal(false) }
+        ];
+        const openOverlayModal = overlayModalCloseOrder.find((m) => {
+          const el = document.getElementById(m.id);
+          return el && !el.classList.contains('hidden');
+        });
         if (k === 'escape') {
-          const phoneModal = document.getElementById('phone-modal');
-          if (phoneModal && !phoneModal.classList.contains('hidden')) {
+          if (openOverlayModal) {
             e.preventDefault();
-            this.togglePhoneModal(false);
-            return;
-          }
-          const calModal = document.getElementById('calendar-modal');
-          if (calModal && !calModal.classList.contains('hidden')) {
-            e.preventDefault();
-            this.toggleCalendarModal(false);
+            openOverlayModal.close();
             return;
           }
           if (this.activeDialogueNpc) {
@@ -6413,36 +6373,9 @@
             this.closeDialogue();
             return;
           }
-          const inspectModal = document.getElementById('creature-inspect-modal');
-          if (inspectModal && !inspectModal.classList.contains('hidden')) {
-            e.preventDefault();
-            this.closeCreatureInspect();
-            return;
-          }
-          const pickerModal = document.getElementById('binder-picker-modal');
-          if (pickerModal && !pickerModal.classList.contains('hidden')) {
-            e.preventDefault();
-            this.closeBinderCardPicker();
-            return;
-          }
-          const binderModal = document.getElementById('binder-modal');
-          if (binderModal && !binderModal.classList.contains('hidden')) {
-            e.preventDefault();
-            this.toggleBinderModal(false);
-            return;
-          }
-          const invModal = document.getElementById('inventory-modal');
-          if (invModal && !invModal.classList.contains('hidden')) {
-            e.preventDefault();
-            this.toggleInventoryModal(false);
-            return;
-          }
-          const shopModal = document.getElementById('shop-modal');
-          if (shopModal && !shopModal.classList.contains('hidden')) {
-            e.preventDefault();
-            this.toggleShopModal(false);
-            return;
-          }
+        }
+        if (openOverlayModal) {
+          return;
         }
 
         if (this.storyState === 'intro_bored' && ['1', '2', '3'].includes(k)) {
@@ -6451,24 +6384,16 @@
           return;
         }
 
-        // Active NPC dialogue choice selection via keys 1, 2, 3, 4
-        if (this.activeDialogueNpc && ['1', '2', '3', '4'].includes(k)) {
-          const choices = document.querySelectorAll('#ow-choices-container .ow-choice-btn');
+        // Active dialogue / prompt choice selection via keys 1..5
+        const choicesEl = document.getElementById('ow-choices-container');
+        if (choicesEl && !choicesEl.classList.contains('hidden') && ['1', '2', '3', '4', '5'].includes(k)) {
+          const choices = choicesEl.querySelectorAll('.ow-choice-btn');
           const idx = Number(k) - 1;
           if (choices[idx]) {
             e.preventDefault();
             choices[idx].click();
             return;
           }
-        }
-
-        // Escape or Space to leave NPC dialogue
-        if (this.activeDialogueNpc && (k === 'escape' || ((this.activeDialogueNpc === 'chloe' || this.activeDialogueNpc === 'rowan' || this.activeDialogueNpc === 'jasper') && (k === ' ' || k === 'enter')))) {
-          e.preventDefault();
-          this.activeDialogueNpc = null;
-          this.lastShopPromptKey = null;
-          this.updateFreeRoamPrompt();
-          return;
         }
 
         if (['tv_commercial', 'both_excited', 'mom_gave_money', 'shop_bought_packs', 'must_open_pack_before_leaving', 'friend_challenges_after_pack', 'friend_defeated_celebration'].includes(this.storyState) && (k === ' ' || k === 'enter')) {
@@ -6483,93 +6408,18 @@
           e.preventDefault();
         }
 
-        if ((k === ' ' || k === 'enter' || k === 'e') && (this.storyState === 'free_roam' || this.storyState === 'intro_waiting') && this.nearInteractable) {
+        if ((k === ' ' || k === 'enter' || k === 'e') && (this.storyState === 'free_roam' || this.storyState === 'intro_waiting') && (this.activeDialogueNpc || this.nearInteractable)) {
           e.preventDefault();
-          if (this.isNpc(this.nearInteractable) && !this.activeDialogueNpc) {
-            this.startTalkingToNpc(this.nearInteractable.id);
-            return;
-          }
-          if (this.nearInteractable.id === 'tv') {
-            this.storyState = 'tv_commercial';
-            this.renderDialogueUI();
-          } else if (this.nearInteractable.id === 'player_bed') {
-            this.sleepInBed();
-          } else if (this.nearInteractable.id === 'mom' && !this.hasMomBoosterMoney) {
-            this.askMomForBoosterMoney();
-          } else if (this.nearInteractable.id === 'shopkeeper') {
-            if (!this.hasBoughtCardShopPacks) {
-              if ((this.gold || 0) >= 20) {
-                this.buyTwoBoosterPacks();
-              }
-            } else {
-              this.toggleShopModal(true);
-            }
-          } else if (this.nearInteractable.id === 'friend_duel' || (this.nearInteractable.id === 'friend_door' && this.hasOpenedStarterPack)) {
-            this.triggerDuel();
-          } else if (this.nearInteractable.id === 'pluto') {
-            if ((this.gold || 0) >= 1.00) {
-              this.triggerDuel(this.plutoNpc);
-            }
-          } else if (this.nearInteractable.id === 'player_door') {
-            if (window.sounds?.playMove) window.sounds.playMove();
-            this.currentArea = 'interior';
-            this.player.x = 9.8;
-            this.player.y = 9.4;
-            this.player.dir = 'up';
-            this.player.targetX = null;
-            this.player.targetY = null;
-            this.areaTransitionCooldown = 25;
-            this.updateHUDSaveInfo();
-            this.saveWorldData(this.draftAppearance);
-            this.showAutosaveIndicator('💾 Game Saved — Home');
-          } else if (this.nearInteractable.id === 'pluto_door') {
-            if (window.sounds?.playMove) window.sounds.playMove();
-            this.currentArea = 'pluto_interior';
-            this.player.x = 9.8;
-            this.player.y = 9.3;
-            this.player.dir = 'up';
-            this.player.targetX = null;
-            this.player.targetY = null;
-            this.areaTransitionCooldown = 25;
-            this.updateHUDSaveInfo();
-          } else if (this.nearInteractable.id === 'nova_door') {
-            if (window.sounds?.playMove) window.sounds.playMove();
-            this.currentArea = 'nova_interior';
-            this.player.x = 9.8;
-            this.player.y = 9.3;
-            this.player.dir = 'up';
-            this.player.targetX = null;
-            this.player.targetY = null;
-            this.areaTransitionCooldown = 25;
-            this.updateHUDSaveInfo();
-          } else if (this.nearInteractable.id === 'silas_door') {
-            if (window.sounds?.playMove) window.sounds.playMove();
-            this.currentArea = 'silas_interior';
-            this.player.x = 9.8;
-            this.player.y = 9.3;
-            this.player.dir = 'up';
-            this.player.targetX = null;
-            this.player.targetY = null;
-            this.areaTransitionCooldown = 25;
-            this.updateHUDSaveInfo();
-          } else if (this.nearInteractable.id === 'maya_door') {
-            if (window.sounds?.playMove) window.sounds.playMove();
-            this.currentArea = 'maya_interior';
-            this.player.x = 9.8;
-            this.player.y = 9.3;
-            this.player.dir = 'up';
-            this.player.targetX = null;
-            this.player.targetY = null;
-            this.areaTransitionCooldown = 25;
-            this.updateHUDSaveInfo();
-          } else if (window.sounds?.playClick) {
-            window.sounds.playClick();
-          }
+          this.handleChallengeOrLeaveAction();
         }
       });
 
       window.addEventListener('keyup', (e) => {
         this.keys[e.key.toLowerCase()] = false;
+      });
+
+      window.addEventListener('blur', () => {
+        this.keys = {};
       });
 
       const handleCanvasTap = (clientX, clientY) => {
@@ -6581,77 +6431,103 @@
         const scaleY = this.canvas.height / rect.height;
         const cx = (clientX - rect.left) * scaleX;
         const cy = (clientY - rect.top) * scaleY;
-        const tx = (cx + (this.currentArea === 'exterior' ? (this.cameraX || 0) : 0)) / this.TILE;
-        const ty = (cy + (this.currentArea === 'exterior' ? (this.cameraY || 0) : 0)) / this.TILE;
+        const zoom = this.currentArea === 'exterior' ? (this.EXT_ZOOM || 1.28) : 1;
+        const tx = (cx / zoom + (this.currentArea === 'exterior' ? (this.cameraX || 0) : 0)) / this.TILE;
+        const ty = (cy / zoom + (this.currentArea === 'exterior' ? (this.cameraY || 0) : 0)) / this.TILE;
 
         // Visual golden destination beacon on touch/click
         this.touchBeacon = { x: tx, y: ty, tick: 0 };
 
-        const mom = this.npcs.find(n => n.id === 'mom');
-        if (this.currentArea === 'interior' && mom && Math.hypot(tx - mom.x, ty - mom.y) < 1.4) {
-          if (Math.hypot(this.player.x - mom.x, this.player.y - mom.y) < 1.85) {
-            if (!this.activeDialogueNpc) {
-              this.startTalkingToNpc('mom');
-              return;
-            }
+        const friend = this.getFriendNpc();
+        const clickableNpcs = [
+          {
+            active: this.currentArea === 'interior',
+            npc: this.npcs.find(n => n.id === 'mom'),
+            talkId: 'mom',
+            tapRadius: 1.4,
+            reachRadius: 1.85,
+            yOffset: 0
+          },
+          {
+            active: this.currentArea === 'card_shop_interior',
+            npc: this.shopkeeperNpc,
+            talkId: 'shopkeeper',
+            tapRadius: 1.6,
+            reachRadius: 1.9,
+            yOffset: 1.05
+          },
+          {
+            active: this.currentArea === 'pluto_interior',
+            npc: this.plutoNpc,
+            talkId: 'pluto',
+            tapRadius: 1.6,
+            reachRadius: 1.95,
+            yOffset: 0.85
+          },
+          {
+            active: this.currentArea === 'nova_interior',
+            npc: this.novaNpc,
+            talkId: 'nova',
+            tapRadius: 1.6,
+            reachRadius: 1.95,
+            yOffset: 0.85
+          },
+          {
+            active: this.currentArea === 'silas_interior',
+            npc: this.silasNpc,
+            talkId: 'silas',
+            tapRadius: 1.6,
+            reachRadius: 1.95,
+            yOffset: 0.85
+          },
+          {
+            active: this.currentArea === 'maya_interior',
+            npc: this.mayaNpc,
+            talkId: 'maya',
+            tapRadius: 1.6,
+            reachRadius: 1.95,
+            yOffset: 0.85
+          },
+          {
+            active: this.currentArea === 'exterior',
+            npc: this.chloeNpc,
+            talkId: 'chloe',
+            tapRadius: 1.6,
+            reachRadius: 1.85,
+            yOffset: 0
+          },
+          {
+            active: this.currentArea === 'exterior',
+            npc: this.rowanNpc,
+            talkId: 'rowan',
+            tapRadius: 1.6,
+            reachRadius: 1.85,
+            yOffset: 0
+          },
+          {
+            active: this.currentArea === 'exterior',
+            npc: this.jasperNpc,
+            talkId: 'jasper',
+            tapRadius: 1.6,
+            reachRadius: 1.85,
+            yOffset: 0
+          },
+          {
+            active: !!friend && this.getActiveNpcsForArea().includes(friend),
+            npc: friend,
+            talkId: this.currentArea === 'friend_interior' ? 'friend_duel' : 'friend',
+            tapRadius: 1.5,
+            reachRadius: 2.0,
+            yOffset: 0
           }
-        }
+        ];
 
-        const keeper = this.shopkeeperNpc;
-        if (this.currentArea === 'card_shop_interior' && keeper && Math.hypot(tx - keeper.x, ty - keeper.y) < 1.6) {
-          if (Math.hypot(this.player.x - keeper.x, this.player.y - (keeper.y + 1.05)) < 1.9) {
-            if (!this.activeDialogueNpc) {
-              this.startTalkingToNpc('shopkeeper');
-              return;
-            }
-          }
-        }
-
-        const pluto = this.plutoNpc;
-        if (this.currentArea === 'pluto_interior' && pluto && Math.hypot(tx - pluto.x, ty - pluto.y) < 1.6) {
-          if (Math.hypot(this.player.x - pluto.x, this.player.y - (pluto.y + 0.85)) < 1.95) {
-            if (!this.activeDialogueNpc) {
-              this.startTalkingToNpc('pluto');
-              return;
-            }
-          }
-        }
-
-        const nova = this.novaNpc;
-        if (this.currentArea === 'nova_interior' && nova && Math.hypot(tx - nova.x, ty - nova.y) < 1.6) {
-          if (Math.hypot(this.player.x - nova.x, this.player.y - (nova.y + 0.85)) < 1.95) {
-            if (!this.activeDialogueNpc) {
-              this.startTalkingToNpc('nova');
-              return;
-            }
-          }
-        }
-
-        const silas = this.silasNpc;
-        if (this.currentArea === 'silas_interior' && silas && Math.hypot(tx - silas.x, ty - silas.y) < 1.6) {
-          if (Math.hypot(this.player.x - silas.x, this.player.y - (silas.y + 0.85)) < 1.95) {
-            if (!this.activeDialogueNpc) {
-              this.startTalkingToNpc('silas');
-              return;
-            }
-          }
-        }
-
-        const maya = this.mayaNpc;
-        if (this.currentArea === 'maya_interior' && maya && Math.hypot(tx - maya.x, ty - maya.y) < 1.6) {
-          if (Math.hypot(this.player.x - maya.x, this.player.y - (maya.y + 0.85)) < 1.95) {
-            if (!this.activeDialogueNpc) {
-              this.startTalkingToNpc('maya');
-              return;
-            }
-          }
-        }
-
-        const friend = this.npcs[0];
-        if (friend && Math.hypot(tx - friend.x, ty - friend.y) < 1.5) {
-          if (Math.hypot(this.player.x - friend.x, this.player.y - friend.y) < 2.0) {
-            if (!this.activeDialogueNpc) {
-              this.startTalkingToNpc(this.currentArea === 'friend_interior' ? 'friend_duel' : 'friend');
+        for (const entry of clickableNpcs) {
+          if (!entry.active || !entry.npc) continue;
+          if (Math.hypot(tx - entry.npc.x, ty - entry.npc.y) < entry.tapRadius
+              && Math.hypot(this.player.x - entry.npc.x, this.player.y - (entry.npc.y + entry.yOffset)) < entry.reachRadius) {
+            if (this.activeDialogueNpc !== entry.talkId) {
+              this.startTalkingToNpc(entry.talkId);
               return;
             }
           }
@@ -6700,79 +6576,7 @@
       const challengeBtn = document.getElementById('ow-btn-challenge');
       if (challengeBtn) {
         challengeBtn.addEventListener('click', () => {
-          if (this.nearInteractable && this.isNpc(this.nearInteractable) && !this.activeDialogueNpc) {
-            this.startTalkingToNpc(this.nearInteractable.id);
-            return;
-          }
-          if (this.activeDialogueNpc === 'chloe' || this.activeDialogueNpc === 'rowan' || this.activeDialogueNpc === 'jasper') {
-            this.activeDialogueNpc = null;
-            this.lastShopPromptKey = null;
-            this.updateFreeRoamPrompt();
-            return;
-          }
-          if (this.nearInteractable?.id === 'player_bed') {
-            this.sleepInBed();
-            return;
-          }
-          if (this.nearInteractable?.id === 'mom' && !this.hasMomBoosterMoney) {
-            this.askMomForBoosterMoney();
-          } else if (this.nearInteractable?.id === 'shopkeeper') {
-            if (!this.hasBoughtCardShopPacks) {
-              if ((this.gold || 0) >= 20) {
-                this.buyTwoBoosterPacks();
-              }
-            } else {
-              this.toggleShopModal(true);
-            }
-          } else if (this.nearInteractable?.id === 'friend_duel' || (this.nearInteractable?.id === 'friend_door' && this.hasOpenedStarterPack)) {
-            this.triggerDuel();
-          } else if (this.nearInteractable?.id === 'pluto' || (this.currentArea === 'pluto_interior' && this.activeDialogueNpc === 'pluto')) {
-            if ((this.gold || 0) >= 1.00) {
-              this.triggerDuel(this.plutoNpc);
-            } else if (window.sounds?.playClick) {
-              window.sounds.playClick();
-            }
-          } else if (this.nearInteractable?.id === 'pluto_door') {
-            if (window.sounds?.playMove) window.sounds.playMove();
-            this.currentArea = 'pluto_interior';
-            this.player.x = 9.8;
-            this.player.y = 9.3;
-            this.player.dir = 'up';
-            this.player.targetX = null;
-            this.player.targetY = null;
-            this.areaTransitionCooldown = 25;
-            this.updateHUDSaveInfo();
-          } else if (this.nearInteractable?.id === 'nova_door') {
-            if (window.sounds?.playMove) window.sounds.playMove();
-            this.currentArea = 'nova_interior';
-            this.player.x = 9.8;
-            this.player.y = 9.3;
-            this.player.dir = 'up';
-            this.player.targetX = null;
-            this.player.targetY = null;
-            this.areaTransitionCooldown = 25;
-            this.updateHUDSaveInfo();
-          } else if (this.nearInteractable?.id === 'silas_door') {
-            if (window.sounds?.playMove) window.sounds.playMove();
-            this.currentArea = 'silas_interior';
-            this.player.x = 9.8;
-            this.player.y = 9.3;
-            this.player.dir = 'up';
-            this.player.targetX = null;
-            this.player.targetY = null;
-            this.areaTransitionCooldown = 25;
-            this.updateHUDSaveInfo();
-          } else if (this.nearInteractable?.id === 'maya_door') {
-            if (window.sounds?.playMove) window.sounds.playMove();
-            this.currentArea = 'maya_interior';
-            this.player.x = 9.8;
-            this.player.y = 9.3;
-            this.player.dir = 'up';
-            this.player.targetX = null;
-            this.player.targetY = null;
-            this.areaTransitionCooldown = 25;
-            this.updateHUDSaveInfo();
-          }
+          this.handleChallengeOrLeaveAction();
         });
       }
     }
@@ -6783,7 +6587,13 @@
       this.keys = {};
       this.player.targetX = null;
       this.player.targetY = null;
-      const target = challenger || (this.currentArea === 'pluto_interior' ? this.plutoNpc : this.npcs[0]);
+      const areaNpcMap = {
+        pluto_interior: this.plutoNpc,
+        nova_interior: this.novaNpc,
+        silas_interior: this.silasNpc,
+        maya_interior: this.mayaNpc
+      };
+      const target = challenger || areaNpcMap[this.currentArea] || this.getFriendNpc() || this.npcs[0];
       if (this.onStartDuel) {
         this.onStartDuel(target, mapId, customPlayerTeam);
       }
@@ -6984,7 +6794,6 @@
         if (Math.hypot(tx - 11.35, ty - 14.50) < 0.28) return true; // Maya Mailbox
         if (Math.hypot(tx - 0.85, ty - 3.65) < 0.30) return true; // Cut Tree Stump
         if (Math.hypot(tx - 7.35, ty - 5.45) < 0.28) return true; // Upper Intersection Signpost
-        if (Math.hypot(tx - 10.65, ty - 9.25) < 0.28) return true; // East Market Block Signpost
         if (Math.hypot(tx - 7.35, ty - 14.50) < 0.28) return true; // South Block Signpost
 
         // 7. Central Park Courtyard, Fountain, Picnic Tables & Signpost
@@ -7084,8 +6893,8 @@
 
       if (dx !== 0 || dy !== 0) {
         this.player.moving = true;
-        this.player.walkTick += 0.16;
-        const speed = this.currentArea === 'exterior' ? 0.068 : 0.075;
+        this.player.walkTick += 0.11;
+        const speed = this.currentArea === 'exterior' ? 0.042 : 0.046;
         const nx = this.player.x + dx * speed;
         const ny = this.player.y + dy * speed;
         if (!this.isBlocked(nx, this.player.y)) this.player.x = nx;
@@ -7109,10 +6918,10 @@
         const followThreshold = this.currentArea === 'exterior' ? 0.78 : 1.25;
 
         if (fdist > followThreshold) {
-          const fSpeed = this.currentArea === 'exterior' ? 0.062 : 0.07;
+          const fSpeed = this.currentArea === 'exterior' ? 0.039 : 0.043;
           friend.x += (fdx / fdist) * fSpeed;
           friend.y += (fdy / fdist) * fSpeed;
-          friend.walkTick = (friend.walkTick || 0) + 0.16;
+          friend.walkTick = (friend.walkTick || 0) + 0.11;
           if (Math.abs(fdx) > Math.abs(fdy)) {
             friend.dir = fdx > 0 ? 'right' : 'left';
           } else {
@@ -7385,14 +7194,17 @@
         }
       }
 
-      // Smooth camera scroll for the expanded exterior world (both X and Y)
+      // Smooth camera scroll for the expanded exterior world (zoomed cozy RPG framing)
       if (this.currentArea === 'exterior') {
-        const maxCamY = (this.EXT_ROWS - this.ROWS) * this.TILE;
-        const targetCamY = Math.max(0, Math.min(maxCamY, this.player.y * this.TILE - this.canvas.height / 2));
+        const zoom = this.EXT_ZOOM || 1.28;
+        const viewW = this.canvas.width / zoom;
+        const viewH = this.canvas.height / zoom;
+        const maxCamY = Math.max(0, this.EXT_ROWS * this.TILE - viewH);
+        const targetCamY = Math.max(0, Math.min(maxCamY, this.player.y * this.TILE - viewH / 2));
         this.cameraY += (targetCamY - this.cameraY) * 0.18;
 
-        const maxCamX = (this.EXT_COLS - this.COLS) * this.TILE;
-        const targetCamX = Math.max(0, Math.min(maxCamX, this.player.x * this.TILE - this.canvas.width / 2));
+        const maxCamX = Math.max(0, this.EXT_COLS * this.TILE - viewW);
+        const targetCamX = Math.max(0, Math.min(maxCamX, this.player.x * this.TILE - viewW / 2));
         this.cameraX += (targetCamX - this.cameraX) * 0.18;
 
         const inPark = this.player.x >= 16.0;
@@ -7413,12 +7225,14 @@
     // =========================================================================
     renderCutawayInterior() {
       const ctx = this.ctx;
+      ctx.imageSmoothingEnabled = false;
       const S = this.TILE; // 64px
       const W = this.canvas.width;
       const H = this.canvas.height;
 
-      // 1. Muted Slate-Blue Cutaway Void Background (#658296)
-      ctx.fillStyle = '#658296';
+      // 1. Warm Timber Cutaway Diorama Void
+      this.initCobblestonePattern();
+      ctx.fillStyle = '#1f1712';
       ctx.fillRect(0, 0, W, H);
 
       // Room coordinates
@@ -7442,28 +7256,33 @@
       ctx.closePath();
       ctx.clip();
 
-      ctx.fillStyle = '#876645';
-      ctx.fillRect(rx, floorTop - 30, rw, rh);
+      if (this.woodFloorPattern) {
+        ctx.fillStyle = this.woodFloorPattern;
+        ctx.fillRect(rx, floorTop - 30, rw, rh);
+      } else {
+        ctx.fillStyle = '#876645';
+        ctx.fillRect(rx, floorTop - 30, rw, rh);
 
-      // Horizontal wide floorboards + dark plank lines (#4f3923) + subtle wood grain
-      const plankH = 38;
-      for (let y = floorTop - 20, row = 0; y < ry + rh; y += plankH, row++) {
-        ctx.fillStyle = row % 2 === 0 ? '#876645' : '#7d5d3e';
-        ctx.fillRect(rx, y, rw, plankH);
+        // Horizontal wide floorboards + dark plank lines (#4f3923) + subtle wood grain
+        const plankH = 38;
+        for (let y = floorTop - 20, row = 0; y < ry + rh; y += plankH, row++) {
+          ctx.fillStyle = row % 2 === 0 ? '#876645' : '#7d5d3e';
+          ctx.fillRect(rx, y, rw, plankH);
 
-        // Subtle horizontal wood grain streaks
-        ctx.fillStyle = '#6e5034';
-        ctx.fillRect(rx + 30, y + 11, rw - 60, 2);
-        ctx.fillRect(rx + 80, y + 25, rw - 140, 2);
+          // Subtle horizontal wood grain streaks
+          ctx.fillStyle = '#6e5034';
+          ctx.fillRect(rx + 30, y + 11, rw - 60, 2);
+          ctx.fillRect(rx + 80, y + 25, rw - 140, 2);
 
-        // Dark plank bottom seam
-        ctx.fillStyle = '#4f3923';
-        ctx.fillRect(rx, y + plankH - 2, rw, 2);
+          // Dark plank bottom seam
+          ctx.fillStyle = '#4f3923';
+          ctx.fillRect(rx, y + plankH - 2, rw, 2);
 
-        // Staggered vertical plank joints
-        const shift = (row * 130) % 240;
-        for (let x = rx + 70 + shift; x < rx + rw - 40; x += 240) {
-          ctx.fillRect(x, y, 2, plankH);
+          // Staggered vertical plank joints
+          const shift = (row * 130) % 240;
+          for (let x = rx + 70 + shift; x < rx + rw - 40; x += 240) {
+            ctx.fillRect(x, y, 2, plankH);
+          }
         }
       }
 
@@ -7534,14 +7353,10 @@
       ctx.moveTo(rx + rw - 68, ry + 30); ctx.lineTo(rx + rw - 68, floorTop - 12);
       ctx.stroke();
 
-      // Subtle weathered plaster bricks & crack lines on the cream wall (matching reference!)
-      ctx.strokeStyle = '#b8b388';
+      // Subtle cream wall plaster accent (well above furniture)
+      ctx.strokeStyle = 'rgba(184, 179, 136, 0.5)';
       ctx.lineWidth = 1.5;
-      ctx.strokeRect(rx + 215, ry + 66, 26, 16);
-      ctx.beginPath();
-      ctx.moveTo(rx + 228, ry + 82); ctx.lineTo(rx + 228, ry + 115);
-      ctx.moveTo(rx + 218, ry + 96); ctx.lineTo(rx + 236, ry + 96);
-      ctx.stroke();
+      ctx.strokeRect(rx + 215, ry + 52, 24, 12);
 
       // Dark wood baseboard along north wall and wing walls
       ctx.fillStyle = '#6e5034';
@@ -7610,12 +7425,20 @@
       ctx.fillStyle = '#8b9096';
       ctx.fillRect(doorX + 6, doorY + 8, 74, 10);
 
-      // 7. Furniture Piece 1: Wooden Bed in Top-Left Corner (with white pillow & slate-blue blanket)
+      // 7. Furniture Piece 1: Wooden Bed in Top-Left Corner
       const bedX = rx + 62;
       const bedY = ry + 112;
       const bedW = 104;
       const bedH = 178;
 
+      if (this.isImgReady('furniture_bed')) {
+        const bImg = this.owSprites.furniture_bed;
+        const bw = 128;
+        const bh = Math.round(bw * (bImg.height / bImg.width));
+        ctx.fillStyle = 'rgba(0,0,0,0.34)';
+        ctx.beginPath(); ctx.ellipse(bedX + bedW / 2, bedY + bh - 8, 56, 20, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.drawImage(bImg, bedX - 10, bedY + 14, bw, bh);
+      } else {
       ctx.fillStyle = 'rgba(0,0,0,0.35)';
       ctx.fillRect(bedX + 4, bedY + 8, bedW, bedH);
 
@@ -7657,41 +7480,71 @@
       ctx.strokeRect(bedX, bedY + 136, 16, 42);
       ctx.fillRect(bedX + bedW - 16, bedY + 136, 16, 42);
       ctx.strokeRect(bedX + bedW - 16, bedY + 136, 16, 42);
+      }
 
       // 8. Furniture Piece 2: 4-Drawer Wooden Dresser next to Bed
       const drX = bedX + bedW + 18;
       const drY = ry + 112;
       const drW = 118;
       const drH = 98;
-      ctx.fillStyle = '#946a45';
+      ctx.fillStyle = 'rgba(0,0,0,0.28)';
+      ctx.fillRect(drX + 3, drY + 6, drW, drH);
+      ctx.strokeStyle = '#29170a';
+      ctx.lineWidth = 2.4;
+      ctx.fillStyle = '#8b5e39';
       ctx.fillRect(drX, drY, drW, drH);
       ctx.strokeRect(drX, drY, drW, drH);
-      ctx.fillStyle = '#a67853';
+      ctx.fillStyle = '#a8764c';
       ctx.fillRect(drX - 2, drY, drW + 4, 24);
       ctx.strokeRect(drX - 2, drY, drW + 4, 24);
 
-      // 4 Drawers with silver handles
+      // 4 Drawers with brass handles
       for (let r = 0; r < 2; r++) {
         for (let c = 0; c < 2; c++) {
           const dx = drX + 8 + c * 54;
           const dy = drY + 30 + r * 30;
-          ctx.fillStyle = '#825b38';
+          ctx.fillStyle = '#754d2d';
           ctx.fillRect(dx, dy, 48, 24);
           ctx.strokeRect(dx, dy, 48, 24);
-          ctx.fillStyle = '#cbd5e1';
-          ctx.fillRect(dx + 16, dy + 10, 16, 3);
+          ctx.fillStyle = '#e2b857';
+          ctx.fillRect(dx + 16, dy + 10, 16, 4);
         }
       }
-      // Small wooden Mythos Deck Box sitting on top of the dresser!
+      // Small carved Mythos Deck Box sitting cleanly on top of the dresser
       ctx.fillStyle = '#5c3b20';
-      ctx.fillRect(drX + 10, drY - 8, 30, 22);
-      ctx.strokeRect(drX + 10, drY - 8, 30, 22);
+      ctx.fillRect(drX + 12, drY - 8, 30, 22);
+      ctx.strokeRect(drX + 12, drY - 8, 30, 22);
+      ctx.fillStyle = '#eab308';
+      ctx.fillRect(drX + 23, drY + 1, 8, 5);
 
-      // 9. Furniture Piece 3: Tall Carved Wooden TV Armoire (Combining the Reference Wardrobe + Living Room TV!)
+      // 9. Furniture Piece 3: Tall Carved Wooden TV Armoire
       const arX = drX + drW + 12;
       const arY = ry + 64;
       const arW = 132;
       const arH = 146;
+      if (this.isImgReady('furniture_tv')) {
+        const tvImg = this.owSprites.furniture_tv;
+        const tw = 122;
+        const th = Math.round(tw * (tvImg.height / tvImg.width));
+        const txDraw = arX + Math.round((arW - tw) / 2);
+        const tyDraw = arY + 14;
+        ctx.fillStyle = 'rgba(0,0,0,0.34)';
+        ctx.beginPath(); ctx.ellipse(arX + arW / 2, tyDraw + th - 6, 52, 16, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.drawImage(tvImg, txDraw, tyDraw, tw, th);
+        if (this.tvOn) {
+          const pulse = Math.sin(this.tick * 0.2) * 0.5 + 0.5;
+          const scX = txDraw + 22;
+          const scY = tyDraw + 10;
+          const scW = tw - 44;
+          const scH = Math.round(th * 0.34);
+          ctx.fillStyle = pulse > 0.5 ? 'rgba(56, 189, 248, 0.32)' : 'rgba(250, 204, 21, 0.26)';
+          ctx.fillRect(scX, scY, scW, scH);
+          ctx.fillStyle = pulse > 0.5 ? '#fde047' : '#7dd3fc';
+          ctx.font = 'bold 9.5px "Cinzel", serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('⚡ MYTHOS! ⚡', txDraw + tw / 2, scY + Math.round(scH * 0.66));
+        }
+      } else {
       ctx.fillStyle = '#8f6542';
       ctx.fillRect(arX, arY, arW, arH);
       ctx.strokeRect(arX, arY, arW, arH);
@@ -7751,6 +7604,7 @@
         ctx.font = 'bold 11px Cinzel, serif';
         ctx.textAlign = 'center';
         ctx.fillText('⚡ PLAY MYTHOS! ⚡', tvX + tvW / 2, tvY + tvH - 9);
+      }
       }
 
       // 10. Arched Diamond-Lattice Leaded Window + Square Wooden Wall Clock (matching reference!)
@@ -7815,6 +7669,12 @@
       const bkY = ry + 68;
       const bkW = 116;
       const bkH = 138;
+      if (this.isImgReady('furniture_bookshelf')) {
+        const bsImg = this.owSprites.furniture_bookshelf;
+        const bsh = 136;
+        const bsw = Math.round(bsh * (bsImg.width / bsImg.height));
+        ctx.drawImage(bsImg, bkX + Math.round((bkW - bsw) / 2), bkY + 2, bsw, bsh);
+      } else {
       ctx.fillStyle = '#946a45';
       ctx.fillRect(bkX, bkY, bkW, bkH);
       ctx.strokeRect(bkX, bkY, bkW, bkH);
@@ -7832,6 +7692,7 @@
           ctx.fillRect(bkX + 12 + b * 11.5, sy + 3, 9.5, 19);
           ctx.strokeRect(bkX + 12 + b * 11.5, sy + 3, 9.5, 19);
         }
+      }
       }
 
       // 12. Round Wooden Table & Two Cushioned Wooden Chairs on Right Floor (matching reference!)
@@ -7860,6 +7721,14 @@
         ctx.strokeRect(backX, chY - 12, 8, 56);
       });
 
+      if (this.isImgReady('furniture_table_book')) {
+        const tbImg = this.owSprites.furniture_table_book;
+        const tw = 128;
+        const th = Math.round(tw * (tbImg.height / tbImg.width));
+        ctx.fillStyle = 'rgba(0,0,0,0.32)';
+        ctx.beginPath(); ctx.ellipse(tbX, tbY + 24, 60, 26, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.drawImage(tbImg, Math.round(tbX - tw / 2), Math.round(tbY - th / 2 + 8), tw, th);
+      } else {
       // Round Wooden Table Shadow & Legs
       ctx.fillStyle = 'rgba(0,0,0,0.38)';
       ctx.beginPath(); ctx.ellipse(tbX, tbY + 16, 68, 52, 0, 0, Math.PI * 2); ctx.fill();
@@ -7882,31 +7751,46 @@
       ctx.fillStyle = '#f1f5f9';
       ctx.fillRect(tbX + 14, tbY + 4, 22, 6);
       ctx.strokeRect(tbX + 14, tbY + 4, 22, 6);
+      }
     }
 
     // =========================================================================
-    // FRIEND'S HOUSE INTERIOR (Distinct Mirrored Architecture, Stone Fireplace,
-    // Sage-Celadon Plaster Walls, Cherry Wood Planks, Right-Side Bed & Gaming Nook,
-    // and Left-Side Crimson Duelist Arena Rug & Mythos Battle Table!)
+    // FRIEND'S HOUSE INTERIOR (Illustrated 16/32-bit Pixel-Art Cutaway Diorama)
+    // - Harmonizes directly with cottage_friend.png (warm cream walls, slate
+    //   accents, cedar timber beams, stone chimney hearth) and OwSprites.
+    // - Preserves all collision bounds, doorway (9.3*S), table (5.5*S, 6.8*S),
+    //   and Mike (crimson/gold) vs AJ (emerald/gold) personalization.
     // =========================================================================
     renderFriendHouseInterior() {
       const ctx = this.ctx;
+      ctx.imageSmoothingEnabled = false;
       const S = this.TILE; // 64px
       const W = this.canvas.width;
       const H = this.canvas.height;
       const fName = this.friendName || 'Mike';
       const isAJ = fName === 'AJ';
 
-      // 1. Deep Twilight-Slate Cutaway Void Background (#4b6478)
-      ctx.fillStyle = '#4b6478';
+      // 1. Ensure high-res Overworld tile patterns (wood planks, etc.) are built
+      this.initCobblestonePattern();
+
+      // Deep warm cutaway void around the architectural shell
+      ctx.fillStyle = '#1b1411';
       ctx.fillRect(0, 0, W, H);
 
-      // Room coordinates (matching the cutaway architectural shell)
+      // Room coordinates (matching collision & Player House diorama geometry)
       const rx = 1.5 * S;        // 96
       const ry = 0.8 * S;        // 51.2
       const rw = 13.0 * S;       // 832
       const rh = 9.9 * S;        // 633.6
       const floorTop = 3.85 * S; // 246.4
+
+      const INK = '#26130e';
+      const accentDark = isAJ ? '#134e3a' : '#641b25';
+      const accentMid = isAJ ? '#1b6d51' : '#8f2533';
+      const accentHi = isAJ ? '#28966f' : '#b83546';
+      const accentTrim = isAJ ? '#fbbf24' : '#f59e0b';
+
+      const snap = (v) => Math.round(v / 2) * 2;
 
       const drawChamferedRect = (x, y, w, h, c) => {
         ctx.beginPath();
@@ -7921,7 +7805,27 @@
         ctx.closePath();
       };
 
-      // 2. Rich Warm Cherry / Mahogany Wood Plank Floor (#734432 / #683c2b)
+      // Helper: Chunky pixel-art filled + 2px dark-ink-outlined rectangle
+      const pxBox = (x, y, w, h, fill, hi = null, shade = null, ink = INK, lw = 2) => {
+        const sx = snap(x), sy = snap(y), sw = snap(w), sh = snap(h);
+        ctx.fillStyle = fill;
+        ctx.fillRect(sx, sy, sw, sh);
+        if (hi) {
+          ctx.fillStyle = hi;
+          ctx.fillRect(sx + lw, sy + lw, sw - lw * 2, 4);
+        }
+        if (shade) {
+          ctx.fillStyle = shade;
+          ctx.fillRect(sx + lw, sy + sh - lw - 4, sw - lw * 2, 4);
+        }
+        if (ink) {
+          ctx.strokeStyle = ink;
+          ctx.lineWidth = lw;
+          ctx.strokeRect(sx, sy, sw, sh);
+        }
+      };
+
+      // 2. Textured Warm Oak/Chestnut Wood Plank Floor + Soft Ambient Shadows
       ctx.save();
       ctx.beginPath();
       ctx.moveTo(rx + 42, floorTop - 24);
@@ -7935,81 +7839,148 @@
       ctx.closePath();
       ctx.clip();
 
-      ctx.fillStyle = '#734432';
-      ctx.fillRect(rx, floorTop - 30, rw, rh);
-
-      const plankH = 36;
-      for (let y = floorTop - 20, row = 0; y < ry + rh; y += plankH, row++) {
-        ctx.fillStyle = row % 2 === 0 ? '#754634' : '#693d2c';
-        ctx.fillRect(rx, y, rw, plankH);
-
-        // Subtle cherry wood grain streaks
-        ctx.fillStyle = '#593122';
-        ctx.fillRect(rx + 40, y + 10, rw - 80, 2);
-        ctx.fillRect(rx + 90, y + 23, rw - 160, 2);
-
-        // Dark mahogany plank seam
-        ctx.fillStyle = '#3d2015';
-        ctx.fillRect(rx, y + plankH - 2, rw, 2);
-
-        // Staggered vertical plank joints
-        const shift = (row * 150) % 220;
-        for (let x = rx + 60 + shift; x < rx + rw - 40; x += 220) {
-          ctx.fillRect(x, y, 2, plankH);
+      if (this.woodFloorPattern) {
+        ctx.fillStyle = this.woodFloorPattern;
+        ctx.fillRect(rx, floorTop - 30, rw, rh);
+        // Subtle warm chestnut tone shift so Friend's home feels distinct yet unified
+        ctx.fillStyle = 'rgba(90, 42, 16, 0.14)';
+        ctx.fillRect(rx, floorTop - 30, rw, rh);
+      } else {
+        ctx.fillStyle = '#7e5638';
+        ctx.fillRect(rx, floorTop - 30, rw, rh);
+        const plankH = 32;
+        for (let y = floorTop - 20, row = 0; y < ry + rh; y += plankH, row++) {
+          ctx.fillStyle = row % 2 === 0 ? '#855c3c' : '#785033';
+          ctx.fillRect(rx, y, rw, plankH);
+          ctx.fillStyle = '#5c3b22';
+          ctx.fillRect(rx, y + plankH - 2, rw, 2);
         }
       }
 
-      // Bottom Espresso Wooden Threshold Border
-      ctx.fillStyle = '#4a2a1d';
-      ctx.fillRect(rx, ry + rh - 18, rw, 18);
-      ctx.strokeStyle = '#29150d';
-      ctx.lineWidth = 3;
-      ctx.strokeRect(rx, ry + rh - 18, rw, 18);
+      // Grounding ambient shadow cast by north baseboard onto floorboards
+      const wallShadow = ctx.createLinearGradient(0, floorTop - 16, 0, floorTop + 28);
+      wallShadow.addColorStop(0, 'rgba(20, 9, 4, 0.42)');
+      wallShadow.addColorStop(1, 'rgba(20, 9, 4, 0)');
+      ctx.fillStyle = wallShadow;
+      ctx.fillRect(rx, floorTop - 16, rw, 44);
 
-      // 3. Large Crimson & Gold Chamfered Duelist Arena Rug on Left/Center-Left Floor!
-      const rugX = rx + 48;
-      const rugY = floorTop + 26;
-      const rugW = 390;
-      const rugH = 348;
+      // Subtle warm firelight pool spilling from the stone hearth onto floor & rug
+      const hearthX = rx + 518;
+      const hearthY = floorTop + 14;
+      const fireFlicker = Math.sin(this.tick * 0.22) * 8 + Math.cos(this.tick * 0.37) * 4;
+      const fireGlow = ctx.createRadialGradient(hearthX, hearthY, 10, hearthX, hearthY + 42, 175 + fireFlicker);
+      fireGlow.addColorStop(0, 'rgba(255, 174, 52, 0.26)');
+      fireGlow.addColorStop(0.5, 'rgba(234, 88, 12, 0.10)');
+      fireGlow.addColorStop(1, 'rgba(234, 88, 12, 0)');
+      ctx.fillStyle = fireGlow;
+      ctx.fillRect(hearthX - 190, floorTop - 20, 380, 240);
+
+      // Bottom Cutaway Timber Threshold Beam
+      pxBox(rx, ry + rh - 18, rw, 18, '#5c3a22', '#7d5233', '#3b2212', INK, 2.5);
+
+      // 3. Woven Chamfered Duelist Arena Rug (Left) + Fringed Border Pixels
+      const rugX = snap(rx + 46);
+      const rugY = snap(floorTop + 22);
+      const rugW = 396;
+      const rugH = 354;
       const ch = 26;
 
-      ctx.fillStyle = '#581c28'; // Deep Crimson-Burgundy
+      // Ground shadow under rug
+      ctx.fillStyle = 'rgba(20, 9, 4, 0.28)';
+      drawChamferedRect(rugX + 2, rugY + 4, rugW, rugH, ch);
+      ctx.fill();
+
+      // Pixel-fringed golden cream rug tassels along left & right edges
+      ctx.fillStyle = '#e7d5ad';
+      for (let ty = rugY + ch + 8; ty < rugY + rugH - ch - 8; ty += 12) {
+        ctx.fillRect(rugX - 6, ty, 6, 4);
+        ctx.fillRect(rugX + rugW, ty, 6, 4);
+        ctx.fillStyle = '#b99c68';
+        ctx.fillRect(rugX - 6, ty + 4, 6, 2);
+        ctx.fillRect(rugX + rugW, ty + 4, 6, 2);
+        ctx.fillStyle = '#e7d5ad';
+      }
+
+      // Main deep woven cloth fill
+      ctx.fillStyle = accentDark;
       drawChamferedRect(rugX, rugY, rugW, rugH, ch);
       ctx.fill();
-      ctx.strokeStyle = '#2e0d14';
+      ctx.strokeStyle = INK;
       ctx.lineWidth = 3;
       ctx.stroke();
 
-      // Ornate Gold Duelist Inner Border & Center Emblem Ring
-      ctx.strokeStyle = '#d97706';
+      // Inner lighter woven field + subtle horizontal loom weave lines
+      ctx.fillStyle = accentMid;
+      drawChamferedRect(rugX + 10, rugY + 10, rugW - 20, rugH - 20, ch - 4);
+      ctx.fill();
+
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
+      for (let wy = rugY + 16; wy < rugY + rugH - 16; wy += 8) {
+        ctx.fillRect(rugX + 24, wy, rugW - 48, 2);
+      }
+
+      // Gold woven double border + corner diamond studs
+      ctx.strokeStyle = accentTrim;
       ctx.lineWidth = 2.5;
-      drawChamferedRect(rugX + 12, rugY + 12, rugW - 24, rugH - 24, ch - 5);
+      drawChamferedRect(rugX + 14, rugY + 14, rugW - 28, rugH - 28, ch - 6);
       ctx.stroke();
 
-      ctx.strokeStyle = 'rgba(251, 191, 36, 0.28)';
+      ctx.strokeStyle = 'rgba(253, 224, 71, 0.26)';
+      ctx.lineWidth = 2;
+      drawChamferedRect(rugX + 24, rugY + 24, rugW - 48, rugH - 48, ch - 10);
+      ctx.stroke();
+
+      // Woven Mythos Duel Ring in center of Arena Rug
+      const rcX = rugX + rugW / 2;
+      const rcY = rugY + rugH / 2;
+      ctx.strokeStyle = 'rgba(251, 191, 36, 0.34)';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(rcX, rcY, 76, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(254, 240, 138, 0.22)';
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.arc(rugX + rugW / 2, rugY + rugH / 2, 74, 0, Math.PI * 2);
+      ctx.arc(rcX, rcY, 64, 0, Math.PI * 2);
       ctx.stroke();
 
-      // Secondary Cozy Navy Runner Rug by the Right-Side Bed & Gaming Nook
-      const bRugX = rx + rw - 245;
-      const bRugY = floorTop + 58;
-      ctx.fillStyle = '#1e3a5f';
-      drawChamferedRect(bRugX, bRugY, 175, 220, 16);
+      // Secondary Slate-Blue Bedside Runner Rug (Positioned cleanly below bed plant nook)
+      const bRugX = snap(rx + rw - 242);
+      const bRugY = snap(floorTop + 86);
+      const bRugW = 176;
+      const bRugH = 198;
+      ctx.fillStyle = 'rgba(20, 9, 4, 0.26)';
+      drawChamferedRect(bRugX + 2, bRugY + 4, bRugW, bRugH, 16);
       ctx.fill();
-      ctx.strokeStyle = '#0f233d';
+
+      ctx.fillStyle = '#e7d5ad';
+      for (let tx = bRugX + 20; tx < bRugX + bRugW - 20; tx += 12) {
+        ctx.fillRect(tx, bRugY - 5, 4, 5);
+        ctx.fillRect(tx, bRugY + bRugH, 4, 5);
+      }
+
+      ctx.fillStyle = '#334c63';
+      drawChamferedRect(bRugX, bRugY, bRugW, bRugH, 16);
+      ctx.fill();
+      ctx.strokeStyle = INK;
       ctx.lineWidth = 2.5;
       ctx.stroke();
-      ctx.strokeStyle = '#38bdf8';
+
+      ctx.fillStyle = '#405f7b';
+      drawChamferedRect(bRugX + 8, bRugY + 8, bRugW - 16, bRugH - 16, 12);
+      ctx.fill();
+      ctx.strokeStyle = '#93c5fd';
       ctx.lineWidth = 1.5;
-      drawChamferedRect(bRugX + 8, bRugY + 8, 159, 204, 12);
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(226, 232, 240, 0.25)';
+      ctx.lineWidth = 1.5;
+      drawChamferedRect(bRugX + 16, bRugY + 16, bRugW - 32, bRugH - 32, 8);
       ctx.stroke();
 
       ctx.restore();
 
-      // 4. Cool Sage-Celadon Plaster North Wall (#c7d4c0, matching Mike/AJ's Sage Exterior!)
-      ctx.fillStyle = '#c7d4c0';
+      // 4. Warm Cream Plaster & Slate-Trimmed North Wall (Matches cottage_friend.png!)
+      ctx.fillStyle = '#ebe5cc';
       ctx.beginPath();
       ctx.moveTo(rx + 28, ry + 56);
       ctx.lineTo(rx + 68, ry + 30);
@@ -8021,13 +7992,40 @@
       ctx.lineTo(rx + 28, floorTop + 14);
       ctx.closePath();
       ctx.fill();
-      ctx.strokeStyle = '#2d3b32';
+      ctx.strokeStyle = INK;
       ctx.lineWidth = 2.5;
       ctx.stroke();
 
-      // Wainscoting Wood Paneling along the lower half of the North Wall
+      // Subtle warm horizontal cream clapboard / plaster courses on upper wall
+      ctx.fillStyle = '#dcd4b6';
+      for (let cy = ry + 48; cy < floorTop - 72; cy += 22) {
+        ctx.fillRect(rx + 70, cy, rw - 140, 2);
+      }
+
+      // Upper shadow beneath timber wall crown molding
+      ctx.fillStyle = 'rgba(60, 34, 18, 0.16)';
+      ctx.fillRect(rx + 68, ry + 31, rw - 136, 10);
+
+      // Slate-Blue Continuous Dado Rail following North & Angled Wing Walls
       const wainTop = floorTop - 68;
-      ctx.fillStyle = '#5c3d28';
+      ctx.fillStyle = '#486073';
+      ctx.beginPath();
+      ctx.moveTo(rx + 28, wainTop + 16);
+      ctx.lineTo(rx + 68, wainTop - 10);
+      ctx.lineTo(rx + rw - 68, wainTop - 10);
+      ctx.lineTo(rx + rw - 28, wainTop + 16);
+      ctx.lineTo(rx + rw - 28, wainTop + 26);
+      ctx.lineTo(rx + rw - 68, wainTop);
+      ctx.lineTo(rx + 68, wainTop);
+      ctx.lineTo(rx + 28, wainTop + 26);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Carved Cedar Wainscoting Paneling along Lower Half of North Wall
+      ctx.fillStyle = '#6c452b';
       ctx.beginPath();
       ctx.moveTo(rx + 28, wainTop + 26);
       ctx.lineTo(rx + 68, wainTop);
@@ -8039,27 +8037,29 @@
       ctx.lineTo(rx + 28, floorTop + 14);
       ctx.closePath();
       ctx.fill();
-      ctx.strokeStyle = '#362114';
-      ctx.lineWidth = 2;
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = 2.5;
       ctx.stroke();
 
-      // Recessed Wainscoting Vertical Panel Ribs across North Wall
-      for (let px = rx + 82; px < rx + rw - 95; px += 46) {
-        ctx.strokeStyle = '#422818';
-        ctx.lineWidth = 1.5;
-        ctx.strokeRect(px, wainTop + 8, 34, 40);
+      // Top chair-rail bevel highlight across flat wall
+      ctx.fillStyle = '#8b5e3c';
+      ctx.fillRect(rx + 68, wainTop + 1, rw - 136, 5);
+
+      // Recessed Pixel Wainscoting Panels across North Wall
+      for (let px = rx + 82; px < rx + rw - 98; px += 46) {
+        pxBox(px, wainTop + 10, 34, 38, '#54331e', '#412514', '#7e5235', INK, 2);
       }
 
       // Angled Wing Wall vertical corner lines
-      ctx.strokeStyle = '#8fa387';
+      ctx.strokeStyle = '#bfb697';
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.moveTo(rx + 68, ry + 30); ctx.lineTo(rx + 68, floorTop - 12);
       ctx.moveTo(rx + rw - 68, ry + 30); ctx.lineTo(rx + rw - 68, floorTop - 12);
       ctx.stroke();
 
-      // Dark Espresso Baseboard along north wall and wing walls
-      ctx.fillStyle = '#3d2516';
+      // Deep Walnut Baseboard along North Wall and Wing Walls
+      ctx.fillStyle = '#452817';
       ctx.beginPath();
       ctx.moveTo(rx + 28, floorTop + 2);
       ctx.lineTo(rx + 68, floorTop - 24);
@@ -8071,12 +8071,12 @@
       ctx.lineTo(rx + 28, floorTop + 14);
       ctx.closePath();
       ctx.fill();
-      ctx.strokeStyle = '#24140b';
-      ctx.lineWidth = 2;
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = 2.5;
       ctx.stroke();
 
-      // 5. Deep Walnut Top-Cap Wall Molding & Side Cutaway Pillars (#4f3524)
-      ctx.fillStyle = '#593b28';
+      // 5. Chunky Walnut Cutaway Wall Cap & Side-Wall Pillars
+      ctx.fillStyle = '#6c452b';
       ctx.beginPath();
       ctx.moveTo(rx, floorTop + 180);
       ctx.lineTo(rx, ry + 26);
@@ -8092,355 +8092,473 @@
       ctx.lineTo(rx + 28, floorTop + 180);
       ctx.closePath();
       ctx.fill();
-      ctx.strokeStyle = '#29180e';
-      ctx.lineWidth = 2.5;
+
+      // Warm beveled highlight rim along top beam
+      ctx.fillStyle = '#8b5e3c';
+      ctx.fillRect(rx + 38, ry + 3, rw - 76, 6);
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(rx, floorTop + 180);
+      ctx.lineTo(rx, ry + 26);
+      ctx.lineTo(rx + 36, ry);
+      ctx.lineTo(rx + rw - 36, ry);
+      ctx.lineTo(rx + rw, ry + 26);
+      ctx.lineTo(rx + rw, floorTop + 180);
+      ctx.lineTo(rx + rw - 28, floorTop + 180);
+      ctx.lineTo(rx + rw - 28, ry + 48);
+      ctx.lineTo(rx + rw - 64, ry + 28);
+      ctx.lineTo(rx + 64, ry + 28);
+      ctx.lineTo(rx + 28, ry + 48);
+      ctx.lineTo(rx + 28, floorTop + 180);
+      ctx.closePath();
       ctx.stroke();
 
-      // Lower Sage Plaster Side-Wall Cutaway Pillars (Left & Right bottom walls)
+      // Lower Cream Plaster & Slate-Stone Side-Wall Cutaway Pillars
       [rx, rx + rw - 28].forEach(px => {
-        ctx.fillStyle = '#c7d4c0';
-        ctx.fillRect(px, floorTop + 180, 28, ry + rh - (floorTop + 180) - 18);
-        ctx.strokeStyle = '#29180e';
-        ctx.strokeRect(px, floorTop + 180, 28, ry + rh - (floorTop + 180) - 18);
-        ctx.fillStyle = '#d7e3d0';
-        ctx.strokeStyle = '#8fa387';
-        ctx.fillRect(px + 4, floorTop + 245, 20, 14);
-        ctx.strokeRect(px + 4, floorTop + 245, 20, 14);
+        pxBox(px, floorTop + 180, 28, ry + rh - (floorTop + 180) - 18, '#ebe5cc', '#f6f1dd', '#cfc7a6', INK, 2.5);
+        pxBox(px + 4, floorTop + 245, 20, 16, '#64748b', '#94a3b8', '#475569', INK, 2);
       });
 
-      // 6. Bottom Stone Doorstep Threshold + Two Dark Post Blocks (exit to Outside!)
-      const doorX = 9.3 * S;
-      const doorY = ry + rh - 22;
-      ctx.fillStyle = '#1c1610';
-      ctx.fillRect(doorX - 18, doorY - 6, 18, 20);
-      ctx.fillRect(doorX + 86, doorY - 6, 18, 20);
-      ctx.fillStyle = '#64748b';
-      ctx.beginPath();
-      ctx.roundRect(doorX, doorY + 4, 86, 22, 4);
-      ctx.fill();
-      ctx.strokeStyle = '#1e293b';
-      ctx.lineWidth = 2.5;
-      ctx.stroke();
-      ctx.fillStyle = '#94a3b8';
-      ctx.fillRect(doorX + 6, doorY + 8, 74, 10);
-
-      // 7. Left North Wall: Framed Mythos Collector Banner + Trophy & Card Display Cabinet!
-      // Framed Crimson & Gold "SOLAR PHOENIX" Collector Poster on Far-Left North Wall
-      const pstX = rx + 76;
-      const pstY = ry + 48;
-      const pstW = 72;
-      const pstH = 92;
-      ctx.fillStyle = '#3b2314';
-      ctx.fillRect(pstX, pstY, pstW, pstH);
-      ctx.strokeStyle = '#fbbf24';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(pstX, pstY, pstW, pstH);
-      const pGrad = ctx.createLinearGradient(pstX, pstY, pstX, pstY + pstH);
-      pGrad.addColorStop(0, '#7c2d12');
-      pGrad.addColorStop(0.5, '#b91c1c');
-      pGrad.addColorStop(1, '#1e1b4b');
-      ctx.fillStyle = pGrad;
-      ctx.fillRect(pstX + 5, pstY + 5, pstW - 10, pstH - 10);
-      // Golden Phoenix Silhouette Emblem inside Poster
-      ctx.fillStyle = '#facc15';
-      ctx.beginPath();
-      ctx.moveTo(pstX + pstW / 2, pstY + 18);
-      ctx.lineTo(pstX + pstW - 14, pstY + 34);
-      ctx.lineTo(pstX + pstW / 2 + 6, pstY + 46);
-      ctx.lineTo(pstX + pstW / 2, pstY + 64);
-      ctx.lineTo(pstX + pstW / 2 - 6, pstY + 46);
-      ctx.lineTo(pstX + 14, pstY + 34);
-      ctx.closePath();
-      ctx.fill();
-      ctx.fillStyle = '#fde047';
-      ctx.font = 'bold 8px Cinzel, serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('MYTHOS', pstX + pstW / 2, pstY + pstH - 11);
-
-      // Wide Collector Trophy & Deck Showcase Shelf next to Poster
-      const shX = pstX + pstW + 18;
-      const shY = ry + 64;
-      const shW = 148;
-      const shH = 142;
-      ctx.fillStyle = '#5c3a24';
-      ctx.fillRect(shX, shY, shW, shH);
-      ctx.strokeStyle = '#29160c';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(shX, shY, shW, shH);
-      // Top crown cap
-      ctx.fillStyle = '#73482d';
-      ctx.fillRect(shX - 3, shY, shW + 6, 18);
-      ctx.strokeRect(shX - 3, shY, shW + 6, 18);
-
-      // Golden Championship Trophy sitting atop the collector shelf!
+      // 6. Cutaway Slate & Oak Entrance Doorstep Threshold (exit at 9.3 * S)
+      const doorX = snap(9.3 * S);
+      const doorY = snap(ry + rh - 22);
+      // Warm interior woven welcome mat just inside the threshold
+      pxBox(doorX + 4, doorY - 24, 78, 22, accentMid, accentHi, accentDark, INK, 2);
       ctx.fillStyle = '#fbbf24';
-      ctx.beginPath();
-      ctx.arc(shX + shW / 2, shY - 12, 10, 0, Math.PI);
-      ctx.fill();
-      ctx.fillRect(shX + shW / 2 - 3, shY - 6, 6, 6);
-      ctx.fillStyle = '#78350f';
-      ctx.fillRect(shX + shW / 2 - 10, shY - 4, 20, 4);
+      ctx.fillRect(doorX + 10, doorY - 18, 66, 2);
+      ctx.fillRect(doorX + 10, doorY - 8, 66, 2);
+      // Chunky walnut door jamb posts
+      pxBox(doorX - 18, doorY - 8, 18, 22, '#5c3a22', '#855733', '#3b2212', INK, 2.5);
+      pxBox(doorX + 86, doorY - 8, 18, 22, '#5c3a22', '#855733', '#3b2212', INK, 2.5);
+      // Beveled stone doorstep slabs
+      pxBox(doorX, doorY + 4, 86, 22, '#64748b', '#94a3b8', '#475569', INK, 2.5);
+      ctx.fillStyle = '#475569';
+      ctx.fillRect(doorX + 42, doorY + 6, 2, 16);
 
-      // 3 Display Shelves holding Graded Card Slabs, Deck Boxes & Beast Figurines
-      const deckColors = ['#ef4444', '#38bdf8', '#eab308', '#a855f7', '#22c55e'];
-      for (let s = 0; s < 3; s++) {
-        const sy = shY + 24 + s * 36;
-        ctx.fillStyle = '#331d10';
-        ctx.fillRect(shX + 8, sy, shW - 16, 28);
-        for (let c = 0; c < 5; c++) {
-          ctx.fillStyle = deckColors[(c + s * 2) % deckColors.length];
-          ctx.fillRect(shX + 14 + c * 25, sy + 6, 16, 20);
-          ctx.strokeStyle = '#fde047';
-          ctx.lineWidth = 1.2;
-          ctx.strokeRect(shX + 14 + c * 25, sy + 6, 16, 20);
-        }
+      // 7. Far-Left Corner Accent + Framed Mythos Phoenix Banner + Collector Bookshelf
+      // Small Potted Plant in top-left wing corner (well above walkable floor)
+      if (this.isImgReady('pot_small')) {
+        const psImg = this.owSprites.pot_small;
+        const psw = 34;
+        const psh = Math.round(psw * (psImg.height / psImg.width));
+        ctx.fillStyle = 'rgba(20, 9, 4, 0.34)';
+        ctx.beginPath(); ctx.ellipse(rx + 50, floorTop - 6, 15, 6, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.drawImage(psImg, snap(rx + 33), snap(floorTop - 6 - psh), psw, psh);
       }
 
-      // 8. Center-Left North Wall: Arched Diamond-Lattice Leaded Window
-      const winX = shX + shW + 26;
-      const winY = ry + 52;
-      const winW = 68;
-      const winH = 94;
+      // Framed "SOLAR PHOENIX" Championship Banner Poster
+      const pstX = snap(rx + 74);
+      const pstY = snap(ry + 48);
+      const pstW = 72;
+      const pstH = 92;
+      ctx.fillStyle = 'rgba(20, 9, 4, 0.28)';
+      ctx.fillRect(pstX + 3, pstY + 5, pstW, pstH);
+      pxBox(pstX, pstY, pstW, pstH, '#6c452b', '#a47247', '#452817', INK, 2.5);
+      // Recessed Poster Artwork
+      pxBox(pstX + 6, pstY + 6, pstW - 12, pstH - 12, accentDark, accentMid, '#1e1b4b', '#fbbf24', 2);
+      // Crisp 2px pixel-art Phoenix Emblem inside poster
+      const pxMid = pstX + 36;
+      const pyTop = pstY + 16;
+      ctx.fillStyle = '#facc15';
+      ctx.fillRect(pxMid - 4, pyTop, 8, 28);       // body spine
+      ctx.fillRect(pxMid - 20, pyTop + 6, 40, 8);  // upper wingspan
+      ctx.fillRect(pxMid - 24, pyTop + 2, 10, 6);  // left wingtip
+      ctx.fillRect(pxMid + 14, pyTop + 2, 10, 6);  // right wingtip
+      ctx.fillRect(pxMid - 12, pyTop + 14, 24, 6); // mid plumage
+      ctx.fillRect(pxMid - 6, pyTop + 28, 4, 10);  // left tail plume
+      ctx.fillRect(pxMid + 2, pyTop + 28, 4, 10);  // right tail plume
+      ctx.fillStyle = '#fef08a';
+      ctx.fillRect(pxMid - 2, pyTop + 4, 4, 12);   // chest highlight
+      ctx.fillStyle = '#fde047';
+      ctx.fillRect(pstX + 14, pstY + pstH - 16, pstW - 28, 4);
 
-      ctx.strokeStyle = '#29180e';
-      ctx.lineWidth = 2;
-      ctx.fillStyle = '#5c3a24';
+      // Illustrated Collector Shelf (uses OwSprites furniture_bookshelf + Gold Trophy!)
+      const shX = snap(pstX + pstW + 18);
+      const shY = snap(ry + 62);
+      const shW = 148;
+      const shH = 144;
+      if (this.isImgReady('furniture_bookshelf')) {
+        const bsImg = this.owSprites.furniture_bookshelf;
+        const bsh = 140;
+        const bsw = snap(bsh * (bsImg.width / bsImg.height));
+        const bsDrawX = snap(shX + (shW - bsw) / 2);
+        const bsDrawY = snap(shY + 4);
+        ctx.fillStyle = 'rgba(20, 9, 4, 0.36)';
+        ctx.beginPath(); ctx.ellipse(shX + shW / 2, bsDrawY + bsh - 2, bsw * 0.48, 10, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.drawImage(bsImg, bsDrawX, bsDrawY, bsw, bsh);
+
+        // Championship Gold Cup sitting proudly on the top ledge of the bookshelf!
+        const cupX = snap(shX + shW / 2);
+        const cupY = snap(bsDrawY + 4);
+        pxBox(cupX - 10, cupY - 6, 20, 6, '#5c3a22', '#8b5e3c', '#3b2212', INK, 2);
+        pxBox(cupX - 4, cupY - 12, 8, 6, '#d97706', '#fbbf24', '#92400e', INK, 2);
+        pxBox(cupX - 10, cupY - 24, 20, 12, '#f59e0b', '#fef08a', '#b45309', INK, 2);
+        // Handles & glint
+        ctx.fillStyle = '#fbbf24';
+        ctx.fillRect(cupX - 14, cupY - 22, 4, 8);
+        ctx.fillRect(cupX + 10, cupY - 22, 4, 8);
+        ctx.fillStyle = '#fef9c3';
+        ctx.fillRect(cupX - 6, cupY - 20, 4, 6);
+      } else {
+        pxBox(shX, shY, shW, shH, '#6c452b', '#8b5e3c', '#452817', INK, 2.5);
+        pxBox(shX - 4, shY, shW + 8, 18, '#8b5e3c', '#a47247', '#5c3a22', INK, 2);
+      }
+
+      // 8. Arched Slate-Trimmed Window + Animated Sunbeam / Moonlight Shaft
+      const winX = snap(shX + shW + 22);
+      const winY = snap(ry + 50);
+      const winW = 70;
+      const winH = 96;
+
+      // Slate-blue shutter accents matching cottage_friend.png exterior windows!
+      pxBox(winX - 12, winY + 28, 12, winH - 28, '#486073', '#6b859a', '#314352', INK, 2);
+      pxBox(winX + winW, winY + 28, 12, winH - 28, '#486073', '#6b859a', '#314352', INK, 2);
+
+      // Arched Oak Window Frame
+      ctx.fillStyle = '#784d31';
       ctx.beginPath();
       ctx.arc(winX + winW / 2, winY + 34, winW / 2, Math.PI, 0);
       ctx.lineTo(winX + winW, winY + winH);
       ctx.lineTo(winX, winY + winH);
       ctx.closePath();
       ctx.fill();
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = 2.5;
       ctx.stroke();
 
+      // Window Glass Panes (warm amber glow at dusk/evening or crisp sky daylight)
       ctx.save();
       ctx.beginPath();
       ctx.arc(winX + winW / 2, winY + 36, winW / 2 - 8, Math.PI, 0);
-      ctx.lineTo(winX + winW - 8, winY + winH - 10);
-      ctx.lineTo(winX + 8, winY + winH - 10);
+      ctx.lineTo(winX + winW - 8, winY + winH - 12);
+      ctx.lineTo(winX + 8, winY + winH - 12);
       ctx.closePath();
       ctx.clip();
 
-      ctx.fillStyle = this.settings.timeOfDay === 'night' ? '#1e293b' : '#bae6fd';
-      ctx.fillRect(winX, winY, winW, winH);
-      ctx.strokeStyle = '#472d1b';
-      ctx.lineWidth = 2;
-      for (let d = -winH; d < winW + winH; d += 16) {
-        ctx.beginPath();
-        ctx.moveTo(winX + d, winY);
-        ctx.lineTo(winX + d + winH, winY + winH);
-        ctx.moveTo(winX + d, winY + winH);
-        ctx.lineTo(winX + d + winH, winY);
-        ctx.stroke();
+      const isNight = this.settings.timeOfDay === 'night';
+      const winG = ctx.createLinearGradient(winX, winY, winX, winY + winH);
+      if (isNight) {
+        winG.addColorStop(0, '#1e293b');
+        winG.addColorStop(1, '#334155');
+      } else {
+        winG.addColorStop(0, '#bae6fd');
+        winG.addColorStop(0.55, '#e0f2fe');
+        winG.addColorStop(1, '#fef08a');
       }
+      ctx.fillStyle = winG;
+      ctx.fillRect(winX, winY, winW, winH);
+
+      // Chunky Cross Mullions
+      ctx.fillStyle = '#5c3a22';
+      ctx.fillRect(winX + winW / 2 - 3, winY + 6, 6, winH - 16);
+      ctx.fillRect(winX + 6, winY + 46, winW - 12, 6);
       ctx.restore();
 
-      // 9. Center-Right North Wall: Rustic Stone Fireplace & Chimney Hearth (Matching Exterior Chimney!)
-      const fpX = winX + winW + 28;
-      const fpY = ry + 32;
-      const fpW = 142;
-      const fpH = 182;
+      // Protruding Wooden Windowsill + Small Sill Terracotta Planter
+      pxBox(winX - 6, winY + winH - 10, winW + 12, 12, '#8b5e3c', '#a47247', '#5c3a22', INK, 2);
 
-      // Stone Chimney Breast & Ashlar Masonry Blocks
-      ctx.fillStyle = '#64748b';
-      ctx.fillRect(fpX, fpY, fpW, fpH);
-      ctx.strokeStyle = '#1e293b';
-      ctx.lineWidth = 2.5;
-      ctx.strokeRect(fpX, fpY, fpW, fpH);
+      // Soft Window Light Beam across north wall and floor (sunlit daytime / cool moonlit night)
+      ctx.save();
+      const beamG = ctx.createLinearGradient(winX, winY + winH, winX - 70, floorTop + 170);
+      if (isNight) {
+        beamG.addColorStop(0, 'rgba(147, 197, 253, 0.14)');
+        beamG.addColorStop(1, 'rgba(147, 197, 253, 0)');
+      } else {
+        beamG.addColorStop(0, 'rgba(254, 240, 138, 0.22)');
+        beamG.addColorStop(0.6, 'rgba(253, 224, 71, 0.08)');
+        beamG.addColorStop(1, 'rgba(253, 224, 71, 0)');
+      }
+      ctx.fillStyle = beamG;
+      ctx.beginPath();
+      ctx.moveTo(winX + 8, winY + winH - 10);
+      ctx.lineTo(winX + winW - 8, winY + winH - 10);
+      ctx.lineTo(winX + winW - 58, floorTop + 176);
+      ctx.lineTo(winX - 78, floorTop + 176);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
 
-      // Individual Cobblestone / Ashlar Bricks on the Chimney Breast
-      const stoneShades = ['#78879c', '#58677a', '#6c7c91', '#8494a8'];
-      for (let sr = 0; sr < 6; sr++) {
-        const sy = fpY + 6 + sr * 24;
-        const offset = (sr % 2) * 18;
-        for (let sc = 0; sc < 4; sc++) {
-          const sx = fpX + 6 + offset + sc * 34;
-          if (sx + 28 <= fpX + fpW - 4) {
-            ctx.fillStyle = stoneShades[(sr + sc) % stoneShades.length];
-            ctx.fillRect(sx, sy, 28, 18);
-            ctx.strokeStyle = '#334155';
-            ctx.lineWidth = 1.2;
-            ctx.strokeRect(sx, sy, 28, 18);
+      // 9. Hand-Pixelled Cobblestone Chimney & Crackling Hearth (Matches cottage_friend.png Chimney!)
+      const fpX = snap(winX + winW + 26);
+      const fpY = snap(ry + 30);
+      const fpW = 148;
+      const fpH = 186;
+
+      // Ground shadow beside chimney
+      ctx.fillStyle = 'rgba(20, 9, 4, 0.34)';
+      ctx.fillRect(fpX - 4, fpY + 8, fpW + 8, fpH + 14);
+
+      // Mortar backing
+      pxBox(fpX, fpY, fpW, fpH, '#47423e', null, null, INK, 3);
+
+      // Pixel-art Ashlar Masonry Courses (2px stepped stones matching cottage_friend.png chimney)
+      const masonryCols = ['#7b746e', '#655f5a', '#8c857e', '#6f6963', '#968f88'];
+      for (let sr = 0; sr < 8; sr++) {
+        const sy = snap(fpY + 4 + sr * 22);
+        const rowShift = (sr % 2) * 16;
+        for (let sc = -1; sc < 5; sc++) {
+          const bx = snap(fpX + 4 + rowShift + sc * 32);
+          const bw = 28;
+          const drawLeft = Math.max(fpX + 4, bx);
+          const drawRight = Math.min(fpX + fpW - 4, bx + bw);
+          if (drawRight - drawLeft >= 10) {
+            const baseCol = masonryCols[(sr * 3 + sc + 5) % masonryCols.length];
+            ctx.fillStyle = baseCol;
+            ctx.fillRect(drawLeft, sy, drawRight - drawLeft, 18);
+            ctx.fillStyle = '#a39c95';
+            ctx.fillRect(drawLeft, sy, drawRight - drawLeft, 4);
+            ctx.fillStyle = '#3a3531';
+            ctx.fillRect(drawLeft, sy + 16, drawRight - drawLeft, 2);
+            ctx.fillRect(drawRight - 2, sy, 2, 18);
           }
         }
       }
+      // Re-stroke heavy outer chimney ink border cleanly
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = 3;
+      ctx.strokeRect(fpX, fpY, fpW, fpH);
 
-      // Carved Walnut Fireplace Mantelpiece & Mounted Mythos Crossed-Swords Shield Crest above Mantel!
-      ctx.fillStyle = '#5c3a24';
-      ctx.fillRect(fpX - 8, fpY + 76, fpW + 16, 16);
-      ctx.strokeStyle = '#24140b';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(fpX - 8, fpY + 76, fpW + 16, 16);
+      // Carved Walnut Mantelpiece with Bevel & Decorative Braces
+      pxBox(fpX - 10, fpY + 76, fpW + 20, 18, '#784d31', '#a47247', '#452817', INK, 2.5);
+      pxBox(fpX + 6, fpY + 94, 14, 10, '#5c3a22', null, null, INK, 2);
+      pxBox(fpX + fpW - 20, fpY + 94, 14, 10, '#5c3a22', null, null, INK, 2);
 
-      // Mounted Heraldic Shield Above Mantel
-      const shCx = fpX + fpW / 2;
-      const shCy = fpY + 42;
-      ctx.fillStyle = '#991b1b';
+      // Above Mantel: Heraldic Mythos Shield + Candle Sconces / Vials
+      const shCx = snap(fpX + fpW / 2);
+      const shCy = snap(fpY + 42);
+      ctx.fillStyle = accentDark;
       ctx.beginPath();
       ctx.moveTo(shCx - 18, shCy - 18);
       ctx.lineTo(shCx + 18, shCy - 18);
-      ctx.lineTo(shCx + 18, shCy + 2);
+      ctx.lineTo(shCx + 18, shCy + 4);
       ctx.lineTo(shCx, shCy + 22);
-      ctx.lineTo(shCx - 18, shCy + 2);
+      ctx.lineTo(shCx - 18, shCy + 4);
       ctx.closePath();
       ctx.fill();
       ctx.strokeStyle = '#fbbf24';
-      ctx.lineWidth = 2.2;
+      ctx.lineWidth = 2.5;
       ctx.stroke();
+      // Inner shield emblem cross
+      ctx.fillStyle = '#fde047';
+      ctx.fillRect(shCx - 2, shCy - 12, 4, 24);
+      ctx.fillRect(shCx - 10, shCy - 4, 20, 4);
 
-      // Stone Hearth Slab protruding onto floor
-      ctx.fillStyle = '#475569';
-      ctx.fillRect(fpX - 10, fpY + fpH - 8, fpW + 20, 22);
-      ctx.strokeStyle = '#1e293b';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(fpX - 10, fpY + fpH - 8, fpW + 20, 22);
+      // Small Brass Candlesticks sitting on the Mantel Shelf
+      [fpX + 12, fpX + fpW - 24].forEach((cx, ci) => {
+        pxBox(cx, fpY + 62, 12, 14, '#d97706', '#fef08a', '#92400e', INK, 2);
+        const fOff = Math.sin(this.tick * 0.25 + ci * 2) > 0 ? 0 : 2;
+        ctx.fillStyle = '#fef08a';
+        ctx.fillRect(cx + 4, fpY + 54 - fOff, 4, 8);
+      });
 
-      // Arched Dark Firebox Opening + Animated Crackling Flames!
-      const fbX = fpX + 26;
-      const fbY = fpY + 102;
-      const fbW = fpW - 52;
-      const fbH = 74;
-      ctx.fillStyle = '#0f172a';
-      ctx.beginPath();
-      ctx.arc(fbX + fbW / 2, fbY + 28, fbW / 2, Math.PI, 0);
-      ctx.lineTo(fbX + fbW, fbY + fbH);
-      ctx.lineTo(fbX, fbY + fbH);
-      ctx.closePath();
-      ctx.fill();
-      ctx.strokeStyle = '#334155';
-      ctx.lineWidth = 2;
-      ctx.stroke();
+      // Raised Stone Hearth Apron onto Floorboard
+      pxBox(fpX - 12, fpY + fpH - 8, fpW + 24, 24, '#6b655f', '#968f88', '#47423e', INK, 2.5);
+      ctx.fillStyle = '#3a3531';
+      ctx.fillRect(fpX + 36, fpY + fpH - 6, 2, 20);
+      ctx.fillRect(fpX + 104, fpY + fpH - 6, 2, 20);
 
-      // Charred Firewood Logs & Flickering Orange/Gold Hearth Fire
-      ctx.fillStyle = '#451a03';
-      ctx.fillRect(fbX + 14, fbY + fbH - 14, fbW - 28, 8);
-      const fPulse = Math.sin(this.tick * 0.24) * 5;
-      const fPulse2 = Math.cos(this.tick * 0.31) * 4;
-      ctx.fillStyle = '#ea580c';
-      ctx.beginPath();
-      ctx.moveTo(fbX + 16, fbY + fbH - 10);
-      ctx.quadraticCurveTo(fbX + fbW * 0.35, fbY + 20 + fPulse, fbX + fbW / 2, fbY + 16 - fPulse);
-      ctx.quadraticCurveTo(fbX + fbW * 0.7, fbY + 22 - fPulse2, fbX + fbW - 16, fbY + fbH - 10);
-      ctx.closePath();
-      ctx.fill();
+      // Stepped Pixel Firebox Opening & Crackling Animated Pixel Flames
+      const fbX = snap(fpX + 28);
+      const fbY = snap(fpY + 102);
+      const fbW = fpW - 56;
+      const fbH = 76;
+      pxBox(fbX - 4, fbY - 4, fbW + 8, fbH + 4, '#56514d', '#7b746e', '#3a3531', INK, 2.5);
+      ctx.fillStyle = '#19110e';
+      ctx.fillRect(fbX, fbY + 8, fbW, fbH - 8);
+      ctx.fillRect(fbX + 8, fbY, fbW - 16, 10);
 
-      ctx.fillStyle = '#facc15';
-      ctx.beginPath();
-      ctx.moveTo(fbX + 26, fbY + fbH - 10);
-      ctx.quadraticCurveTo(fbX + fbW / 2, fbY + 28 + fPulse2, fbX + fbW - 26, fbY + fbH - 10);
-      ctx.closePath();
-      ctx.fill();
+      // Charred firewood logs + glowing coal bed
+      pxBox(fbX + 14, fbY + fbH - 18, fbW - 28, 10, '#5c2d16', '#7c4322', '#2d1206', INK, 2);
+      pxBox(fbX + 20, fbY + fbH - 22, fbW - 40, 8, '#6e371b', '#8d4c2a', '#2d1206', INK, 2);
+      ctx.fillStyle = '#dc2626';
+      ctx.fillRect(fbX + 20, fbY + fbH - 12, fbW - 40, 4);
 
-      // 10. Far-Right Corner: Mike/AJ's Bed & Nightstand (Mirrored Opposite from Player's Left-Side Bed!)
-      const bedW = 108;
-      const bedH = 176;
-      const bedX = rx + rw - bedW - 58;
-      const bedY = ry + 114;
+      // Crisp 2px pixel-art flickering flame tongue columns
+      const flA = Math.round(Math.sin(this.tick * 0.25) * 3) * 2;
+      const flB = Math.round(Math.cos(this.tick * 0.34) * 2) * 2;
+      ctx.fillStyle = '#ea580c'; // Deep flame orange
+      ctx.fillRect(fbX + 20, fbY + 40 - flB, fbW - 40, 20 + flB);
+      ctx.fillRect(fbX + 28, fbY + 26 - flA, fbW - 56, 20 + flA);
+      ctx.fillRect(fbX + fbW / 2 - 8, fbY + 16 + flB, 16, 14);
+      ctx.fillStyle = '#facc15'; // Inner golden flame
+      ctx.fillRect(fbX + 28, fbY + 42, fbW - 56, 16);
+      ctx.fillRect(fbX + fbW / 2 - 10, fbY + 28 - flA, 20, 18 + flA);
+      ctx.fillStyle = '#fef9c3'; // White-hot flame core
+      ctx.fillRect(fbX + fbW / 2 - 6, fbY + 44 - flB, 12, 12 + flB);
 
-      ctx.fillStyle = 'rgba(0,0,0,0.35)';
-      ctx.fillRect(bedX + 4, bedY + 8, bedW, bedH);
+      // Cozy Iron Firewood Rack / Poker tucked safely beside hearth (inside tx <= 11.4, ty < 4.85)
+      pxBox(fpX + fpW + 8, fpY + fpH - 36, 28, 34, '#334155', '#64748b', '#1e293b', INK, 2);
+      pxBox(fpX + fpW + 12, fpY + fpH - 30, 20, 10, '#784d31', '#a47247', null, INK, 1.5);
+      pxBox(fpX + fpW + 14, fpY + fpH - 22, 16, 10, '#6e371b', '#8d4c2a', null, INK, 1.5);
 
-      // Dark Walnut Headboard & Corner Posts
-      ctx.fillStyle = '#5c3a24';
-      ctx.strokeStyle = '#24140b';
-      ctx.lineWidth = 2;
-      ctx.fillRect(bedX, bedY, bedW, 34);
-      ctx.strokeRect(bedX, bedY, bedW, 34);
-      ctx.fillStyle = '#73482d';
-      ctx.fillRect(bedX, bedY - 6, 16, 26);
-      ctx.strokeRect(bedX, bedY - 6, 16, 26);
-      ctx.fillRect(bedX + bedW - 16, bedY - 6, 16, 26);
-      ctx.strokeRect(bedX + bedW - 16, bedY - 6, 16, 26);
-
-      // Mattress & Crisp Pillow
-      ctx.fillStyle = '#e2e8f0';
-      ctx.fillRect(bedX + 4, bedY + 26, bedW - 8, 36);
-      ctx.strokeRect(bedX + 4, bedY + 26, bedW - 8, 36);
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath();
-      ctx.roundRect(bedX + 18, bedY + 16, bedW - 36, 30, 6);
-      ctx.fill();
-      ctx.stroke();
-
-      // Bold Crimson-Red (Mike) or Emerald-Green (AJ) Quilted Duvet with Gold Stripe!
-      ctx.fillStyle = isAJ ? '#15803d' : '#b91c1c';
-      ctx.fillRect(bedX + 4, bedY + 56, bedW - 8, 92);
-      ctx.strokeRect(bedX + 4, bedY + 56, bedW - 8, 92);
-      ctx.fillStyle = isAJ ? '#16a34a' : '#dc2626';
-      ctx.fillRect(bedX + 8, bedY + 60, bedW - 16, 80);
-      // Gold horizontal racing stripe across blanket
+      // 10. Far-Right Bedroom Nook: Nightstand + Potted Plant + Illustrated Pixel-Art Bed!
+      // Compact Carved Walnut Nightstand between Hearth & Bed (safely inside tx > 11.35 && ty < 6.6)
+      const nsX = snap(rx + rw - 200);
+      const nsY = snap(ry + 114);
+      ctx.fillStyle = 'rgba(20, 9, 4, 0.32)';
+      ctx.fillRect(nsX + 2, nsY + 6, 44, 52);
+      pxBox(nsX, nsY, 44, 52, '#784d31', '#a47247', '#452817', INK, 2.5);
+      pxBox(nsX + 6, nsY + 20, 32, 14, '#5c3a22', null, null, INK, 1.5);
       ctx.fillStyle = '#fbbf24';
-      ctx.fillRect(bedX + 6, bedY + 92, bedW - 12, 12);
+      ctx.fillRect(nsX + 18, nsY + 25, 8, 4);
+      // Warm bedside brass lantern atop nightstand
+      pxBox(nsX + 12, nsY - 14, 20, 16, '#f59e0b', '#fef08a', '#b45309', INK, 2);
+      ctx.fillStyle = '#fef9c3';
+      ctx.fillRect(nsX + 16, nsY - 10, 12, 8);
 
-      // Footboard & Lower Posts
-      ctx.fillStyle = '#5c3a24';
-      ctx.fillRect(bedX, bedY + 144, bedW, 32);
-      ctx.strokeRect(bedX, bedY + 144, bedW, 32);
-      ctx.fillStyle = '#73482d';
-      ctx.fillRect(bedX, bedY + 136, 16, 40);
-      ctx.strokeRect(bedX, bedY + 136, 16, 40);
-      ctx.fillRect(bedX + bedW - 16, bedY + 136, 16, 40);
-      ctx.strokeRect(bedX + bedW - 16, bedY + 136, 16, 40);
+      // Lush Illustrated Potted Plant resting cleanly on hardwood beside the Bed (tx ~ 11.6, ty ~ 4.4)
+      if (this.isImgReady('pot_large')) {
+        const plImg = this.owSprites.pot_large;
+        const plw = 46;
+        const plh = Math.round(plw * (plImg.height / plImg.width));
+        const plX = snap(nsX - 2);
+        const plY = snap(nsY + 66);
+        ctx.fillStyle = 'rgba(20, 9, 4, 0.34)';
+        ctx.beginPath(); ctx.ellipse(plX + plw / 2, plY + plh - 2, 20, 7, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.drawImage(plImg, plX, plY, plw, plh);
+      }
 
-      // 11. Left/Center-Left Floor: Mike/AJ's Round Wooden Mythos Duel Table & Two Crimson-Cushioned Chairs!
-      const tbX = 5.5 * S;
-      const tbY = 6.8 * S;
+      // Friend's Pixel-Art Cedar Bed (flush to right wall inside tx > 11.35 && ty < 6.6)
+      const bedW = 112;
+      const bedH = 180;
+      const bedX = snap(rx + rw - bedW - 42);
+      const bedY = snap(ry + 114);
 
-      // Left & Right Wooden Chairs with Crimson-Gold Duelist Cushions
-      [tbX - 98, tbX + 64].forEach((chX, idx) => {
-        const chY = tbY - 22;
-        ctx.fillStyle = 'rgba(0,0,0,0.32)';
-        ctx.fillRect(chX + 3, chY + 6, 34, 48);
-        ctx.fillStyle = '#5c3a24';
-        ctx.strokeStyle = '#24140b';
-        ctx.lineWidth = 2;
-        ctx.fillRect(chX, chY + 16, 34, 32);
-        ctx.strokeRect(chX, chY + 16, 34, 32);
-        // Crimson seat cushion (#991b1b)
-        ctx.fillStyle = '#991b1b';
-        ctx.fillRect(chX + 4, chY + 18, 26, 20);
-        ctx.strokeRect(chX + 4, chY + 18, 26, 20);
-        // Tall Chair Backrest post on outer edge
-        const backX = idx === 0 ? chX : chX + 26;
-        ctx.fillStyle = '#73482d';
-        ctx.fillRect(backX, chY - 12, 8, 56);
-        ctx.strokeRect(backX, chY - 12, 8, 56);
+      ctx.fillStyle = 'rgba(20, 9, 4, 0.36)';
+      ctx.fillRect(bedX + 4, bedY + 10, bedW, bedH);
+
+      // Carved Cedar Headboard & Corner Posts with lighter beveled end-grain caps
+      pxBox(bedX, bedY, bedW, 34, '#784d31', '#a47247', '#452817', INK, 2.5);
+      pxBox(bedX, bedY - 8, 18, 28, '#92623a', '#c99362', '#5c3a22', INK, 2.5);
+      pxBox(bedX + bedW - 18, bedY - 8, 18, 28, '#92623a', '#c99362', '#5c3a22', INK, 2.5);
+
+      // Crisp Layered Sheet & Soft-Shaded Pixel Pillow
+      pxBox(bedX + 4, bedY + 26, bedW - 8, 38, '#e2e8f0', '#f8fafc', '#cbd5e1', INK, 2.5);
+      pxBox(bedX + 18, bedY + 16, bedW - 36, 30, '#f8fafc', '#ffffff', '#cbd5e1', INK, 2);
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillRect(bedX + bedW / 2 - 12, bedY + 28, 24, 2);
+      ctx.fillStyle = '#cbd5e1';
+      ctx.fillRect(bedX + 20, bedY + 22, 6, 16);
+      ctx.fillRect(bedX + bedW - 26, bedY + 22, 6, 16);
+
+      // Signature Quilted Blanket (Crimson/Gold for Mike, Emerald/Gold for AJ!)
+      pxBox(bedX + 4, bedY + 58, bedW - 8, 92, accentMid, accentHi, accentDark, INK, 2.5);
+      // Side bolster fold highlights for pillowed blanket volume
+      ctx.fillStyle = accentHi;
+      ctx.fillRect(bedX + 10, bedY + 72, 10, 68);
+      ctx.fillStyle = accentDark;
+      ctx.fillRect(bedX + bedW - 20, bedY + 72, 10, 68);
+      // Folded crisp cream turnover sheet top
+      pxBox(bedX + 4, bedY + 54, bedW - 8, 14, '#f1f5f9', '#ffffff', '#cbd5e1', INK, 2);
+      // Gold horizontal tournament sash + stitched diamond crest
+      ctx.fillStyle = '#fbbf24';
+      ctx.fillRect(bedX + 6, bedY + 98, bedW - 12, 10);
+      ctx.fillStyle = '#fef08a';
+      ctx.fillRect(bedX + 6, bedY + 98, bedW - 12, 4);
+      ctx.fillStyle = accentDark;
+      ctx.fillRect(bedX + 14, bedY + 80, bedW - 28, 2);
+      ctx.fillRect(bedX + 14, bedY + 124, bedW - 28, 2);
+
+      // Cedar Footboard & Lower Posts with beveled wood end-grain caps
+      pxBox(bedX, bedY + 144, bedW, 34, '#784d31', '#a47247', '#452817', INK, 2.5);
+      pxBox(bedX, bedY + 136, 18, 44, '#92623a', '#c99362', '#5c3a22', INK, 2.5);
+      pxBox(bedX + bedW - 18, bedY + 136, 18, 44, '#92623a', '#c99362', '#5c3a22', INK, 2.5);
+
+      // 11. Center-Left Duel Zone: Chunky Pixel-Art Chairs & Round Plank Mythos Duel Table
+      const tbX = 5.5 * S; // 352
+      const tbY = 6.8 * S; // 435.2
+
+      // Left & Right Upholstered Oak Chairs framing Friend (4.1, 6.8) and Player
+      [tbX - 96, tbX + 62].forEach((chX, idx) => {
+        const cx = snap(chX);
+        const cy = snap(tbY - 22);
+        // Ground shadow
+        ctx.fillStyle = 'rgba(20, 9, 4, 0.34)';
+        ctx.fillRect(cx + 2, cy + 8, 36, 46);
+        // Chair seat frame
+        pxBox(cx, cy + 16, 36, 32, '#784d31', '#92623a', '#452817', INK, 2.5);
+        // Plush velvet duelist cushion + gold button stud
+        pxBox(cx + 4, cy + 18, 28, 20, accentMid, accentHi, accentDark, INK, 2);
+        ctx.fillStyle = '#fbbf24';
+        ctx.fillRect(cx + 16, cy + 26, 4, 4);
+        // Stepped carved backrest on outer edge
+        const backX = idx === 0 ? cx - 2 : cx + 28;
+        pxBox(backX, cy - 12, 10, 56, '#92623a', '#c99362', '#5c3a22', INK, 2.5);
       });
 
-      // Duel Table Shadow & Legs
-      ctx.fillStyle = 'rgba(0,0,0,0.4)';
-      ctx.beginPath(); ctx.ellipse(tbX, tbY + 16, 72, 54, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#4a2c1a';
-      ctx.fillRect(tbX - 48, tbY + 26, 10, 26);
-      ctx.strokeRect(tbX - 48, tbY + 26, 10, 26);
-      ctx.fillRect(tbX + 38, tbY + 26, 10, 26);
-      ctx.strokeRect(tbX + 38, tbY + 26, 10, 26);
+      // Duel Table Drop Shadow & Thick Carved Pedestal Legs
+      ctx.fillStyle = 'rgba(20, 9, 4, 0.42)';
+      ctx.beginPath(); ctx.ellipse(tbX, tbY + 20, 74, 52, 0, 0, Math.PI * 2); ctx.fill();
+      pxBox(tbX - 48, tbY + 24, 12, 28, '#5c3a22', '#784d31', '#3b2212', INK, 2.5);
+      pxBox(tbX + 36, tbY + 24, 12, 28, '#5c3a22', '#784d31', '#3b2212', INK, 2.5);
+      pxBox(tbX - 6, tbY + 30, 12, 24, '#5c3a22', '#784d31', '#3b2212', INK, 2.5);
 
-      // Dark Walnut Duel Table Top Bevel & Surface
-      ctx.fillStyle = '#5c3a24';
-      ctx.beginPath(); ctx.ellipse(tbX, tbY + 5, 72, 52, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = '#7c4f32';
-      ctx.beginPath(); ctx.ellipse(tbX, tbY, 72, 52, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      // Beveled Round Oak Tabletop Rim + Wood-Plank Grain Surface (inspired by furniture_table_book!)
+      ctx.fillStyle = '#5c3a22';
+      ctx.beginPath(); ctx.ellipse(tbX, tbY + 7, 72, 52, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = INK; ctx.lineWidth = 3; ctx.stroke();
 
-      // Official Mythos Two-Player Tabletop Battle Playmat & 6 Pulled Cards Laid Out Ready for Battle!
-      ctx.fillStyle = '#1e1b4b';
+      ctx.save();
+      ctx.beginPath(); ctx.ellipse(tbX, tbY, 72, 50, 0, 0, Math.PI * 2);
+      ctx.fillStyle = '#92623a';
+      ctx.fill();
+      ctx.clip();
+      // Tabletop horizontal wood planks, staggered plank seams & top crescent bevel highlight
+      ctx.fillStyle = '#a97448';
+      ctx.fillRect(tbX - 72, tbY - 50, 144, 22);
+      ctx.fillStyle = '#c48f60';
+      ctx.fillRect(tbX - 54, tbY - 48, 108, 6);
+      ctx.fillStyle = '#73482c';
+      [-28, -10, 8, 26].forEach((pyOff, pi) => {
+        ctx.fillRect(tbX - 72, tbY + pyOff, 144, 2);
+        const jx = pi % 2 === 0 ? tbX - 24 : tbX + 20;
+        ctx.fillRect(jx, tbY + pyOff - 18, 2, 18);
+      });
+      ctx.restore();
+      ctx.beginPath(); ctx.ellipse(tbX, tbY, 72, 50, 0, 0, Math.PI * 2);
+      ctx.strokeStyle = INK; ctx.lineWidth = 3; ctx.stroke();
+
+      // Official Mythos Two-Player Tabletop Battle Mat, Stacked Decks & Battle Tokens!
+      pxBox(tbX - 44, tbY - 24, 88, 48, '#23314c', '#364b73', '#162033', '#fbbf24', 2);
+      ctx.fillStyle = '#fbbf24';
+      ctx.fillRect(tbX - 1, tbY - 22, 2, 44);
       ctx.strokeStyle = '#fbbf24';
-      ctx.lineWidth = 1.8;
-      ctx.fillRect(tbX - 42, tbY - 24, 84, 48);
-      ctx.strokeRect(tbX - 42, tbY - 24, 84, 48);
-      // Center Arena Divider Line
-      ctx.beginPath();
-      ctx.moveTo(tbX, tbY - 24);
-      ctx.lineTo(tbX, tbY + 24);
-      ctx.stroke();
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(tbX, tbY, 8, 0, Math.PI * 2); ctx.stroke();
 
-      // 3 Friend Cards (Left) & 3 Player Cards (Right) laid out on the playmat!
-      [-15, -3, 9].forEach(ryOff => {
-        ctx.fillStyle = '#f59e0b';
-        ctx.fillRect(tbX - 32, tbY + ryOff, 14, 9);
-        ctx.fillStyle = '#38bdf8';
-        ctx.fillRect(tbX + 18, tbY + ryOff, 14, 9);
+      // 3 Friend Cards (Left) & 3 Player Cards (Right) + 3D Deck Piles + Gold Counters!
+      const friendCol = isAJ ? '#22c55e' : '#ef4444';
+      [-16, -4, 8].forEach((ryOff, ci) => {
+        pxBox(tbX - 32, tbY + ryOff, 14, 10, friendCol, '#fef08a', null, INK, 1.5);
+        pxBox(tbX + 18, tbY + ryOff, 14, 10, '#38bdf8', '#e0f2fe', null, INK, 1.5);
+        if (ci === 0) {
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(tbX - 28, tbY + ryOff + 3, 6, 3);
+          ctx.fillRect(tbX + 22, tbY + ryOff + 3, 6, 3);
+        }
       });
+      // Deck piles & brass counters outside playmat
+      pxBox(tbX - 58, tbY - 12, 12, 18, accentDark, accentHi, null, INK, 2);
+      pxBox(tbX + 46, tbY - 6, 12, 18, '#1e40af', '#60a5fa', null, INK, 2);
+      ctx.fillStyle = '#fbbf24';
+      ctx.fillRect(tbX - 54, tbY + 14, 6, 6);
+      ctx.fillRect(tbX + 48, tbY - 18, 6, 6);
+
+      // 12. Warm Ambient Lamp & Hearth Light Bloom Pass (softly unifies props under dusk/night!)
+      const lampBloom = ctx.createRadialGradient(nsX + 22, nsY - 6, 4, nsX + 22, nsY - 6, 78);
+      lampBloom.addColorStop(0, isNight ? 'rgba(254, 240, 138, 0.32)' : 'rgba(254, 240, 138, 0.14)');
+      lampBloom.addColorStop(1, 'rgba(254, 240, 138, 0)');
+      ctx.fillStyle = lampBloom;
+      ctx.fillRect(nsX - 56, nsY - 84, 156, 156);
+
+      if (isNight) {
+        const hearthBloom = ctx.createRadialGradient(hearthX, hearthY - 14, 12, hearthX, hearthY + 24, 150 + fireFlicker);
+        hearthBloom.addColorStop(0, 'rgba(251, 146, 60, 0.24)');
+        hearthBloom.addColorStop(1, 'rgba(251, 146, 60, 0)');
+        ctx.fillStyle = hearthBloom;
+        ctx.fillRect(hearthX - 160, hearthY - 150, 320, 300);
+      }
     }
 
     // =========================================================================
@@ -8458,8 +8576,9 @@
       const W = this.canvas.width;
       const H = this.canvas.height;
 
-      // 1. Muted Slate-Blue Cutaway Void Background (#658296)
-      ctx.fillStyle = '#658296';
+      // 1. Warm Timber Cutaway Diorama Void
+      this.initCobblestonePattern();
+      ctx.fillStyle = '#1f1712';
       ctx.fillRect(0, 0, W, H);
 
       const rx = 1.5 * S;        // 96
@@ -8482,22 +8601,27 @@
       ctx.closePath();
       ctx.clip();
 
-      ctx.fillStyle = '#876645';
-      ctx.fillRect(rx, floorTop - 30, rw, rh);
+      if (this.woodFloorPattern) {
+        ctx.fillStyle = this.woodFloorPattern;
+        ctx.fillRect(rx, floorTop - 30, rw, rh);
+      } else {
+        ctx.fillStyle = '#876645';
+        ctx.fillRect(rx, floorTop - 30, rw, rh);
 
-      const plankH = 38;
-      for (let y = floorTop - 20, row = 0; y < ry + rh; y += plankH, row++) {
-        ctx.fillStyle = row % 2 === 0 ? '#876645' : '#7d5d3e';
-        ctx.fillRect(rx, y, rw, plankH);
-        ctx.fillStyle = '#6e5034';
-        ctx.fillRect(rx + 30, y + 11, rw - 60, 2);
-        ctx.fillRect(rx + 80, y + 25, rw - 140, 2);
-        ctx.fillStyle = '#4f3923';
-        ctx.fillRect(rx, y + plankH - 2, rw, 2);
+        const plankH = 38;
+        for (let y = floorTop - 20, row = 0; y < ry + rh; y += plankH, row++) {
+          ctx.fillStyle = row % 2 === 0 ? '#876645' : '#7d5d3e';
+          ctx.fillRect(rx, y, rw, plankH);
+          ctx.fillStyle = '#6e5034';
+          ctx.fillRect(rx + 30, y + 11, rw - 60, 2);
+          ctx.fillRect(rx + 80, y + 25, rw - 140, 2);
+          ctx.fillStyle = '#4f3923';
+          ctx.fillRect(rx, y + plankH - 2, rw, 2);
 
-        const shift = (row * 130) % 240;
-        for (let x = rx + 70 + shift; x < rx + rw - 40; x += 240) {
-          ctx.fillRect(x, y, 2, plankH);
+          const shift = (row * 130) % 240;
+          for (let x = rx + 70 + shift; x < rx + rw - 40; x += 240) {
+            ctx.fillRect(x, y, 2, plankH);
+          }
         }
       }
 
@@ -8838,33 +8962,33 @@
       const ctx = this.ctx;
       const S = this.TILE;
       const cntX = 4.55 * S;
-      const cntY = 4.65 * S;
+      const cntY = 4.78 * S;
       const cntW = 3.65 * S; // 233.6 px
-      const cntH = 56;
+      const cntH = 54;
       const nearKeeper = this.nearInteractable?.id === 'shopkeeper';
 
       // Counter drop shadow
-      ctx.fillStyle = 'rgba(0,0,0,0.38)';
-      ctx.fillRect(cntX + 4, cntY + 8, cntW, cntH);
+      ctx.fillStyle = 'rgba(0,0,0,0.34)';
+      ctx.fillRect(cntX + 3, cntY + 8, cntW, cntH);
 
-      // Carved Warm Wood Counter Base (#8f6542)
-      ctx.fillStyle = '#8f6542';
-      ctx.strokeStyle = '#3b2816';
-      ctx.lineWidth = 2.2;
+      // Carved Warm Wood Counter Base (#8b5e39) with thick pixel walnut ink (#29170a)
+      ctx.fillStyle = '#8b5e39';
+      ctx.strokeStyle = '#29170a';
+      ctx.lineWidth = 2.4;
       ctx.fillRect(cntX, cntY, cntW, cntH);
       ctx.strokeRect(cntX, cntY, cntW, cntH);
 
       // Top Polished Wood Trim
-      ctx.fillStyle = '#a67853';
-      ctx.fillRect(cntX - 3, cntY, cntW + 6, 22);
-      ctx.strokeRect(cntX - 3, cntY, cntW + 6, 22);
+      ctx.fillStyle = '#aa784e';
+      ctx.fillRect(cntX - 3, cntY, cntW + 6, 20);
+      ctx.strokeRect(cntX - 3, cntY, cntW + 6, 20);
 
       // Recessed Front Wood Panels
-      ctx.fillStyle = '#7d5636';
-      ctx.fillRect(cntX + 10, cntY + 26, 98, 22);
-      ctx.strokeRect(cntX + 10, cntY + 26, 98, 22);
-      ctx.fillRect(cntX + 120, cntY + 26, 102, 22);
-      ctx.strokeRect(cntX + 120, cntY + 26, 102, 22);
+      ctx.fillStyle = '#704929';
+      ctx.fillRect(cntX + 10, cntY + 24, 98, 22);
+      ctx.strokeRect(cntX + 10, cntY + 24, 98, 22);
+      ctx.fillRect(cntX + 120, cntY + 24, 102, 22);
+      ctx.strokeRect(cntX + 120, cntY + 24, 102, 22);
 
       // Glass Display Case inset on Left of Counter showing Single Rare Beast Cards!
       const glX = cntX + 12;
@@ -8925,8 +9049,8 @@
       const W = this.canvas.width;  // 1024
       const H = this.canvas.height; // 768
 
-      // 1. Muted Slate-Blue Cutaway Void Background (#658296) matching the neighborhood architectural style
-      ctx.fillStyle = '#658296';
+      // 1. Warm Timber Cutaway Diorama Void
+      ctx.fillStyle = '#1f1712';
       ctx.fillRect(0, 0, W, H);
 
       // Room coordinates (matching cutaway architectural shell)
@@ -9542,84 +9666,405 @@
     }
 
     // =========================================================================
-    // PROCEDURAL COBBLESTONE PAVERS PATTERN ENGINE
-    // Generates an authentic textured cobblestone street pattern with rounded
-    // paver stones, dark mortar lines, 3D specular rim highlights, and stone bevels!
+    // ILLUSTRATED OVERWORLD & INTERIOR PNG SPRITE SUITE LOADER
+    // Preloads seamless tiles, beveled turf edges, cottages, Card Shop,
+    // park fountain/trees, and interior furniture directly from Sprites/Overworld/
     // =========================================================================
+    loadOverworldSprites() {
+      const keys = [
+        'tile_grass', 'tile_dirt', 'tile_flagstone', 'tile_wood_floor',
+        'turf_edge_top', 'turf_edge_bot', 'turf_edge_left', 'turf_edge_right',
+        'cottage_player', 'cottage_friend', 'cottage_pluto',
+        'cottage_nova', 'cottage_silas', 'cottage_maya',
+        'card_shop', 'shop_banner',
+        'tree_green', 'tree_autumn', 'tree_autumn_small',
+        'fountain', 'bush_round', 'bush_flower',
+        'bench_left', 'bench_front', 'bench_right',
+        'fence', 'pot_large', 'pot_small', 'signpost',
+        'furniture_bed', 'furniture_bookshelf', 'furniture_tv',
+        'furniture_table_book', 'furniture_card_counter'
+      ];
+      this.owSprites = this.owSprites || {};
+      keys.forEach((k) => {
+        const img = new Image();
+        img.src = `Sprites/Overworld/${k}.png`;
+        img.onload = () => {
+          if (k === 'tile_grass' || k === 'tile_dirt' || k === 'tile_flagstone' || k === 'tile_wood_floor') {
+            this._pixelArtVer = 0; // force pattern refresh once high-res PNG tiles finish decoding
+          }
+        };
+        this.owSprites[k] = img;
+      });
+    }
+
+    isImgReady(key) {
+      const img = this.owSprites && this.owSprites[key];
+      return Boolean(img && img.complete && img.naturalWidth > 0);
+    }
+
+    buildScaledPattern(img, targetW, targetH) {
+      const c = document.createElement('canvas');
+      c.width = targetW;
+      c.height = targetH;
+      const g = c.getContext('2d');
+      if (g) {
+        g.imageSmoothingEnabled = false;
+        g.drawImage(img, 0, 0, targetW, targetH);
+      }
+      return this.ctx.createPattern(c, 'repeat');
+    }
+
     initCobblestonePattern() {
-      if (this.cobblePattern) return;
-      const pw = 128;
-      const ph = 68;
-      const cvs = document.createElement('canvas');
-      cvs.width = pw;
-      cvs.height = ph;
-      const pctx = cvs.getContext('2d');
-      if (!pctx) return;
+      const pngTilesReady = this.isImgReady('tile_grass') && this.isImgReady('tile_dirt')
+        && this.isImgReady('tile_flagstone') && this.isImgReady('tile_wood_floor');
+      const targetVer = pngTilesReady ? 3 : 2;
+      if (this._pixelArtVer === targetVer && this.cobblePattern && this.flagstonePattern && this.grassPattern && this.treeGreenStamp) return;
+      this._pixelArtVer = targetVer;
 
-      // Dark basalt/slate mortar crevices
-      pctx.fillStyle = '#1e242d';
-      pctx.fillRect(0, 0, pw, ph);
+      if (pngTilesReady) {
+        this.cobblePattern = this.buildScaledPattern(this.owSprites.tile_dirt, 160, 160);
+        this.flagstonePattern = this.buildScaledPattern(this.owSprites.tile_flagstone, 160, 160);
+        this.grassPattern = this.buildScaledPattern(this.owSprites.tile_grass, 160, 160);
+        this.woodFloorPattern = this.buildScaledPattern(this.owSprites.tile_wood_floor, 160, 80);
+      } else {
+        // Pre-load fallback textures for first few frames while PNGs decode
 
-      const rows = 8;
-      const rowH = ph / rows; // 8.5px
-      const paverW = 16;
-      const palette = ['#475569', '#334155', '#3f4756', '#525c6e', '#394250', '#4a5568', '#404a5c'];
+      // 1. Warm Ochre Packed-Dirt Path Pattern (128x128 @ 2x pixel scale)
+      const pw = 128, ph = 128;
+      const pCvs = document.createElement('canvas');
+      pCvs.width = pw; pCvs.height = ph;
+      const pctx = pCvs.getContext('2d');
+      if (pctx) {
+        pctx.fillStyle = '#b98a52';
+        pctx.fillRect(0, 0, pw, ph);
 
-      for (let r = 0; r < rows; r++) {
-        const y = r * rowH;
-        const xOffset = (r % 2 === 0) ? 0 : (paverW / 2);
-        for (let x = -paverW; x < pw + paverW; x += paverW) {
-          const colIdx = Math.floor(Math.abs(Math.sin(r * 13 + x * 7)) * palette.length) % palette.length;
-          pctx.fillStyle = palette[colIdx];
-          const px = x + xOffset + 1.2;
-          const py = y + 1.2;
-          const pw_actual = paverW - 2.4;
-          const ph_actual = rowH - 2.4;
-
-          pctx.beginPath();
-          pctx.roundRect(px, py, pw_actual, ph_actual, 2.2);
-          pctx.fill();
-
-          // Top specular rim highlight
-          pctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
-          pctx.lineWidth = 1;
-          pctx.beginPath();
-          pctx.moveTo(px + 1.5, py + ph_actual - 1);
-          pctx.lineTo(px + 1.5, py + 1.5);
-          pctx.lineTo(px + pw_actual - 1.5, py + 1.5);
-          pctx.stroke();
-
-          // Bottom drop shadow bevel
-          pctx.strokeStyle = 'rgba(15, 23, 42, 0.45)';
-          pctx.beginPath();
-          pctx.moveTo(px + pw_actual - 1, py + 1.5);
-          pctx.lineTo(px + pw_actual - 1, py + ph_actual - 1);
-          pctx.lineTo(px + 1.5, py + ph_actual - 1);
-          pctx.stroke();
+        // Soft organic dirt mottling patches
+        const tones = ['#c6975e', '#ad7e46', '#a2733c', '#cf9f66', '#b98a52'];
+        for (let py = 0; py < ph; py += 2) {
+          for (let px = 0; px < pw; px += 2) {
+            const wave = Math.sin(px * 0.08 + py * 0.05) + Math.cos(py * 0.11 - px * 0.04);
+            const n = this.hash(px * 0.4, py * 0.4, 7);
+            if (wave > 0.65 || n > 0.78) {
+              pctx.fillStyle = tones[Math.floor((n * 11 + wave * 3) % tones.length + tones.length) % tones.length];
+              pctx.fillRect(px, py, 2, 2);
+            }
+          }
         }
+        // Subtle scattered round pebbles & warm dirt specks
+        for (let i = 0; i < 24; i++) {
+          const sx = Math.floor(this.hash(i, 3) * (pw - 10) / 2) * 2 + 4;
+          const sy = Math.floor(this.hash(i, 19) * (ph - 10) / 2) * 2 + 4;
+          if (i % 3 === 0) {
+            // Small embedded warm stone pebble
+            pctx.fillStyle = '#6e5238';
+            pctx.fillRect(sx, sy, 6, 4);
+            pctx.fillStyle = '#9e8c78';
+            pctx.fillRect(sx, sy, 4, 2);
+            pctx.fillStyle = '#c4b4a0';
+            pctx.fillRect(sx, sy, 2, 2);
+          } else {
+            pctx.fillStyle = i % 2 === 0 ? '#936634' : '#d6aa72';
+            pctx.fillRect(sx, sy, 2, 2);
+          }
+        }
+        this.cobblePattern = this.ctx.createPattern(pCvs, 'repeat');
       }
 
-      this.cobblePattern = this.ctx.createPattern(cvs, 'repeat');
+      // 2. Irregular Hand-Laid Flagstone Cobblestone Road Pattern (128x64 @ 2x pixel scale)
+      const fw = 128, fh = 64;
+      const fCvs = document.createElement('canvas');
+      fCvs.width = fw; fCvs.height = fh;
+      const fctx = fCvs.getContext('2d');
+      if (fctx) {
+        // Warm packed-dirt mortar showing organically between rounded cobblestones
+        fctx.fillStyle = '#9e7444';
+        fctx.fillRect(0, 0, fw, fh);
+        fctx.fillStyle = '#ad8250';
+        for (let i = 0; i < 110; i++) {
+          const mx = Math.floor(this.hash(i, 31) * fw / 2) * 2;
+          const my = Math.floor(this.hash(i, 47) * fh / 2) * 2;
+          fctx.fillRect(mx, my, 4, 2);
+        }
+
+        // Non-grid, staggered multi-sized rounded cobblestones + small pebbles (eliminates horizontal row seams)
+        const stones = [
+          [2, 2, 16, 12],   [22, 4, 20, 14],  [46, 1, 14, 10],  [64, 3, 22, 16],  [90, 2, 16, 12], [110, 5, 16, 13],
+          [4, 17, 14, 15],  [22, 21, 18, 12], [44, 14, 18, 16], [66, 22, 16, 12], [86, 17, 20, 14], [110, 21, 16, 12],
+          [16, 35, 22, 13], [42, 33, 16, 14], [62, 37, 22, 13], [88, 34, 16, 15], [108, 36, 18, 13],
+          [2, 36, 12, 14],  [4, 51, 18, 11],  [26, 50, 16, 12], [46, 49, 20, 13], [70, 52, 16, 10], [90, 50, 20, 12], [114, 51, 12, 11],
+          // Infill small rounded pebbles
+          [18, 14, 5, 5], [40, 10, 6, 4], [60, 18, 6, 5], [82, 14, 5, 4], [106, 15, 5, 5],
+          [12, 31, 6, 4], [58, 31, 6, 5], [104, 31, 5, 5], [38, 47, 6, 4], [84, 48, 5, 4]
+        ];
+        const stoneCols = ['#9c8d7b', '#8e7f6d', '#a99b89', '#958674', '#a29482', '#897a68'];
+        stones.forEach(([sx, sy, sw, sh], idx) => {
+          const col = stoneCols[idx % stoneCols.length];
+          // Soft warm brown mortar contour (not dark black grid!)
+          fctx.fillStyle = '#75583a';
+          fctx.fillRect(sx + 2, sy, sw - 4, sh);
+          fctx.fillRect(sx, sy + 2, sw, sh - 4);
+          // Rounded pebble stone body
+          fctx.fillStyle = col;
+          fctx.fillRect(sx + 2, sy + 1, sw - 4, sh - 2);
+          fctx.fillRect(sx + 1, sy + 2, sw - 2, sh - 4);
+          if (sw >= 10 && sh >= 8) {
+            fctx.fillStyle = '#bfb19e';
+            fctx.fillRect(sx + 3, sy + 2, sw - 7, 2);
+            fctx.fillStyle = '#7a6c5a';
+            fctx.fillRect(sx + 3, sy + sh - 3, sw - 6, 2);
+          }
+        });
+        this.flagstonePattern = this.ctx.createPattern(fCvs, 'repeat');
+      }
+
+      // 3. Rich Velvety Meadow Pixel-Art Grass Pattern (128x128 @ 2x pixel scale)
+      const gCvs = document.createElement('canvas');
+      gCvs.width = 128; gCvs.height = 128;
+      const gctx = gCvs.getContext('2d');
+      if (gctx) {
+        gctx.fillStyle = '#4e9134';
+        gctx.fillRect(0, 0, 128, 128);
+
+        const gTones = ['#589e3c', '#45832c', '#62aa44', '#3d7826'];
+        for (let gy = 0; gy < 128; gy += 2) {
+          for (let gx = 0; gx < 128; gx += 2) {
+            const wave = Math.sin(gx * 0.06 + gy * 0.06) + Math.cos(gy * 0.08 - gx * 0.05);
+            const n = this.hash(gx * 0.4, gy * 0.4, 9);
+            if (wave > 0.6 || n > 0.72) {
+              gctx.fillStyle = gTones[Math.floor((n * 17 + wave * 4) % gTones.length + gTones.length) % gTones.length];
+              gctx.fillRect(gx, gy, 2, 2);
+            }
+          }
+        }
+        // Delicate pixel grass tufts & tiny meadow blossoms
+        const tufts = [
+          [10, 14], [46, 10], [92, 22], [26, 46], [70, 38],
+          [112, 54], [16, 78], [56, 86], [98, 76], [36, 112], [82, 114], [116, 102]
+        ];
+        tufts.forEach(([tx, ty], i) => {
+          gctx.fillStyle = '#34681e';
+          gctx.fillRect(tx, ty + 2, 6, 2);
+          gctx.fillStyle = '#6ec048';
+          gctx.fillRect(tx, ty, 2, 2);
+          gctx.fillRect(tx + 4, ty, 2, 2);
+          gctx.fillStyle = '#84d458';
+          gctx.fillRect(tx + 2, ty + 2, 2, 2);
+          if (i % 4 === 0) {
+            gctx.fillStyle = i % 8 === 0 ? '#fef08a' : '#f8fafc';
+            gctx.fillRect(tx + 6, ty - 2, 2, 2);
+          }
+        });
+        this.grassPattern = this.ctx.createPattern(gCvs, 'repeat');
+      }
+      }
+
+      // 4. Lush Multi-Lobe 16-bit/32-bit Pixel-Art Oak & Maple Tree Stamps (56x64 logical -> 112x128px)
+      const buildTreeStamp = (isAutumn) => {
+        const tw = 56, th = 64;
+        const buf = document.createElement('canvas');
+        buf.width = tw; buf.height = th;
+        const t = buf.getContext('2d');
+        const INK = '#162812';
+        const cDeep = isAutumn ? '#6e280a' : '#1e4a16';
+        const cDark = isAutumn ? '#943c12' : '#2c6820';
+        const cMid  = isAutumn ? '#c4561c' : '#408c2c';
+        const cHi   = isAutumn ? '#e88228' : '#64b83c';
+        const cTop  = isAutumn ? '#f8b84e' : '#8cd850';
+
+        const dot = (x, y, col) => { t.fillStyle = col; t.fillRect(Math.round(x), Math.round(y), 1, 1); };
+        const fillOval = (cx, cy, rx, ry, col) => {
+          t.fillStyle = col;
+          for (let y = -ry; y <= ry; y++) {
+            for (let x = -rx; x <= rx; x++) {
+              if ((x * x) / (rx * rx) + (y * y) / (ry * ry) <= 1.0) {
+                t.fillRect(Math.round(cx + x), Math.round(cy + y), 1, 1);
+              }
+            }
+          }
+        };
+
+        // Wide soft oval ground shadow
+        fillOval(28, 56, 17, 6, 'rgba(14, 24, 10, 0.34)');
+
+        // Flared sturdy bark trunk with roots
+        t.fillStyle = '#22140c';
+        t.fillRect(22, 36, 12, 20);
+        t.fillRect(20, 52, 16, 4);
+        t.fillStyle = '#4e2e18';
+        t.fillRect(23, 36, 10, 19);
+        t.fillRect(21, 53, 14, 2);
+        t.fillStyle = '#6e4224';
+        t.fillRect(24, 37, 6, 17);
+        t.fillStyle = '#8c5832';
+        t.fillRect(25, 38, 2, 14);
+        dot(22, 54, '#6e4224'); dot(33, 54, '#4e2e18');
+
+        // Multi-lobe organic foliage clusters (7 distinct overlapping lobes!)
+        const lobes = [
+          [28, 17, 14, 12],
+          [16, 22, 11, 10],
+          [40, 22, 11, 10],
+          [14, 31, 10, 9],
+          [42, 31, 10, 9],
+          [28, 30, 14, 11],
+          [22, 14, 9, 8],
+          [34, 15, 9, 8]
+        ];
+        // Outline
+        lobes.forEach(([x, y, rx, ry]) => fillOval(x, y, rx + 1, ry + 1, INK));
+        // Deep underside shadow
+        lobes.forEach(([x, y, rx, ry]) => fillOval(x, y, rx, ry, cDeep));
+        // Dark foliage body
+        lobes.forEach(([x, y, rx, ry]) => fillOval(x, y - 1, rx - 1, ry - 1, cDark));
+
+        // Midtone sunlit lobes
+        const midLobes = [
+          [27, 15, 11, 9],
+          [16, 20, 8, 7],
+          [38, 20, 8, 7],
+          [27, 27, 11, 8],
+          [15, 29, 7, 6],
+          [40, 29, 7, 6]
+        ];
+        midLobes.forEach(([x, y, rx, ry]) => fillOval(x, y, rx, ry, cMid));
+
+        // Bright sunlit leaf crown domes
+        const hiLobes = [
+          [25, 11, 7, 5],
+          [15, 18, 5, 4],
+          [35, 17, 5, 4],
+          [26, 23, 6, 4],
+          [14, 26, 4, 3],
+          [37, 26, 4, 3]
+        ];
+        hiLobes.forEach(([x, y, rx, ry]) => fillOval(x, y, rx, ry, cHi));
+
+        // Crisp pixel leaf crown highlights & dithered speckles
+        fillOval(23, 9, 4, 2, cTop);
+        fillOval(14, 16, 3, 2, cTop);
+        fillOval(34, 15, 3, 2, cTop);
+        fillOval(25, 21, 3, 2, cTop);
+        const sparkles = [[20, 11], [28, 10], [12, 19], [18, 22], [32, 18], [38, 21], [23, 25], [29, 24], [15, 27]];
+        sparkles.forEach(([sx, sy]) => dot(sx, sy, cTop));
+
+        const out = document.createElement('canvas');
+        out.width = tw * 2; out.height = th * 2;
+        const octx = out.getContext('2d');
+        octx.imageSmoothingEnabled = false;
+        octx.drawImage(buf, 0, 0, out.width, out.height);
+        return out;
+      };
+      this.treeGreenStamp = buildTreeStamp(false);
+      this.treeAutumnStamp = buildTreeStamp(true);
+
+      // 5. Multi-Lobe Pixel-Art Bush Stamp (30x22 logical -> 60x44px)
+      const buildBushStamp = () => {
+        const bw = 30, bh = 22;
+        const buf = document.createElement('canvas');
+        buf.width = bw; buf.height = bh;
+        const b = buf.getContext('2d');
+        const fillOval = (cx, cy, rx, ry, col) => {
+          b.fillStyle = col;
+          for (let y = -ry; y <= ry; y++) {
+            for (let x = -rx; x <= rx; x++) {
+              if ((x * x) / (rx * rx) + (y * y) / (ry * ry) <= 1.0) {
+                b.fillRect(Math.round(cx + x), Math.round(cy + y), 1, 1);
+              }
+            }
+          }
+        };
+        fillOval(15, 18, 12, 3, 'rgba(14, 24, 10, 0.32)');
+        const lobes = [[15, 10, 8, 6], [9, 12, 6, 5], [21, 12, 6, 5], [15, 13, 8, 5]];
+        lobes.forEach(([x, y, rx, ry]) => fillOval(x, y, rx + 1, ry + 1, '#162812'));
+        lobes.forEach(([x, y, rx, ry]) => fillOval(x, y, rx, ry, '#1e4a16'));
+        lobes.forEach(([x, y, rx, ry]) => fillOval(x, y - 1, rx - 1, ry - 1, '#2c6820'));
+        fillOval(14, 8, 6, 4, '#408c2c');
+        fillOval(9, 10, 4, 3, '#408c2c');
+        fillOval(19, 10, 4, 3, '#408c2c');
+        fillOval(13, 6, 4, 2, '#64b83c');
+        fillOval(9, 9, 2, 2, '#64b83c');
+        fillOval(18, 9, 2, 1, '#64b83c');
+        b.fillStyle = '#8cd850';
+        b.fillRect(11, 5, 3, 1);
+        b.fillRect(15, 6, 2, 1);
+        b.fillRect(8, 8, 2, 1);
+
+        const out = document.createElement('canvas');
+        out.width = bw * 2; out.height = bh * 2;
+        const octx = out.getContext('2d');
+        octx.imageSmoothingEnabled = false;
+        octx.drawImage(buf, 0, 0, out.width, out.height);
+        return out;
+      };
+      this.bushStamp = buildBushStamp();
+
+      // 6. Terracotta Potted Plant Stamp (16x20 logical -> 32x40px)
+      const buildPottedPlant = () => {
+        const pw = 16, ph = 20;
+        const buf = document.createElement('canvas');
+        buf.width = pw; buf.height = ph;
+        const p = buf.getContext('2d');
+        const INK = '#24140e';
+        p.fillStyle = 'rgba(14,24,10,0.28)'; p.fillRect(3, 17, 10, 2);
+        // Clay pot
+        p.fillStyle = INK; p.fillRect(4, 10, 8, 8); p.fillRect(3, 9, 10, 3);
+        p.fillStyle = '#b45c38'; p.fillRect(5, 12, 6, 5);
+        p.fillStyle = '#d4744a'; p.fillRect(4, 10, 8, 1); p.fillRect(5, 12, 2, 4);
+        p.fillStyle = '#823c20'; p.fillRect(9, 12, 2, 5);
+        // Foliage
+        p.fillStyle = '#162812';
+        p.fillRect(3, 3, 10, 7); p.fillRect(5, 1, 6, 3);
+        p.fillStyle = '#2c6820'; p.fillRect(4, 4, 8, 5);
+        p.fillStyle = '#4ea034'; p.fillRect(5, 2, 6, 5);
+        p.fillStyle = '#7cd04c'; p.fillRect(5, 2, 3, 3); p.fillRect(9, 4, 2, 2);
+        // Little flower bud
+        p.fillStyle = '#f472b6'; p.fillRect(6, 4, 2, 2);
+        p.fillStyle = '#fef08a'; p.fillRect(10, 3, 1, 1);
+
+        const out = document.createElement('canvas');
+        out.width = pw * 2; out.height = ph * 2;
+        const octx = out.getContext('2d');
+        octx.imageSmoothingEnabled = false;
+        octx.drawImage(buf, 0, 0, out.width, out.height);
+        return out;
+      };
+      this.pottedPlantStamp = buildPottedPlant();
     }
 
     // =========================================================================
     // NOVA'S HOUSE INTERIOR (Celestial Stargazer Observatory & Study)
+    // - Matches the illustrated 16/32-bit cutaway style & cottage_nova.png
+    //   (cream plaster trims, slate-indigo accents, warm walnut woodwork),
+    //   using OwSprites wood plank floors, bookshelf & potted flora while
+    //   preserving all collision boxes, Nova spawn (6.2, 5.35), and exit (9.8*S).
     // =========================================================================
     renderNovaHouseInterior() {
       const ctx = this.ctx;
-      const S = this.TILE;
+      ctx.imageSmoothingEnabled = false;
+      const S = this.TILE; // 64px
       const W = this.canvas.width;
       const H = this.canvas.height;
 
-      // Slate midnight void
-      ctx.fillStyle = '#1e293b';
+      // 1. Ensure high-res Overworld patterns (wood floor planks, etc.) exist
+      this.initCobblestonePattern();
+
+      // Deep midnight diorama void framing the cutaway cottage
+      ctx.fillStyle = '#151722';
       ctx.fillRect(0, 0, W, H);
 
-      const rx = 1.5 * S;
-      const ry = 0.8 * S;
-      const rw = 13.0 * S;
-      const rh = 9.9 * S;
-      const floorTop = 3.85 * S;
+      // Standard cutaway architectural bounds (matching collision geometry)
+      const rx = 1.5 * S;        // 96
+      const ry = 0.8 * S;        // 51.2
+      const rw = 13.0 * S;       // 832
+      const rh = 9.9 * S;        // 633.6
+      const floorTop = 3.85 * S; // 246.4
+
+      const INK = '#26130e';
+      const indigoDark = '#232052';
+      const indigoMid = '#36327a';
+      const indigoHi = '#524da8';
+
+      const snap = (v) => Math.round(v / 2) * 2;
 
       const drawChamferedRect = (x, y, w, h, c) => {
         ctx.beginPath();
@@ -9634,12 +10079,26 @@
         ctx.closePath();
       };
 
-      // Drop shadow
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
-      drawChamferedRect(rx + 16, ry + 16, rw, rh, 18);
-      ctx.fill();
+      const pxBox = (x, y, w, h, fill, hi = null, shade = null, ink = INK, lw = 2) => {
+        const sx = snap(x), sy = snap(y), sw = snap(w), sh = snap(h);
+        ctx.fillStyle = fill;
+        ctx.fillRect(sx, sy, sw, sh);
+        if (hi) {
+          ctx.fillStyle = hi;
+          ctx.fillRect(sx + lw, sy + lw, sw - lw * 2, 4);
+        }
+        if (shade) {
+          ctx.fillStyle = shade;
+          ctx.fillRect(sx + lw, sy + sh - lw - 4, sw - lw * 2, 4);
+        }
+        if (ink) {
+          ctx.strokeStyle = ink;
+          ctx.lineWidth = lw;
+          ctx.strokeRect(sx, sy, sw, sh);
+        }
+      };
 
-      // Deep Midnight Stained Oak Hardwood Floor
+      // 2. Dark Observatory-Stained Wood Plank Floor + Soft Ambient Depth
       ctx.save();
       ctx.beginPath();
       ctx.moveTo(rx + 42, floorTop - 24);
@@ -9653,57 +10112,117 @@
       ctx.closePath();
       ctx.clip();
 
-      ctx.fillStyle = '#1e2638';
-      ctx.fillRect(rx, floorTop - 30, rw, rh);
-
-      const plankH = 36;
-      for (let y = floorTop - 20, row = 0; y < ry + rh; y += plankH, row++) {
-        ctx.fillStyle = row % 2 === 0 ? '#253046' : '#1c2436';
-        ctx.fillRect(rx, y, rw, plankH);
-        ctx.fillStyle = '#111827';
-        ctx.fillRect(rx, y + plankH - 2, rw, 2);
+      if (this.woodFloorPattern) {
+        ctx.fillStyle = this.woodFloorPattern;
+        ctx.fillRect(rx, floorTop - 30, rw, rh);
+        // Cool deep twilight-walnut floor stain harmonizing with midnight decor
+        ctx.fillStyle = 'rgba(20, 26, 56, 0.34)';
+        ctx.fillRect(rx, floorTop - 30, rw, rh);
+      } else {
+        ctx.fillStyle = '#473d3d';
+        ctx.fillRect(rx, floorTop - 30, rw, rh);
+        const plankH = 32;
+        for (let y = floorTop - 20, row = 0; y < ry + rh; y += plankH, row++) {
+          ctx.fillStyle = row % 2 === 0 ? '#4e4347' : '#43383c';
+          ctx.fillRect(rx, y, rw, plankH);
+          ctx.fillStyle = '#2d2428';
+          ctx.fillRect(rx, y + plankH - 2, rw, 2);
+        }
       }
 
-      // Grand Celestial Constellation Circular Rug
-      const rugX = rx + rw / 2;
-      const rugY = floorTop + 2.7 * S;
-      ctx.fillStyle = '#0f172a';
+      // Grounding ambient shadow under north baseboard
+      const wallShadow = ctx.createLinearGradient(0, floorTop - 16, 0, floorTop + 30);
+      wallShadow.addColorStop(0, 'rgba(10, 12, 28, 0.50)');
+      wallShadow.addColorStop(1, 'rgba(10, 12, 28, 0)');
+      ctx.fillStyle = wallShadow;
+      ctx.fillRect(rx, floorTop - 16, rw, 46);
+
+      // Subtle cool cosmic skylight pool across floorboards & center rug
+      const skyPool = ctx.createRadialGradient(rx + 402, floorTop + 120, 18, rx + 402, floorTop + 140, 210);
+      skyPool.addColorStop(0, 'rgba(147, 197, 253, 0.16)');
+      skyPool.addColorStop(0.6, 'rgba(99, 102, 241, 0.06)');
+      skyPool.addColorStop(1, 'rgba(99, 102, 241, 0)');
+      ctx.fillStyle = skyPool;
+      ctx.fillRect(rx + 180, floorTop - 10, 460, 340);
+
+      // Bottom Cutaway Walnut Threshold Beam
+      pxBox(rx, ry + rh - 18, rw, 18, '#5c3a22', '#7d5233', '#3b2212', INK, 2.5);
+
+      // 3. Woven Celestial Zodiac Circular Rug (Center Floor)
+      const rugX = snap(rx + rw / 2 + 12);
+      const rugY = snap(floorTop + 2.85 * S);
+      const rugR = 114;
+
+      // Ground drop shadow
+      ctx.fillStyle = 'rgba(10, 12, 28, 0.36)';
+      ctx.beginPath(); ctx.arc(rugX + 2, rugY + 5, rugR, 0, Math.PI * 2); ctx.fill();
+
+      // Golden woven fringe tassels around outer circumference
+      ctx.fillStyle = '#e7d5ad';
+      for (let a = 0; a < 24; a++) {
+        const ang = (a / 24) * Math.PI * 2;
+        const fx = snap(rugX + Math.cos(ang) * (rugR + 3)) - 2;
+        const fy = snap(rugY + Math.sin(ang) * (rugR + 3)) - 2;
+        ctx.fillRect(fx, fy, 4, 4);
+      }
+
+      // Outer deep midnight-indigo rim
+      ctx.fillStyle = '#18193d';
+      ctx.beginPath(); ctx.arc(rugX, rugY, rugR, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = INK; ctx.lineWidth = 3; ctx.stroke();
+
+      // Inner sapphire-indigo field
+      ctx.fillStyle = indigoDark;
+      ctx.beginPath(); ctx.arc(rugX, rugY, rugR - 10, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = 2.5; ctx.stroke();
+
+      // Pixelated cyan orbital track ring & cardinal brass compass pips
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.55)';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(rugX, rugY, 80, 0, Math.PI * 2); ctx.stroke();
+
+      ctx.strokeStyle = 'rgba(251, 191, 36, 0.45)';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(rugX, rugY, 48, 0, Math.PI * 2); ctx.stroke();
+
+      for (let c = 0; c < 8; c++) {
+        const ang = (c * Math.PI) / 4;
+        const dx = snap(rugX + Math.cos(ang) * 92) - 2;
+        const dy = snap(rugY + Math.sin(ang) * 92) - 2;
+        ctx.fillStyle = c % 2 === 0 ? '#fbbf24' : '#38bdf8';
+        ctx.fillRect(dx, dy, 4, 4);
+      }
+
+      // 8-Point Golden Polar Star Medallion in Rug Center
+      ctx.fillStyle = '#d97706';
       ctx.beginPath();
-      ctx.arc(rugX, rugY, 110, 0, Math.PI * 2);
+      for (let s = 0; s < 16; s++) {
+        const ang = (s * Math.PI) / 8;
+        const rr = s % 2 === 0 ? 28 : 11;
+        const px = rugX + Math.cos(ang) * rr;
+        const py = rugY + Math.sin(ang) * rr;
+        if (s === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
+      ctx.closePath();
       ctx.fill();
-      ctx.strokeStyle = '#fbbf24';
-      ctx.lineWidth = 3;
-      ctx.stroke();
+      ctx.strokeStyle = INK; ctx.lineWidth = 1.8; ctx.stroke();
 
-      // Inner zodiac orbit rings
-      ctx.strokeStyle = '#38bdf8';
-      ctx.lineWidth = 1.6;
-      ctx.beginPath();
-      ctx.arc(rugX, rugY, 82, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.strokeStyle = 'rgba(251, 191, 36, 0.6)';
-      ctx.beginPath();
-      ctx.arc(rugX, rugY, 48, 0, Math.PI * 2);
-      ctx.stroke();
-
-      // Glowing gold star in center
       ctx.fillStyle = '#fef08a';
       ctx.beginPath();
       for (let s = 0; s < 8; s++) {
-        const angle = (s * Math.PI) / 4;
-        const r1 = s % 2 === 0 ? 24 : 10;
-        const sx = rugX + Math.cos(angle) * r1;
-        const sy = rugY + Math.sin(angle) * r1;
-        if (s === 0) ctx.moveTo(sx, sy);
-        else ctx.lineTo(sx, sy);
+        const ang = (s * Math.PI) / 4;
+        const rr = s % 2 === 0 ? 18 : 7;
+        const px = rugX + Math.cos(ang) * rr;
+        const py = rugY + Math.sin(ang) * rr;
+        if (s === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
       }
       ctx.closePath();
       ctx.fill();
 
       ctx.restore();
 
-      // North Wall: Deep Twilight Indigo Plaster
-      ctx.fillStyle = '#1e1b4b';
+      // 4. Stargazer Indigo Plaster & Cream-Framed North Wall (Cottage Exterior Harmony)
+      ctx.fillStyle = '#282b57';
       ctx.beginPath();
       ctx.moveTo(rx + 28, ry + 56);
       ctx.lineTo(rx + 68, ry + 30);
@@ -9715,140 +10234,557 @@
       ctx.lineTo(rx + 28, floorTop + 14);
       ctx.closePath();
       ctx.fill();
-      ctx.strokeStyle = '#312e81';
+      ctx.strokeStyle = INK;
       ctx.lineWidth = 2.5;
       ctx.stroke();
 
-      // Grand Arched Observatory Skylight Window (Center of North Wall)
-      const winX = rx + 4.6 * S;
-      const winY = ry + 22;
-      const winW = 3.8 * S;
-      const winH = 110;
-
-      // Night sky glass with cosmic nebula
-      const skyGrad = ctx.createLinearGradient(winX, winY, winX, winY + winH);
-      skyGrad.addColorStop(0, '#020617');
-      skyGrad.addColorStop(0.6, '#1e1b4b');
-      skyGrad.addColorStop(1, '#312e81');
-      ctx.fillStyle = skyGrad;
-      ctx.beginPath();
-      ctx.roundRect(winX, winY, winW, winH, [40, 40, 6, 6]);
-      ctx.fill();
-      ctx.strokeStyle = '#fbbf24';
-      ctx.lineWidth = 2.5;
-      ctx.stroke();
-
-      // Twinkling stars in observatory window
-      for (let i = 0; i < 28; i++) {
-        const starX = winX + 14 + ((i * 37) % (winW - 28));
-        const starY = winY + 12 + ((i * 23) % (winH - 24));
-        const starSize = 1.0 + Math.sin(this.tick * 0.08 + i) * 0.6;
-        ctx.fillStyle = i % 3 === 0 ? '#fef08a' : '#ffffff';
-        ctx.beginPath();
-        ctx.arc(starX, starY, Math.max(0.6, starSize), 0, Math.PI * 2);
-        ctx.fill();
+      // Subtle golden wallpaper pinpoint starlight & upper plaster shadow
+      for (let st = 0; st < 22; st++) {
+        const sx = snap(rx + 78 + ((st * 97) % (rw - 160)));
+        const sy = snap(ry + 38 + ((st * 43) % 108));
+        ctx.fillStyle = st % 3 === 0 ? 'rgba(254, 240, 138, 0.48)' : 'rgba(186, 230, 253, 0.35)';
+        ctx.fillRect(sx, sy, 2, 2);
       }
-      // Glowing Crescent Moon
-      ctx.fillStyle = '#fef08a';
-      ctx.beginPath();
-      ctx.arc(winX + winW - 32, winY + 36, 14, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = skyGrad;
-      ctx.beginPath();
-      ctx.arc(winX + winW - 38, winY + 32, 12, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.fillStyle = 'rgba(10, 12, 28, 0.25)';
+      ctx.fillRect(rx + 68, ry + 31, rw - 136, 10);
 
-      // Brass Stargazer Telescope on Mahogany Tripod
-      const telX = 6.2 * S;
-      const telY = floorTop + 14;
-      ctx.strokeStyle = '#78350f';
-      ctx.lineWidth = 2.5;
+      // Slate-Blue & Brass Dado Rail following North & Angled Wing Walls
+      const wainTop = floorTop - 68;
+      ctx.fillStyle = '#364966';
       ctx.beginPath();
-      ctx.moveTo(telX, telY - 32); ctx.lineTo(telX - 22, telY + 18);
-      ctx.moveTo(telX, telY - 32); ctx.lineTo(telX + 22, telY + 18);
-      ctx.moveTo(telX, telY - 32); ctx.lineTo(telX, telY + 22);
+      ctx.moveTo(rx + 28, wainTop + 16);
+      ctx.lineTo(rx + 68, wainTop - 10);
+      ctx.lineTo(rx + rw - 68, wainTop - 10);
+      ctx.lineTo(rx + rw - 28, wainTop + 16);
+      ctx.lineTo(rx + rw - 28, wainTop + 26);
+      ctx.lineTo(rx + rw - 68, wainTop);
+      ctx.lineTo(rx + 68, wainTop);
+      ctx.lineTo(rx + 28, wainTop + 26);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = 2;
       ctx.stroke();
 
-      // Brass telescope barrel pointing upward toward the stars
-      ctx.save();
-      ctx.translate(telX, telY - 34);
-      ctx.rotate(-0.55);
-      ctx.fillStyle = '#d97706';
-      ctx.fillRect(-8, -6, 42, 12);
+      // Carved Walnut Lower Wainscoting Paneling
+      ctx.fillStyle = '#5c3a22';
+      ctx.beginPath();
+      ctx.moveTo(rx + 28, wainTop + 26);
+      ctx.lineTo(rx + 68, wainTop);
+      ctx.lineTo(rx + rw - 68, wainTop);
+      ctx.lineTo(rx + rw - 28, wainTop + 26);
+      ctx.lineTo(rx + rw - 28, floorTop + 14);
+      ctx.lineTo(rx + rw - 68, floorTop - 12);
+      ctx.lineTo(rx + 68, floorTop - 12);
+      ctx.lineTo(rx + 28, floorTop + 14);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+
+      // Highlight top chair-rail bevel + recessed pixel wood panels
+      ctx.fillStyle = '#8b5e3c';
+      ctx.fillRect(rx + 68, wainTop + 1, rw - 136, 5);
+      for (let px = rx + 82; px < rx + rw - 98; px += 46) {
+        pxBox(px, wainTop + 10, 34, 38, '#462a18', '#331c0e', '#6c452b', INK, 2);
+      }
+
+      // Angled Wing Wall vertical corner trim
+      ctx.strokeStyle = '#3b4275';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(rx + 68, ry + 30); ctx.lineTo(rx + 68, floorTop - 12);
+      ctx.moveTo(rx + rw - 68, ry + 30); ctx.lineTo(rx + rw - 68, floorTop - 12);
+      ctx.stroke();
+
+      // Deep Walnut Baseboard along North & Wing Walls
+      ctx.fillStyle = '#3b2113';
+      ctx.beginPath();
+      ctx.moveTo(rx + 28, floorTop + 2);
+      ctx.lineTo(rx + 68, floorTop - 24);
+      ctx.lineTo(rx + rw - 68, floorTop - 24);
+      ctx.lineTo(rx + rw - 28, floorTop + 2);
+      ctx.lineTo(rx + rw - 28, floorTop + 14);
+      ctx.lineTo(rx + rw - 68, floorTop - 12);
+      ctx.lineTo(rx + 68, floorTop - 12);
+      ctx.lineTo(rx + 28, floorTop + 14);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+
+      // 5. Chunky Walnut Cutaway Wall Cap & Side-Wall Cream Stone Pillars (matches cottage_nova.png!)
+      ctx.fillStyle = '#6c452b';
+      ctx.beginPath();
+      ctx.moveTo(rx, floorTop + 180);
+      ctx.lineTo(rx, ry + 26);
+      ctx.lineTo(rx + 36, ry);
+      ctx.lineTo(rx + rw - 36, ry);
+      ctx.lineTo(rx + rw, ry + 26);
+      ctx.lineTo(rx + rw, floorTop + 180);
+      ctx.lineTo(rx + rw - 28, floorTop + 180);
+      ctx.lineTo(rx + rw - 28, ry + 48);
+      ctx.lineTo(rx + rw - 64, ry + 28);
+      ctx.lineTo(rx + 64, ry + 28);
+      ctx.lineTo(rx + 28, ry + 48);
+      ctx.lineTo(rx + 28, floorTop + 180);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = '#8b5e3c';
+      ctx.fillRect(rx + 38, ry + 3, rw - 76, 6);
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(rx, floorTop + 180);
+      ctx.lineTo(rx, ry + 26);
+      ctx.lineTo(rx + 36, ry);
+      ctx.lineTo(rx + rw - 36, ry);
+      ctx.lineTo(rx + rw, ry + 26);
+      ctx.lineTo(rx + rw, floorTop + 180);
+      ctx.lineTo(rx + rw - 28, floorTop + 180);
+      ctx.lineTo(rx + rw - 28, ry + 48);
+      ctx.lineTo(rx + rw - 64, ry + 28);
+      ctx.lineTo(rx + 64, ry + 28);
+      ctx.lineTo(rx + 28, ry + 48);
+      ctx.lineTo(rx + 28, floorTop + 180);
+      ctx.closePath();
+      ctx.stroke();
+
+      // Lower Cream Plaster & Slate Side-Wall Cutaway Pillars
+      [rx, rx + rw - 28].forEach(px => {
+        pxBox(px, floorTop + 180, 28, ry + rh - (floorTop + 180) - 18, '#eae4cf', '#f7f3e4', '#ccc4a8', INK, 2.5);
+        pxBox(px + 4, floorTop + 245, 20, 16, '#486073', '#7c96ab', '#314352', INK, 2);
+      });
+
+      // 6. South Cutaway Doorstep Threshold & Midnight-Violet Welcome Mat (Exit at 9.8 * S)
+      const doorX = snap(9.8 * S - 43); // centered cleanly on 9.8*S exit trigger
+      const doorY = snap(ry + rh - 22);
+      pxBox(doorX + 4, doorY - 24, 78, 22, '#4c1d95', '#7c3aed', '#2e1065', INK, 2);
+      // Woven gold star crest pixels on doormat
       ctx.fillStyle = '#fbbf24';
-      ctx.fillRect(28, -8, 12, 16);
-      ctx.strokeStyle = '#451a03';
-      ctx.lineWidth = 1.4;
-      ctx.strokeRect(-8, -6, 42, 12);
-      ctx.strokeRect(28, -8, 12, 16);
+      ctx.fillRect(doorX + 10, doorY - 19, 66, 2);
+      ctx.fillRect(doorX + 10, doorY - 7, 66, 2);
+      ctx.fillRect(doorX + 40, doorY - 15, 6, 4);
+      ctx.fillRect(doorX + 42, doorY - 17, 2, 8);
+      // Door jamb posts & slate doorstep
+      pxBox(doorX - 18, doorY - 8, 18, 22, '#5c3a22', '#855733', '#3b2212', INK, 2.5);
+      pxBox(doorX + 86, doorY - 8, 18, 22, '#5c3a22', '#855733', '#3b2212', INK, 2.5);
+      pxBox(doorX, doorY + 4, 86, 22, '#486073', '#7c96ab', '#314352', INK, 2.5);
+      ctx.fillStyle = '#263448';
+      ctx.fillRect(doorX + 42, doorY + 6, 2, 16);
+
+      // 7. North Wall: Pegasus Constellation Tapestry (Left) + Grand Observatory Window + Zodiac Clock (Mid-Right)
+      // Framed Pegasus Constellation Star-Map Banner above Nova's Bed (clear above finials)
+      const tapX = snap(rx + 72);
+      const tapY = snap(ry + 34);
+      const tapW = 96;
+      const tapH = 58;
+      ctx.fillStyle = 'rgba(10, 12, 28, 0.34)';
+      ctx.fillRect(tapX + 3, tapY + 5, tapW, tapH);
+      pxBox(tapX, tapY, tapW, tapH, '#6c452b', '#a47247', '#452817', INK, 2.5);
+      pxBox(tapX + 6, tapY + 6, tapW - 12, tapH - 12, '#0f172a', '#1e1b4b', null, '#fbbf24', 2);
+      // Constellation lines + glowing star nodes (Pegasus pattern)
+      const cPts = [
+        [tapX + 20, tapY + 38],
+        [tapX + 36, tapY + 26],
+        [tapX + 56, tapY + 26],
+        [tapX + 54, tapY + 42],
+        [tapX + 72, tapY + 18],
+        [tapX + 78, tapY + 34]
+      ];
+      ctx.strokeStyle = 'rgba(125, 211, 252, 0.65)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(cPts[0][0], cPts[0][1]);
+      ctx.lineTo(cPts[1][0], cPts[1][1]);
+      ctx.lineTo(cPts[2][0], cPts[2][1]);
+      ctx.lineTo(cPts[3][0], cPts[3][1]);
+      ctx.lineTo(cPts[1][0], cPts[1][1]);
+      ctx.moveTo(cPts[2][0], cPts[2][1]);
+      ctx.lineTo(cPts[4][0], cPts[4][1]);
+      ctx.moveTo(cPts[3][0], cPts[3][1]);
+      ctx.lineTo(cPts[5][0], cPts[5][1]);
+      ctx.stroke();
+      cPts.forEach(([sx, sy], si) => {
+        ctx.fillStyle = si % 2 === 0 ? '#fef08a' : '#7dd3fc';
+        ctx.fillRect(snap(sx) - 2, snap(sy) - 2, 4, 4);
+      });
+
+      // Grand Arched Cosmic Observatory Skylight Window (arch fits strictly under wall beam!)
+      const winX = snap(rx + 228); // 324
+      const winY = snap(ry + 38);  // 89 — keystone stays clear of ry+28 wall beam
+      const winW = 148;
+      const winH = 114;
+      const archR = winW / 2;      // 74
+      const archCY = winY + archR;
+
+      // Slate-navy decorative shutters
+      pxBox(winX - 16, winY + 42, 16, winH - 42, '#364966', '#5a7496', '#263448', INK, 2.5);
+      pxBox(winX + winW, winY + 42, 16, winH - 42, '#364966', '#5a7496', '#263448', INK, 2.5);
+
+      // Arched Cedar Frame with Brass Keystone
+      ctx.fillStyle = '#784d31';
+      ctx.beginPath();
+      ctx.arc(winX + archR, archCY, archR, Math.PI, 0);
+      ctx.lineTo(winX + winW, winY + winH);
+      ctx.lineTo(winX, winY + winH);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = INK; ctx.lineWidth = 3; ctx.stroke();
+
+      // Gold keystone crest at apex of arch
+      pxBox(winX + archR - 8, winY - 4, 16, 12, '#d97706', '#fef08a', '#92400e', INK, 2);
+
+      // Cosmic Night-Sky Stargazer Window Panes
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(winX + archR, archCY + 2, archR - 10, Math.PI, 0);
+      ctx.lineTo(winX + winW - 10, winY + winH - 12);
+      ctx.lineTo(winX + 10, winY + winH - 12);
+      ctx.closePath();
+      ctx.clip();
+
+      const skyG = ctx.createLinearGradient(winX, winY, winX, winY + winH);
+      skyG.addColorStop(0, '#070b1e');
+      skyG.addColorStop(0.55, '#191d4a');
+      skyG.addColorStop(1, '#312e81');
+      ctx.fillStyle = skyG;
+      ctx.fillRect(winX, winY, winW, winH);
+
+      // Nebula glow ribbon & twinkling pixel stars
+      const nebG = ctx.createRadialGradient(winX + 46, winY + 62, 4, winX + 54, winY + 66, 54);
+      nebG.addColorStop(0, 'rgba(139, 92, 246, 0.36)');
+      nebG.addColorStop(0.6, 'rgba(56, 189, 248, 0.16)');
+      nebG.addColorStop(1, 'rgba(56, 189, 248, 0)');
+      ctx.fillStyle = nebG;
+      ctx.fillRect(winX, winY, winW, winH);
+
+      for (let i = 0; i < 20; i++) {
+        const starX = snap(winX + 14 + ((i * 37) % (winW - 28)));
+        const starY = snap(winY + 18 + ((i * 29) % (winH - 32)));
+        const blink = Math.sin(this.tick * 0.1 + i * 1.3) > -0.2;
+        if (blink) {
+          ctx.fillStyle = i % 3 === 0 ? '#fef08a' : '#e0f2fe';
+          ctx.fillRect(starX, starY, i % 5 === 0 ? 4 : 2, i % 5 === 0 ? 4 : 2);
+        }
+      }
+
+      // Stepped 2px Pixel Crescent Moon in upper right pane
+      const mx = snap(winX + winW - 44);
+      const my = snap(winY + 34);
+      ctx.fillStyle = '#fef08a';
+      ctx.fillRect(mx + 2, my, 8, 2);
+      ctx.fillRect(mx + 6, my + 2, 6, 2);
+      ctx.fillRect(mx + 8, my + 4, 6, 8);
+      ctx.fillRect(mx + 6, my + 12, 6, 2);
+      ctx.fillRect(mx + 2, my + 14, 8, 2);
+
+      // Chunky Cross Mullions framing the skylight
+      ctx.fillStyle = '#5c3a22';
+      ctx.fillRect(winX + archR - 4, winY + 10, 8, winH - 20);
+      ctx.fillRect(winX + 8, winY + 64, winW - 16, 6);
       ctx.restore();
 
-      // West Wall Four-Poster Bed with Midnight Velvet Quilt
-      const bedX = 2.2 * S;
-      const bedY = 4.1 * S;
-      const bedW = 2.2 * S;
-      const bedH = 2.35 * S;
-      ctx.fillStyle = '#1e1b4b';
-      ctx.strokeStyle = '#4338ca';
-      ctx.lineWidth = 2;
-      ctx.fillRect(bedX, bedY, bedW, bedH);
-      ctx.strokeRect(bedX, bedY, bedW, bedH);
+      // Protruding Wooden Sill under Observatory Skylight
+      pxBox(winX - 8, winY + winH - 12, winW + 16, 12, '#8b5e3c', '#a47247', '#5c3a22', INK, 2.5);
 
-      // Velvet Quilt with Moon & Star embroidery
-      const bqGrad = ctx.createLinearGradient(bedX, bedY + 34, bedX, bedY + bedH);
-      bqGrad.addColorStop(0, '#312e81');
-      bqGrad.addColorStop(1, '#1e1b4b');
-      ctx.fillStyle = bqGrad;
-      ctx.fillRect(bedX + 4, bedY + 34, bedW - 8, bedH - 38);
-      ctx.strokeStyle = '#fbbf24';
-      ctx.lineWidth = 1.2;
-      ctx.strokeRect(bedX + 4, bedY + 34, bedW - 8, bedH - 38);
+      // Soft Starlight / Moonlight Beam streaming from Window onto Floor
+      ctx.save();
+      const moonBeam = ctx.createLinearGradient(winX + archR, winY + winH, winX + archR - 20, floorTop + 170);
+      moonBeam.addColorStop(0, 'rgba(147, 197, 253, 0.18)');
+      moonBeam.addColorStop(0.55, 'rgba(129, 140, 248, 0.07)');
+      moonBeam.addColorStop(1, 'rgba(129, 140, 248, 0)');
+      ctx.fillStyle = moonBeam;
+      ctx.beginPath();
+      ctx.moveTo(winX + 10, winY + winH);
+      ctx.lineTo(winX + winW - 10, winY + winH);
+      ctx.lineTo(winX + winW - 36, floorTop + 184);
+      ctx.lineTo(winX - 16, floorTop + 184);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
 
-      // East Wall Astronomy Study Desk & Orrery
-      const deskX = 11.2 * S;
-      const deskY = 4.1 * S;
-      const deskW = 2.4 * S;
-      const deskH = 2.1 * S;
-      ctx.fillStyle = '#451a03';
-      ctx.strokeStyle = '#1c0a02';
-      ctx.lineWidth = 2;
-      ctx.fillRect(deskX, deskY, deskW, deskH);
-      ctx.strokeRect(deskX, deskY, deskW, deskH);
-
-      // Star map scrolls and glowing crystal orrery on desk
-      ctx.fillStyle = '#fef3c7';
-      ctx.fillRect(deskX + 12, deskY + 12, 44, 26);
-      ctx.strokeStyle = '#78350f';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(deskX + 12, deskY + 12, 44, 26);
-      // Glowing crystal globe
+      // North-Center Wall Zodiac Astrological Pendulum Clock + Lunaris Moon Chart Plaque
+      const clkX = snap(rx + 458);
+      const clkY = snap(ry + 46);
+      ctx.fillStyle = 'rgba(10, 12, 28, 0.34)';
+      ctx.fillRect(clkX + 3, clkY + 6, 52, 144);
+      pxBox(clkX, clkY, 52, 144, '#6c452b', '#a47247', '#452817', INK, 2.5);
+      pxBox(clkX - 4, clkY, 60, 14, '#8b5e3c', '#b98556', '#5c3a22', INK, 2);
+      // Astronomical moon-phase dial face
+      pxBox(clkX + 8, clkY + 20, 36, 36, '#0f172a', '#1e1b4b', null, '#fbbf24', 2);
+      ctx.fillStyle = '#fef08a';
+      ctx.fillRect(clkX + 20, clkY + 26, 12, 12);
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(clkX + 20, clkY + 26, 6, 10);
       ctx.fillStyle = '#38bdf8';
-      ctx.beginPath();
-      ctx.arc(deskX + deskW - 28, deskY + 28, 12, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = '#bae6fd';
-      ctx.stroke();
+      ctx.fillRect(clkX + 24, clkY + 42, 4, 8);
+      // Brass pendulum window & swaying weight
+      pxBox(clkX + 12, clkY + 64, 28, 66, '#26150d', null, null, INK, 2);
+      const pendSwing = Math.round(Math.sin(this.tick * 0.08) * 3) * 2;
+      ctx.fillStyle = '#d97706';
+      ctx.fillRect(clkX + 25 + Math.round(pendSwing * 0.5), clkY + 70, 2, 36);
+      pxBox(clkX + 20 + pendSwing, clkY + 104, 12, 12, '#f59e0b', '#fef08a', '#b45309', INK, 2);
 
-      // Front screen door & welcome mat
-      const dwX = 9.8 * S;
-      const dwY = ry + rh - 18;
-      ctx.fillStyle = '#6b4e32';
-      ctx.fillRect(rx, dwY, rw, 18);
-      ctx.strokeStyle = '#3b2816';
-      ctx.lineWidth = 2.5;
-      ctx.strokeRect(rx, dwY, rw, 18);
+      // Framed Lunar Cycle Reference Chart between Pendulum Clock & Bookshelf
+      const lcX = snap(rx + 544);
+      const lcY = snap(ry + 54);
+      pxBox(lcX, lcY, 62, 46, '#6c452b', '#a47247', '#452817', INK, 2);
+      pxBox(lcX + 4, lcY + 4, 54, 38, '#0f172a', '#1e1b4b', null, '#fbbf24', 1.5);
+      [0, 1, 2, 3].forEach((pi) => {
+        const px = lcX + 12 + pi * 12;
+        ctx.fillStyle = '#fef08a';
+        ctx.fillRect(px, lcY + 18, 6, 8);
+        if (pi < 3) {
+          ctx.fillStyle = '#0f172a';
+          ctx.fillRect(px, lcY + 18, 4 - pi, 8);
+        }
+      });
 
-      ctx.fillStyle = '#7c3aed';
+      // 8. North Observatory Nook Props (Inside x: 4.7..7.7 / 300.8..492.8, y: 4.1..5.85 / 262..374)
+      // Stacked Constellation Scroll Stand on Left side of Alcove (x = 304..342, y = 240..286)
+      const scX = snap(4.78 * S); // 306
+      const scY = snap(floorTop + 2);
+      ctx.fillStyle = 'rgba(10, 12, 28, 0.34)';
+      ctx.fillRect(scX + 2, scY + 6, 34, 40);
+      pxBox(scX, scY + 8, 34, 34, '#6c452b', '#8b5e3c', '#452817', INK, 2.5);
+      // Rolled cosmic scrolls sticking out
+      pxBox(scX + 4, scY - 4, 10, 22, '#fef3c7', '#ffffff', '#d97706', INK, 2);
+      pxBox(scX + 18, scY - 8, 10, 26, '#e0f2fe', '#ffffff', '#38bdf8', INK, 2);
+
+      // Nova's Antique Brass Observatory Telescope on Carved Tripod (x = 6.2 * S = 397, above Nova at 5.35)
+      const telX = snap(6.2 * S);
+      const telY = snap(floorTop + 26); // 272 — legs finish cleanly above Nova's head!
+      ctx.fillStyle = 'rgba(10, 12, 28, 0.38)';
+      ctx.beginPath(); ctx.ellipse(telX, telY + 18, 28, 9, 0, 0, Math.PI * 2); ctx.fill();
+
+      // Chunky Cedar Tripod Legs
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = 6;
       ctx.beginPath();
-      ctx.roundRect(dwX - 22, dwY - 22, 44, 16, 4);
-      ctx.fill();
-      ctx.strokeStyle = '#c4b5fd';
-      ctx.lineWidth = 1.3;
+      ctx.moveTo(telX, telY - 34); ctx.lineTo(telX - 24, telY + 16);
+      ctx.moveTo(telX, telY - 34); ctx.lineTo(telX + 24, telY + 16);
+      ctx.moveTo(telX, telY - 34); ctx.lineTo(telX, telY + 20);
       ctx.stroke();
-      ctx.fillStyle = '#f5f3ff';
-      ctx.font = 'bold 8px Inter, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('NOVA', dwX, dwY - 11);
+      ctx.strokeStyle = '#784d31';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      // Brass Mount Hub
+      pxBox(telX - 8, telY - 40, 16, 12, '#d97706', '#fef08a', '#92400e', INK, 2);
+
+      // Angled Polished Brass Telescope Barrel aiming out the skylight
+      ctx.save();
+      ctx.translate(telX, telY - 36);
+      ctx.rotate(-0.58);
+      pxBox(-14, -7, 46, 14, '#d97706', '#fde047', '#92400e', INK, 2);
+      pxBox(28, -9, 14, 18, '#f59e0b', '#fef08a', '#b45309', INK, 2);
+      // Glowing sapphire objective lens glint
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillRect(40, -6, 4, 12);
+      ctx.fillStyle = '#e0f2fe';
+      ctx.fillRect(40, -4, 4, 4);
+      ctx.restore();
+
+      // Open Star-Codex Reading Stand / Lectern to Right of Telescope (x = 450..490, y = 248..294)
+      const lecX = snap(7.05 * S); // 452
+      const lecY = snap(floorTop + 4);
+      ctx.fillStyle = 'rgba(10, 12, 28, 0.34)';
+      ctx.fillRect(lecX + 2, lecY + 6, 36, 42);
+      pxBox(lecX + 12, lecY + 18, 12, 26, '#5c3a22', '#784d31', '#3b2212', INK, 2);
+      pxBox(lecX + 6, lecY + 40, 24, 6, '#6c452b', '#8b5e3c', null, INK, 2);
+      pxBox(lecX, lecY, 36, 20, '#784d31', '#a47247', '#452817', INK, 2.5);
+      // Open glowing spellbook / chart pages on lectern
+      pxBox(lecX + 4, lecY + 2, 13, 14, '#fef3c7', '#ffffff', '#e5d3a3', INK, 1.5);
+      pxBox(lecX + 19, lecY + 2, 13, 14, '#fef3c7', '#ffffff', '#e5d3a3', INK, 1.5);
+      ctx.fillStyle = '#4f46e5';
+      ctx.fillRect(lecX + 8, lecY + 6, 6, 4);
+      ctx.fillRect(lecX + 22, lecY + 8, 6, 2);
+
+      // 9. West Wall: Celestial Four-Poster Bed & Footboard Lantern Stool (Inside x: 2.2..4.5, y: 4.1..6.6)
+      const bedW = 124;
+      const bedH = 190;
+      const bedX = snap(2.35 * S);  // 150
+      const bedY = snap(ry + 132); // 183 -> finial knobs sit cleanly below Pegasus tapestry!
+
+      // Ground drop shadow
+      ctx.fillStyle = 'rgba(10, 12, 28, 0.42)';
+      ctx.fillRect(bedX + 4, bedY + 10, bedW, bedH);
+
+      // Carved Walnut Headboard & Four Tall Canopy Corner Posts with Gold Finials
+      pxBox(bedX + 8, bedY, bedW - 16, 34, '#6c452b', '#a47247', '#452817', INK, 2.5);
+      // Scalloped Midnight-Indigo Canopy Valance Bar between Back Posts
+      pxBox(bedX + 8, bedY - 12, bedW - 16, 14, indigoMid, indigoHi, indigoDark, INK, 2);
+      for (let sc = bedX + 12; sc < bedX + bedW - 18; sc += 16) {
+        ctx.fillStyle = '#fbbf24';
+        ctx.fillRect(sc + 4, bedY, 4, 3);
+      }
+
+      // Crisp Layered Sheet & Twin Velvet-Trimmed Pillows
+      pxBox(bedX + 6, bedY + 26, bedW - 12, 40, '#e2e8f0', '#f8fafc', '#cbd5e1', INK, 2.5);
+      pxBox(bedX + 14, bedY + 18, 42, 28, '#f8fafc', '#ffffff', '#cbd5e1', INK, 2);
+      pxBox(bedX + bedW - 56, bedY + 18, 42, 28, '#f8fafc', '#ffffff', '#cbd5e1', INK, 2);
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillRect(bedX + 26, bedY + 30, 18, 2);
+      ctx.fillRect(bedX + bedW - 44, bedY + 30, 18, 2);
+
+      // Plush Midnight Velvet Quilt with Gold Crescent & Star Embroidery
+      pxBox(bedX + 6, bedY + 58, bedW - 12, 104, indigoMid, indigoHi, indigoDark, INK, 2.5);
+      // Folded top sheet turnover
+      pxBox(bedX + 6, bedY + 54, bedW - 12, 14, '#f1f5f9', '#ffffff', '#cbd5e1', INK, 2);
+      // Side duvet fold volume
+      ctx.fillStyle = indigoHi;
+      ctx.fillRect(bedX + 12, bedY + 72, 12, 76);
+      ctx.fillStyle = indigoDark;
+      ctx.fillRect(bedX + bedW - 24, bedY + 72, 12, 76);
+      // Center Gold Embroidered Moon Phase Emblem + Quilt Border Trim
+      ctx.fillStyle = '#fbbf24';
+      ctx.fillRect(bedX + 10, bedY + 144, bedW - 20, 6);
+      const qCx = snap(bedX + bedW / 2);
+      const qCy = snap(bedY + 108);
+      ctx.fillStyle = '#fef08a';
+      ctx.fillRect(qCx - 8, qCy - 10, 16, 20);
+      ctx.fillStyle = indigoMid;
+      ctx.fillRect(qCx - 2, qCy - 8, 12, 14);
+      ctx.fillStyle = '#fef08a';
+      ctx.fillRect(qCx - 16, qCy - 2, 4, 4);
+      ctx.fillRect(qCx + 12, qCy - 2, 4, 4);
+
+      // Carved Footboard & Four Brass-Capped Cedar Posts
+      pxBox(bedX + 8, bedY + 158, bedW - 16, 30, '#6c452b', '#a47247', '#452817', INK, 2.5);
+      [
+        [bedX, bedY - 14, 18, 46],
+        [bedX + bedW - 18, bedY - 14, 18, 46],
+        [bedX, bedY + 142, 18, 52],
+        [bedX + bedW - 18, bedY + 142, 18, 52]
+      ].forEach(([px, py, pw, ph]) => {
+        pxBox(px, py, pw, ph, '#855733', '#c99362', '#452817', INK, 2.5);
+        // Brass spherical finial knob atop each four-poster spire
+        pxBox(px + 3, py - 8, 12, 8, '#f59e0b', '#fef08a', '#b45309', INK, 2);
+      });
+
+      // Plush Bedside Bench & Warm Brass Moon-Lantern at Foot of Bed (inside y < 422.4!)
+      const benX = snap(bedX + 16);
+      const benY = snap(bedY + bedH + 10);
+      ctx.fillStyle = 'rgba(10, 12, 28, 0.34)';
+      ctx.fillRect(benX + 2, benY + 6, 92, 32);
+      pxBox(benX, benY, 92, 32, '#6c452b', '#8b5e3c', '#452817', INK, 2.5);
+      pxBox(benX + 6, benY + 4, 80, 18, '#4c1d95', '#7c3aed', '#2e1065', INK, 2);
+      // Glowing Warm Crystal Lantern perched neatly inside bench corner
+      pxBox(benX + 62, benY - 4, 16, 14, '#f59e0b', '#fef08a', '#b45309', INK, 2);
+      ctx.fillStyle = '#fef9c3';
+      ctx.fillRect(benX + 66, benY, 8, 6);
+
+      // 10. East Wall: Bookshelf + Potted Flora + Astronomy Desk & Animated Orrery (Inside x >= 11.2, y < 5.6 = 358.4!)
+      // Cozy Corner Pot beside Bookshelf
+      if (this.isImgReady('pot_small')) {
+        const psImg = this.owSprites.pot_small;
+        const psw = 38;
+        const psh = Math.round(psw * (psImg.height / psImg.width));
+        const psX = snap(11.35 * S); // 726
+        const psY = snap(floorTop - 6 - psh);
+        ctx.fillStyle = 'rgba(10, 12, 28, 0.34)';
+        ctx.beginPath(); ctx.ellipse(psX + psw / 2, psY + psh - 2, 16, 6, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.drawImage(psImg, psX, psY, psw, psh);
+      }
+
+      // Illustrated Celestial Library Bookshelf against East-North Wall (OwSprites furniture_bookshelf!)
+      const bkW = 104;
+      const bkH = 134;
+      const bkX = snap(12.05 * S); // 772
+      const bkY = snap(ry + 62);   // 113 -> bottom 247 right at baseboard!
+      if (this.isImgReady('furniture_bookshelf')) {
+        const bsImg = this.owSprites.furniture_bookshelf;
+        ctx.fillStyle = 'rgba(10, 12, 28, 0.36)';
+        ctx.beginPath(); ctx.ellipse(bkX + bkW / 2, bkY + bkH - 2, 48, 10, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.drawImage(bsImg, bkX, bkY, bkW, bkH);
+        // Brass Astrolabe Globe perched proudly atop Nova's Bookshelf!
+        const glX = snap(bkX + bkW / 2);
+        const glY = snap(bkY + 2);
+        pxBox(glX - 8, glY - 6, 16, 6, '#5c3a22', '#8b5e3c', null, INK, 2);
+        pxBox(glX - 8, glY - 22, 16, 16, '#1d4ed8', '#60a5fa', '#1e3a8a', '#fbbf24', 2);
+        ctx.fillStyle = '#fef08a';
+        ctx.fillRect(glX - 4, glY - 18, 4, 4);
+      } else {
+        pxBox(bkX, bkY, bkW, bkH, '#6c452b', '#8b5e3c', '#452817', INK, 2.5);
+      }
+
+      // Solid Carved Mahogany Astronomy Desk & Brass Celestial Orrery (718..874, y: 254..348 <= 358!)
+      const deskX = snap(11.24 * S); // 720
+      const deskY = snap(floorTop + 8); // 254
+      const deskW = 154;
+      const deskH = 92; // bottom cleanly at 346px (< 358.4px collision box!)
+
+      ctx.fillStyle = 'rgba(10, 12, 28, 0.40)';
+      ctx.fillRect(deskX + 3, deskY + 8, deskW, deskH);
+
+      // Desk front apron, drawers & sturdy carved legs
+      pxBox(deskX + 6, deskY + deskH - 36, 16, 36, '#5c3a22', '#784d31', '#3b2212', INK, 2.5);
+      pxBox(deskX + deskW - 22, deskY + deskH - 36, 16, 36, '#5c3a22', '#784d31', '#3b2212', INK, 2.5);
+      pxBox(deskX + 20, deskY + deskH - 42, deskW - 40, 26, '#4a2b17', null, '#2e1a0c', INK, 2.5);
+      pxBox(deskX + 28, deskY + deskH - 36, 40, 14, '#6c452b', null, null, INK, 1.5);
+      pxBox(deskX + deskW - 68, deskY + deskH - 36, 40, 14, '#6c452b', null, null, INK, 1.5);
+      ctx.fillStyle = '#fbbf24';
+      ctx.fillRect(deskX + 44, deskY + deskH - 31, 8, 4);
+      ctx.fillRect(deskX + deskW - 52, deskY + deskH - 31, 8, 4);
+
+      // Wide Desk Surface with Warm Top Wood Planks
+      pxBox(deskX, deskY, deskW, 56, '#784d31', '#a97448', '#452817', INK, 2.5);
+      ctx.fillStyle = '#5c3a22';
+      ctx.fillRect(deskX + 4, deskY + 26, deskW - 8, 2);
+
+      // Unrolled Celestial Star Chart Parchment + Ink Bottle on Left of Desk
+      pxBox(deskX + 10, deskY + 10, 56, 36, '#fef3c7', '#ffffff', '#e5d3a3', '#78350f', 2);
+      ctx.fillStyle = '#312e81';
+      ctx.fillRect(deskX + 18, deskY + 18, 28, 2);
+      ctx.fillRect(deskX + 24, deskY + 26, 24, 2);
+      ctx.fillStyle = '#0ea5e9';
+      ctx.fillRect(deskX + 44, deskY + 16, 4, 4);
+      ctx.fillRect(deskX + 18, deskY + 30, 4, 4);
+      pxBox(deskX + 70, deskY + 12, 10, 12, '#1e293b', '#475569', null, INK, 1.5);
+
+      // Animated Brass Celestial Orrery & Glowing Sapphire Crystal Prism on Right of Desk!
+      const orX = snap(deskX + deskW - 40);
+      const orY = snap(deskY + 28);
+      // Brass base ring
+      pxBox(orX - 16, orY + 8, 32, 8, '#b45309', '#fbbf24', '#78350f', INK, 2);
+      ctx.strokeStyle = '#d97706';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.ellipse(orX, orY - 2, 22, 11, 0, 0, Math.PI * 2); ctx.stroke();
+
+      // Orbiting Sapphire & Mint Moons around Central Glowing Sun Sphere
+      const orbT = (this.tick || 0) * 0.05;
+      const m1x = snap(orX + Math.cos(orbT) * 20) - 3;
+      const m1y = snap(orY - 2 + Math.sin(orbT) * 10) - 3;
+      const m2x = snap(orX + Math.cos(orbT + 2.4) * 13) - 2;
+      const m2y = snap(orY - 2 + Math.sin(orbT + 2.4) * 6) - 2;
+      // Central sun
+      pxBox(orX - 6, orY - 8, 12, 12, '#f59e0b', '#fef08a', '#b45309', INK, 1.5);
+      // Moons
+      pxBox(m1x, m1y, 6, 6, '#38bdf8', '#e0f2fe', null, INK, 1.5);
+      pxBox(m2x, m2y, 6, 6, '#a855f7', '#e9d5ff', null, INK, 1.5);
+
+      // Plush Tucked Indigo Velvet Desk Chair in front center of desk (bottom <= 356!)
+      const chX = snap(deskX + 54);
+      const chY = snap(deskY + deskH - 28); // 318..354
+      pxBox(chX, chY, 36, 26, '#784d31', '#a47247', '#452817', INK, 2);
+      pxBox(chX + 4, chY + 2, 28, 16, '#4c1d95', '#7c3aed', '#2e1065', INK, 2);
+
+      // 11. Warm & Cool Atmospheric Glow Blooms (Crystal Orrery + Footboard Lantern)
+      const orrGlow = ctx.createRadialGradient(orX, orY - 4, 4, orX, orY - 4, 68);
+      orrGlow.addColorStop(0, 'rgba(56, 189, 248, 0.24)');
+      orrGlow.addColorStop(0.5, 'rgba(250, 204, 21, 0.10)');
+      orrGlow.addColorStop(1, 'rgba(56, 189, 248, 0)');
+      ctx.fillStyle = orrGlow;
+      ctx.fillRect(orX - 70, orY - 74, 140, 140);
+
+      const lanGlow = ctx.createRadialGradient(benX + 75, benY - 2, 4, benX + 75, benY - 2, 62);
+      lanGlow.addColorStop(0, 'rgba(254, 240, 138, 0.26)');
+      lanGlow.addColorStop(1, 'rgba(254, 240, 138, 0)');
+      ctx.fillStyle = lanGlow;
+      ctx.fillRect(benX + 10, benY - 66, 130, 130);
     }
 
     // =========================================================================
@@ -10229,6 +11165,19 @@
     // =========================================================================
     renderCraftsmanExterior() {
       const ctx = this.ctx;
+      ctx.imageSmoothingEnabled = false;
+      this._extDepthProps = [];
+      const queueExtSprite = (img, dx, dy, dw, dh, sortY) => {
+        const rx = Math.round(dx), ry = Math.round(dy), rw = Math.round(dw), rh = Math.round(dh);
+        this._extDepthProps.push({
+          sortY: Math.round(sortY),
+          zBias: 0,
+          draw: () => {
+            ctx.imageSmoothingEnabled = false;
+            ctx.drawImage(img, rx, ry, rw, rh);
+          }
+        });
+      };
       const S = this.TILE; // 64px
       const W = this.canvas.width;  // 1024
       const EXT_W = Math.round(this.EXT_COLS * S); // 1664px (Expanded East Central Park)
@@ -10236,31 +11185,30 @@
       const pName = this.draftAppearance?.name || 'Asher';
       const fName = this.friendName || 'Mike';
 
-      // 1. Lush Deep Forest Grass Base across the expanded neighborhood & Central Park
-      const gGrad = ctx.createLinearGradient(0, 0, 0, EXT_H);
-      gGrad.addColorStop(0, '#1f4f16');
-      gGrad.addColorStop(0.35, '#2b6e1d');
-      gGrad.addColorStop(0.70, '#26641a');
-      gGrad.addColorStop(1, '#1b4513');
-      ctx.fillStyle = gGrad;
+      // 1. Lush Sunlit Meadow Pixel-Art Grass Base across the neighborhood & Central Park
+      this.initCobblestonePattern();
+      ctx.fillStyle = this.grassPattern || '#58aa3c';
       ctx.fillRect(0, 0, EXT_W, EXT_H);
 
-      // Grass texture blades across the full neighborhood & Central Park
-      for (let i = 0; i < 420; i++) {
-        const gx = Math.floor(this.hash(i, 11) * (EXT_W - 24)) + 12;
-        const gy = Math.floor(this.hash(i, 22) * (EXT_H - 24)) + 12;
-        ctx.fillStyle = i % 2 === 0 ? '#3b8528' : '#184210';
-        ctx.fillRect(gx, gy, 2.2, 4.5);
-        ctx.fillRect(gx + 2, gy - 1.5, 1.8, 3.8);
+      // Fallback meadow grass speckles only when PNG tile has not finished decoding
+      if (this._pixelArtVer !== 3) {
+        for (let i = 0; i < 160; i++) {
+          const gx = Math.floor(this.hash(i, 11) * (EXT_W - 24) / 2) * 2 + 12;
+          const gy = Math.floor(this.hash(i, 22) * (EXT_H - 24) / 2) * 2 + 12;
+          if (i % 5 === 0) {
+            ctx.fillStyle = '#3d8226';
+            ctx.fillRect(gx, gy, 4, 2);
+            ctx.fillStyle = i % 10 === 0 ? '#fef08a' : '#ffffff';
+            ctx.fillRect(gx + 2, gy - 2, 2, 2);
+          } else {
+            ctx.fillStyle = i % 2 === 0 ? '#74cc4e' : '#428c2a';
+            ctx.fillRect(gx, gy, 2, 2);
+            ctx.fillRect(gx + 2, gy + 2, 2, 2);
+          }
+        }
       }
 
-      // 2. EXPANDED COBBLESTONE ROAD NETWORK:
-      // - Upper Residential East-West Road (Oakhaven Lane):  y = 4.20*S .. 5.25*S (curves north at east end)
-      // - Middle Commercial East-West Road:                  y = 9.55*S .. 10.70*S
-      // - Lower South Residential Avenue (Cobblestone Way):  y = 14.80*S .. 15.95*S (extends to east screen end)
-      // - 1st North-South Connector Road:                    x = 5.55*S .. 6.65*S, y = 4.20*S .. 15.95*S
-      // - 2nd North-South Connector Road:                    x = 9.95*S .. 10.95*S, y = 4.20*S .. 15.95*S
-      // - Oakhaven Lane North Extension:                     x = 14.25*S .. 15.35*S, y = 0 .. 5.25*S
+      // 2. WARM SANDY-TAN RPG TOWN PATH NETWORK WITH PIXEL STONE CURBS:
       const road1Y = 4.20 * S;
       const road1H = 1.05 * S;     // Ends at 5.25 * S
       const south1X = 5.55 * S;
@@ -10273,128 +11221,142 @@
       const road3H = 1.15 * S;     // Ends at 15.95 * S
       const fullConnH = (road3Y + road3H) - road1Y;
 
-      // Oakhaven Lane East End North Turn / Extension Dimensions
       const oakhavenTurnX = 14.25 * S;
-      const oakhavenTurnW = 1.10 * S; // Ends at 15.35 * S
-      const oakhavenRoad1W = (oakhavenTurnX + oakhavenTurnW); // upper road extends to curve at x = 15.35 * S
+      const oakhavenTurnW = 1.10 * S;
+      const oakhavenRoad1W = (oakhavenTurnX + oakhavenTurnW);
 
-      // Dark Basalt/Slate Road Base & Mortar Subgrade (#1e242d)
-      ctx.fillStyle = '#1e242d';
-      ctx.fillRect(0, road1Y - 4, oakhavenRoad1W + 4, road1H + 8);
-      // North extension of Oakhaven Lane going north to the top of screen (y = 0)
-      ctx.fillRect(oakhavenTurnX - 4, 0, oakhavenTurnW + 8, road1Y + road1H + 4);
-      ctx.fillRect(0, road2Y - 4, W, road2H + 8);
-      // Cobblestone Way extended all the way east to the end of the current screen (EXT_W)
-      ctx.fillRect(0, road3Y - 4, EXT_W, road3H + 8);
-      ctx.fillRect(south1X - 4, road1Y - 4, south1W + 8, fullConnH + 8);
-      ctx.fillRect(south2X - 4, road1Y - 4, south2W + 8, fullConnH + 8);
-
-      // Procedural Textured Cobblestone Street Surface across all road segments
-      this.initCobblestonePattern();
-      ctx.fillStyle = this.cobblePattern || '#334155';
+      // Warm Ochre Packed-Dirt Path Surface (Upper, Lower, Connectors)
+      ctx.fillStyle = this.cobblePattern || '#b98a52';
       ctx.fillRect(0, road1Y, oakhavenRoad1W, road1H);
-      // Oakhaven Lane North vertical street surface
       ctx.fillRect(oakhavenTurnX, 0, oakhavenTurnW, road1Y + road1H);
-      ctx.fillRect(0, road2Y, W, road2H);
-      // Cobblestone Way surface across full screen width
       ctx.fillRect(0, road3Y, EXT_W, road3H);
       ctx.fillRect(south1X, road1Y, south1W, fullConnH);
       ctx.fillRect(south2X, road1Y, south2W, fullConnH);
 
-      // Curved inner fillet smooth junction at Oakhaven Lane turn
-      ctx.fillStyle = this.cobblePattern || '#334155';
-      ctx.beginPath();
-      ctx.moveTo(oakhavenTurnX, road1Y);
-      ctx.arcTo(oakhavenTurnX, road1Y, oakhavenTurnX, road1Y - 10, 14);
-      ctx.lineTo(oakhavenTurnX, road1Y);
-      ctx.fill();
+      // Middle Commercial Road: Irregular Flagstone Cobblestone Street (matching reference!)
+      ctx.fillStyle = this.flagstonePattern || '#988878';
+      ctx.fillRect(0, road2Y, W, road2H);
 
-      // Subtle Street Vignette / Road Wear Shading
+      // Soft warm shadow cast by grass borders onto the dirt/stone roads
       const drawRoadVignette = (ry, rh, rw = W) => {
         const vGrad = ctx.createLinearGradient(0, ry, 0, ry + rh);
-        vGrad.addColorStop(0, 'rgba(15, 23, 42, 0.28)');
-        vGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0.04)');
-        vGrad.addColorStop(1, 'rgba(15, 23, 42, 0.32)');
+        vGrad.addColorStop(0, 'rgba(36, 22, 10, 0.28)');
+        vGrad.addColorStop(0.18, 'rgba(36, 22, 10, 0.05)');
+        vGrad.addColorStop(0.82, 'rgba(36, 22, 10, 0.02)');
+        vGrad.addColorStop(1, 'rgba(36, 22, 10, 0.20)');
         ctx.fillStyle = vGrad;
         ctx.fillRect(0, ry, rw, rh);
       };
       drawRoadVignette(road1Y, road1H, oakhavenRoad1W);
-      // Vignette for Oakhaven Lane North extension
       const vGradNorth = ctx.createLinearGradient(oakhavenTurnX, 0, oakhavenTurnX + oakhavenTurnW, 0);
-      vGradNorth.addColorStop(0, 'rgba(15, 23, 42, 0.26)');
-      vGradNorth.addColorStop(0.5, 'rgba(255, 255, 255, 0.04)');
-      vGradNorth.addColorStop(1, 'rgba(15, 23, 42, 0.30)');
+      vGradNorth.addColorStop(0, 'rgba(36, 22, 10, 0.25)');
+      vGradNorth.addColorStop(0.2, 'rgba(36, 22, 10, 0.04)');
+      vGradNorth.addColorStop(0.8, 'rgba(36, 22, 10, 0.04)');
+      vGradNorth.addColorStop(1, 'rgba(36, 22, 10, 0.22)');
       ctx.fillStyle = vGradNorth;
       ctx.fillRect(oakhavenTurnX, 0, oakhavenTurnW, road1Y + road1H);
-
       drawRoadVignette(road2Y, road2H, W);
-      // Cobblestone Way extended vignette
       drawRoadVignette(road3Y, road3H, EXT_W);
 
-      // Walkways connecting all house porch stairs & shop to the cobblestone avenues
+      // Walkways with Organic Rounded Stepping Stones (no rigid grey box)
       const drawDrivewayPath = (px, py, pw, ph) => {
-        ctx.fillStyle = '#1e242d';
-        ctx.fillRect(px - 2.5, py, pw + 5, ph);
-        ctx.fillStyle = this.cobblePattern || '#475569';
-        ctx.fillRect(px, py, pw, ph);
-
-        // Flagstone paver slabs
-        for (let sy = py + 6; sy < py + ph - 4; sy += 14) {
-          ctx.fillStyle = '#94a3b8';
-          ctx.beginPath();
-          ctx.roundRect(px + 4, sy, pw - 8, 8, 2);
-          ctx.fill();
-          ctx.strokeStyle = '#334155';
-          ctx.lineWidth = 1.1;
-          ctx.stroke();
+        const x = Math.round(px), y = Math.round(py), w = Math.round(pw), h = Math.round(ph);
+        // Subtle worn dirt trail under stepping stones
+        ctx.fillStyle = 'rgba(166, 122, 70, 0.65)';
+        ctx.fillRect(x + 2, y, w - 4, h);
+        // Alternating irregular rounded flagstones
+        let idx = 0;
+        for (let sy = y + 4; sy < y + h - 8; sy += 13) {
+          const sx = x + 3 + ((idx % 2 === 0) ? 0 : 4);
+          const sw = Math.max(14, w - 10 - (idx % 2) * 2);
+          ctx.fillStyle = '#382a1e';
+          ctx.fillRect(sx, sy + 1, sw, 9);
+          ctx.fillRect(sx + 2, sy, sw - 4, 11);
+          ctx.fillStyle = idx % 2 === 0 ? '#a89886' : '#968674';
+          ctx.fillRect(sx + 2, sy + 1, sw - 4, 8);
+          ctx.fillStyle = '#c8baa8';
+          ctx.fillRect(sx + 3, sy + 1, sw - 6, 3);
+          idx++;
         }
       };
 
-      // Player house walkway -> Upper E-W Road
       drawDrivewayPath(1.71 * S, 3.22 * S, 0.50 * S, road1Y - 3.22 * S + 4);
-      // Mike/AJ house walkway -> Upper E-W Road
       drawDrivewayPath(9.79 * S, 3.22 * S, 0.50 * S, road1Y - 3.22 * S + 4);
-      // Pluto's house walkway -> Middle E-W Road (Middle-West Block)
       drawDrivewayPath(1.71 * S, 8.85 * S, 0.50 * S, road2Y - 8.85 * S + 4);
-      // Card Shop front plaza walkway -> Middle E-W Road (Far-East Block)
       drawDrivewayPath(13.25 * S, 9.05 * S, 0.80 * S, road2Y - 9.05 * S + 4);
-      // Nova's house walkway -> Southern Avenue (South-West Block)
       drawDrivewayPath(1.71 * S, 14.15 * S, 0.50 * S, road3Y - 14.15 * S + 4);
-      // Silas's house walkway -> Southern Avenue (South-Center Block)
       drawDrivewayPath(7.35 * S, 14.15 * S, 0.50 * S, road3Y - 14.15 * S + 4);
-      // Maya's house walkway -> Southern Avenue (South-East Block)
       drawDrivewayPath(12.43 * S, 14.15 * S, 0.50 * S, road3Y - 14.15 * S + 4);
 
-      // Polished Granite Stone Curbs along all avenues with gaps for walkways and intersections
-      ctx.strokeStyle = '#334155';
-      ctx.lineWidth = 1.6;
-      ctx.fillStyle = '#94a3b8';
+      // Organic Raised 3/4 Turf-Lip & Rounded Stone Curb Edges along Grass-to-Road Borders
+      const drawStoneCurbH = (cx, cy, cw, side = 'bot') => {
+        const x = Math.round(cx), y = Math.round(cy), w = Math.round(cw);
+        if (w <= 0) return;
+        const key = side === 'top' ? 'turf_edge_top' : 'turf_edge_bot';
+        if (this.isImgReady(key)) {
+          const img = this.owSprites[key];
+          const drawH = side === 'top' ? 14 : 18;
+          const drawY = side === 'top' ? (y - 6) : (y - 2);
+          const spanW = 160;
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(x, drawY - 2, w, drawH + 4);
+          ctx.clip();
+          for (let sx = x; sx < x + w; sx += spanW) {
+            ctx.drawImage(img, sx, drawY, spanW, drawH);
+          }
+          ctx.restore();
+          return;
+        }
+        ctx.fillStyle = '#223e16';
+        ctx.fillRect(x, y + 4, w, 2);
+        ctx.fillStyle = '#366822';
+        ctx.fillRect(x, y, w, 4);
+        ctx.fillStyle = '#6ec048';
+        ctx.fillRect(x, y, w, 2);
+      };
+      const drawStoneCurbV = (cx, cy, ch, side = 'right') => {
+        const x = Math.round(cx), y = Math.round(cy), h = Math.round(ch);
+        if (h <= 0) return;
+        const key = side === 'left' ? 'turf_edge_left' : 'turf_edge_right';
+        if (this.isImgReady(key)) {
+          const img = this.owSprites[key];
+          const drawW = 14;
+          const drawX = side === 'left' ? (x - 5) : (x - 2);
+          const spanH = 160;
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(drawX - 2, y, drawW + 4, h);
+          ctx.clip();
+          for (let sy = y; sy < y + h; sy += spanH) {
+            ctx.drawImage(img, drawX, sy, drawW, spanH);
+          }
+          ctx.restore();
+          return;
+        }
+        ctx.fillStyle = '#223e16';
+        ctx.fillRect(x + 4, y, 2, h);
+        ctx.fillStyle = '#366822';
+        ctx.fillRect(x, y, 4, h);
+        ctx.fillStyle = '#6ec048';
+        ctx.fillRect(x + 1, y, 2, h);
+      };
 
-      // Upper Road Top Curbs (runs to Oakhaven Lane turn, then turns north along the west side of the lane to y = 0)
+      // Upper Road Top Curbs (bottom overhang of north grass plots)
       [
         { x: 0, w: 1.71 * S },
         { x: 2.21 * S, w: (9.79 - 2.21) * S },
         { x: 10.29 * S, w: oakhavenTurnX - 10.29 * S }
-      ].forEach(c => {
-        ctx.fillRect(c.x, road1Y - 4, c.w, 4);
-        ctx.strokeRect(c.x, road1Y - 4, c.w, 4);
-      });
-      // Left/West Curb along Oakhaven Lane North Extension (from road1Y to top of screen y = 0)
-      ctx.fillRect(oakhavenTurnX - 4, 0, 4, road1Y);
-      ctx.strokeRect(oakhavenTurnX - 4, 0, 4, road1Y);
+      ].forEach(c => drawStoneCurbH(c.x, road1Y - 6, c.w, 'bot'));
+      drawStoneCurbV(oakhavenTurnX - 6, 0, road1Y, 'right');
 
-      // Upper Road Bottom Curbs (with smooth corner curve at east end turning north)
+      // Upper Road Bottom Curbs (top lip of middle grass plots)
       [
         { x: 0, w: south1X },
         { x: south1X + south1W, w: south2X - (south1X + south1W) },
         { x: south2X + south2W, w: (oakhavenTurnX + oakhavenTurnW) - (south2X + south2W) }
-      ].forEach(c => {
-        ctx.fillRect(c.x, road1Y + road1H, c.w, 4);
-        ctx.strokeRect(c.x, road1Y + road1H, c.w, 4);
-      });
-      // Right/East Curb along Oakhaven Lane North Extension (from bottom corner road1Y + road1H to y = 0)
-      ctx.fillRect(oakhavenTurnX + oakhavenTurnW, 0, 4, road1Y + road1H + 4);
-      ctx.strokeRect(oakhavenTurnX + oakhavenTurnW, 0, 4, road1Y + road1H + 4);
+      ].forEach(c => drawStoneCurbH(c.x, road1Y + road1H, c.w, 'top'));
+      drawStoneCurbV(oakhavenTurnX + oakhavenTurnW, 0, road1Y + road1H + 6, 'left');
 
       // Middle Road Top Curbs
       [
@@ -10403,22 +11365,16 @@
         { x: south1X + south1W, w: south2X - (south1X + south1W) },
         { x: south2X + south2W, w: (13.25 * S) - (south2X + south2W) },
         { x: 14.05 * S, w: W - 14.05 * S }
-      ].forEach(c => {
-        ctx.fillRect(c.x, road2Y - 4, c.w, 4);
-        ctx.strokeRect(c.x, road2Y - 4, c.w, 4);
-      });
+      ].forEach(c => drawStoneCurbH(c.x, road2Y - 6, c.w, 'bot'));
 
-      // Middle Road Bottom Curbs (leaving gaps for Connector 1 and Connector 2)
+      // Middle Road Bottom Curbs
       [
         { x: 0, w: south1X },
         { x: south1X + south1W, w: south2X - (south1X + south1W) },
         { x: south2X + south2W, w: W - (south2X + south2W) }
-      ].forEach(c => {
-        ctx.fillRect(c.x, road2Y + road2H, c.w, 4);
-        ctx.strokeRect(c.x, road2Y + road2H, c.w, 4);
-      });
+      ].forEach(c => drawStoneCurbH(c.x, road2Y + road2H, c.w, 'top'));
 
-      // Southern Avenue Top Curbs (leaving gaps for Nova, Silas, Maya walkways & Connector roads)
+      // Southern Avenue Top Curbs
       [
         { x: 0, w: 1.71 * S },
         { x: 2.21 * S, w: south1X - 2.21 * S },
@@ -10426,68 +11382,111 @@
         { x: 7.85 * S, w: south2X - 7.85 * S },
         { x: south2X + south2W, w: (12.43 * S) - (south2X + south2W) },
         { x: 12.93 * S, w: EXT_W - 12.93 * S }
-      ].forEach(c => {
-        ctx.fillRect(c.x, road3Y - 4, c.w, 4);
-        ctx.strokeRect(c.x, road3Y - 4, c.w, 4);
-      });
+      ].forEach(c => drawStoneCurbH(c.x, road3Y - 6, c.w, 'bot'));
 
-      // Southern Avenue Bottom Continuous Curb extending to the east screen edge
-      ctx.fillRect(0, road3Y + road3H, EXT_W, 4);
-      ctx.strokeRect(0, road3Y + road3H, EXT_W, 4);
+      // Southern Avenue Bottom Continuous Curb
+      drawStoneCurbH(0, road3Y + road3H, EXT_W, 'top');
 
       // Vertical Curbs along North-South Connector Roads
       const connMidH = road2Y - (road1Y + road1H);
       const connSouthH = road3Y - (road2Y + road2H);
-      [south1X - 4, south1X + south1W, south2X - 4, south2X + south2W].forEach(vx => {
-        ctx.fillRect(vx, road1Y + road1H, 4, connMidH);
-        ctx.strokeRect(vx, road1Y + road1H, 4, connMidH);
-        ctx.fillRect(vx, road2Y + road2H, 4, connSouthH);
-        ctx.strokeRect(vx, road2Y + road2H, 4, connSouthH);
+      [
+        { x: south1X - 6, side: 'right' },
+        { x: south1X + south1W, side: 'left' },
+        { x: south2X - 6, side: 'right' },
+        { x: south2X + south2W, side: 'left' }
+      ].forEach(({ x: vx, side }) => {
+        drawStoneCurbV(vx, road1Y + road1H, connMidH, side);
+        drawStoneCurbV(vx, road2Y + road2H, connSouthH, side);
       });
 
-      // Limestone Crosswalk Paving Bars at street intersections
-      ctx.fillStyle = '#cbd5e1';
-      ctx.strokeStyle = '#475569';
-      ctx.lineWidth = 1.1;
-
-      const drawCrosswalkRow = (x, y, w, isHoriz) => {
-        if (isHoriz) {
-          for (let cy = y + 6; cy < y + w - 5; cy += 12) {
-            ctx.fillRect(x, cy, 11, 6.5);
-            ctx.strokeRect(x, cy, 11, 6.5);
+      // Chunky Pixel Wooden Picket Fences (Sprites/Overworld/fence.png)
+      const drawWoodFence = (fx, fy, fw) => {
+        const x = Math.round(fx), y = Math.round(fy), w = Math.round(fw);
+        if (this.isImgReady('fence')) {
+          const img = this.owSprites.fence;
+          const fh = 24;
+          const segW = Math.max(24, Math.round(fh * (img.width / img.height)));
+          ctx.fillStyle = 'rgba(18, 12, 8, 0.25)';
+          ctx.fillRect(x + 2, y + 12, w - 4, 5);
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(x, y - 10, w, fh + 4);
+          ctx.clip();
+          for (let sx = x; sx < x + w; sx += segW) {
+            ctx.drawImage(img, sx, y - 8, segW, fh);
           }
-        } else {
-          for (let cx = x + 6; cx < x + w - 5; cx += 13) {
-            ctx.fillRect(cx, y, 7.5, 11);
-            ctx.strokeRect(cx, y, 7.5, 11);
-          }
+          ctx.restore();
+          return;
+        }
+        ctx.fillStyle = 'rgba(14, 24, 10, 0.28)';
+        ctx.fillRect(x, y + 12, w, 4);
+        ctx.fillStyle = '#24160c';
+        ctx.fillRect(x, y + 4, w, 4);
+        ctx.fillRect(x, y + 9, w, 4);
+        ctx.fillStyle = '#8c5a32';
+        ctx.fillRect(x + 1, y + 5, w - 2, 2);
+        ctx.fillRect(x + 1, y + 10, w - 2, 2);
+        for (let px = x; px < x + w - 4; px += 12) {
+          ctx.fillStyle = '#24160c';
+          ctx.fillRect(px, y, 8, 15);
+          ctx.fillStyle = '#9c663a';
+          ctx.fillRect(px + 1, y + 1, 6, 13);
         }
       };
+      drawWoodFence(0.35 * S, 3.84 * S, 1.15 * S);
+      drawWoodFence(2.35 * S, 3.84 * S, 1.9 * S);
+      drawWoodFence(10.5 * S, 3.84 * S, 1.9 * S);
+      drawWoodFence(0.35 * S, 9.16 * S, 1.15 * S);
+      drawWoodFence(2.35 * S, 9.16 * S, 1.9 * S);
+      drawWoodFence(0.35 * S, 14.38 * S, 1.15 * S);
+      drawWoodFence(2.35 * S, 14.38 * S, 1.9 * S);
+      drawWoodFence(8.05 * S, 14.38 * S, 1.75 * S);
+      drawWoodFence(13.15 * S, 14.38 * S, 1.85 * S);
 
-      // Upper Road Crosswalks
-      drawCrosswalkRow(south1X - 14, road1Y, road1H, true);
-      drawCrosswalkRow(south1X + south1W + 3, road1Y, road1H, true);
-      // Middle Road Crosswalks
-      drawCrosswalkRow(south1X - 14, road2Y, road2H, true);
-      drawCrosswalkRow(south1X + south1W + 3, road2Y, road2H, true);
-      drawCrosswalkRow(south2X - 14, road2Y, road2H, true);
-      drawCrosswalkRow(south2X + south2W + 3, road2Y, road2H, true);
-      drawCrosswalkRow(13.02 * S, road2Y, road2H, true); // Card shop entrance
-      // Southern Avenue Crosswalks
-      drawCrosswalkRow(south1X - 14, road3Y, road3H, true);
-      drawCrosswalkRow(south1X + south1W + 3, road3Y, road3H, true);
-      drawCrosswalkRow(south2X - 14, road3Y, road3H, true);
-      drawCrosswalkRow(south2X + south2W + 3, road3Y, road3H, true);
+      // Terracotta Potted Plants beside Porches & Fences
+      const pots = [
+        [4.38 * S, 2.75 * S, true], [4.38 * S, 3.18 * S, false],
+        [11.00 * S, 2.75 * S, true], [11.00 * S, 3.18 * S, false],
+        [4.38 * S, 8.25 * S, true], [4.38 * S, 8.68 * S, false],
+        [0.75 * S, 14.05 * S, false], [6.55 * S, 14.05 * S, true], [11.55 * S, 14.05 * S, false]
+      ];
+      pots.forEach(([px, py, isLarge]) => {
+        const key = isLarge ? 'pot_large' : 'pot_small';
+        if (this.isImgReady(key)) {
+          const img = this.owSprites[key];
+          const ph = isLarge ? 32 : 26;
+          const pw = Math.round(ph * (img.width / img.height));
+          ctx.drawImage(img, Math.round(px), Math.round(py), pw, ph);
+        } else if (this.pottedPlantStamp) {
+          ctx.drawImage(this.pottedPlantStamp, Math.round(px), Math.round(py), 26, 32);
+        }
+      });
 
       // 3. REUSABLE CRAFTSMAN / VICTORIAN GABLE COTTAGE RENDERER
       const drawNeighborhoodCottage = (cfg) => {
         const {
           hx, hy, hw,
+          spriteKey,
           mirror = false,
           roofDark, roofMid, roofLight,
           sidingCol, sidingLineCol, trimCol,
           doorMatCol, hasChimney = false, glowWindows = false
         } = cfg;
+
+        if (spriteKey && this.isImgReady(spriteKey)) {
+          const img = this.owSprites[spriteKey];
+          const dw = Math.round(hw + 14);
+          const dh = Math.round(dw * (img.height / img.width));
+          const dx = Math.round(hx - 7);
+          const dy = Math.round(hy + 2.95 * S - dh);
+          ctx.fillStyle = 'rgba(18, 12, 8, 0.30)';
+          ctx.beginPath();
+          ctx.ellipse(dx + dw / 2, dy + dh - 8, Math.round(dw * 0.46), 11, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.drawImage(img, dx, dy, dw, dh);
+          return;
+        }
 
         const gableW = hw * 0.54;
         const wingW = hw - gableW;
@@ -10505,119 +11504,158 @@
 
         // Optional Stone Chimney
         if (hasChimney) {
-          const chX = mirror ? (hx + hw - 22) : (hx + 10);
-          const chY = hy - 8;
-          ctx.fillStyle = '#57534e';
-          ctx.strokeStyle = '#1c1917';
-          ctx.lineWidth = 1.4;
-          ctx.fillRect(chX, chY, 16, 38);
-          ctx.strokeRect(chX, chY, 16, 38);
+          const chX = mirror ? Math.round(hx + hw - 24) : Math.round(hx + 10);
+          const chY = Math.round(hy - 8);
+          ctx.fillStyle = '#1e1814';
+          ctx.fillRect(chX - 2, chY - 2, 18, 40);
+          ctx.fillStyle = '#5c5852';
+          ctx.fillRect(chX, chY, 14, 36);
+          ctx.fillStyle = '#78726a';
+          for (let cy = chY + 2; cy < chY + 34; cy += 6) {
+            ctx.fillRect(chX + 1, cy, 6, 4);
+            ctx.fillRect(chX + 8, cy + 2, 5, 4);
+          }
+          // Chimney crown cap
+          ctx.fillStyle = '#1e1814';
+          ctx.fillRect(chX - 3, chY - 3, 20, 6);
+          ctx.fillStyle = '#928a80';
+          ctx.fillRect(chX - 1, chY - 1, 16, 3);
           for (let s = 0; s < 3; s++) {
             const smokeY = chY - 6 - ((this.tick * 0.28 + s * 9) % 22);
-            ctx.fillStyle = 'rgba(226, 232, 240, 0.32)';
+            ctx.fillStyle = 'rgba(226, 232, 240, 0.34)';
             ctx.beginPath();
-            ctx.arc(chX + 8 + Math.sin(this.tick * 0.05 + s) * 3, smokeY, 3.5 + s * 1.6, 0, Math.PI * 2);
+            ctx.arc(chX + 7 + Math.sin(this.tick * 0.05 + s) * 3, smokeY, 3.2 + s * 1.5, 0, Math.PI * 2);
             ctx.fill();
           }
         }
 
         // Brick Foundation Base
+        ctx.fillStyle = '#24140e';
+        ctx.fillRect(Math.round(hx) - 1, Math.round(brickY) - 1, Math.round(hw) + 2, Math.round(foundH) + 2);
         ctx.fillStyle = '#7c3f2c';
-        ctx.fillRect(hx, brickY, hw, foundH);
-        ctx.strokeStyle = '#2b1810';
-        ctx.lineWidth = 1.3;
-        ctx.strokeRect(hx, brickY, hw, foundH);
-        ctx.fillStyle = '#592b1d';
-        ctx.fillRect(hx, brickY + 4, hw, 1);
-        for (let bx = hx + 7; bx < hx + hw - 4; bx += 12) {
-          ctx.fillRect(bx, brickY, 1, 4);
-          ctx.fillRect(bx + 6, brickY + 4, 1, 5);
+        ctx.fillRect(Math.round(hx), Math.round(brickY), Math.round(hw), Math.round(foundH));
+        ctx.fillStyle = '#9c523b';
+        for (let bx = Math.round(hx) + 2; bx < hx + hw - 6; bx += 12) {
+          ctx.fillRect(bx, Math.round(brickY) + 1, 8, 3);
+          ctx.fillRect(bx + 5, Math.round(brickY) + 5, 7, 3);
         }
+        ctx.fillStyle = '#4e2418';
+        ctx.fillRect(Math.round(hx), Math.round(brickY) + 4, Math.round(hw), 1);
 
-        // Porch Deck
-        ctx.fillStyle = '#5c3c22';
-        ctx.fillRect(hx, deckY, hw, railY - deckY + 7);
-        ctx.strokeStyle = '#26170c';
-        ctx.lineWidth = 1.3;
-        ctx.strokeRect(hx, deckY, hw, railY - deckY + 7);
-        ctx.fillStyle = '#3d2614';
-        for (let px = hx + 6; px < hx + hw; px += 6) {
-          ctx.fillRect(px, deckY, 1, railY - deckY + 7);
+        // Porch Deck (Warm timber floorboards + under-porch shadow)
+        const porchH = Math.round(railY - deckY + 7);
+        ctx.fillStyle = '#24160c';
+        ctx.fillRect(Math.round(hx) - 1, Math.round(deckY) - 1, Math.round(hw) + 2, porchH + 2);
+        ctx.fillStyle = '#6c4424';
+        ctx.fillRect(Math.round(hx), Math.round(deckY), Math.round(hw), porchH);
+        ctx.fillStyle = '#845430';
+        for (let py = Math.round(deckY) + 2; py < deckY + porchH - 3; py += 5) {
+          ctx.fillRect(Math.round(hx) + 1, py, Math.round(hw) - 2, 3);
         }
-        ctx.fillStyle = 'rgba(0,0,0,0.24)';
-        ctx.fillRect(hx, deckY, hw, 7);
+        ctx.fillStyle = '#422814';
+        for (let px = Math.round(hx) + 6; px < hx + hw; px += 8) {
+          ctx.fillRect(px, Math.round(deckY), 1, porchH);
+        }
+        ctx.fillStyle = 'rgba(18, 10, 6, 0.34)';
+        ctx.fillRect(Math.round(hx), Math.round(deckY), Math.round(hw), 6);
 
-        // Clapboard Siding Helper
-        const drawWall = (wx, wy, ww, wh, shadeSide = false) => {
+        // Clapboard Siding Helper (crisp pixel boards + eave shadow)
+        const drawWall = (wx, wy, ww, wh, shadeSide = false, eaveShadow = true) => {
+          const x = Math.round(wx), y = Math.round(wy), w = Math.round(ww), h = Math.round(wh);
+          ctx.fillStyle = '#221812';
+          ctx.fillRect(x - 1, y - 1, w + 2, h + 2);
           ctx.fillStyle = sidingCol;
-          ctx.fillRect(wx, wy, ww, wh);
+          ctx.fillRect(x, y, w, h);
           ctx.fillStyle = sidingLineCol;
-          for (let sy = wy + 4.5; sy < wy + wh - 4; sy += 4.5) {
-            ctx.fillRect(wx, sy, ww, 1);
+          for (let sy = y + 5; sy < y + h - 4; sy += 5) {
+            ctx.fillRect(x, sy, w, 1);
           }
           if (shadeSide) {
-            ctx.fillStyle = 'rgba(0,0,0,0.16)';
-            const sx = mirror ? (wx + ww - 14) : wx;
-            ctx.fillRect(sx, wy, 14, wh);
+            ctx.fillStyle = 'rgba(18, 12, 8, 0.16)';
+            const sx = mirror ? (x + w - 13) : x;
+            ctx.fillRect(sx, y, 13, h);
           }
+          if (eaveShadow) {
+            ctx.fillStyle = 'rgba(20, 12, 8, 0.24)';
+            ctx.fillRect(x, y, w, 6);
+          }
+          // Corner trim boards & baseboard
+          ctx.fillStyle = '#241a14';
+          ctx.fillRect(x, y, 6, h);
+          ctx.fillRect(x + w - 6, y, 6, h);
+          ctx.fillRect(x, y + h - 5, w, 5);
           ctx.fillStyle = trimCol;
-          ctx.strokeStyle = '#2b241b';
-          ctx.lineWidth = 1.1;
-          ctx.fillRect(wx, wy, 5, wh);
-          ctx.strokeRect(wx, wy, 5, wh);
-          ctx.fillRect(wx + ww - 5, wy, 5, wh);
-          ctx.strokeRect(wx + ww - 5, wy, 5, wh);
-          ctx.fillRect(wx, wy + wh - 4, ww, 4);
-          ctx.strokeRect(wx, wy + wh - 4, ww, 4);
+          ctx.fillRect(x + 1, y + 1, 4, h - 2);
+          ctx.fillRect(x + w - 5, y + 1, 4, h - 2);
+          ctx.fillRect(x + 1, y + h - 4, w - 2, 3);
         };
 
         const rwY = hy + 0.92 * S;
         const rwH = deckY - rwY + 3;
-        drawWall(wingX - (mirror ? 0 : 2), rwY, wingW + 2, rwH, true);
+        drawWall(wingX - (mirror ? 0 : 2), rwY, wingW + 2, rwH, true, true);
 
         const lwY = hy + 1.32 * S;
         const lwH = deckY - lwY + 8;
-        drawWall(gableX, lwY, gableW, lwH, false);
+        drawWall(gableX, lwY, gableW, lwH, false, true);
 
-        // Window Helper
+        // Window Helper (Warm Glowing Amber Panes, Dark Outlines & Lush Flower Boxes)
         const drawWin = (wx, wy, ww, wh, flowerBox = false) => {
+          const x = Math.round(wx), y = Math.round(wy), w = Math.round(ww), h = Math.round(wh);
+          ctx.fillStyle = '#20140e';
+          ctx.fillRect(x - 3, y - 3, w + 6, 4);
+          ctx.fillRect(x - 2, y, w + 4, h + 3);
           ctx.fillStyle = trimCol;
-          ctx.strokeStyle = '#2b241b';
-          ctx.lineWidth = 1.1;
-          ctx.fillRect(wx - 2.5, wy - 3, ww + 5, 3);
-          ctx.strokeRect(wx - 2.5, wy - 3, ww + 5, 3);
-          ctx.fillRect(wx - 1.5, wy, ww + 3, wh + 1.5);
-          ctx.strokeRect(wx - 1.5, wy, ww + 3, wh + 1.5);
+          ctx.fillRect(x - 2, y - 2, w + 4, 2);
+          ctx.fillRect(x - 1, y, w + 2, h + 1);
 
-          ctx.fillStyle = glowWindows ? '#38bdf8' : '#2c3540';
-          ctx.fillRect(wx + 1, wy + 1, ww - 2, wh - 2);
-          ctx.strokeRect(wx + 1, wy + 1, ww - 2, wh - 2);
+          // Inner window recess
+          ctx.fillStyle = '#2a1a10';
+          ctx.fillRect(x, y, w, h);
+          ctx.fillStyle = glowWindows ? '#f59e0b' : '#334155';
+          ctx.fillRect(x + 1, y + 1, w - 2, h - 2);
+          if (glowWindows) {
+            ctx.fillStyle = '#ffcf54';
+            ctx.fillRect(x + 2, y + 2, w - 4, h - 4);
+            ctx.fillStyle = '#fff3b0';
+            ctx.fillRect(x + 2, y + 2, w - 4, Math.floor((h - 4) * 0.48));
+          } else {
+            ctx.fillStyle = '#607894';
+            ctx.fillRect(x + 2, y + 2, 3, h - 5);
+          }
 
+          // Window mullions
+          ctx.fillStyle = '#20140e';
+          ctx.fillRect(Math.round(x + w / 2 - 1), y, 2, h);
+          ctx.fillRect(x, Math.round(y + h * 0.44), w, 2);
           ctx.fillStyle = trimCol;
-          ctx.fillRect(wx + ww / 2 - 0.7, wy + 1, 1.4, wh - 2);
-          ctx.fillRect(wx + 1, wy + wh * 0.34, ww - 2, 1.2);
-          ctx.fillRect(wx + 1, wy + wh * 0.67, ww - 2, 1.2);
+          ctx.fillRect(Math.round(x + w / 2), y + 1, 1, h - 2);
 
           if (flowerBox) {
-            ctx.fillStyle = '#d8cfb8';
-            ctx.fillRect(wx - 3, wy + wh + 1, ww + 6, 5.5);
-            ctx.strokeRect(wx - 3, wy + wh + 1, ww + 6, 5.5);
+            ctx.fillStyle = '#20140e';
+            ctx.fillRect(x - 4, y + h, w + 8, 7);
+            ctx.fillStyle = '#7c4d26';
+            ctx.fillRect(x - 3, y + h + 1, w + 6, 5);
+            ctx.fillStyle = '#a46c3a';
+            ctx.fillRect(x - 3, y + h + 1, w + 6, 2);
             for (let f = 0; f < 3; f++) {
-              const fx = wx + 2 + f * ((ww - 4) / 2);
-              const fy = wy + wh + 1;
-              ctx.fillStyle = '#2d6a1e';
-              ctx.beginPath(); ctx.arc(fx, fy, 3.0, 0, Math.PI * 2); ctx.fill();
-              ctx.fillStyle = mirror ? '#fbbf24' : '#ffffff';
-              ctx.beginPath(); ctx.arc(fx, fy - 0.8, 1.2, 0, Math.PI * 2); ctx.fill();
+              const fx = Math.round(x + 1 + f * ((w - 2) / 2));
+              const fy = y + h;
+              ctx.fillStyle = '#1c4814';
+              ctx.fillRect(fx - 3, fy - 3, 6, 4);
+              ctx.fillStyle = '#388624';
+              ctx.fillRect(fx - 2, fy - 2, 4, 3);
+              ctx.fillStyle = f === 0 ? '#f43f5e' : (f === 1 ? '#fde047' : '#60a5fa');
+              ctx.fillRect(fx - 1, fy - 4, 2, 2);
             }
           }
         };
 
         const drawSconce = (sx, sy) => {
-          ctx.fillStyle = '#3b2f22';
-          ctx.fillRect(sx - 1.2, sy, 2.4, 5.5);
+          const x = Math.round(sx), y = Math.round(sy);
+          ctx.fillStyle = '#241812';
+          ctx.fillRect(x - 2, y - 1, 4, 7);
           ctx.fillStyle = '#fde047';
-          ctx.beginPath(); ctx.arc(sx, sy + 2, 2.0, 0, Math.PI * 2); ctx.fill();
+          ctx.fillRect(x - 1, y + 1, 2, 3);
         };
 
         drawWin(wingX + 9, rwY + 9, 16, 21, false);
@@ -10631,106 +11669,120 @@
         drawSconce(gableX + gableW - 8, lwY + 18);
 
         // Front Door & Welcome Mat
-        const doorW = 23;
+        const doorW = 24;
         const doorH = 34;
-        const doorX = gableX + gableW / 2 - doorW / 2;
-        const doorY = lwY + 8;
+        const doorX = Math.round(gableX + gableW / 2 - doorW / 2);
+        const doorY = Math.round(lwY + 8);
 
+        ctx.fillStyle = '#20140e';
+        ctx.fillRect(doorX - 4, doorY - 5, doorW + 8, doorH + 5);
         ctx.fillStyle = trimCol;
-        ctx.strokeStyle = '#2b251d';
-        ctx.lineWidth = 1.2;
-        ctx.fillRect(doorX - 3, doorY - 5, doorW + 6, doorH + 5);
-        ctx.strokeRect(doorX - 3, doorY - 5, doorW + 6, doorH + 5);
-
-        ctx.fillStyle = '#4a463f';
+        ctx.fillRect(doorX - 3, doorY - 4, doorW + 6, doorH + 4);
+        ctx.fillStyle = '#20140e';
+        ctx.fillRect(doorX - 1, doorY - 1, doorW + 2, doorH + 1);
+        ctx.fillStyle = '#4a5568';
         ctx.fillRect(doorX, doorY, doorW, doorH);
-        ctx.strokeRect(doorX, doorY, doorW, doorH);
-        ctx.fillStyle = '#b5ab96';
-        ctx.fillRect(doorX, doorY + 19, doorW, 2.5);
-        ctx.strokeRect(doorX, doorY + 19, doorW, 2.5);
+        // Door recessed panels + warm upper glass pane
+        ctx.fillStyle = '#334155';
+        ctx.fillRect(doorX + 3, doorY + 14, doorW - 6, 16);
+        ctx.fillStyle = glowWindows ? '#fbbf24' : '#64748b';
+        ctx.fillRect(doorX + 5, doorY + 4, doorW - 10, 7);
+        ctx.fillStyle = '#e2c078';
+        ctx.fillRect(doorX + doorW - 5, doorY + 18, 2, 3);
 
+        // Welcome mat
+        ctx.fillStyle = '#20140e';
+        ctx.fillRect(doorX - 5, doorY + doorH + 1, doorW + 10, 9);
         ctx.fillStyle = doorMatCol;
-        ctx.beginPath();
-        ctx.roundRect(doorX - 5, doorY + doorH + 1.5, doorW + 10, 10, 5);
-        ctx.fill();
-        ctx.strokeStyle = '#1b2e1a';
-        ctx.lineWidth = 1.1;
-        ctx.stroke();
+        ctx.fillRect(doorX - 4, doorY + doorH + 2, doorW + 8, 7);
 
         // Patio Furniture
-        const tbW = 38, tbH = 19;
-        const tbX = wingX + wingW / 2 - tbW / 2;
-        const tbY = deckY + 9;
+        const tbW = 36, tbH = 18;
+        const tbX = Math.round(wingX + wingW / 2 - tbW / 2);
+        const tbY = Math.round(deckY + 9);
 
         const drawMiniChair = (cx, cy) => {
+          ctx.fillStyle = '#20140e';
+          ctx.fillRect(Math.round(cx) - 1, Math.round(cy) - 1, 12, 11);
           ctx.fillStyle = '#cfc5b0';
-          ctx.strokeStyle = '#2b241b';
-          ctx.lineWidth = 1.1;
-          ctx.fillRect(cx, cy, 10, 9.5);
-          ctx.strokeRect(cx, cy, 10, 9.5);
+          ctx.fillRect(Math.round(cx), Math.round(cy), 10, 9);
         };
-        drawMiniChair(tbX + 4, tbY - 6.5);
-        drawMiniChair(tbX + tbW - 14, tbY - 6.5);
+        drawMiniChair(tbX + 4, tbY - 6);
+        drawMiniChair(tbX + tbW - 14, tbY - 6);
 
         ctx.fillStyle = 'rgba(0,0,0,0.28)';
         ctx.fillRect(tbX + 2, tbY + 3, tbW, tbH);
+        ctx.fillStyle = '#20140e';
+        ctx.fillRect(tbX - 1, tbY - 1, tbW + 2, tbH + 2);
         ctx.fillStyle = '#dfd6c3';
-        ctx.strokeStyle = '#2b241b';
         ctx.fillRect(tbX, tbY, tbW, tbH);
-        ctx.strokeRect(tbX, tbY, tbW, tbH);
 
-        drawMiniChair(tbX + 4, tbY + tbH - 2.5);
-        drawMiniChair(tbX + tbW - 14, tbY + tbH - 2.5);
+        drawMiniChair(tbX + 4, tbY + tbH - 2);
+        drawMiniChair(tbX + tbW - 14, tbY + tbH - 2);
 
-        // Shingled Roofs
+        // Varied Staggered Pixel Roof Shingles Helper
         const drawShingles = (rx, ry, rw, rh) => {
-          const rGrad = ctx.createLinearGradient(rx, ry, rx, ry + rh);
-          rGrad.addColorStop(0, roofDark);
-          rGrad.addColorStop(0.5, roofMid);
-          rGrad.addColorStop(1, roofLight);
-          ctx.fillStyle = rGrad;
-          ctx.fillRect(rx, ry, rw, rh);
+          const x = Math.round(rx), y = Math.round(ry), w = Math.round(rw), h = Math.round(rh);
+          ctx.fillStyle = '#181410';
+          ctx.fillRect(x - 1, y - 1, w + 2, h + 2);
+          ctx.fillStyle = roofMid;
+          ctx.fillRect(x, y, w, h);
 
-          ctx.strokeStyle = 'rgba(10, 20, 12, 0.45)';
-          ctx.lineWidth = 1;
-          for (let sy = ry + 6.5; sy < ry + rh; sy += 6.5) {
-            ctx.beginPath(); ctx.moveTo(rx, sy); ctx.lineTo(rx + rw, sy); ctx.stroke();
-            const shift = ((Math.round(sy - ry)) % 13 === 0) ? 0 : 5;
-            for (let sx = rx + shift; sx < rx + rw; sx += 10) {
-              ctx.beginPath(); ctx.moveTo(sx, sy - 6.5); ctx.lineTo(sx, sy); ctx.stroke();
+          const tileH = 6;
+          const tileW = 10;
+          const shades = [roofDark, roofMid, roofLight, roofMid, roofDark];
+          for (let row = 0, sy = y; sy < y + h - 2; sy += tileH, row++) {
+            const offset = (row % 2) * 5;
+            const rowH = Math.min(tileH - 1, y + h - sy);
+            for (let col = -1, sx = x - offset; sx < x + w; sx += tileW, col++) {
+              const drawX = Math.max(x, sx);
+              const drawW = Math.min(sx + tileW - 1, x + w) - drawX;
+              if (drawW <= 0) continue;
+              const toneIdx = Math.abs(row * 7 + col * 13) % shades.length;
+              ctx.fillStyle = shades[toneIdx];
+              ctx.fillRect(drawX, sy, drawW, rowH);
+              // Top course ridge highlight near roof peak
+              if (row === 0) {
+                ctx.fillStyle = roofLight;
+                ctx.fillRect(drawX, sy, drawW, 2);
+              }
+            }
+            // Horizontal dark shingle course shadow
+            if (sy + tileH - 1 < y + h) {
+              ctx.fillStyle = '#1a1612';
+              ctx.fillRect(x, sy + tileH - 1, w, 1);
             }
           }
-          ctx.strokeStyle = '#142018';
-          ctx.lineWidth = 1.4;
-          ctx.strokeRect(rx, ry, rw, rh);
+          // Vertical shingle mortar dividers
+          ctx.fillStyle = 'rgba(18, 14, 12, 0.55)';
+          for (let row = 0, sy = y; sy < y + h - 2; sy += tileH, row++) {
+            const offset = (row % 2) * 5;
+            for (let sx = x + tileW - offset; sx < x + w; sx += tileW) {
+              ctx.fillRect(sx - 1, sy, 1, Math.min(tileH - 1, y + h - sy));
+            }
+          }
         };
 
-        const drawScallops = (sx, sy, sw) => {
+        const drawEaveTrim = (sx, sy, sw) => {
+          const x = Math.round(sx), y = Math.round(sy), w = Math.round(sw);
+          ctx.fillStyle = '#1c1410';
+          ctx.fillRect(x - 1, y - 1, w + 2, 5);
           ctx.fillStyle = trimCol;
-          ctx.strokeStyle = '#2b241b';
-          ctx.lineWidth = 1;
-          ctx.fillRect(sx, sy, sw, 3);
-          ctx.strokeRect(sx, sy, sw, 3);
-          for (let x = sx + 3.5; x < sx + sw - 2.5; x += 6) {
-            ctx.beginPath();
-            ctx.arc(x, sy + 3, 2.0, 0, Math.PI);
-            ctx.fill();
-            ctx.stroke();
-          }
+          ctx.fillRect(x, y, w, 3);
         };
 
         const wingRoofX = mirror ? (wingX - 5) : (wingX - 6);
-        drawShingles(wingRoofX, hy, wingW + 11, rwY - hy + 2.5);
-        drawScallops(wingRoofX, rwY + 1, wingW + 11);
+        drawShingles(wingRoofX, hy, wingW + 11, rwY - hy + 2);
+        drawEaveTrim(wingRoofX, rwY + 1, wingW + 11);
 
         const porchRoofY = hy + 0.86 * S;
-        drawShingles(gableX + 2.5, porchRoofY, gableW - 5, lwY - porchRoofY + 4);
-        drawScallops(gableX + 2.5, lwY + 1, gableW - 5);
+        drawShingles(gableX + 2, porchRoofY, gableW - 4, lwY - porchRoofY + 4);
+        drawEaveTrim(gableX + 2, lwY + 1, gableW - 4);
 
-        // Front Gable Attic Triangle
-        const peakX = gableX + gableW / 2;
-        const peakY = hy - 2;
-        const baseY = porchRoofY + 11;
+        // Front Gable Attic Triangle & Warm Glowing Attic Window
+        const peakX = Math.round(gableX + gableW / 2);
+        const peakY = Math.round(hy - 2);
+        const baseY = Math.round(porchRoofY + 11);
 
         ctx.save();
         ctx.beginPath();
@@ -10740,327 +11792,676 @@
         ctx.closePath();
         ctx.clip();
 
-        drawWall(gableX + 3, peakY + 7, gableW - 6, baseY - peakY, false);
-        drawWin(peakX - 15, peakY + 21, 13, 21, false);
-        drawWin(peakX + 2, peakY + 21, 13, 21, false);
+        drawWall(gableX + 3, peakY + 7, gableW - 6, baseY - peakY, false, false);
+        drawWin(peakX - 11, peakY + 23, 22, 16, false);
         ctx.restore();
 
-        // Overhanging Roof Slopes
-        ctx.fillStyle = roofMid;
-        ctx.strokeStyle = '#142018';
-        ctx.lineWidth = 1.4;
+        // Clipped Shingled Overhanging Gable Roof Slopes
+        ctx.save();
         ctx.beginPath();
         ctx.moveTo(gableX - 8, hy);
         ctx.lineTo(peakX, hy);
         ctx.lineTo(peakX, peakY + 11);
         ctx.lineTo(gableX - 8, baseY + 11);
         ctx.closePath();
-        ctx.fill(); ctx.stroke();
-
-        ctx.beginPath();
         ctx.moveTo(peakX, hy);
         ctx.lineTo(gableX + gableW + 8, hy);
         ctx.lineTo(gableX + gableW + 8, baseY + 11);
         ctx.lineTo(peakX, peakY + 11);
         ctx.closePath();
-        ctx.fill(); ctx.stroke();
+        ctx.clip();
+        drawShingles(gableX - 8, hy, gableW + 16, baseY + 12 - hy);
+        ctx.restore();
+
+        // Dark outline + Cream Bargeboard Trim on Gable Roof
+        ctx.strokeStyle = '#181410';
+        ctx.lineWidth = 4.6;
+        ctx.beginPath();
+        ctx.moveTo(gableX - 8, baseY + 11);
+        ctx.lineTo(peakX, peakY + 10);
+        ctx.lineTo(gableX + gableW + 8, baseY + 11);
+        ctx.stroke();
 
         ctx.strokeStyle = trimCol;
-        ctx.lineWidth = 3.0;
+        ctx.lineWidth = 2.6;
         ctx.beginPath();
         ctx.moveTo(gableX - 7, baseY + 10);
         ctx.lineTo(peakX, peakY + 10);
         ctx.lineTo(gableX + gableW + 7, baseY + 10);
         ctx.stroke();
 
-        // Columns & Porch Stairs
-        const stairL = doorX - 7;
-        const stairR = doorX + doorW + 7;
+        // Front Porch Baluster Railings (with dark under-rail shadow)
+        const railDrawY = Math.round(railY - 5);
+        const stairL = Math.round(doorX - 7);
+        const stairR = Math.round(doorX + doorW + 7);
+        const drawRailingSegment = (rx1, rx2) => {
+          if (rx2 - rx1 < 8) return;
+          ctx.fillStyle = '#20140c';
+          ctx.fillRect(rx1, railDrawY, rx2 - rx1, 3);
+          ctx.fillStyle = '#9c6638';
+          ctx.fillRect(rx1 + 1, railDrawY + 1, rx2 - rx1 - 2, 2);
+          for (let bx = rx1 + 4; bx < rx2 - 3; bx += 6) {
+            ctx.fillStyle = '#20140c';
+            ctx.fillRect(bx - 1, railDrawY + 3, 4, 8);
+            ctx.fillStyle = '#784c28';
+            ctx.fillRect(bx, railDrawY + 3, 2, 7);
+          }
+          ctx.fillStyle = '#20140c';
+          ctx.fillRect(rx1 - 1, railDrawY - 2, 5, 13);
+          ctx.fillRect(rx2 - 4, railDrawY - 2, 5, 13);
+          ctx.fillStyle = '#b07846';
+          ctx.fillRect(rx1, railDrawY - 1, 3, 11);
+          ctx.fillRect(rx2 - 3, railDrawY - 1, 3, 11);
+        };
+        drawRailingSegment(Math.round(hx) + 2, stairL - 1);
+        drawRailingSegment(stairR + 1, Math.round(hx + hw) - 2);
+
+        // Wide Wooden Porch Stairs
         const stW = stairR - stairL;
-        const stY = brickY - 7;
+        const stY = Math.round(brickY - 7);
         const stH = 22;
 
+        ctx.fillStyle = '#20140c';
+        ctx.fillRect(stairL - 2, stY - 1, stW + 4, stH + 2);
         ctx.fillStyle = '#5c3c22';
-        ctx.strokeStyle = '#26170c';
-        ctx.lineWidth = 1.2;
         ctx.fillRect(stairL, stY, stW, stH);
-        ctx.strokeRect(stairL, stY, stW, stH);
         for (let s = 0; s < 3; s++) {
-          const stepY = stY + 7 + s * 5;
-          ctx.fillStyle = s % 2 === 0 ? '#784f2d' : '#634024';
-          ctx.fillRect(stairL + 1.5, stepY, stW - 3, 5);
-          ctx.strokeRect(stairL + 1.5, stepY, stW - 3, 5);
+          const stepY = stY + 4 + s * 6;
+          ctx.fillStyle = '#20140c';
+          ctx.fillRect(stairL + 2, stepY - 1, stW - 4, 6);
+          ctx.fillStyle = s % 2 === 0 ? '#926036' : '#7a4f2c';
+          ctx.fillRect(stairL + 3, stepY, stW - 6, 4);
         }
       };
 
-      // 4A. PLAYER'S COTTAGE (North-West Plot)
+      // 4A. PLAYER'S COTTAGE (North-West Plot — Warm Golden-Cedar Roof & Cream Siding)
       drawNeighborhoodCottage({
         hx: 1.1 * S,
         hy: 0.45 * S,
         hw: 3.2 * S,
+        spriteKey: 'cottage_player',
         mirror: false,
-        roofDark: '#1e3818',
-        roofMid: '#2b4f21',
-        roofLight: '#39662c',
-        sidingCol: '#c9be9f',
-        sidingLineCol: '#9c9276',
-        trimCol: '#e3dcc8',
+        roofDark: '#6e421e',
+        roofMid: '#985c2c',
+        roofLight: '#b8763e',
+        sidingCol: '#d6c298',
+        sidingLineCol: '#b0986c',
+        trimCol: '#efe4cc',
         doorMatCol: '#388e26',
-        hasChimney: false,
-        glowWindows: this.tvOn
+        hasChimney: true,
+        glowWindows: true
       });
 
-      // 4B. FRIEND'S (MIKE/AJ) COTTAGE (North-Central Plot)
+      // 4B. FRIEND'S (MIKE/AJ) COTTAGE (North-Central Plot — Slate Blue-Grey Roof)
       drawNeighborhoodCottage({
         hx: 7.7 * S,
         hy: 0.45 * S,
         hw: 3.2 * S,
+        spriteKey: 'cottage_friend',
         mirror: true,
-        roofDark: '#1e293b',
-        roofMid: '#334155',
-        roofLight: '#475569',
-        sidingCol: '#b8c4b0',
-        sidingLineCol: '#8b9982',
-        trimCol: '#f1ede4',
+        roofDark: '#2a3848',
+        roofMid: '#44586e',
+        roofLight: '#5c7490',
+        sidingCol: '#cdd6c8',
+        sidingLineCol: '#9aa894',
+        trimCol: '#f2eee4',
         doorMatCol: '#b45309',
         hasChimney: true,
-        glowWindows: false
+        glowWindows: true
       });
 
-      // 4C. PLUTO'S COTTAGE (Middle-West Plot)
+      // 4C. PLUTO'S COTTAGE (Middle-West Plot — Plum-Violet Roof & Cream-Lavender Siding)
       drawNeighborhoodCottage({
         hx: 1.1 * S,
         hy: 5.95 * S,
         hw: 3.2 * S,
+        spriteKey: 'cottage_pluto',
         mirror: false,
-        roofDark: '#1e1b4b',
-        roofMid: '#2e1065',
-        roofLight: '#3b0764',
-        sidingCol: '#cbd5e1',
-        sidingLineCol: '#94a3b8',
-        trimCol: '#f8fafc',
+        roofDark: '#36264a',
+        roofMid: '#563e72',
+        roofLight: '#725690',
+        sidingCol: '#dad4e4',
+        sidingLineCol: '#a89eb8',
+        trimCol: '#f8f5fc',
         doorMatCol: '#7c3aed',
-        hasChimney: false,
+        hasChimney: true,
         glowWindows: true
       });
 
-      // 4D. MIDDLE BLOCK TOWN GREEN / PARK PLAZA & FOUNTAIN
+      // 4D. MIDDLE BLOCK TOWN GREEN / PARK PLAZA & 2-TIERED PIXEL FOUNTAIN
       const drawMiddleTownBlock = () => {
-        const bx = 6.95 * S;
-        const by = 6.05 * S;
-        const bw = 2.75 * S;
-        const bh = 2.95 * S;
+        const bx = Math.round(6.95 * S);
+        const by = Math.round(6.05 * S);
+        const bw = Math.round(2.75 * S);
+        const bh = Math.round(2.95 * S);
+        const cx = Math.round(bx + bw / 2);
+        const cy = Math.round(by + bh / 2) - 4;
 
-        ctx.fillStyle = '#1e4d14';
+        if (this.isImgReady('fountain')) {
+          ctx.fillStyle = this.grassPattern || '#54aa36';
+          ctx.fillRect(bx, by, bw, bh);
+          drawStoneCurbH(bx, by - 4, bw, 'top');
+          drawStoneCurbH(bx, by + bh - 6, bw, 'bot');
+          drawStoneCurbV(bx - 5, by, bh, 'left');
+          drawStoneCurbV(bx + bw - 3, by, bh, 'right');
+
+          const fImg = this.owSprites.fountain;
+          const fh = 96;
+          const fw = Math.round(fh * (fImg.width / fImg.height));
+          ctx.drawImage(fImg, Math.round(cx - fw / 2), Math.round(cy - fh / 2 - 4), fw, fh);
+
+          // Live cascading turquoise water shimmer & splashing sparks on fountain bowls
+          const animT = this.tick || 0;
+          const ripple = (animT * 0.14) % 8;
+          ctx.strokeStyle = 'rgba(205, 248, 255, 0.58)';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.ellipse(cx, cy + 16, 16 + ripple * 1.4, 8 + ripple * 0.65, 0, 0, Math.PI * 2);
+          ctx.stroke();
+          const dropY = (animT * 0.25) % 4;
+          ctx.fillStyle = '#e0f8ff';
+          ctx.fillRect(cx - 2, cy - 42 - dropY, 4, 4);
+          ctx.fillRect(cx - 10, cy - 12 + dropY, 2, 4);
+          ctx.fillRect(cx + 8, cy - 12 + dropY, 2, 4);
+
+          if (this.isImgReady('bench_left') && this.isImgReady('bench_right') && this.isImgReady('bench_front')) {
+            ctx.drawImage(this.owSprites.bench_left, bx + 6, cy - 16, 20, 42);
+            ctx.drawImage(this.owSprites.bench_right, bx + bw - 26, cy - 16, 20, 42);
+            ctx.drawImage(this.owSprites.bench_front, cx - 24, by + bh - 34, 48, 24);
+          }
+          if (this.isImgReady('tree_green')) {
+            const tg = this.owSprites.tree_green;
+            queueExtSprite(tg, bx - 6, by - 30, 70, 78, by - 30 + 78 * 0.96);
+            queueExtSprite(tg, bx + bw - 74, by - 34, 78, 86, by - 34 + 86 * 0.96);
+          }
+          if (this.isImgReady('bush_flower') && this.isImgReady('bush_round')) {
+            queueExtSprite(this.owSprites.bush_flower, bx + 4, by + bh - 38, 38, 30, by + bh - 38 + 30 * 0.95);
+            queueExtSprite(this.owSprites.bush_round, bx + bw - 42, by + bh - 38, 38, 30, by + bh - 38 + 30 * 0.95);
+          }
+          return;
+        }
+
+        // Organic Turf-Lip Grass Island (pre-load fallback)
+        ctx.fillStyle = '#244616';
+        ctx.beginPath();
+        ctx.roundRect(bx - 2, by - 2, bw + 4, bh + 4, 14);
+        ctx.fill();
+
+        ctx.fillStyle = '#3c7622';
         ctx.beginPath();
         ctx.roundRect(bx, by, bw, bh, 12);
         ctx.fill();
-        ctx.strokeStyle = '#12300b';
-        ctx.lineWidth = 2;
-        ctx.stroke();
 
-        ctx.fillStyle = '#2d6a1e';
+        ctx.fillStyle = this.grassPattern || '#54aa36';
         ctx.beginPath();
-        ctx.roundRect(bx + 6, by + 6, bw - 12, bh - 12, 9);
+        ctx.roundRect(bx + 3, by + 3, bw - 6, bh - 6, 10);
         ctx.fill();
 
-        const cx = bx + bw / 2;
-        const cy = by + bh / 2;
-        ctx.fillStyle = '#9ca3af';
+        // Organic top & bottom turf overhangs matching the surrounding grass beds
+        for (let tx = bx + 10; tx < bx + bw - 10; tx += 14) {
+          const wob = ((tx * 7) % 5) - 2;
+          ctx.fillStyle = '#244616';
+          ctx.fillRect(tx - 1, by - 4 + wob, 12, 5);
+          ctx.fillRect(tx - 1, by + bh - 1 + wob, 12, 5);
+          ctx.fillStyle = '#4c9c2c';
+          ctx.fillRect(tx, by - 2 + wob, 10, 4);
+          ctx.fillRect(tx, by + bh - 3 + wob, 10, 4);
+        }
+
+        // Subtle flower/clover accents on the park lawn
+        const patchDots = [
+          [bx + 26, by + 64, '#fef08a'],
+          [bx + bw - 28, by + 60, '#ffffff'],
+          [bx + 36, by + bh - 38, '#fef08a'],
+          [bx + bw - 42, by + bh - 36, '#fca5a5'],
+        ];
+        patchDots.forEach(([fx, fy, col]) => {
+          ctx.fillStyle = '#2e621c';
+          ctx.fillRect(fx - 3, fy - 1, 6, 3);
+          ctx.fillStyle = col;
+          ctx.fillRect(fx - 1, fy - 2, 2, 2);
+        });
+
+        // Ground shadow under 2-Tiered Carved Stone Fountain
+        ctx.fillStyle = 'rgba(18, 36, 12, 0.34)';
         ctx.beginPath();
-        ctx.arc(cx, cy, 38, 0, Math.PI * 2);
+        ctx.ellipse(cx, cy + 16, 40, 26, 0, 0, Math.PI * 2);
         ctx.fill();
-        ctx.strokeStyle = '#475569';
-        ctx.lineWidth = 2;
+
+        // Lower Outer Stone Rim (3/4 perspective oval)
+        ctx.fillStyle = '#1c222a';
+        ctx.beginPath();
+        ctx.ellipse(cx, cy + 10, 38, 25, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#68707c';
+        ctx.beginPath();
+        ctx.ellipse(cx, cy + 10, 36, 23, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#9aa4b2';
+        ctx.beginPath();
+        ctx.ellipse(cx, cy + 6, 36, 22, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#c8d0dc';
+        ctx.beginPath();
+        ctx.ellipse(cx, cy + 4, 34, 20, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Sparkling Turquoise Lower Pool Water
+        ctx.fillStyle = '#1468a0';
+        ctx.beginPath();
+        ctx.ellipse(cx, cy + 5, 29, 16, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#2ca4dc';
+        ctx.beginPath();
+        ctx.ellipse(cx, cy + 5, 26, 13.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Animated pool ripples
+        const animTick = this.tick || 0;
+        const rippleR = ((animTick * 0.14) % 9);
+        ctx.strokeStyle = 'rgba(186, 244, 255, 0.72)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.ellipse(cx, cy + 5, 13 + rippleR * 1.4, 7 + rippleR * 0.65, 0, 0, Math.PI * 2);
         ctx.stroke();
 
-        ctx.fillStyle = '#64748b';
-        ctx.beginPath();
-        ctx.arc(cx, cy, 22, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = '#1e293b';
-        ctx.lineWidth = 1.8;
-        ctx.stroke();
+        // Carved Stone Pedestal Column
+        ctx.fillStyle = '#1c222a';
+        ctx.fillRect(cx - 8, cy - 12, 16, 20);
+        ctx.fillStyle = '#707886';
+        ctx.fillRect(cx - 6, cy - 11, 12, 18);
+        ctx.fillStyle = '#aeb6c4';
+        ctx.fillRect(cx - 4, cy - 11, 5, 18);
 
-        const ripple = 14 + Math.sin(this.tick * 0.08) * 2;
-        ctx.fillStyle = '#38bdf8';
+        // Upper Carved Stone Bowl
+        ctx.fillStyle = '#1c222a';
         ctx.beginPath();
-        ctx.arc(cx, cy, 17, 0, Math.PI * 2);
+        ctx.ellipse(cx, cy - 13, 21, 12, 0, 0, Math.PI * 2);
         ctx.fill();
-        ctx.strokeStyle = '#bae6fd';
-        ctx.lineWidth = 1.3;
+        ctx.fillStyle = '#747c8a';
         ctx.beginPath();
-        ctx.arc(cx, cy, ripple * 0.65, 0, Math.PI * 2);
-        ctx.stroke();
+        ctx.ellipse(cx, cy - 12, 19, 10.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#c8d0dc';
+        ctx.beginPath();
+        ctx.ellipse(cx, cy - 15, 19, 9.5, 0, 0, Math.PI * 2);
+        ctx.fill();
 
-        const benchX = cx - 20;
-        const benchY = by + bh - 18;
-        ctx.fillStyle = '#784f2d';
-        ctx.strokeStyle = '#26170c';
-        ctx.lineWidth = 1.3;
-        ctx.fillRect(benchX, benchY, 40, 10);
-        ctx.strokeRect(benchX, benchY, 40, 10);
-        ctx.fillStyle = '#5c3c22';
-        ctx.fillRect(benchX, benchY - 4, 40, 4);
-        ctx.strokeRect(benchX, benchY - 4, 40, 4);
+        // Turquoise Water in Upper Bowl
+        ctx.fillStyle = '#2090cc';
+        ctx.beginPath();
+        ctx.ellipse(cx, cy - 15, 15, 7, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#68d8ff';
+        ctx.beginPath();
+        ctx.ellipse(cx, cy - 15.5, 12, 5, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Center Top Spout & Plume Spray
+        ctx.fillStyle = '#1c222a';
+        ctx.fillRect(cx - 4, cy - 26, 8, 12);
+        ctx.fillStyle = '#b4bcc8';
+        ctx.fillRect(cx - 3, cy - 25, 6, 10);
+
+        const sprayShift = Math.floor((animTick * 0.18) % 3);
+        // Falling curtains of blue-white water curving gently from upper bowl into lower pool
+        const streamOffsets = [-12, -5, 5, 12];
+        streamOffsets.forEach((ox, idx) => {
+          const jitter = ((sprayShift + idx) % 2);
+          const archShift = ox < 0 ? -1 : 1;
+          ctx.fillStyle = '#40b8f0';
+          ctx.fillRect(cx + ox - 2, cy - 11 + jitter, 3, 6);
+          ctx.fillRect(cx + ox + archShift - 2, cy - 5 + jitter, 3, 10);
+          ctx.fillStyle = '#d4f6ff';
+          ctx.fillRect(cx + ox - 1, cy - 10 + jitter, 2, 5);
+          ctx.fillRect(cx + ox + archShift - 1, cy - 4 + jitter, 2, 8);
+          // Splash foam at waterline
+          ctx.fillStyle = '#e0f8ff';
+          ctx.fillRect(cx + ox + archShift - 3, cy + 4 + jitter, 5, 3);
+        });
+
+        // Symmetrical Top Fountain Spray Plume Arches
+        ctx.fillStyle = '#60d0ff';
+        ctx.fillRect(cx - 2, cy - 35 - sprayShift, 4, 11);
+        ctx.fillRect(cx - 6, cy - 34 + sprayShift, 4, 3);
+        ctx.fillRect(cx + 2, cy - 34 + sprayShift, 4, 3);
+        ctx.fillRect(cx - 8, cy - 31 + sprayShift, 3, 6);
+        ctx.fillRect(cx + 5, cy - 31 + sprayShift, 3, 6);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(cx - 1, cy - 37 - sprayShift, 2, 5);
+        ctx.fillRect(cx - 5, cy - 34 + sprayShift, 2, 2);
+        ctx.fillRect(cx + 3, cy - 34 + sprayShift, 2, 2);
+
+        // Detailed Slatted Wooden Park Benches (Left side-view, Right side-view, Bottom front-view)
+        const drawParkBenchSide = (px, py, faceRight = true) => {
+          const x = Math.round(px), y = Math.round(py);
+          // Ground shadow
+          ctx.fillStyle = 'rgba(18, 36, 12, 0.30)';
+          ctx.fillRect(x, y + 3, 14, 28);
+          // Dark outline
+          ctx.fillStyle = '#20140c';
+          ctx.fillRect(x - 1, y - 1, 14, 30);
+          // Backrest plank on outer side
+          const backX = faceRight ? x : (x + 8);
+          const seatX = faceRight ? (x + 4) : x;
+          ctx.fillStyle = '#683e1e';
+          ctx.fillRect(backX, y, 4, 28);
+          ctx.fillStyle = '#9c6434';
+          ctx.fillRect(seatX, y + 1, 8, 26);
+          // Seat plank highlight slats
+          ctx.fillStyle = '#b47842';
+          ctx.fillRect(seatX + 1, y + 3, 6, 22);
+          // Armrest caps (top & bottom)
+          ctx.fillStyle = '#20140c';
+          ctx.fillRect(x - 1, y - 1, 14, 4);
+          ctx.fillRect(x - 1, y + 25, 14, 4);
+          ctx.fillStyle = '#b87e4a';
+          ctx.fillRect(x, y, 12, 2);
+          ctx.fillRect(x, y + 26, 12, 2);
+        };
+        drawParkBenchSide(bx + 12, cy - 11, true);
+        drawParkBenchSide(bx + bw - 24, cy - 11, false);
+
+        const drawParkBenchFront = (px, py) => {
+          const x = Math.round(px), y = Math.round(py);
+          ctx.fillStyle = 'rgba(18, 36, 12, 0.30)';
+          ctx.fillRect(x + 1, y + 11, 38, 6);
+          // Dark silhouette
+          ctx.fillStyle = '#20140c';
+          ctx.fillRect(x - 1, y - 5, 40, 19);
+          // Legs
+          ctx.fillStyle = '#523018';
+          ctx.fillRect(x + 2, y + 9, 4, 5);
+          ctx.fillRect(x + 32, y + 9, 4, 5);
+          // Seat & twin slatted backrest boards
+          ctx.fillStyle = '#784824';
+          ctx.fillRect(x + 1, y - 4, 36, 3);
+          ctx.fillRect(x + 1, y, 36, 3);
+          ctx.fillStyle = '#a46a38';
+          ctx.fillRect(x, y + 4, 38, 5);
+          ctx.fillStyle = '#c0844c';
+          ctx.fillRect(x + 1, y + 4, 36, 2);
+          // Side arm posts
+          ctx.fillStyle = '#4e2e16';
+          ctx.fillRect(x + 1, y - 4, 3, 13);
+          ctx.fillRect(x + 34, y - 4, 3, 13);
+        };
+        drawParkBenchFront(cx - 19, by + bh - 24);
+
+        // Asymmetric Lush Pixel Trees at upper corners + Leafy Corner Bushes at lower corners
+        if (this.treeGreenStamp) {
+          queueExtSprite(this.treeGreenStamp, bx + 2, by - 18, 56, 66, by - 18 + 66 * 0.96);
+          queueExtSprite(this.treeGreenStamp, bx + bw - 68, by - 22, 66, 76, by - 22 + 76 * 0.96);
+        }
+        if (this.bushStamp) {
+          queueExtSprite(this.bushStamp, bx + 4, by + bh - 34, 34, 26, by + bh - 34 + 26 * 0.95);
+          queueExtSprite(this.bushStamp, bx + bw - 40, by + bh - 34, 34, 26, by + bh - 34 + 26 * 0.95);
+        }
       };
       drawMiddleTownBlock();
 
-      // 5. MYTHOS CARD SHOP (Middle-East Plot)
+      // 5. LEO'S CARD SHOP (Middle-East Plot — Timber Roof, Hanging Banner & Glowing Display Windows)
       const drawMythosCardShop = () => {
-        const sx = 11.8 * S;
-        const sy = 5.95 * S;
-        const sw = 3.55 * S;
-        const sh = 3.30 * S;
-        const roofH = 1.35 * S;
+        const sx = Math.round(11.8 * S);
+        const sy = Math.round(5.95 * S);
+        const sw = Math.round(3.55 * S);
+        const sh = Math.round(3.30 * S);
+        const roofH = Math.round(1.24 * S);
         const wallY = sy + roofH;
-        const wallH = sh - roofH - 18;
-        const deckY = sy + sh - 18;
+        const wallH = sh - roofH - 16;
+        const deckY = sy + sh - 16;
         const nearShop = this.nearInteractable?.id === 'card_shop';
 
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.38)';
-        ctx.fillRect(sx - 6, sy + roofH + 10, sw + 14, sh - roofH);
-
-        ctx.fillStyle = '#5c3c22';
-        ctx.strokeStyle = '#26170c';
-        ctx.lineWidth = 1.5;
-        ctx.fillRect(sx, deckY, sw, 18);
-        ctx.strokeRect(sx, deckY, sw, 18);
-
-        ctx.fillStyle = '#d6c7ac';
-        ctx.fillRect(sx + 2, wallY, sw - 4, wallH);
-        ctx.fillStyle = '#b3a286';
-        for (let wy = wallY + 5; wy < wallY + wallH - 4; wy += 5) {
-          ctx.fillRect(sx + 2, wy, sw - 4, 1);
+        if (this.isImgReady('card_shop')) {
+          const shopImg = this.owSprites.card_shop;
+          const dw = Math.round(sw + 18);
+          const dh = Math.round(dw * (shopImg.height / shopImg.width));
+          const dx = Math.round(sx - 9);
+          const dy = Math.round(sy + sh - dh - 4);
+          ctx.fillStyle = 'rgba(18, 12, 8, 0.34)';
+          ctx.beginPath();
+          ctx.ellipse(dx + dw / 2, dy + dh - 6, Math.round(dw * 0.48), 11, 0, 0, Math.PI * 2);
+          ctx.fill();
+          if (this.isImgReady('shop_banner')) {
+            const bImg = this.owSprites.shop_banner;
+            const bh = 64;
+            const bw = Math.round(bh * (bImg.width / bImg.height));
+            ctx.drawImage(bImg, Math.round(dx - bw - 4), Math.round(wallY + 2), bw, bh);
+          }
+          ctx.drawImage(shopImg, dx, dy, dw, dh);
+          if (nearShop) {
+            ctx.save();
+            ctx.globalCompositeOperation = 'lighter';
+            const glowAlpha = 0.14 + Math.sin((this.tick || 0) * 0.12) * 0.06;
+            ctx.fillStyle = `rgba(56, 189, 248, ${glowAlpha})`;
+            ctx.fillRect(dx + 16, dy + Math.round(dh * 0.56), Math.round(dw * 0.25), Math.round(dh * 0.30));
+            ctx.fillRect(dx + dw - Math.round(dw * 0.36), dy + Math.round(dh * 0.56), Math.round(dw * 0.25), Math.round(dh * 0.30));
+            ctx.restore();
+          }
+          return;
         }
 
-        ctx.fillStyle = '#5c3c22';
-        ctx.strokeStyle = '#24160b';
-        ctx.lineWidth = 1.4;
-        [sx, sx + 1.25 * S, sx + 2.35 * S, sx + sw - 8].forEach(px => {
-          ctx.fillRect(px, wallY, 8, wallH);
-          ctx.strokeRect(px, wallY, 8, wallH);
-        });
-        ctx.fillRect(sx, wallY, sw, 8);
-        ctx.strokeRect(sx, wallY, sw, 8);
+        // Ground shadow
+        ctx.fillStyle = 'rgba(18, 12, 8, 0.34)';
+        ctx.fillRect(sx - 4, wallY + 8, sw + 10, sh - roofH + 2);
 
-        const doorW = 36;
+        // Hanging Purple & Gold Card Shop Banner Post on Left
+        const bPostX = sx - 24;
+        const bPostY = wallY + 8;
+        ctx.fillStyle = 'rgba(18, 12, 8, 0.28)';
+        ctx.beginPath();
+        ctx.ellipse(bPostX + 9, bPostY + 42, 10, 4, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#20140c';
+        ctx.fillRect(bPostX + 6, bPostY - 4, 6, 48);
+        ctx.fillRect(bPostX - 2, bPostY - 2, 22, 5);
+        ctx.fillStyle = '#845430';
+        ctx.fillRect(bPostX + 7, bPostY - 3, 4, 46);
+        ctx.fillRect(bPostX - 1, bPostY - 1, 20, 3);
+        // Purple & gold vertical banner
+        ctx.fillStyle = '#1c1228';
+        ctx.fillRect(bPostX + 1, bPostY + 3, 16, 26);
+        ctx.fillStyle = '#5c3c8c';
+        ctx.fillRect(bPostX + 2, bPostY + 4, 14, 23);
+        ctx.fillStyle = '#d8a038';
+        ctx.fillRect(bPostX + 3, bPostY + 5, 12, 2);
+        ctx.fillRect(bPostX + 3, bPostY + 23, 12, 2);
+        ctx.fillRect(bPostX + 7, bPostY + 10, 4, 9);
+        ctx.fillStyle = '#fef08a';
+        ctx.fillRect(bPostX + 8, bPostY + 12, 2, 5);
+
+        // Stone foundation & entry platform
+        ctx.fillStyle = '#20140e';
+        ctx.fillRect(sx - 1, deckY, sw + 2, 17);
+        ctx.fillStyle = '#786c60';
+        ctx.fillRect(sx + 1, deckY + 2, sw - 2, 13);
+        ctx.fillStyle = '#9a8e80';
+        ctx.fillRect(sx + 2, deckY + 2, sw - 4, 4);
+
+        // Warm Dark Timber & Plank Facade
+        ctx.fillStyle = '#20140e';
+        ctx.fillRect(sx - 1, wallY - 1, sw + 2, wallH + 2);
+        ctx.fillStyle = '#68422a';
+        ctx.fillRect(sx + 1, wallY, sw - 2, wallH);
+        ctx.fillStyle = '#7e5236';
+        for (let wy = wallY + 4; wy < wallY + wallH - 4; wy += 6) {
+          ctx.fillRect(sx + 4, wy, sw - 8, 4);
+        }
+        // Eave shadow on shop walls
+        ctx.fillStyle = 'rgba(18, 10, 6, 0.30)';
+        ctx.fillRect(sx + 1, wallY, sw - 2, 7);
+
+        // Vertical timber corner & divider beams
+        [sx, sx + 1.18 * S, sx + 2.36 * S, sx + sw - 8].forEach(px => {
+          const x = Math.round(px);
+          ctx.fillStyle = '#20140e';
+          ctx.fillRect(x, wallY, 8, wallH);
+          ctx.fillStyle = '#4c2e1c';
+          ctx.fillRect(x + 2, wallY + 2, 4, wallH - 4);
+        });
+
+        // Two Glowing Blue-Violet & Magenta Shop Display Windows (cards & diagonal glass gleams!)
+        const drawDisplayWindow = (wx, wy, ww, wh) => {
+          const x = Math.round(wx), y = Math.round(wy), w = Math.round(ww), h = Math.round(wh);
+          ctx.fillStyle = '#18100c';
+          ctx.fillRect(x - 3, y - 3, w + 6, h + 6);
+          ctx.fillStyle = '#b8844c';
+          ctx.fillRect(x - 1, y - 1, w + 2, h + 2);
+          // Deep blue-indigo interior glass glow
+          ctx.fillStyle = nearShop ? '#243c88' : '#182458';
+          ctx.fillRect(x + 1, y + 1, w - 2, h - 2);
+          ctx.fillStyle = '#2e52a8';
+          ctx.fillRect(x + 2, y + 2, w - 4, Math.floor(h * 0.55));
+          // Glowing cyan & magenta pixel card displays inside glass
+          ctx.fillStyle = '#38bdf8';
+          ctx.fillRect(x + 5, y + 6, 12, 16);
+          ctx.fillStyle = '#bae6fd';
+          ctx.fillRect(x + 7, y + 8, 8, 9);
+          ctx.fillStyle = '#a855f7';
+          ctx.fillRect(x + 20, y + 8, 12, 16);
+          ctx.fillStyle = '#f9a8d4';
+          ctx.fillRect(x + 22, y + 10, 8, 9);
+          ctx.fillStyle = '#eab308';
+          ctx.fillRect(x + 35, y + 7, 11, 15);
+          ctx.fillStyle = '#fef08a';
+          ctx.fillRect(x + 37, y + 9, 7, 8);
+          // Diagonal crisp pixel glass reflection streaks & sparkles
+          ctx.fillStyle = 'rgba(200, 240, 255, 0.55)';
+          ctx.fillRect(x + 6, y + 4, 8, 2);
+          ctx.fillRect(x + 4, y + 6, 4, 2);
+          ctx.fillRect(x + w - 16, y + 5, 6, 2);
+          ctx.fillStyle = '#e0f2fe';
+          ctx.fillRect(x + 16, y + 4, 2, 2);
+          ctx.fillRect(x + w - 10, y + 10, 2, 2);
+        };
+        drawDisplayWindow(sx + 16, wallY + 13, 52, 34);
+        drawDisplayWindow(sx + sw - 68, wallY + 13, 52, 34);
+
+        // Double Timber & Glowing Glass Shop Doors
+        const doorW = 40;
         const doorH = 44;
-        const doorX = 13.65 * S - doorW / 2;
+        const doorX = Math.round(13.58 * S - doorW / 2);
         const doorY = deckY - doorH + 2;
 
-        ctx.fillStyle = '#f1ede4';
+        ctx.fillStyle = '#1c120c';
         ctx.fillRect(doorX - 4, doorY - 4, doorW + 8, doorH + 4);
-        ctx.strokeRect(doorX - 4, doorY - 4, doorW + 8, doorH + 4);
-
-        ctx.fillStyle = '#3b2414';
+        ctx.fillStyle = '#c89650';
+        ctx.fillRect(doorX - 2, doorY - 2, doorW + 4, doorH + 2);
+        ctx.fillStyle = '#382012';
         ctx.fillRect(doorX, doorY, doorW, doorH);
-        ctx.strokeRect(doorX, doorY, doorW, doorH);
 
-        ctx.fillStyle = nearShop ? '#7dd3fc' : '#38bdf8';
-        ctx.fillRect(doorX + 3, doorY + 4, 13, 22);
-        ctx.fillRect(doorX + 20, doorY + 4, 13, 22);
-        ctx.strokeStyle = '#1e293b';
-        ctx.strokeRect(doorX + 3, doorY + 4, 13, 22);
-        ctx.strokeRect(doorX + 20, doorY + 4, 13, 22);
-
+        ctx.fillStyle = nearShop ? '#7dd3fc' : '#3870c0';
+        ctx.fillRect(doorX + 4, doorY + 4, 14, 24);
+        ctx.fillRect(doorX + 22, doorY + 4, 14, 24);
+        ctx.fillStyle = '#e0f2fe';
+        ctx.fillRect(doorX + 6, doorY + 6, 4, 10);
+        ctx.fillRect(doorX + 24, doorY + 6, 4, 10);
         ctx.fillStyle = '#fbbf24';
-        ctx.fillRect(doorX + 14.5, doorY + 28, 2, 6);
-        ctx.fillRect(doorX + 19.5, doorY + 28, 2, 6);
+        ctx.fillRect(doorX + 16, doorY + 30, 2, 6);
+        ctx.fillRect(doorX + 22, doorY + 30, 2, 6);
 
-        ctx.fillStyle = '#6d28d9';
-        ctx.beginPath();
-        ctx.roundRect(doorX - 6, deckY + 3, doorW + 12, 12, 5);
-        ctx.fill();
-        ctx.strokeStyle = '#fbbf24';
-        ctx.lineWidth = 1.4;
-        ctx.stroke();
+        // Stone front step
+        ctx.fillStyle = '#20140e';
+        ctx.fillRect(doorX - 8, deckY + 10, doorW + 16, 12);
+        ctx.fillStyle = '#b4a490';
+        ctx.fillRect(doorX - 6, deckY + 12, doorW + 12, 8);
 
-        ctx.fillStyle = '#784f2d';
-        ctx.strokeStyle = '#26170c';
-        ctx.fillRect(doorX - 8, deckY + 14, doorW + 16, 12);
-        ctx.strokeRect(doorX - 8, deckY + 14, doorW + 16, 12);
+        // Stepped Slate-Brown Timber Roof + Fascia Cornice
+        ctx.fillStyle = '#181414';
+        ctx.fillRect(sx - 7, sy - 1, sw + 14, roofH + 5);
+        ctx.fillStyle = '#3c3234';
+        ctx.fillRect(sx - 5, sy + 1, sw + 10, roofH - 8);
+        ctx.fillStyle = '#56484c';
+        for (let ry = sy + 6; ry < sy + roofH - 12; ry += 7) {
+          ctx.fillRect(sx - 4, ry, sw + 8, 4);
+        }
+        // Horizontal wooden fascia beam supporting sign
+        ctx.fillStyle = '#20140c';
+        ctx.fillRect(sx - 7, wallY - 12, sw + 14, 13);
+        ctx.fillStyle = '#9c6838';
+        ctx.fillRect(sx - 5, wallY - 10, sw + 10, 9);
+        ctx.fillStyle = '#be864e';
+        ctx.fillRect(sx - 5, wallY - 10, sw + 10, 3);
 
-        const rGrad = ctx.createLinearGradient(sx, sy, sx, wallY);
-        rGrad.addColorStop(0, '#1e1b4b');
-        rGrad.addColorStop(0.55, '#312e81');
-        rGrad.addColorStop(1, '#3730a3');
-        ctx.fillStyle = rGrad;
-        ctx.fillRect(sx - 4, sy, sw + 8, roofH);
+        // Gold-Trimmed "LEO'S CARD SHOP" Signboard
+        const signW = 198;
+        const signH = 34;
+        const signX = Math.round(sx + sw / 2 - signW / 2);
+        const signY = wallY - 36;
 
-        const signW = 190;
-        const signH = 30;
-        const signX = sx + sw / 2 - signW / 2;
-        const signY = wallY - 34;
-
-        ctx.fillStyle = '#0f172a';
-        ctx.beginPath();
-        ctx.roundRect(signX, signY, signW, signH, 6);
-        ctx.fill();
-        ctx.strokeStyle = nearShop ? '#38bdf8' : '#fbbf24';
-        ctx.lineWidth = 2.4;
-        ctx.stroke();
+        ctx.fillStyle = '#181214';
+        ctx.fillRect(signX - 2, signY - 2, signW + 4, signH + 4);
+        ctx.fillStyle = nearShop ? '#38bdf8' : '#d8a038';
+        ctx.fillRect(signX, signY, signW, signH);
+        ctx.fillStyle = '#1e161a';
+        ctx.fillRect(signX + 3, signY + 3, signW - 6, signH - 6);
 
         ctx.fillStyle = '#fef08a';
         ctx.font = 'bold 12px Cinzel, Georgia, serif';
         ctx.textAlign = 'center';
-        ctx.fillText("LEO'S CARD SHOP", signX + signW / 2 + 8, signY + 15);
-        ctx.fillStyle = '#38bdf8';
-        ctx.font = 'bold 8px Inter, sans-serif';
-        ctx.fillText('MYTHOS BOOSTER PACKS • DECKS', signX + signW / 2 + 8, signY + 25.5);
+        ctx.fillText("LEO'S CARD SHOP", signX + signW / 2, signY + 16);
+        ctx.fillStyle = '#7dd3fc';
+        ctx.font = 'bold 7.5px Inter, sans-serif';
+        ctx.fillText('MYTHOS BOOSTER PACKS • DECKS', signX + signW / 2, signY + 26.5);
       };
       drawMythosCardShop();
 
       // =======================================================================
       // 4E, 4F, 4G: THE 3 NEW SOUTH BLOCK HOUSES
       // =======================================================================
-      // NOVA'S COTTAGE (South-West Plot)
+      // NOVA'S COTTAGE (South-West Plot — Slate-Blue Shingles & Warm Cream-Stone Siding)
       drawNeighborhoodCottage({
         hx: 1.1 * S,
         hy: 11.20 * S,
         hw: 3.2 * S,
+        spriteKey: 'cottage_nova',
         mirror: false,
-        roofDark: '#0f172a',
-        roofMid: '#1e293b',
-        roofLight: '#334155',
-        sidingCol: '#94a3b8',
-        sidingLineCol: '#64748b',
-        trimCol: '#f8fafc',
+        roofDark: '#263448',
+        roofMid: '#3a4e68',
+        roofLight: '#506884',
+        sidingCol: '#cdd0d4',
+        sidingLineCol: '#9ea4ac',
+        trimCol: '#f4f0e8',
         doorMatCol: '#7c3aed',
         hasChimney: false,
         glowWindows: true
       });
 
-      // SILAS'S COTTAGE (South-Center Plot)
+      // SILAS'S COTTAGE (South-Center Plot — Lush Forest-Green Shingles & Warm Wheat Siding)
       drawNeighborhoodCottage({
         hx: 6.85 * S,
         hy: 11.20 * S,
         hw: 3.0 * S,
+        spriteKey: 'cottage_silas',
         mirror: true,
-        roofDark: '#14532d',
-        roofMid: '#166534',
-        roofLight: '#15803d',
-        sidingCol: '#d97706',
-        sidingLineCol: '#b45309',
-        trimCol: '#fef3c7',
+        roofDark: '#1c4c24',
+        roofMid: '#2a6e34',
+        roofLight: '#3c8e46',
+        sidingCol: '#d8be8a',
+        sidingLineCol: '#b49864',
+        trimCol: '#f6eedc',
         doorMatCol: '#9a3412',
         hasChimney: true,
-        glowWindows: false
+        glowWindows: true
       });
 
-      // MAYA'S COTTAGE (South-East Plot)
+      // MAYA'S COTTAGE (South-East Plot — Terracotta/Plum Shingles & Soft Warm Sage-Cream Siding)
       drawNeighborhoodCottage({
         hx: 11.8 * S,
         hy: 11.20 * S,
         hw: 3.2 * S,
+        spriteKey: 'cottage_maya',
         mirror: false,
-        roofDark: '#4c0519',
-        roofMid: '#881337',
-        roofLight: '#9f1239',
-        sidingCol: '#a7f3d0',
-        sidingLineCol: '#6ee7b7',
-        trimCol: '#fffbeb',
-        doorMatCol: '#059669',
+        roofDark: '#642428',
+        roofMid: '#8c3438',
+        roofLight: '#ac4a4c',
+        sidingCol: '#d4dac6',
+        sidingLineCol: '#a6b096',
+        trimCol: '#f5efe0',
+        doorMatCol: '#2e7d32',
         hasChimney: false,
         glowWindows: true
       });
@@ -11089,22 +12490,41 @@
         ctx.fillRect(mx + 7.5, my - 32, 5, 3.8);
         ctx.strokeRect(mx + 7.5, my - 32, 5, 3.8);
 
-        ctx.font = 'bold 9.5px Inter, sans-serif';
-        const plateW = Math.max(66, ctx.measureText(labelText).width + 12);
+        ctx.font = 'bold 9.5px "Georgia", serif';
+        const cleanLabel = labelText.replace(/^📬\s*/, '');
+        const plateW = Math.max(76, ctx.measureText(cleanLabel).width + 24);
         const plateX = mx - plateW / 2;
-        const plateY = my - 48;
+        const plateY = my - 49;
 
-        ctx.fillStyle = isHighlighted ? '#fef08a' : '#f8fafc';
+        ctx.fillStyle = 'rgba(20, 12, 6, 0.36)';
         ctx.beginPath();
-        ctx.roundRect(plateX, plateY, plateW, 14, 3.5);
+        ctx.roundRect(plateX, plateY + 1.5, plateW, 15, 4);
         ctx.fill();
-        ctx.strokeStyle = isHighlighted ? '#d97706' : '#1e293b';
-        ctx.lineWidth = isHighlighted ? 1.8 : 1.2;
+
+        ctx.fillStyle = isHighlighted ? '#fef08a' : '#f6ebd4';
+        ctx.beginPath();
+        ctx.roundRect(plateX, plateY, plateW, 15, 4);
+        ctx.fill();
+        ctx.fillStyle = isHighlighted ? '#fef9c3' : '#fffaf0';
+        ctx.fillRect(plateX + 3, plateY + 1, plateW - 6, 2);
+        ctx.strokeStyle = isHighlighted ? '#b45309' : '#3a2416';
+        ctx.lineWidth = isHighlighted ? 1.8 : 1.4;
+        ctx.beginPath();
+        ctx.roundRect(plateX, plateY, plateW, 15, 4);
         ctx.stroke();
 
-        ctx.fillStyle = '#0f172a';
+        // House color crest pip on left of parchment plaque (like picture!)
+        ctx.fillStyle = boxColor;
+        ctx.beginPath();
+        ctx.arc(plateX + 7, plateY + 7.5, 3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#26170c';
+        ctx.lineWidth = 0.8;
+        ctx.stroke();
+
+        ctx.fillStyle = '#26170c';
         ctx.textAlign = 'center';
-        ctx.fillText(labelText, mx, plateY + 10.2);
+        ctx.fillText(cleanLabel, mx + 4, plateY + 11);
       };
 
       const nearPlayerMb = this.nearInteractable?.id === 'player_mailbox';
@@ -11121,8 +12541,17 @@
       drawMailbox(6.45 * S, 14.50 * S, `📬 Silas's House`, '#15803d', nearSilasMb);
       drawMailbox(11.35 * S, 14.50 * S, `📬 Maya's House`, '#f43f5e', nearMayaMb);
 
-      // 7. DIRECTIONAL SIGNPOSTS
+      // 7. DIRECTIONAL SIGNPOSTS (Sprites/Overworld/signpost.png)
       const drawSignpost = (sgX, sgY) => {
+        if (this.isImgReady('signpost')) {
+          const img = this.owSprites.signpost;
+          const sh = 34;
+          const sw = Math.round(sh * (img.width / img.height));
+          ctx.fillStyle = 'rgba(18, 12, 8, 0.28)';
+          ctx.beginPath(); ctx.ellipse(sgX, sgY + 2, 10, 4, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.drawImage(img, Math.round(sgX - sw / 2), Math.round(sgY - sh + 4), sw, sh);
+          return;
+        }
         ctx.fillStyle = 'rgba(0,0,0,0.35)';
         ctx.beginPath(); ctx.ellipse(sgX, sgY + 2.5, 9, 4, 0, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = '#5c3c22';
@@ -11138,7 +12567,6 @@
         ctx.strokeRect(sgX - 12, sgY - 14, 24, 7);
       };
       drawSignpost(7.35 * S, 5.45 * S);
-      drawSignpost(10.65 * S, 9.25 * S);
       drawSignpost(7.35 * S, 14.50 * S);
 
       // 8. Cut Wooden Tree Stump in Player's Front Yard & Neighborhood Flowers
@@ -11164,7 +12592,7 @@
         { x: 8.75 * S, y: 3.75 * S, c: '#38bdf8' },
         { x: 9.15 * S, y: 3.90 * S, c: '#38bdf8' },
         { x: 5.0 * S, y: 6.2 * S, c: '#eab308' },
-        { x: 5.0 * S, y: 8.6 * S, c: '#a855f7' },
+        { x: 3.95 * S, y: 8.55 * S, c: '#a855f7' },
         { x: 11.4 * S, y: 6.8 * S, c: '#f43f5e' },
         { x: 11.4 * S, y: 8.7 * S, c: '#eab308' },
         { x: 5.0 * S, y: 11.8 * S, c: '#38bdf8' },
@@ -11174,47 +12602,51 @@
         { x: 15.2 * S, y: 12.2 * S, c: '#38bdf8' }
       ];
       flowerSpots.forEach(fl => {
-        ctx.fillStyle = '#1e4d14';
-        ctx.beginPath(); ctx.arc(fl.x, fl.y, 5.5, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#3b8528';
-        ctx.beginPath(); ctx.arc(fl.x, fl.y - 1, 3.8, 0, Math.PI * 2); ctx.fill();
+        const fx = Math.round(fl.x), fy = Math.round(fl.y);
+        ctx.fillStyle = '#24581b';
+        ctx.fillRect(fx - 4, fy - 2, 8, 6);
+        ctx.fillStyle = '#4ea034';
+        ctx.fillRect(fx - 3, fy - 3, 6, 4);
         ctx.fillStyle = fl.c;
-        ctx.fillRect(fl.x - 1.2, fl.y - 5, 2.5, 4);
-        ctx.fillRect(fl.x - 3, fl.y - 3, 1.8, 3);
-        ctx.fillRect(fl.x + 1.2, fl.y - 3.5, 1.8, 3);
+        ctx.fillRect(fx - 3, fy - 4, 2, 2);
+        ctx.fillRect(fx + 1, fy - 3, 2, 2);
+        ctx.fillRect(fx - 1, fy - 1, 2, 2);
       });
 
-      // 9. Lush Forest Trees & Shrubs framing the Full 3-Block Neighborhood
+      // 9. Lush High-Detail Illustrated Trees & Shrubs framing the Full 3-Block Neighborhood
       const drawLushBushCluster = (bx, by, r, isAutumn = false) => {
-        ctx.fillStyle = 'rgba(0,0,0,0.32)';
-        ctx.beginPath(); ctx.ellipse(bx, by + r * 0.65, r * 1.1, r * 0.5, 0, 0, Math.PI * 2); ctx.fill();
+        const x = Math.round(bx), y = Math.round(by);
+        const isTree = r >= 20;
+        const tKey = isTree
+          ? (isAutumn ? (r <= 21 ? 'tree_autumn_small' : 'tree_autumn') : 'tree_green')
+          : (((Math.round(bx + by)) % 2 === 0) ? 'bush_flower' : 'bush_round');
+        const fallbackStamp = isTree ? (isAutumn ? this.treeAutumnStamp : this.treeGreenStamp) : this.bushStamp;
 
-        const darkCol = isAutumn ? '#6e320e' : '#183d11';
-        const midCol = isAutumn ? '#9a4714' : '#29631c';
-        const hiCol = isAutumn ? '#c25e1d' : '#438f2d';
-
-        ctx.fillStyle = darkCol;
-        ctx.beginPath();
-        ctx.arc(bx, by, r, 0, Math.PI * 2);
-        ctx.arc(bx - r * 0.65, by + r * 0.2, r * 0.78, 0, Math.PI * 2);
-        ctx.arc(bx + r * 0.65, by + r * 0.2, r * 0.78, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = '#0d2108';
-        ctx.lineWidth = 1.4;
-        ctx.stroke();
-
-        ctx.fillStyle = midCol;
-        ctx.beginPath();
-        ctx.arc(bx, by - r * 0.15, r * 0.82, 0, Math.PI * 2);
-        ctx.arc(bx - r * 0.55, by + r * 0.1, r * 0.62, 0, Math.PI * 2);
-        ctx.arc(bx + r * 0.55, by + r * 0.1, r * 0.62, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.fillStyle = hiCol;
-        ctx.beginPath();
-        ctx.arc(bx - r * 0.2, by - r * 0.35, r * 0.48, 0, Math.PI * 2);
-        ctx.arc(bx + r * 0.35, by - r * 0.1, r * 0.38, 0, Math.PI * 2);
-        ctx.fill();
+        if (this.isImgReady(tKey)) {
+          const img = this.owSprites[tKey];
+          const dh = isTree ? Math.round(108 * (r / 23)) : Math.round(r * 1.9);
+          const dw = Math.round(dh * (img.width / img.height));
+          const dy = Math.round(y - dh * (isTree ? 0.68 : 0.56));
+          ctx.fillStyle = isTree ? 'rgba(18, 28, 10, 0.26)' : 'rgba(18, 28, 10, 0.24)';
+          ctx.beginPath();
+          ctx.ellipse(
+            x,
+            y + Math.round(dh * (isTree ? 0.24 : 0.28)),
+            Math.round(dw * (isTree ? 0.34 : 0.42)),
+            Math.round(dh * (isTree ? 0.09 : 0.16)),
+            0, 0, Math.PI * 2
+          );
+          ctx.fill();
+          queueExtSprite(img, x - dw / 2, dy, dw, dh, dy + dh * (isTree ? 0.96 : 0.95));
+          return;
+        }
+        if (fallbackStamp) {
+          const scale = r / 23;
+          const dw = isTree ? Math.round(86 * scale) : Math.round(r * 2.1);
+          const dh = isTree ? Math.round(98 * scale) : Math.round(r * 1.54);
+          const dy = Math.round(y - dh * (isTree ? 0.68 : 0.56));
+          queueExtSprite(fallbackStamp, x - dw / 2, dy, dw, dh, dy + dh * (isTree ? 0.96 : 0.95));
+        }
       };
 
       // Trees in North Block (framing cottages; shifted away from Oakhaven Lane north road extension)
@@ -11227,13 +12659,13 @@
       drawLushBushCluster(12.3 * S, 2.3 * S, 22, true);
       drawLushBushCluster(13.1 * S, 3.2 * S, 20, false);
 
-      // Trees in Middle Block (framing Pluto's House)
+      // Trees in Middle Block (framing Pluto's House; kept clear of Pluto's mailbox label)
       drawLushBushCluster(0.45 * S, 6.2 * S, 22, false);
       drawLushBushCluster(0.50 * S, 8.2 * S, 22, true);
       drawLushBushCluster(2.2 * S, 5.55 * S, 18, false);
       drawLushBushCluster(3.8 * S, 5.55 * S, 18, true);
-      drawLushBushCluster(4.9 * S, 6.6 * S, 22, false);
-      drawLushBushCluster(5.0 * S, 8.2 * S, 20, false);
+      drawLushBushCluster(4.9 * S, 6.4 * S, 22, false);
+      drawLushBushCluster(4.95 * S, 7.28 * S, 19, false);
 
       // Trees in South Block (framing Nova, Silas, and Maya's houses)
       drawLushBushCluster(0.45 * S, 11.5 * S, 24, false);
@@ -11256,83 +12688,67 @@
       drawLushBushCluster(23.8 * S, 16.8 * S, 26, false);
 
       // South Edge Park Bench
-      const sBenchX = 7.35 * S - 20;
-      const sBenchY = 16.45 * S;
-      ctx.fillStyle = '#784f2d';
-      ctx.strokeStyle = '#26170c';
-      ctx.lineWidth = 1.3;
-      ctx.fillRect(sBenchX, sBenchY, 40, 10);
-      ctx.strokeRect(sBenchX, sBenchY, 40, 10);
-      ctx.fillStyle = '#5c3c22';
-      ctx.fillRect(sBenchX, sBenchY - 4, 40, 4);
-      ctx.strokeRect(sBenchX, sBenchY - 4, 40, 4);
+      const sBenchX = 7.35 * S - 22;
+      const sBenchY = 16.38 * S;
+      if (this.isImgReady('bench_front')) {
+        ctx.drawImage(this.owSprites.bench_front, Math.round(sBenchX), Math.round(sBenchY - 4), 46, 22);
+      } else {
+        ctx.fillStyle = '#784f2d';
+        ctx.strokeStyle = '#26170c';
+        ctx.lineWidth = 1.3;
+        ctx.fillRect(sBenchX, sBenchY, 40, 10);
+        ctx.strokeRect(sBenchX, sBenchY, 40, 10);
+        ctx.fillStyle = '#5c3c22';
+        ctx.fillRect(sBenchX, sBenchY - 4, 40, 4);
+        ctx.strokeRect(sBenchX, sBenchY - 4, 40, 4);
+      }
 
       // -----------------------------------------------------------------------
       // 10. CENTRAL PARK & COURTYARD OF PICNIC TABLES (East Expansion: x = 16.0..26.0)
       // -----------------------------------------------------------------------
       const parkStartX = 16.0 * S;
 
-      // Manicured park lawn stripes across Central Park
-      for (let px = parkStartX; px < EXT_W; px += 36) {
-        ctx.fillStyle = (Math.floor(px / 36) % 2 === 0) ? 'rgba(38, 107, 29, 0.28)' : 'rgba(45, 122, 34, 0.28)';
-        ctx.fillRect(px, 0, 36, EXT_H);
+      // Subtle manicured meadow lawn across East Park (keeping clear of roads & southern dirt avenue)
+      for (let px = parkStartX; px < EXT_W; px += 44) {
+        ctx.fillStyle = (Math.floor(px / 44) % 2 === 0) ? 'rgba(60, 148, 42, 0.07)' : 'rgba(42, 108, 28, 0.07)';
+        ctx.fillRect(px, 0, 44, road3Y - 4);
       }
 
-      // Grand Flagstone Promenade from Road into Courtyard
+      // Warm Flagstone Promenade from Road into Courtyard (seamless stone street with beveled top/bottom turf curbs)
       const promY = road2Y;
       const promH = road2H;
-      ctx.fillStyle = '#1e242d';
-      ctx.fillRect(parkStartX - 4, promY - 4, 2.5 * S + 8, promH + 8);
-      ctx.fillStyle = '#475569';
+      ctx.fillStyle = this.flagstonePattern || this.cobblePattern || '#988878';
       ctx.fillRect(parkStartX, promY, 2.5 * S, promH);
+      drawStoneCurbH(parkStartX, promY - 6, 2.5 * S, 'bot');
+      drawStoneCurbH(parkStartX, promY + promH, 2.5 * S, 'top');
 
-      // Flagstone paver grid on promenade
-      for (let fx = parkStartX + 6; fx < parkStartX + 2.5 * S - 4; fx += 18) {
-        for (let fy = promY + 6; fy < promY + promH - 4; fy += 16) {
-          ctx.fillStyle = (Math.floor((fx + fy) / 16) % 2 === 0) ? '#64748b' : '#475569';
-          ctx.fillRect(fx, fy, 15, 13);
-          ctx.strokeStyle = '#1e293b';
-          ctx.lineWidth = 1;
-          ctx.strokeRect(fx, fy, 15, 13);
-        }
-      }
+      // Courtyard Flagstone & Warm Earth Plaza (x = 18.2*S .. 24.2*S, y = 6.4*S .. 11.8*S)
+      const plazaX = Math.round(18.2 * S);
+      const plazaY = Math.round(6.4 * S);
+      const plazaW = Math.round(6.0 * S);
+      const plazaH = Math.round(5.4 * S);
 
-      // Courtyard Plaza Base Paving (x = 18.2*S .. 24.2*S, y = 6.4*S .. 11.8*S)
-      const plazaX = 18.2 * S;
-      const plazaY = 6.4 * S;
-      const plazaW = 6.0 * S;
-      const plazaH = 5.4 * S;
-
-      // Plaza Stone Curb & Pavers
-      ctx.fillStyle = '#1e242d';
+      // Organic dark-outlined turf & stone trim framing Courtyard
+      ctx.fillStyle = '#20140c';
       ctx.beginPath();
-      ctx.roundRect(plazaX - 6, plazaY - 6, plazaW + 12, plazaH + 12, 18);
+      ctx.roundRect(plazaX - 6, plazaY - 6, plazaW + 12, plazaH + 12, 16);
       ctx.fill();
 
-      ctx.fillStyle = '#94a3b8';
+      ctx.fillStyle = '#a08c78';
       ctx.beginPath();
-      ctx.roundRect(plazaX - 3, plazaY - 3, plazaW + 6, plazaH + 6, 15);
+      ctx.roundRect(plazaX - 3, plazaY - 3, plazaW + 6, plazaH + 6, 14);
       ctx.fill();
-      ctx.strokeStyle = '#334155';
-      ctx.lineWidth = 2;
-      ctx.stroke();
 
-      ctx.fillStyle = '#334155';
+      ctx.fillStyle = this.flagstonePattern || '#9a8c7c';
       ctx.beginPath();
       ctx.roundRect(plazaX, plazaY, plazaW, plazaH, 12);
       ctx.fill();
 
-      // Courtyard Octagonal / Grid Flagstone Pavers
-      for (let cx = plazaX + 6; cx < plazaX + plazaW - 8; cx += 22) {
-        for (let cy = plazaY + 6; cy < plazaY + plazaH - 8; cy += 20) {
-          const paverCol = (Math.floor(cx / 22) + Math.floor(cy / 20)) % 3;
-          ctx.fillStyle = paverCol === 0 ? '#64748b' : (paverCol === 1 ? '#475569' : '#526071');
-          ctx.fillRect(cx, cy, 19, 17);
-          ctx.strokeStyle = '#1e293b';
-          ctx.lineWidth = 1.1;
-          ctx.strokeRect(cx, cy, 19, 17);
-        }
-      }
+      // Subtle warm earth center medallion on courtyard
+      ctx.fillStyle = 'rgba(130, 96, 62, 0.22)';
+      ctx.beginPath();
+      ctx.roundRect(plazaX + 24, plazaY + 24, plazaW - 48, plazaH - 48, 10);
+      ctx.fill();
 
       // Boxwood Hedges and Flower Beds outlining Courtyard
       const drawHedge = (hx, hy, hw, hh) => {
@@ -11425,66 +12841,43 @@
       drawVictorianLamp(plazaX + 12, plazaY + plazaH - 12);
       drawVictorianLamp(plazaX + plazaW - 12, plazaY + plazaH - 12);
 
-      // Park Entrance Gate at x = 16.0*S
+      // Park Entrance Terracotta Planters at x = 16.0*S
       const gateTopY = road2Y - 16;
       const gateBotY = road2Y + road2H + 16;
-      // North & South Masonry Gate Pillars
-      const drawGatePillar = (gx, gy) => {
-        ctx.fillStyle = '#1e242d';
-        ctx.fillRect(gx - 2, gy - 2, 26, 38);
-        ctx.fillStyle = '#475569';
-        ctx.fillRect(gx, gy, 22, 34);
-        // Stone quoin blocks
-        ctx.fillStyle = '#64748b';
-        ctx.fillRect(gx + 2, gy + 3, 18, 7);
-        ctx.fillRect(gx + 2, gy + 14, 18, 7);
-        ctx.fillRect(gx + 2, gy + 25, 18, 7);
-        // Copper cap
-        ctx.fillStyle = '#059669';
-        ctx.beginPath();
-        ctx.moveTo(gx - 3, gy);
-        ctx.lineTo(gx + 11, gy - 8);
-        ctx.lineTo(gx + 25, gy);
-        ctx.closePath();
-        ctx.fill();
+      const drawGatePlanter = (gx, gy) => {
+        const x = Math.round(gx), y = Math.round(gy);
+        if (this.isImgReady('pot_large')) {
+          ctx.drawImage(this.owSprites.pot_large, x - 4, y - 4, 30, 34);
+        }
       };
-      drawGatePillar(parkStartX - 10, gateTopY - 26);
-      drawGatePillar(parkStartX - 10, gateBotY);
+      drawGatePlanter(parkStartX - 10, gateTopY - 26);
+      drawGatePlanter(parkStartX - 10, gateBotY + 2);
 
-      // Decorative Overhead Arch spanning into Central Park
-      ctx.strokeStyle = '#0f172a';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.arc(parkStartX + 1, road2Y + road2H / 2, (gateBotY - gateTopY + 16) / 2, -Math.PI / 2, Math.PI / 2, false);
-      ctx.stroke();
-
-      // Suspended Welcome Banner Sign
-      const archSignX = parkStartX + 6;
-      const archSignY = road2Y + road2H / 2 - 12;
-      ctx.fillStyle = '#78350f';
-      ctx.beginPath();
-      ctx.roundRect(archSignX, archSignY - 11, 168, 22, 4);
-      ctx.fill();
-      ctx.strokeStyle = '#f59e0b';
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
+      // Suspended Timber Welcome Banner Sign above North Gate Pillar (clear of PARK signpost)
+      const archSignX = parkStartX + 4;
+      const archSignY = gateTopY - 46;
+      ctx.fillStyle = '#20140c';
+      ctx.fillRect(archSignX - 2, archSignY - 12, 160, 22);
+      ctx.fillStyle = '#6c4424';
+      ctx.fillRect(archSignX, archSignY - 10, 156, 18);
+      ctx.fillStyle = '#c8964c';
+      ctx.fillRect(archSignX + 2, archSignY - 8, 152, 2);
       ctx.font = 'bold 9.5px Inter, sans-serif';
       ctx.fillStyle = '#fef08a';
       ctx.textAlign = 'center';
-      ctx.fillText('🌳 OAKHAVEN CENTRAL PARK 🌳', archSignX + 84, archSignY + 4);
+      ctx.fillText('OAKHAVEN CENTRAL PARK', archSignX + 78, archSignY + 3);
 
       // Welcome Signpost near gate
       const signX = 16.6 * S;
       const signY = 9.25 * S;
+      ctx.fillStyle = '#20140c';
+      ctx.fillRect(signX - 3, signY - 14, 6, 20);
       ctx.fillStyle = '#5c3c22';
-      ctx.fillRect(signX - 2.5, signY - 14, 5, 20);
-      ctx.fillStyle = '#784f2d';
-      ctx.beginPath();
-      ctx.roundRect(signX - 18, signY - 26, 36, 14, 2);
-      ctx.fill();
-      ctx.strokeStyle = '#26170c';
-      ctx.lineWidth = 1;
-      ctx.stroke();
+      ctx.fillRect(signX - 2, signY - 14, 4, 19);
+      ctx.fillStyle = '#20140c';
+      ctx.fillRect(signX - 19, signY - 27, 38, 16);
+      ctx.fillStyle = '#8c5a30';
+      ctx.fillRect(signX - 18, signY - 26, 36, 14);
       ctx.font = 'bold 7px sans-serif';
       ctx.fillStyle = '#fef08a';
       ctx.textAlign = 'center';
@@ -11498,78 +12891,125 @@
       drawLushBushCluster(25.0 * S, 3.2 * S, 22, false);
 
       // -----------------------------------------------------------------------
-      // CENTRAL WATER FOUNTAIN (x = 21.1*S, y = 9.0*S)
+      // CENTRAL PARK 2-TIERED OVERFLOWING STONE FOUNTAIN (x = 21.1*S, y = 9.0*S)
       // -----------------------------------------------------------------------
-      const ftx = 21.1 * S;
-      const fty = 9.0 * S;
+      const ftx = Math.round(21.1 * S);
+      const fty = Math.round(9.0 * S);
 
-      // Outer stone basin & coping
-      ctx.fillStyle = '#1e242d';
-      ctx.beginPath();
-      ctx.arc(ftx, fty, 48, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.fillStyle = '#94a3b8';
-      ctx.beginPath();
-      ctx.arc(ftx, fty, 45, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = '#334155';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-
-      // Fountain pool water
-      const fWaterGrad = ctx.createRadialGradient(ftx, fty, 4, ftx, fty, 38);
-      fWaterGrad.addColorStop(0, '#38bdf8');
-      fWaterGrad.addColorStop(0.5, '#0284c7');
-      fWaterGrad.addColorStop(1, '#0369a1');
-      ctx.fillStyle = fWaterGrad;
-      ctx.beginPath();
-      ctx.arc(ftx, fty, 38, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Concentric water ripples
-      const fRip = (this.tick * 0.08) % (Math.PI * 2);
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.arc(ftx, fty, 16 + Math.sin(fRip) * 6, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(ftx, fty, 28 + Math.cos(fRip) * 5, 0, Math.PI * 2);
-      ctx.stroke();
-
-      // Middle stone pedestal & tier
-      ctx.fillStyle = '#475569';
-      ctx.beginPath();
-      ctx.arc(ftx, fty, 22, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#cbd5e1';
-      ctx.beginPath();
-      ctx.arc(ftx, fty, 19, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = '#334155';
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-
-      // Top tiered spire
-      ctx.fillStyle = '#64748b';
-      ctx.beginPath();
-      ctx.arc(ftx, fty, 10, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Gushing Animated Water Plume & Sparkling Splashes
-      ctx.fillStyle = '#e0f2fe';
-      ctx.beginPath();
-      ctx.arc(ftx, fty - 5 + Math.sin(this.tick * 0.25) * 2, 5.5, 0, Math.PI * 2);
-      ctx.fill();
-      // Water spray particles
-      for (let sp = 0; sp < 6; sp++) {
-        const sAng = sp * (Math.PI / 3) + this.tick * 0.12;
-        const sDist = 10 + Math.sin(this.tick * 0.3 + sp) * 4;
-        ctx.fillStyle = 'rgba(224, 242, 254, 0.75)';
+      if (this.isImgReady('fountain')) {
+        const fImg = this.owSprites.fountain;
+        const fh = 122;
+        const fw = Math.round(fh * (fImg.width / fImg.height));
+        ctx.drawImage(fImg, Math.round(ftx - fw / 2), Math.round(fty - fh / 2 - 4), fw, fh);
+        const epRip = ((this.tick || 0) * 0.14) % 10;
+        ctx.strokeStyle = 'rgba(205, 248, 255, 0.58)';
+        ctx.lineWidth = 1.6;
         ctx.beginPath();
-        ctx.arc(ftx + Math.cos(sAng) * sDist, fty + Math.sin(sAng) * sDist, 2.2, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.ellipse(ftx, fty + 20, 18 + epRip * 1.4, 9 + epRip * 0.65, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        const epDrop = ((this.tick || 0) * 0.24) % 5;
+        ctx.fillStyle = '#e0f8ff';
+        ctx.fillRect(ftx - 2, fty - 52 - epDrop, 4, 5);
+        ctx.fillRect(ftx - 14, fty - 14 + epDrop, 3, 5);
+        ctx.fillRect(ftx + 11, fty - 14 + epDrop, 3, 5);
+      } else {
+      // Ground shadow
+      ctx.fillStyle = 'rgba(20, 14, 10, 0.30)';
+      ctx.beginPath();
+      ctx.ellipse(ftx, fty + 18, 48, 30, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Lower carved stone rim (3/4 perspective)
+      ctx.fillStyle = '#1c222a';
+      ctx.beginPath();
+      ctx.ellipse(ftx, fty + 11, 46, 29, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#68707c';
+      ctx.beginPath();
+      ctx.ellipse(ftx, fty + 11, 43, 27, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#9aa4b2';
+      ctx.beginPath();
+      ctx.ellipse(ftx, fty + 7, 43, 25, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#c8d0dc';
+      ctx.beginPath();
+      ctx.ellipse(ftx, fty + 4, 40, 23, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Sparkling turquoise water pool
+      ctx.fillStyle = '#1468a0';
+      ctx.beginPath();
+      ctx.ellipse(ftx, fty + 5, 34, 18, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#2ca4dc';
+      ctx.beginPath();
+      ctx.ellipse(ftx, fty + 5, 31, 15, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      const epRip = ((this.tick || 0) * 0.14) % 10;
+      ctx.strokeStyle = 'rgba(186, 244, 255, 0.72)';
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.ellipse(ftx, fty + 5, 16 + epRip * 1.4, 8 + epRip * 0.65, 0, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Pedestal + upper stone bowl + animated cascading water
+      ctx.fillStyle = '#1c222a';
+      ctx.fillRect(ftx - 9, fty - 14, 18, 22);
+      ctx.fillStyle = '#707886';
+      ctx.fillRect(ftx - 7, fty - 13, 14, 20);
+      ctx.fillStyle = '#aeb6c4';
+      ctx.fillRect(ftx - 5, fty - 13, 6, 20);
+
+      ctx.fillStyle = '#1c222a';
+      ctx.beginPath();
+      ctx.ellipse(ftx, fty - 16, 25, 14, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#747c8a';
+      ctx.beginPath();
+      ctx.ellipse(ftx, fty - 15, 23, 12, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#c8d0dc';
+      ctx.beginPath();
+      ctx.ellipse(ftx, fty - 18, 23, 11, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#2090cc';
+      ctx.beginPath();
+      ctx.ellipse(ftx, fty - 18, 18, 8, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#68d8ff';
+      ctx.beginPath();
+      ctx.ellipse(ftx, fty - 18.5, 14, 6, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#1c222a';
+      ctx.fillRect(ftx - 4, fty - 30, 8, 13);
+      ctx.fillStyle = '#b4bcc8';
+      ctx.fillRect(ftx - 3, fty - 29, 6, 11);
+
+      const epShift = Math.floor(((this.tick || 0) * 0.18) % 3);
+      [-15, -8, 0, 8, 15].forEach((ox, idx) => {
+        const j = (epShift + idx) % 2;
+        ctx.fillStyle = '#5cd0ff';
+        ctx.fillRect(ftx + ox - 2, fty - 13 + j, 4, 17);
+        ctx.fillStyle = '#e0f8ff';
+        ctx.fillRect(ftx + ox - 1, fty - 12 + j, 2, 15);
+        ctx.fillStyle = '#d4f6ff';
+        ctx.fillRect(ftx + ox - 3, fty + 4 + j, 6, 3);
+      });
+
+      ctx.fillStyle = '#7ce2ff';
+      ctx.fillRect(ftx - 2, fty - 40 - epShift, 4, 12);
+      ctx.fillRect(ftx - 7, fty - 39 + epShift, 3, 5);
+      ctx.fillRect(ftx + 4, fty - 39 + epShift, 3, 5);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(ftx - 1, fty - 42 - epShift, 2, 4);
+      for (let sp = 0; sp < 4; sp++) {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(ftx + ((sp % 2 === 0 ? -1 : 1) * (8 + sp * 3)), fty - 26 + ((epShift + sp) % 3) * 3, 2, 2);
+      }
       }
 
       // -----------------------------------------------------------------------
@@ -11810,29 +13250,36 @@
       const ctx = this.ctx;
       const S = this.TILE;
       const isExt = this.currentArea === 'exterior';
-      const spriteScale = isExt ? 1.52 : 2.5;
+      const spriteScale = isExt ? 1.85 : 2.55;
       const cx = Math.round(entity.x * S);
       const footY = Math.round(entity.y * S + (isExt ? 10 : 18));
-
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.38)';
-      ctx.beginPath();
-      ctx.ellipse(cx, footY - 2, isExt ? 11 : 18, isExt ? 4.2 : 7, 0, 0, Math.PI * 2);
-      ctx.fill();
 
       entity.sprite.draw(ctx, cx, footY, entity.dir, entity.walkTick || 0, spriteScale);
 
       if (entity.name) {
-        ctx.font = isExt ? 'bold 9.5px Inter, sans-serif' : 'bold 12px Inter, sans-serif';
-        const textW = Math.max(isExt ? 38 : 54, ctx.measureText(entity.name).width + 10);
-        const tagH = isExt ? 13 : 17;
-        ctx.fillStyle = 'rgba(15, 23, 42, 0.82)';
-        ctx.fillRect(cx - textW / 2, footY + 2, textW, tagH);
-        ctx.strokeStyle = 'rgba(212, 175, 55, 0.45)';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(cx - textW / 2, footY + 2, textW, tagH);
-        ctx.fillStyle = '#f8fafc';
+        ctx.font = isExt ? 'bold 9px "Georgia", serif' : 'bold 11.5px "Georgia", serif';
+        const textW = Math.max(isExt ? 40 : 56, ctx.measureText(entity.name).width + 14);
+        const tagH = isExt ? 14 : 17;
+        const tx = cx - textW / 2;
+        const ty = footY + 3;
+        ctx.fillStyle = 'rgba(20, 12, 6, 0.36)';
+        ctx.beginPath();
+        ctx.roundRect(tx, ty + 1.5, textW, tagH, 4);
+        ctx.fill();
+        ctx.fillStyle = '#f6ebd4';
+        ctx.beginPath();
+        ctx.roundRect(tx, ty, textW, tagH, 4);
+        ctx.fill();
+        ctx.fillStyle = '#fffaf0';
+        ctx.fillRect(tx + 3, ty + 1, textW - 6, 2);
+        ctx.strokeStyle = '#3a2416';
+        ctx.lineWidth = 1.3;
+        ctx.beginPath();
+        ctx.roundRect(tx, ty, textW, tagH, 4);
+        ctx.stroke();
+        ctx.fillStyle = '#26170c';
         ctx.textAlign = 'center';
-        ctx.fillText(entity.name, cx, footY + (isExt ? 11.5 : 15));
+        ctx.fillText(entity.name, cx, ty + (isExt ? 10.5 : 12.5));
       }
 
       const isTargetNpcNear = this.nearInteractable && (
@@ -11845,13 +13292,13 @@
       const bubbleText = showTalkBubble ? '💬' : entity.bubble;
 
       if (bubbleText) {
-        const by = footY - (isExt ? 62 : 96) - Math.sin(this.tick * 0.09) * 4;
-        ctx.fillStyle = showTalkBubble ? '#fef08a' : '#ffffff';
+        const by = footY - (isExt ? 68 : 96) - Math.sin(this.tick * 0.09) * 3.5;
+        ctx.fillStyle = showTalkBubble ? '#fef08a' : '#fff8eb';
         ctx.beginPath();
         ctx.roundRect(cx - (showTalkBubble ? 16 : 14), by, (showTalkBubble ? 32 : 28), 22, 6);
         ctx.fill();
-        ctx.strokeStyle = showTalkBubble ? '#ca8a04' : '#0f172a';
-        ctx.lineWidth = showTalkBubble ? 2.5 : 2;
+        ctx.strokeStyle = showTalkBubble ? '#b45309' : '#3a2416';
+        ctx.lineWidth = showTalkBubble ? 2.2 : 1.6;
         ctx.stroke();
         ctx.font = isExt ? '12.5px sans-serif' : '14px sans-serif';
         ctx.textAlign = 'center';
@@ -12006,6 +13453,7 @@
       ctx.save();
       ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
+      ctx.imageSmoothingEnabled = false;
       if (this.shakeTicks > 0) {
         const mag = (this.shakeTicks / 28) * 9;
         const sx = (Math.random() - 0.5) * mag * 2;
@@ -12031,13 +13479,15 @@
         this.renderMayaHouseInterior();
       } else {
         ctx.save();
+        const zoom = this.EXT_ZOOM || 1.28;
+        ctx.scale(zoom, zoom);
         ctx.translate(-Math.round(this.cameraX || 0), -Math.round(this.cameraY || 0));
         this.renderCraftsmanExterior();
       }
 
       const activeNpcs = this.getActiveNpcsForArea(this.currentArea);
 
-      const entities = [
+      const entityItems = [
         ...activeNpcs.map(n => ({
           id: n.id,
           x: n.x,
@@ -12060,9 +13510,19 @@
             : (this.storyState === 'both_excited' ? '🤩' : null),
           sprite: this.playerSprite
         }
-      ].sort((a, b) => a.y - b.y);
+      ].map(e => ({
+        sortY: Math.round(e.y * S + (isExt ? 10 : 18)),
+        zBias: 1,
+        draw: () => this.drawEntity(e)
+      }));
 
-      entities.forEach(e => this.drawEntity(e));
+      // Depth-sort exterior trees and shrubs with entities so characters walk behind canopies
+      const renderList = isExt && Array.isArray(this._extDepthProps)
+        ? [...entityItems, ...this._extDepthProps]
+        : entityItems;
+
+      renderList.sort((a, b) => (a.sortY - b.sortY) || (a.zBias - b.zBias));
+      renderList.forEach(item => item.draw());
 
       if (this.currentArea === 'card_shop_interior') {
         this.renderShopCounterForeground();
