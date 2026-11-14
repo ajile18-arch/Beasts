@@ -34,11 +34,9 @@
     flex-shrink: 0 !important;
   }
 
-  /* Leave room on the left of the score for the top-aligned opponent cards */
+  /* Score readout is packed inside the Menu drawer on mobile to reduce clutter */
   .gwent-hud-scores {
-    font-size: 11.5px !important;
-    gap: 3px !important;
-    margin-left: 78px !important;
+    display: none !important;
   }
 
   .gwent-hud-round {
@@ -63,30 +61,17 @@
     box-sizing: border-box !important;
   }
 
-  /* Align opponent's cards at the very top of the screen right next to the score */
+  /* A.I. hand & deck counts live inside the Menu drawer on mobile */
   .gwent-opp-hand-bar {
-    position: fixed !important;
-    top: 8px !important;
-    left: 68px !important;
-    width: 76px !important;
-    min-height: 22px !important;
-    padding: 0 !important;
-    gap: 0 !important;
-    justify-content: flex-start !important;
-    z-index: 45 !important;
-    pointer-events: none !important;
-    overflow: hidden !important;
+    display: none !important;
   }
 
-  .gwent-card-back-mini {
-    width: 14px !important;
-    height: 20px !important;
-    margin-left: -4px !important;
-    flex-shrink: 0 !important;
+  .gwent-sidebar .gwent-ctrl-buttons {
+    gap: 6px !important;
   }
 
-  .gwent-card-back-mini:first-child {
-    margin-left: 0 !important;
+  .gwent-sidebar .gwent-mini-btn {
+    min-height: 32px !important;
   }
 
   .gwent-mulligan-bar {
@@ -354,26 +339,10 @@
     justify-content: space-between !important;
   }
 
-  .gwent-opp-hand-bar {
-    position: fixed !important;
-    top: 6px !important;
-    left: 74px !important;
-    width: 78px !important;
-    min-height: 18px !important;
-    padding: 0 !important;
-    gap: 0 !important;
-    justify-content: flex-start !important;
-    z-index: 45 !important;
-    pointer-events: none !important;
-  }
-
+  /* A.I. hand & score readout live inside the Menu drawer on mobile */
+  .gwent-opp-hand-bar,
   .gwent-hud-scores {
-    margin-left: 82px !important;
-  }
-
-  .gwent-card-back-mini {
-    width: 13px !important;
-    height: 18px !important;
+    display: none !important;
   }
 
   .gwent-mulligan-bar {

@@ -2892,23 +2892,6 @@
               this.openCreatureInspect(selectedItem, null);
             };
           }
-        } else if (selectedItem.type === 'battle_map' || selectedItem.id === 'map_base2v2') {
-          artEl.innerHTML = `
-            <div class="inv-card-art-thumb" style="width: 64px; height: 64px; border-radius: 8px; overflow: hidden; border: 2px solid #38bdf8;">
-              <img src="${selectedItem.cardImg || 'Base2v2.png'}" alt="${selectedItem.name}" style="width: 100%; height: 100%; object-fit: cover;">
-            </div>
-          `;
-          if (actionsEl) actionsEl.classList.remove('hidden');
-          openPackBtn?.classList.add('hidden');
-          putBinderBtn?.classList.add('hidden');
-          if (inspectBtn) {
-            inspectBtn.classList.remove('hidden');
-            inspectBtn.textContent = '⚔️ Play 2v2 Match';
-            inspectBtn.onclick = () => {
-              this.toggleInventoryModal(false);
-              this.open2v2BeastSelect();
-            };
-          }
         } else if (selectedItem.id === 'old_card_binder') {
           artEl.innerHTML = `<span style="font-size: 38px;">📖</span>`;
           if (actionsEl) actionsEl.classList.remove('hidden');
@@ -8203,7 +8186,7 @@
       this.hasMomBoosterMoney = this.worldSave.hasMomBoosterMoney ?? false;
       this.migratedMom25 = this.worldSave.migratedMom25 ?? true;
       this.hasBoughtCardShopPacks = this.worldSave.hasBoughtCardShopPacks ?? false;
-      this.hasBoughtBase2v2Map = this.worldSave.hasBoughtBase2v2Map ?? false;
+      this.hasBoughtBase2v2Map = false;
       this.hasOpenedStarterPack = this.worldSave.hasOpenedStarterPack ?? false;
       this.friendWaitingAtHouse = this.worldSave.friendWaitingAtHouse ?? false;
       this.hasOldCardBinder = this.worldSave.hasOldCardBinder ?? false;
@@ -8220,7 +8203,9 @@
       this.initPhoneSystem();
 
       // Restore Inventory & Reactive Proxy
-      const rawInv = Array.isArray(this.worldSave.inventory) ? [...this.worldSave.inventory] : [];
+      const rawInv = Array.isArray(this.worldSave.inventory)
+        ? this.worldSave.inventory.filter(i => i && i.id !== 'map_base2v2' && i.type !== 'battle_map')
+        : [];
       this.inventory = this.wrapReactiveArray(rawInv.map(i => this.wrapReactiveItem(i)), 'inventory');
       this.selectedInventoryItemId = null;
 
