@@ -1,0 +1,455 @@
+/* ============================================================================
+   MYTHOS MOBILE-ONLY STYLESHEET (css/mobile.css)
+   Dedicated mobile rules for Portrait & Landscape phones.
+   Desktop webapp (css/style.css) is completely unaffected by changes here.
+   ============================================================================ */
+
+/* ----------------------------------------------------------------------------
+   1. MOBILE PORTRAIT CARD GAME ARENA
+   Lifts the Player Hand Tray high above mobile browser bottom bars / gesture
+   zones so every hand card is comfortably selectable with a thumb.
+   ---------------------------------------------------------------------------- */
+@media (orientation: portrait), (max-width: 768px) {
+  .gwent-layout {
+    padding: 4px 6px 0 !important;
+    height: 100dvh !important;
+    overflow: hidden !important;
+  }
+
+  .gwent-hud-bar {
+    top: 6px !important;
+    left: 6px !important;
+    right: 6px !important;
+    justify-content: space-between !important;
+    padding: 4px 7px !important;
+    gap: 4px !important;
+    border-radius: 14px !important;
+  }
+
+  .gwent-menu-toggle-btn {
+    padding: 4px 8px !important;
+    font-size: 11px !important;
+  }
+
+  .gwent-hud-scores {
+    font-size: 12px !important;
+    gap: 4px !important;
+  }
+
+  .gwent-hud-round {
+    font-size: 10px !important;
+    padding: 2px 6px !important;
+  }
+
+  .gwent-hud-end-turn-btn,
+  .gwent-hud-pass-btn {
+    padding: 4px 8px !important;
+    font-size: 10.5px !important;
+    white-space: nowrap !important;
+  }
+
+  /* Pack board + hand upward and reserve generous bottom safe space */
+  .gwent-board-container {
+    padding-top: 40px !important;
+    padding-bottom: calc(78px + env(safe-area-inset-bottom, 22px)) !important;
+    gap: 5px !important;
+    height: 100% !important;
+    justify-content: flex-start !important;
+    box-sizing: border-box !important;
+  }
+
+  .gwent-opp-hand-bar {
+    min-height: 18px !important;
+    gap: 3px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .gwent-card-back-mini {
+    width: 14px !important;
+    height: 20px !important;
+  }
+
+  .gwent-mulligan-bar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 5px !important;
+    padding: 6px 10px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .mulligan-title {
+    font-size: 11px !important;
+    display: block !important;
+    margin-bottom: 1px !important;
+  }
+
+  .mulligan-sub {
+    font-size: 10.5px !important;
+    display: block !important;
+    line-height: 1.25 !important;
+  }
+
+  .mulligan-actions {
+    width: 100% !important;
+    gap: 6px !important;
+  }
+
+  .mulligan-actions .ui-btn {
+    flex: 1 !important;
+    padding: 6px 8px !important;
+    font-size: 11px !important;
+    text-align: center !important;
+    justify-content: center !important;
+  }
+
+  /* Compact 4-row battlefield so it never pushes the hand tray down */
+  .gwent-battlefield {
+    padding: 5px 6px !important;
+    gap: 3px !important;
+    flex: 0 1 auto !important;
+    min-height: 0 !important;
+  }
+
+  .gwent-side {
+    gap: 3px !important;
+    flex: 0 1 auto !important;
+  }
+
+  .gwent-row {
+    padding: 3px 5px !important;
+    gap: 5px !important;
+    min-height: 52px !important;
+    max-height: 66px !important;
+    flex: 0 0 auto !important;
+  }
+
+  .gwent-row-label {
+    width: 28px !important;
+  }
+
+  .gwent-row-label .row-icon {
+    font-size: 12px !important;
+  }
+
+  .gwent-row-label .row-name {
+    font-size: 6px !important;
+    letter-spacing: 0.2px !important;
+  }
+
+  .gwent-row-score {
+    width: 24px !important;
+    height: 24px !important;
+    font-size: 11.5px !important;
+  }
+
+  .gwent-row-cards {
+    gap: 5px !important;
+    min-height: 48px !important;
+  }
+
+  .gwent-center-divider {
+    padding: 1px 0 !important;
+    gap: 6px !important;
+  }
+
+  .gwent-center-badge {
+    font-size: 9px !important;
+    padding: 1.5px 8px !important;
+    letter-spacing: 0.6px !important;
+  }
+
+  .gwent-card.board-card {
+    width: 52px !important;
+    height: 72px !important;
+  }
+
+  .gwent-card.board-card .gwent-card-power {
+    top: 2px !important;
+    left: 2px !important;
+    min-width: 18px !important;
+    height: 18px !important;
+    font-size: 10px !important;
+    padding: 0 3px !important;
+  }
+
+  .gwent-card.board-card .gwent-card-armor {
+    top: 2px !important;
+    right: 2px !important;
+    font-size: 8px !important;
+    padding: 1px 3px !important;
+  }
+
+  .gwent-card.board-card .gwent-card-row-badge {
+    width: 14px !important;
+    height: 14px !important;
+    font-size: 8px !important;
+    bottom: 14px !important;
+    right: 2px !important;
+  }
+
+  .gwent-card.board-card .gwent-card-name-strip {
+    font-size: 7px !important;
+    padding: 1.5px 2px !important;
+  }
+
+  /* Elevated, Floating Player Hand Dock — high up in the thumb zone */
+  .gwent-hand-tray {
+    height: 124px !important;
+    margin: 4px 2px 0 !important;
+    padding: 6px 8px 8px !important;
+    border-radius: 12px !important;
+    border: 2px solid #8c6b43 !important;
+    background: linear-gradient(180deg, rgba(28, 22, 16, 0.98), rgba(14, 10, 7, 0.99)) !important;
+    box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.9), 0 0 14px rgba(217, 119, 6, 0.22) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: flex-start !important;
+    flex-shrink: 0 !important;
+    z-index: 30 !important;
+  }
+
+  .gwent-hand-hint {
+    font-size: 9.5px !important;
+    margin-bottom: 4px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .gwent-player-hand {
+    gap: 4px !important;
+    height: 98px !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+    padding: 4px 6px !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  .gwent-player-hand .gwent-card {
+    width: 64px !important;
+    height: 90px !important;
+    margin-left: 0 !important;
+    flex-shrink: 0 !important;
+    touch-action: manipulation !important;
+  }
+
+  .gwent-player-hand .gwent-card .gwent-card-power {
+    top: 3px !important;
+    left: 3px !important;
+    min-width: 20px !important;
+    height: 20px !important;
+    font-size: 11px !important;
+    padding: 0 3px !important;
+  }
+
+  .gwent-player-hand .gwent-card .gwent-card-armor {
+    top: 3px !important;
+    right: 3px !important;
+    font-size: 8.5px !important;
+    padding: 1px 4px !important;
+  }
+
+  .gwent-player-hand .gwent-card .gwent-card-row-badge {
+    width: 16px !important;
+    height: 16px !important;
+    font-size: 9px !important;
+    bottom: 16px !important;
+    right: 3px !important;
+  }
+
+  .gwent-player-hand .gwent-card .gwent-card-name-strip {
+    font-size: 7.5px !important;
+    padding: 2px 3px !important;
+  }
+
+  .gwent-player-hand .gwent-card:hover,
+  .gwent-player-hand .gwent-card.selected {
+    transform: translateY(-12px) scale(1.07) !important;
+  }
+
+  .gwent-player-hand .gwent-card.mulligan-selected {
+    transform: translateY(-12px) scale(1.06) !important;
+  }
+
+  /* Ability Popup floats above the elevated hand dock */
+  .gwent-ability-popup {
+    top: auto !important;
+    bottom: calc(208px + env(safe-area-inset-bottom, 22px)) !important;
+    left: 8px !important;
+    right: 8px !important;
+    width: auto !important;
+    padding: 8px 10px !important;
+  }
+
+  .gwent-ap-title {
+    font-size: 13.5px !important;
+  }
+
+  .gwent-ap-body {
+    font-size: 11px !important;
+    padding: 5px 8px !important;
+  }
+}
+
+/* ----------------------------------------------------------------------------
+   2. MOBILE LANDSCAPE CARD GAME ARENA
+   ---------------------------------------------------------------------------- */
+@media (max-height: 540px) and (orientation: landscape) {
+  .gwent-layout {
+    padding: 2px 6px 0 !important;
+    height: 100dvh !important;
+    overflow: hidden !important;
+  }
+
+  .gwent-hud-bar {
+    top: 3px !important;
+    left: 6px !important;
+    right: 6px !important;
+    padding: 3px 8px !important;
+    gap: 6px !important;
+    min-height: 28px !important;
+    justify-content: space-between !important;
+  }
+
+  .gwent-hud-bar .ui-btn,
+  .gwent-hud-round {
+    font-size: 11px !important;
+    padding: 2px 7px !important;
+  }
+
+  .gwent-board-container {
+    padding-top: 34px !important;
+    padding-bottom: calc(8px + env(safe-area-inset-bottom, 6px)) !important;
+    gap: 2px !important;
+    height: 100% !important;
+    justify-content: space-between !important;
+  }
+
+  .gwent-opp-hand-bar {
+    min-height: 16px !important;
+    gap: 2px !important;
+  }
+
+  .gwent-card-back-mini {
+    width: 13px !important;
+    height: 18px !important;
+  }
+
+  .gwent-mulligan-bar {
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 6px !important;
+    padding: 3px 8px !important;
+    font-size: 11px !important;
+  }
+
+  .gwent-battlefield {
+    padding: 3px 5px !important;
+    gap: 2px !important;
+    flex: 1 !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+  }
+
+  .gwent-row {
+    padding: 2px 5px !important;
+    gap: 4px !important;
+    min-height: 44px !important;
+    max-height: none !important;
+  }
+
+  .gwent-row-label {
+    width: 34px !important;
+  }
+
+  .gwent-row-label .row-icon {
+    font-size: 12px !important;
+  }
+
+  .gwent-row-label .row-name {
+    font-size: 7px !important;
+    letter-spacing: 0.2px !important;
+  }
+
+  .gwent-row-score {
+    width: 24px !important;
+    height: 24px !important;
+    font-size: 11px !important;
+  }
+
+  .gwent-row-cards {
+    gap: 4px !important;
+    min-height: 40px !important;
+  }
+
+  .gwent-card.board-card {
+    width: clamp(44px, 6.8vw, 56px) !important;
+    height: clamp(60px, 15.5dvh, 76px) !important;
+  }
+
+  .gwent-card.board-card .gwent-card-power {
+    font-size: 10px !important;
+    min-width: 16px !important;
+    height: 16px !important;
+    padding: 0 3px !important;
+  }
+
+  .gwent-card.board-card .gwent-card-name-strip {
+    font-size: 7px !important;
+    padding: 1px 2px !important;
+  }
+
+  .gwent-hand-tray {
+    height: 56px !important;
+    margin: 0 !important;
+    padding: 2px 6px 0 !important;
+    border-radius: 10px 10px 0 0 !important;
+  }
+
+  .gwent-hand-hint {
+    font-size: 9px !important;
+    margin-bottom: 1px !important;
+  }
+
+  .gwent-player-hand {
+    gap: 2px !important;
+    height: 40px !important;
+    overflow-x: auto !important;
+    justify-content: center !important;
+  }
+
+  .gwent-player-hand .gwent-card {
+    width: 54px !important;
+    height: 76px !important;
+    margin-left: 0 !important;
+  }
+
+  .gwent-player-hand .gwent-card:hover,
+  .gwent-player-hand .gwent-card.selected {
+    transform: translateY(-36px) scale(1.06) !important;
+  }
+
+  .gwent-ability-popup {
+    top: 38px !important;
+    bottom: auto !important;
+    left: auto !important;
+    right: 8px !important;
+    width: min(290px, 52vw) !important;
+    max-height: calc(100dvh - 54px) !important;
+    overflow-y: auto !important;
+  }
+
+  .gwent-sidebar {
+    width: min(260px, 48vw) !important;
+    padding: 8px !important;
+    gap: 6px !important;
+  }
+
+  .gwent-card-modal-dialog {
+    max-height: 90dvh !important;
+    overflow-y: auto !important;
+  }
+}
