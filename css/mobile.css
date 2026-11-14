@@ -10,6 +10,38 @@
   display: none !important;
 }
 
+/* Override legacy @media (max-width: 1024px) .side-panel.card-panel rule (which had transform: none !important)
+   so #card-panel stays packed inside the ☰ Menu slide-out drawer on actual mobile devices */
+.side-panel.card-panel.gwent-sidebar {
+  position: fixed !important;
+  top: 8px !important;
+  left: 8px !important;
+  bottom: 8px !important;
+  width: min(275px, 86vw) !important;
+  height: auto !important;
+  max-height: none !important;
+  z-index: 70 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+  overflow-y: auto !important;
+  padding: 10px !important;
+  background: linear-gradient(160deg, rgba(22, 17, 12, 0.98), rgba(10, 8, 6, 0.98)) !important;
+  border: 1.5px solid #8c6b43 !important;
+  border-radius: 12px !important;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.9) !important;
+  transform: translateX(calc(-100% - 24px)) !important;
+  transition: transform 0.22s ease !important;
+}
+
+.side-panel.card-panel.gwent-sidebar.open {
+  transform: translateX(0) !important;
+}
+
+.board-container.gwent-board-container {
+  flex-direction: column !important;
+}
+
 /* ----------------------------------------------------------------------------
    1. MOBILE PORTRAIT CARD GAME ARENA
    Lifts the Player Hand Tray high above mobile browser bottom bars / gesture
