@@ -688,7 +688,7 @@
       this.render();
 
       if (this.gameMode === 'ai' && this.state.turnTeam === 2) {
-        this.aiTimeout = setTimeout(() => this.runAiTurn(), 700);
+        this.aiTimeout = setTimeout(() => this.runAiTurn(), 1300);
       }
     }
 
@@ -1226,7 +1226,7 @@
       this.render();
 
       if (this.gameMode === 'ai' && this.state.turnTeam === 2 && !this.isMatchOver) {
-        this.aiTimeout = setTimeout(() => this.runAiTurn(), 700);
+        this.aiTimeout = setTimeout(() => this.runAiTurn(), 1300);
       }
     }
 
@@ -1355,7 +1355,7 @@
       this.render();
 
       if (this.gameMode === 'ai' && this.state.turnTeam === 2) {
-        this.aiTimeout = setTimeout(() => this.runAiTurn(), 700);
+        this.aiTimeout = setTimeout(() => this.runAiTurn(), 1300);
       }
     }
 
@@ -1436,7 +1436,10 @@
       }
 
       this.playCardToRow(2, bestChoice.card.uid, bestChoice.row);
-      this.runAiAttacksAndEnd();
+      this.aiTimeout = setTimeout(() => {
+        if (this.isMatchOver || !this.state || this.state.turnTeam !== 2) return;
+        this.runAiAttacksAndEnd();
+      }, 950);
     }
 
     runAiAttacksAndEnd() {
@@ -1450,7 +1453,7 @@
           if (this.isMatchOver || !this.state || this.state.turnTeam !== 2) return;
           this.executeAllyBoost(2, booster, allyTarget);
           this.runAiAttacksAndEnd();
-        }, 380);
+        }, 850);
         return;
       }
 
@@ -1463,7 +1466,10 @@
       });
 
       if (readyAttackers.length === 0 || oppTargets.length === 0) {
-        this.advanceTurn();
+        this.aiTimeout = setTimeout(() => {
+          if (this.isMatchOver || !this.state || this.state.turnTeam !== 2) return;
+          this.advanceTurn();
+        }, 650);
         return;
       }
 
@@ -1482,7 +1488,7 @@
         if (this.isMatchOver || !this.state || this.state.turnTeam !== 2) return;
         this.executeBoardAttack(2, attacker.uid, 1, target.card, target.rowKey);
         this.runAiAttacksAndEnd();
-      }, 420);
+      }, 950);
     }
 
     // -------------------------------------------------------------------------

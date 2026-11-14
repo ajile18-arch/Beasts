@@ -14,59 +14,79 @@
     padding: 4px 6px 0 !important;
     height: 100dvh !important;
     overflow: hidden !important;
+    overscroll-behavior: none !important;
   }
 
   .gwent-hud-bar {
-    top: 6px !important;
+    top: 4px !important;
     left: 6px !important;
     right: 6px !important;
+    height: 32px !important;
     justify-content: space-between !important;
-    padding: 4px 7px !important;
+    padding: 3px 6px !important;
     gap: 4px !important;
     border-radius: 14px !important;
   }
 
   .gwent-menu-toggle-btn {
-    padding: 4px 8px !important;
+    padding: 3px 8px !important;
     font-size: 11px !important;
+    flex-shrink: 0 !important;
   }
 
+  /* Leave room on the left of the score for the top-aligned opponent cards */
   .gwent-hud-scores {
-    font-size: 12px !important;
-    gap: 4px !important;
+    font-size: 11.5px !important;
+    gap: 3px !important;
+    margin-left: 78px !important;
   }
 
   .gwent-hud-round {
     font-size: 10px !important;
-    padding: 2px 6px !important;
+    padding: 2px 5px !important;
   }
 
   .gwent-hud-end-turn-btn,
   .gwent-hud-pass-btn {
-    padding: 4px 8px !important;
-    font-size: 10.5px !important;
+    padding: 3px 7px !important;
+    font-size: 10px !important;
     white-space: nowrap !important;
   }
 
-  /* Pack board + hand upward and reserve generous bottom safe space */
+  /* Pack board + hand upward and reserve bottom space for the non-blocking card info box */
   .gwent-board-container {
-    padding-top: 40px !important;
-    padding-bottom: calc(78px + env(safe-area-inset-bottom, 22px)) !important;
-    gap: 5px !important;
+    padding-top: 38px !important;
+    padding-bottom: calc(104px + env(safe-area-inset-bottom, 14px)) !important;
+    gap: 4px !important;
     height: 100% !important;
     justify-content: flex-start !important;
     box-sizing: border-box !important;
   }
 
+  /* Align opponent's cards at the very top of the screen right next to the score */
   .gwent-opp-hand-bar {
-    min-height: 18px !important;
-    gap: 3px !important;
-    flex-shrink: 0 !important;
+    position: fixed !important;
+    top: 8px !important;
+    left: 68px !important;
+    width: 76px !important;
+    min-height: 22px !important;
+    padding: 0 !important;
+    gap: 0 !important;
+    justify-content: flex-start !important;
+    z-index: 45 !important;
+    pointer-events: none !important;
+    overflow: hidden !important;
   }
 
   .gwent-card-back-mini {
     width: 14px !important;
     height: 20px !important;
+    margin-left: -4px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .gwent-card-back-mini:first-child {
+    margin-left: 0 !important;
   }
 
   .gwent-mulligan-bar {
@@ -194,9 +214,9 @@
 
   /* Elevated, Floating Player Hand Dock — high up in the thumb zone */
   .gwent-hand-tray {
-    height: 124px !important;
+    height: 130px !important;
     margin: 4px 2px 0 !important;
-    padding: 6px 8px 8px !important;
+    padding: 5px 8px 6px !important;
     border-radius: 12px !important;
     border: 2px solid #8c6b43 !important;
     background: linear-gradient(180deg, rgba(28, 22, 16, 0.98), rgba(14, 10, 7, 0.99)) !important;
@@ -205,12 +225,14 @@
     flex-direction: column !important;
     justify-content: flex-start !important;
     flex-shrink: 0 !important;
+    overscroll-behavior: none !important;
+    touch-action: pan-x !important;
     z-index: 30 !important;
   }
 
   .gwent-hand-hint {
     font-size: 9.5px !important;
-    margin-bottom: 4px !important;
+    margin-bottom: 2px !important;
     white-space: nowrap !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
@@ -218,21 +240,24 @@
 
   .gwent-player-hand {
     gap: 4px !important;
-    height: 98px !important;
-    align-items: center !important;
+    height: 106px !important;
+    align-items: flex-end !important;
     justify-content: flex-start !important;
     overflow-x: auto !important;
-    overflow-y: visible !important;
-    padding: 4px 6px !important;
+    overflow-y: hidden !important;
+    overscroll-behavior-x: contain !important;
+    overscroll-behavior-y: none !important;
+    touch-action: pan-x !important;
+    padding: 10px 6px 4px !important;
     -webkit-overflow-scrolling: touch !important;
   }
 
   .gwent-player-hand .gwent-card {
     width: 64px !important;
-    height: 90px !important;
+    height: 88px !important;
     margin-left: 0 !important;
     flex-shrink: 0 !important;
-    touch-action: manipulation !important;
+    touch-action: pan-x !important;
   }
 
   .gwent-player-hand .gwent-card .gwent-card-power {
@@ -266,21 +291,23 @@
 
   .gwent-player-hand .gwent-card:hover,
   .gwent-player-hand .gwent-card.selected {
-    transform: translateY(-12px) scale(1.07) !important;
+    transform: translateY(-7px) scale(1.04) !important;
   }
 
   .gwent-player-hand .gwent-card.mulligan-selected {
-    transform: translateY(-12px) scale(1.06) !important;
+    transform: translateY(-7px) scale(1.04) !important;
   }
 
-  /* Ability Popup floats above the elevated hand dock */
+  /* Ability Popup sits below the Hand Dock so it NEVER covers placeable board rows */
   .gwent-ability-popup {
     top: auto !important;
-    bottom: calc(208px + env(safe-area-inset-bottom, 22px)) !important;
+    bottom: calc(6px + env(safe-area-inset-bottom, 10px)) !important;
     left: 8px !important;
     right: 8px !important;
     width: auto !important;
-    padding: 8px 10px !important;
+    max-height: 92px !important;
+    overflow-y: auto !important;
+    padding: 7px 10px !important;
   }
 
   .gwent-ap-title {
@@ -328,8 +355,20 @@
   }
 
   .gwent-opp-hand-bar {
-    min-height: 16px !important;
-    gap: 2px !important;
+    position: fixed !important;
+    top: 6px !important;
+    left: 74px !important;
+    width: 78px !important;
+    min-height: 18px !important;
+    padding: 0 !important;
+    gap: 0 !important;
+    justify-content: flex-start !important;
+    z-index: 45 !important;
+    pointer-events: none !important;
+  }
+
+  .gwent-hud-scores {
+    margin-left: 82px !important;
   }
 
   .gwent-card-back-mini {

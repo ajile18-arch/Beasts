@@ -12,11 +12,27 @@ class SoundController {
   init() {
     if (!this.ctx) {
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
       this.ctx = new AudioCtx();
     }
-    if (this.ctx.state === 'suspended') {
-      this.ctx.resume();
+    if (this.ctx.state === 'suspended' || this.ctx.state === 'interrupted') {
+      this.ctx.resume().catch(() => {});
     }
+  }
+
+  unlock() {
+    this.init();
+    if (!this.ctx || this._unlocked) return;
+    try {
+      const buffer = this.ctx.createBuffer(1, 1, 22050);
+      const source = this.ctx.createBufferSource();
+      source.buffer = buffer;
+      source.connect(this.ctx.destination);
+      source.start(0);
+      if (this.ctx.state === 'running') {
+        this._unlocked = true;
+      }
+    } catch (_) {}
   }
 
   toggle() {
@@ -647,3 +663,11 @@ class SoundController {
 const sounds = new SoundController();
 window.sounds = sounds;
 window.soundFX = sounds;
+
+// Unlock Web Audio on first mobile touch / pointer / key gesture and resume on tab focus
+['touchstart', 'touchend', 'pointerdown', 'click', 'keydown'].forEach(evt => {
+  document.addEventListener(evt, () => sounds.unlock(), { passive: true, capture: true });
+});
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && sounds.enabled) sounds.init();
+});
