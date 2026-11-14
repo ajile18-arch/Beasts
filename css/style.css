@@ -8926,28 +8926,95 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   background: #6d28d9;
 }
 
-/* Bottom Nav Home Pill */
+/* Swipe-Down Top Handle Bar & Bottom Nav Tabs */
+.phone-swipe-top-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 6px 10px 4px;
+  background: linear-gradient(180deg, rgba(30, 41, 59, 0.92), rgba(15, 23, 42, 0.75));
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.phone-swipe-handle-pill {
+  width: 44px;
+  height: 4.5px;
+  border-radius: 999px;
+  background: rgba(253, 230, 138, 0.75);
+}
+
+.phone-swipe-hint {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  color: #cbd5e1;
+}
+
+.phone-app-return-world {
+  grid-column: span 2;
+  flex-direction: row !important;
+  justify-content: center;
+  gap: 10px !important;
+  padding: 8px 14px !important;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.22), rgba(5, 150, 105, 0.32));
+  border: 1px solid rgba(52, 211, 153, 0.55);
+}
+
+.bg-return-world {
+  width: 38px !important;
+  height: 38px !important;
+  font-size: 20px !important;
+  background: linear-gradient(135deg, #059669, #10b981) !important;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4) !important;
+}
+
 .phone-nav-bar {
-  height: 24px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 10px;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.85), rgba(10, 14, 30, 0.98));
+  border-top: 1px solid rgba(148, 163, 184, 0.22);
+  flex-shrink: 0;
+}
+
+.phone-nav-tab-btn {
+  flex: 1;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(30, 41, 59, 0.85);
+  color: #f8fafc;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(180deg, rgba(10, 14, 30, 0.14), rgba(10, 14, 30, 0.72));
-}
-
-.phone-home-pill {
-  width: 110px;
-  height: 4.5px;
-  background: rgba(253, 230, 138, 0.55);
-  border: none;
-  border-radius: 3px;
-  cursor: pointer;
+  gap: 4px;
   transition: all 0.15s ease;
 }
 
-.phone-home-pill:hover {
-  background: rgba(255, 255, 255, 0.75);
-  transform: scaleY(1.3);
+.phone-nav-tab-btn:hover {
+  background: rgba(51, 65, 85, 0.95);
+}
+
+.phone-return-world-tab {
+  background: linear-gradient(135deg, #059669, #10b981);
+  border-color: #34d399;
+  color: #ffffff;
+}
+
+.phone-return-world-tab:hover {
+  background: linear-gradient(135deg, #047857, #059669);
 }
 
 .phone-close-hardware-btn {

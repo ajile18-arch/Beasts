@@ -7832,6 +7832,66 @@
           this.openPhoneApp('home');
         });
       }
+      const phoneReturnWorldBtn = document.getElementById('btn-phone-return-world');
+      if (phoneReturnWorldBtn) {
+        phoneReturnWorldBtn.addEventListener('click', () => {
+          this.togglePhoneModal(false);
+        });
+      }
+      const appReturnWorldBtn = document.getElementById('app-btn-return-world');
+      if (appReturnWorldBtn) {
+        appReturnWorldBtn.addEventListener('click', () => {
+          this.togglePhoneModal(false);
+        });
+      }
+
+      // Swipe-down top bar gesture (and tap) to exit the phone menu
+      const swipeTopBar = document.getElementById('phone-swipe-top-bar');
+      const phoneStatusBar = document.querySelector('.phone-status-bar');
+      const phoneFrame = document.querySelector('#phone-modal .phone-device-frame');
+      [swipeTopBar, phoneStatusBar].filter(Boolean).forEach(barEl => {
+        let startY = null;
+        let currentDeltaY = 0;
+
+        barEl.addEventListener('pointerdown', (e) => {
+          startY = e.clientY;
+          currentDeltaY = 0;
+          if (phoneFrame) phoneFrame.style.transition = 'none';
+          try { barEl.setPointerCapture(e.pointerId); } catch (_) {}
+        });
+
+        barEl.addEventListener('pointermove', (e) => {
+          if (startY === null) return;
+          currentDeltaY = Math.max(0, e.clientY - startY);
+          if (phoneFrame && currentDeltaY > 0) {
+            phoneFrame.style.transform = `translateY(${Math.min(220, currentDeltaY)}px)`;
+          }
+        });
+
+        const endSwipe = () => {
+          if (startY === null) return;
+          const dragged = currentDeltaY;
+          startY = null;
+          currentDeltaY = 0;
+          if (phoneFrame) {
+            phoneFrame.style.transition = '';
+            phoneFrame.style.transform = '';
+          }
+          if (dragged > 28 || barEl === swipeTopBar) {
+            this.togglePhoneModal(false);
+          }
+        };
+
+        barEl.addEventListener('pointerup', endSwipe);
+        barEl.addEventListener('pointercancel', () => {
+          startY = null;
+          currentDeltaY = 0;
+          if (phoneFrame) {
+            phoneFrame.style.transition = '';
+            phoneFrame.style.transform = '';
+          }
+        });
+      });
 
       // App Icon Triggers on Phone Home
       document.getElementById('app-btn-contacts')?.addEventListener('click', () => {
@@ -8769,7 +8829,7 @@
           }
         }
 
-        const houseTarget = this.resolveExteriorHouseDoorTarget(tx, ty);
+        const houseTarget = this.resolveExteriorHouseDoorTarget(tx, ty) || this.resolveInteriorExitDoorTarget(tx, ty);
         const moveX = houseTarget ? houseTarget.x : tx;
         const moveY = houseTarget ? houseTarget.y : ty;
         if (houseTarget) {
@@ -9270,6 +9330,15 @@
         if (tx >= bounds.minX && tx <= bounds.maxX && ty >= bounds.minY && ty <= bounds.maxY) {
           return { id: b.id, x: b.doorX, y: b.doorY };
         }
+      }
+      return null;
+    }
+
+    /** Redirect an interior click anywhere in or around the exit doorway/mat to the exit trigger point. */
+    resolveInteriorExitDoorTarget(tx, ty) {
+      if (this.currentArea === 'exterior') return null;
+      if (tx >= 7.8 && tx <= 11.8 && ty >= 9.2 && ty <= 12.0) {
+        return { id: 'interior_exit', x: 9.8, y: 10.22 };
       }
       return null;
     }
@@ -9800,9 +9869,9 @@
 
       // Check Doorway Transitions between House Interior, Friend's House, Zoomed-Out Neighborhood Exterior, and Leo's Card Shop!
       if (this.areaTransitionCooldown === 0) {
-        if (this.currentArea === 'interior' && this.player.x >= 9.0 && this.player.x <= 10.6 && this.player.y >= 10.05) {
+        if (this.currentArea === 'interior' && this.player.x >= 8.2 && this.player.x <= 11.4 && this.player.y >= 9.75) {
           if (this.storyState === 'intro_waiting') {
-            this.player.y = 9.85;
+            this.player.y = 9.55;
             this.player.targetY = null;
             const bar = document.getElementById('ow-dialog-bar');
             const speakerEl = document.getElementById('ow-speaker-tag');
@@ -9839,14 +9908,14 @@
           if (window.sounds?.playMove) window.sounds.playMove();
           this.currentArea = 'interior';
           this.player.x = 9.8;
-          this.player.y = 9.4;
+          this.player.y = 9.15;
           this.player.dir = 'up';
           this.player.targetX = null;
           this.player.targetY = null;
 
           if (friend && !this.hasOpenedStarterPack && !this.friendWaitingAtHouse) {
             friend.x = 10.6;
-            friend.y = 9.5;
+            friend.y = 9.25;
             friend.dir = 'up';
           }
 
@@ -9861,7 +9930,7 @@
           if (window.sounds?.playMove) window.sounds.playMove();
           this.currentArea = 'friend_interior';
           this.player.x = 9.8;
-          this.player.y = 9.3;
+          this.player.y = 9.15;
           this.player.dir = 'up';
           this.player.targetX = null;
           this.player.targetY = null;
@@ -9878,7 +9947,7 @@
 
           this.areaTransitionCooldown = 25;
           this.updateHUDSaveInfo();
-        } else if (this.currentArea === 'friend_interior' && this.player.x >= 9.0 && this.player.x <= 10.6 && this.player.y >= 10.05) {
+        } else if (this.currentArea === 'friend_interior' && this.player.x >= 8.2 && this.player.x <= 11.4 && this.player.y >= 9.75) {
           // Step out of Mike's / AJ's House back onto the Upper Residential Road — Mike/AJ stays at his house!
           if (window.sounds?.playMove) window.sounds.playMove();
           this.currentArea = 'exterior';
@@ -9900,7 +9969,7 @@
           if (window.sounds?.playMove) window.sounds.playMove();
           this.currentArea = 'card_shop_interior';
           this.player.x = 9.8;
-          this.player.y = 9.3;
+          this.player.y = 9.15;
           this.player.dir = 'up';
           this.player.targetX = null;
           this.player.targetY = null;
@@ -9908,7 +9977,7 @@
           if (friend && !this.hasOpenedStarterPack && !this.friendWaitingAtHouse) {
             friend.following = true;
             friend.x = 10.7;
-            friend.y = 9.4;
+            friend.y = 9.25;
             friend.dir = 'up';
             friend.bubble = '🤩';
           }
@@ -9918,13 +9987,13 @@
 
           this.areaTransitionCooldown = 25;
           this.updateHUDSaveInfo();
-        } else if (this.currentArea === 'card_shop_interior' && this.player.x >= 9.0 && this.player.x <= 10.6 && this.player.y >= 10.05) {
+        } else if (this.currentArea === 'card_shop_interior' && this.player.x >= 8.2 && this.player.x <= 11.4 && this.player.y >= 9.75) {
           // If the player received their Booster Pack from Leo and attempts to leave Leo's Card Shop without opening it,
           // stop them at the door and trigger a dialogue to open the card pack!
           const hasUnopenedPack = (this.inventory || []).some(i => i.id === 'unopened_base_pack' && i.qty > 0);
           if (this.hasBoughtCardShopPacks && (hasUnopenedPack || !this.hasOpenedStarterPack)) {
             if (window.sounds?.playClick) window.sounds.playClick();
-            this.player.y = 9.6;
+            this.player.y = 9.35;
             this.player.dir = 'up';
             this.player.targetX = null;
             this.player.targetY = null;
@@ -9966,14 +10035,14 @@
           if (window.sounds?.playMove) window.sounds.playMove();
           this.currentArea = 'pluto_interior';
           this.player.x = 9.8;
-          this.player.y = 9.3;
+          this.player.y = 9.15;
           this.player.dir = 'up';
           this.player.targetX = null;
           this.player.targetY = null;
 
           this.areaTransitionCooldown = 25;
           this.updateHUDSaveInfo();
-        } else if (this.currentArea === 'pluto_interior' && this.player.x >= 9.0 && this.player.x <= 10.6 && this.player.y >= 10.05) {
+        } else if (this.currentArea === 'pluto_interior' && this.player.x >= 8.2 && this.player.x <= 11.4 && this.player.y >= 9.75) {
           // Step out of Pluto's House back onto the South-West block!
           if (window.sounds?.playMove) window.sounds.playMove();
           this.currentArea = 'exterior';
@@ -9990,14 +10059,14 @@
           if (window.sounds?.playMove) window.sounds.playMove();
           this.currentArea = 'nova_interior';
           this.player.x = 9.8;
-          this.player.y = 9.3;
+          this.player.y = 9.15;
           this.player.dir = 'up';
           this.player.targetX = null;
           this.player.targetY = null;
 
           this.areaTransitionCooldown = 25;
           this.updateHUDSaveInfo();
-        } else if (this.currentArea === 'nova_interior' && this.player.x >= 9.0 && this.player.x <= 10.6 && this.player.y >= 10.05) {
+        } else if (this.currentArea === 'nova_interior' && this.player.x >= 8.2 && this.player.x <= 11.4 && this.player.y >= 9.75) {
           // Step out of Nova's House back onto the South-West block!
           if (window.sounds?.playMove) window.sounds.playMove();
           this.currentArea = 'exterior';
@@ -10014,14 +10083,14 @@
           if (window.sounds?.playMove) window.sounds.playMove();
           this.currentArea = 'silas_interior';
           this.player.x = 9.8;
-          this.player.y = 9.3;
+          this.player.y = 9.15;
           this.player.dir = 'up';
           this.player.targetX = null;
           this.player.targetY = null;
 
           this.areaTransitionCooldown = 25;
           this.updateHUDSaveInfo();
-        } else if (this.currentArea === 'silas_interior' && this.player.x >= 9.0 && this.player.x <= 10.6 && this.player.y >= 10.05) {
+        } else if (this.currentArea === 'silas_interior' && this.player.x >= 8.2 && this.player.x <= 11.4 && this.player.y >= 9.75) {
           // Step out of Silas's House back onto the South-Center block!
           if (window.sounds?.playMove) window.sounds.playMove();
           this.currentArea = 'exterior';
@@ -10038,14 +10107,14 @@
           if (window.sounds?.playMove) window.sounds.playMove();
           this.currentArea = 'maya_interior';
           this.player.x = 9.8;
-          this.player.y = 9.3;
+          this.player.y = 9.15;
           this.player.dir = 'up';
           this.player.targetX = null;
           this.player.targetY = null;
 
           this.areaTransitionCooldown = 25;
           this.updateHUDSaveInfo();
-        } else if (this.currentArea === 'maya_interior' && this.player.x >= 9.0 && this.player.x <= 10.6 && this.player.y >= 10.05) {
+        } else if (this.currentArea === 'maya_interior' && this.player.x >= 8.2 && this.player.x <= 11.4 && this.player.y >= 9.75) {
           // Step out of Maya's House back onto the South-East block!
           if (window.sounds?.playMove) window.sounds.playMove();
           this.currentArea = 'exterior';

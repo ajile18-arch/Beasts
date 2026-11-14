@@ -6,8 +6,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>Mythos - Open World & Tabletop Card Game</title>
-  <link rel="stylesheet" href="css/style.css?v=2.05">
-  <link rel="stylesheet" href="css/mobile.css?v=2.05" media="(max-width: 820px), (hover: none) and (pointer: coarse)">
+  <link rel="stylesheet" href="css/style.css?v=2.07">
+  <link rel="stylesheet" href="css/mobile.css?v=2.07" media="(max-width: 820px), (hover: none) and (pointer: coarse)">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=MedievalSharp&family=Metamorphous&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
@@ -18,7 +18,7 @@
     <header class="game-header">
       <div class="logo-area">
         <h1 class="game-title">MYTHOS</h1>
-        <span class="version-tag" id="game-version">v2.05</span>
+        <span class="version-tag" id="game-version">v2.07</span>
         <span class="subtitle" id="header-subtitle"></span>
       </div>
 
@@ -1216,6 +1216,12 @@
 
       <!-- Phone Screen Container -->
       <div class="phone-screen-container">
+        <!-- Swipe-Down Top Bar to Exit Phone -->
+        <div class="phone-swipe-top-bar" id="phone-swipe-top-bar" title="Swipe down or tap to exit phone">
+          <div class="phone-swipe-handle-pill"></div>
+          <span class="phone-swipe-hint">⌄ Swipe down to exit</span>
+        </div>
+
         <!-- Status Bar -->
         <div class="phone-status-bar">
           <span class="phone-status-time" id="phone-status-time">9:41 AM</span>
@@ -1272,6 +1278,14 @@
                   <span class="phone-app-unread-dot hidden" id="dot-tournaments"></span>
                 </div>
                 <span class="phone-app-name">Tournaments</span>
+              </div>
+
+              <!-- App 5: Return to World Tab -->
+              <div class="phone-app-icon-item phone-app-return-world" id="app-btn-return-world">
+                <div class="phone-icon-box bg-return-world">
+                  🗺️
+                </div>
+                <span class="phone-app-name">Return to World</span>
               </div>
             </div>
 
@@ -1369,9 +1383,10 @@
           </div>
         </div>
 
-        <!-- Phone Bottom Navigation Bar -->
+        <!-- Phone Bottom Navigation Tab Bar -->
         <div class="phone-nav-bar">
-          <button class="phone-home-pill" id="btn-phone-home-pill" title="Return to Phone Home Screen"></button>
+          <button type="button" class="phone-nav-tab-btn" id="btn-phone-home-pill" title="Return to Phone Home Screen">🏠 Home</button>
+          <button type="button" class="phone-nav-tab-btn phone-return-world-tab" id="btn-phone-return-world" title="Exit Phone and Return to World">🗺️ Return to World</button>
         </div>
       </div>
 
@@ -1424,10 +1439,10 @@
     </div>
   </div>
 
-  <script src="js/audio.js?v=2.05"></script>
-  <script src="js/character_sprites.js?v=2.05"></script>
-  <script src="js/overworld.js?v=2.05"></script>
-  <script src="js/gwent_cards.js?v=2.05"></script>
-  <script src="js/game.js?v=2.05"></script>
+  <script src="js/audio.js?v=2.07"></script>
+  <script src="js/character_sprites.js?v=2.07"></script>
+  <script src="js/overworld.js?v=2.07"></script>
+  <script src="js/gwent_cards.js?v=2.07"></script>
+  <script src="js/game.js?v=2.07"></script>
 </body>
 </html>
