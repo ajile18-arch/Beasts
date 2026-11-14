@@ -760,6 +760,13 @@
       this.state.inspectedCard = card;
       window.soundFX?.playClick?.();
 
+      if (player.passed || this.state.playedCardThisTurn) {
+        this.state.selectedHandUid = null;
+        this.showAbilityPopup(card);
+        this.render();
+        return;
+      }
+
       // Double-click same non-agile card to auto-deploy to its row
       if (this.state.selectedHandUid === uid && card.row !== 'agile') {
         this.playCardToRow(activeTeam, uid, card.row);
@@ -1094,21 +1101,14 @@
         setTimeout(() => dmgPop.remove(), 680);
       }
 
-      let remaining = amount;
-      let hitArmor = false;
       if (targetCard.armor > 0) {
-        const absorbed = Math.min(targetCard.armor, remaining);
-        targetCard.armor -= absorbed;
-        remaining -= absorbed;
-        if (absorbed > 0) hitArmor = true;
-      }
-      if (hitArmor) {
+        targetCard.armor = Math.max(0, targetCard.armor - amount);
         window.soundFX?.playArmorHit?.();
-      } else if (remaining > 0) {
-        window.soundFX?.playHit?.();
+        return;
       }
-      if (remaining > 0) {
-        targetCard.power = Math.max(0, targetCard.power - remaining);
+      if (amount > 0) {
+        window.soundFX?.playHit?.();
+        targetCard.power = Math.max(0, targetCard.power - amount);
       }
       if (targetCard.power <= 0) {
         const rowArr = this.state.players[ownerTeam].rows[rowKey];
@@ -1477,8 +1477,8 @@
       const dmg = Math.max(1, attacker.power);
       // Prefer a target that will be destroyed, otherwise the highest-power target
       oppTargets.sort((a, b) => {
-        const aKills = (a.card.power + a.card.armor) <= dmg ? 1 : 0;
-        const bKills = (b.card.power + b.card.armor) <= dmg ? 1 : 0;
+        const aKills = (a.card.armor <= 0 && a.card.power <= dmg) ? 1 : 0;
+        const bKills = (b.card.armor <= 0 && b.card.power <= dmg) ? 1 : 0;
         if (bKills !== aKills) return bKills - aKills;
         return b.card.power - a.card.power;
       });
@@ -1671,14 +1671,21 @@
       }
 
       // 6 Combat Rows
-      const selectedCard = this.state.players[this.state.turnTeam].hand.find(c => c.uid === this.state.selectedHandUid);
+      const activePlayer = this.state.players[this.state.turnTeam];
+      const selectedCard = activePlayer.hand.find(c => c.uid === this.state.selectedHandUid);
+      const canPlaySelected = !this.isMatchOver
+        && !this.state.mulliganActive
+        && !activePlayer.passed
+        && !this.state.playedCardThisTurn
+        && !(this.gameMode === 'ai' && this.state.turnTeam !== 1)
+        && Boolean(selectedCard);
       [1, 2].forEach(team => {
         ['melee', 'ranged'].forEach(rk => {
           const scoreEl = document.getElementById(`score-${team}-${rk}`);
           if (scoreEl) scoreEl.textContent = this.getRowScore(team, rk);
 
           const rowEl = document.getElementById(`row-${team}-${rk}`);
-          const isValidDrop = !this.state.mulliganActive && selectedCard && team === this.state.turnTeam && (selectedCard.row === 'agile' || selectedCard.row === rk);
+          const isValidDrop = canPlaySelected && team === this.state.turnTeam && (selectedCard.row === 'agile' || selectedCard.row === rk);
           if (rowEl) rowEl.classList.toggle('valid-drop', Boolean(isValidDrop));
 
           const cardsEl = document.getElementById(`cards-${team}-${rk}`);
@@ -1713,7 +1720,7 @@
             const atkDmg = Math.max(1, activeAttacker.power);
             hintEl.textContent = `⚔️ ${activeAttacker.name} ready (${atkDmg} Dmg): Click a glowing opposing card to attack, or click ${activeAttacker.name} again to cancel.`;
           }
-        } else if (selectedCard) {
+        } else if (canPlaySelected) {
           hintEl.textContent = `Selected ${selectedCard.name}: Click a highlighted ${ROW_LABELS[selectedCard.row]} row to deploy (or click card again to quick-play).`;
         } else if (this.state.playedCardThisTurn) {
           hintEl.textContent = `Card deployed! Click a glowing board card to attack, or click ⏭️ End Turn.`;
