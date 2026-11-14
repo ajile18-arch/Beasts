@@ -8643,10 +8643,22 @@
         if (this.storyState !== 'free_roam' && this.storyState !== 'intro_waiting') return;
 
         const rect = this.canvas.getBoundingClientRect();
-        const scaleX = this.canvas.width / rect.width;
-        const scaleY = this.canvas.height / rect.height;
-        const cx = (clientX - rect.left) * scaleX;
-        const cy = (clientY - rect.top) * scaleY;
+        const fit = window.getComputedStyle(this.canvas).objectFit;
+        let scaleX = this.canvas.width / rect.width;
+        let scaleY = this.canvas.height / rect.height;
+        let offsetX = 0;
+        let offsetY = 0;
+        if (fit === 'cover') {
+          const uniformScale = Math.min(scaleX, scaleY);
+          scaleX = uniformScale;
+          scaleY = uniformScale;
+          const renderedW = this.canvas.width / uniformScale;
+          const renderedH = this.canvas.height / uniformScale;
+          offsetX = (renderedW - rect.width) / 2;
+          offsetY = (renderedH - rect.height) / 2;
+        }
+        const cx = (clientX - rect.left + offsetX) * scaleX;
+        const cy = (clientY - rect.top + offsetY) * scaleY;
         const zoom = this.getAreaZoom();
         const tx = (cx / zoom + (this.cameraX || 0)) / this.TILE;
         const ty = (cy / zoom + (this.cameraY || 0)) / this.TILE;
@@ -10050,15 +10062,24 @@
 
       // Smooth camera scroll for exterior & zoomed mobile interiors
       const zoom = this.getAreaZoom();
+      const rect = this.canvas ? this.canvas.getBoundingClientRect() : null;
+      const isCover = rect && rect.width > 0 && rect.height > 0 && window.getComputedStyle(this.canvas).objectFit === 'cover';
+      const viewW = this.canvas.width / zoom;
+      const viewH = this.canvas.height / zoom;
+      const visibleW = isCover ? Math.min(viewW, viewH * (rect.width / rect.height)) : viewW;
+      const visibleH = isCover ? Math.min(viewH, viewW * (rect.height / rect.width)) : viewH;
+
       if (this.currentArea === 'exterior') {
-        const viewW = this.canvas.width / zoom;
-        const viewH = this.canvas.height / zoom;
-        const maxCamY = Math.max(0, this.EXT_ROWS * this.TILE - viewH);
-        const targetCamY = Math.max(0, Math.min(maxCamY, this.player.y * this.TILE - viewH / 2));
+        const minCenterY = visibleH / 2;
+        const maxCenterY = Math.max(minCenterY, this.EXT_ROWS * this.TILE - visibleH / 2);
+        const targetCenterY = Math.max(minCenterY, Math.min(maxCenterY, this.player.y * this.TILE));
+        const targetCamY = targetCenterY - viewH / 2;
         this.cameraY += (targetCamY - this.cameraY) * 0.18;
 
-        const maxCamX = Math.max(0, this.EXT_COLS * this.TILE - viewW);
-        const targetCamX = Math.max(0, Math.min(maxCamX, this.player.x * this.TILE - viewW / 2));
+        const minCenterX = visibleW / 2;
+        const maxCenterX = Math.max(minCenterX, this.EXT_COLS * this.TILE - visibleW / 2);
+        const targetCenterX = Math.max(minCenterX, Math.min(maxCenterX, this.player.x * this.TILE));
+        const targetCamX = targetCenterX - viewW / 2;
         this.cameraX += (targetCamX - this.cameraX) * 0.18;
 
         const inPark = this.player.x >= 16.0;
@@ -10067,16 +10088,19 @@
           this.updateHUDSaveInfo();
         }
       } else if (zoom > 1) {
-        const viewW = this.canvas.width / zoom;
-        const viewH = this.canvas.height / zoom;
-        const minCamX = Math.min(64, Math.max(0, (this.canvas.width - viewW) / 2));
-        const maxCamX = Math.max(minCamX, this.canvas.width - viewW - minCamX);
-        const targetCamX = Math.max(minCamX, Math.min(maxCamX, this.player.x * this.TILE - viewW / 2));
+        const padX = 64;
+        const minCenterX = Math.min(this.canvas.width / 2, padX + visibleW / 2);
+        const maxCenterX = Math.max(minCenterX, this.canvas.width - padX - visibleW / 2);
+        const targetCenterX = Math.max(minCenterX, Math.min(maxCenterX, this.player.x * this.TILE));
+        const targetCamX = targetCenterX - viewW / 2;
         this.cameraX += (targetCamX - this.cameraX) * 0.18;
 
-        const minCamY = 36;
-        const maxCamY = Math.max(minCamY, this.canvas.height - viewH - 48);
-        const targetCamY = Math.max(minCamY, Math.min(maxCamY, this.player.y * this.TILE - viewH / 2));
+        const padTop = 36;
+        const padBottom = 48;
+        const minCenterY = Math.min(this.canvas.height / 2, padTop + visibleH / 2);
+        const maxCenterY = Math.max(minCenterY, this.canvas.height - padBottom - visibleH / 2);
+        const targetCenterY = Math.max(minCenterY, Math.min(maxCenterY, this.player.y * this.TILE));
+        const targetCamY = targetCenterY - viewH / 2;
         this.cameraY += (targetCamY - this.cameraY) * 0.18;
       } else {
         this.cameraY = 0;
