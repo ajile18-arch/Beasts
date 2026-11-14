@@ -4,6 +4,12 @@
    Desktop webapp (css/style.css) is completely unaffected by changes here.
    ============================================================================ */
 
+/* Always keep top HUD clean on mobile: score readout & A.I. hand live inside ☰ Menu */
+.gwent-hud-scores,
+.gwent-opp-hand-bar {
+  display: none !important;
+}
+
 /* ----------------------------------------------------------------------------
    1. MOBILE PORTRAIT CARD GAME ARENA
    Lifts the Player Hand Tray high above mobile browser bottom bars / gesture
