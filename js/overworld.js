@@ -8818,10 +8818,7 @@
         this.keys = {};
       });
 
-      const handleCanvasTap = (clientX, clientY) => {
-        if (!this.active) return;
-        if (this.storyState !== 'free_roam' && this.storyState !== 'intro_waiting') return;
-
+      const screenToWorldTile = (clientX, clientY) => {
         const rect = this.canvas.getBoundingClientRect();
         const fit = window.getComputedStyle(this.canvas).objectFit;
         let scaleX = this.canvas.width / rect.width;
@@ -8840,8 +8837,28 @@
         const cx = (clientX - rect.left + offsetX) * scaleX;
         const cy = (clientY - rect.top + offsetY) * scaleY;
         const zoom = this.getAreaZoom();
-        const tx = (cx / zoom + (this.cameraX || 0)) / this.TILE;
-        const ty = (cy / zoom + (this.cameraY || 0)) / this.TILE;
+        return {
+          tx: (cx / zoom + (this.cameraX || 0)) / this.TILE,
+          ty: (cy / zoom + (this.cameraY || 0)) / this.TILE
+        };
+      };
+
+      const updateMoveTargetFromScreen = (clientX, clientY) => {
+        if (!this.active) return;
+        if (this.storyState !== 'free_roam' && this.storyState !== 'intro_waiting') return;
+        const { tx, ty } = screenToWorldTile(clientX, clientY);
+        const houseTarget = this.resolveExteriorHouseDoorTarget(tx, ty) || this.resolveInteriorExitDoorTarget(tx, ty);
+        const moveX = houseTarget ? houseTarget.x : tx;
+        const moveY = houseTarget ? houseTarget.y : ty;
+        this.touchBeacon = { x: moveX, y: moveY, tick: 0 };
+        this.setClickMoveTarget(moveX, moveY);
+      };
+
+      const handleCanvasTap = (clientX, clientY) => {
+        if (!this.active) return false;
+        if (this.storyState !== 'free_roam' && this.storyState !== 'intro_waiting') return false;
+
+        const { tx, ty } = screenToWorldTile(clientX, clientY);
 
         // Visual golden destination beacon on touch/click
         this.touchBeacon = { x: tx, y: ty, tick: 0 };
@@ -8946,7 +8963,7 @@
               && Math.hypot(this.player.x - entry.npc.x, this.player.y - (entry.npc.y + entry.yOffset)) < entry.reachRadius) {
             if (this.activeDialogueNpc !== entry.talkId) {
               this.startTalkingToNpc(entry.talkId);
-              return;
+              return true;
             }
           }
         }
@@ -8958,16 +8975,81 @@
           this.touchBeacon = { x: moveX, y: moveY, tick: 0 };
         }
         this.setClickMoveTarget(moveX, moveY);
+        return false;
       };
 
-      this.canvas.addEventListener('click', (e) => {
-        handleCanvasTap(e.clientX, e.clientY);
-      });
+      let holdPointerId = null;
+      let holdClientX = 0;
+      let holdClientY = 0;
+      let lastHoldRepathAt = 0;
+      let holdRepathTimer = null;
+      let suppressNextClick = false;
+
+      const stopHoldSteering = () => {
+        holdPointerId = null;
+        if (holdRepathTimer) {
+          clearInterval(holdRepathTimer);
+          holdRepathTimer = null;
+        }
+      };
 
       this.canvas.addEventListener('pointerdown', (e) => {
-        if (e.pointerType === 'touch') {
-          handleCanvasTap(e.clientX, e.clientY);
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
+        suppressNextClick = true;
+        const openedDialogue = handleCanvasTap(e.clientX, e.clientY);
+        if (openedDialogue) {
+          stopHoldSteering();
+          return;
         }
+        holdPointerId = e.pointerId;
+        holdClientX = e.clientX;
+        holdClientY = e.clientY;
+        lastHoldRepathAt = performance.now();
+        try { this.canvas.setPointerCapture?.(e.pointerId); } catch (_) {}
+        if (!holdRepathTimer) {
+          holdRepathTimer = setInterval(() => {
+            if (holdPointerId === null) {
+              stopHoldSteering();
+              return;
+            }
+            if (!this.active || (this.storyState !== 'free_roam' && this.storyState !== 'intro_waiting')) {
+              stopHoldSteering();
+              return;
+            }
+            const now = performance.now();
+            if (now - lastHoldRepathAt >= 90) {
+              lastHoldRepathAt = now;
+              updateMoveTargetFromScreen(holdClientX, holdClientY);
+            }
+          }, 100);
+        }
+      });
+
+      this.canvas.addEventListener('pointermove', (e) => {
+        if (holdPointerId !== e.pointerId) return;
+        holdClientX = e.clientX;
+        holdClientY = e.clientY;
+        const now = performance.now();
+        if (now - lastHoldRepathAt >= 70) {
+          lastHoldRepathAt = now;
+          updateMoveTargetFromScreen(holdClientX, holdClientY);
+        }
+      });
+
+      this.canvas.addEventListener('pointerup', (e) => {
+        if (holdPointerId === e.pointerId) stopHoldSteering();
+      });
+      this.canvas.addEventListener('pointercancel', (e) => {
+        if (holdPointerId === e.pointerId) stopHoldSteering();
+      });
+      window.addEventListener('blur', stopHoldSteering);
+
+      this.canvas.addEventListener('click', (e) => {
+        if (suppressNextClick) {
+          suppressNextClick = false;
+          return;
+        }
+        handleCanvasTap(e.clientX, e.clientY);
       });
 
       const timeSel = document.getElementById('ow-time-select');

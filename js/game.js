@@ -349,7 +349,7 @@
   // ---------------------------------------------------------------------------
   class BeastsGame {
     constructor() {
-      this.VERSION = '2.14';
+      this.VERSION = '2.16';
       this.gameMode = 'ai'; // 'ai' | '2p'
       this.currentView = 'overworld';
       this.currentChallenger = null;

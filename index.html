@@ -6,8 +6,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>Mythos - Open World & Tabletop Card Game</title>
-  <link rel="stylesheet" href="css/style.css?v=2.14">
-  <link rel="stylesheet" href="css/mobile.css?v=2.14" media="(max-width: 820px), (hover: none) and (pointer: coarse)">
+  <link rel="stylesheet" href="css/style.css?v=2.16">
+  <link rel="stylesheet" href="css/mobile.css?v=2.16" media="(max-width: 820px), (hover: none) and (pointer: coarse)">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=MedievalSharp&family=Metamorphous&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
@@ -18,57 +18,57 @@
     <header class="game-header">
       <div class="logo-area">
         <h1 class="game-title">MYTHOS</h1>
-        <span class="version-tag" id="game-version">v2.14</span>
+        <span class="version-tag" id="game-version">v2.16</span>
         <span class="subtitle" id="header-subtitle"></span>
       </div>
 
       <!-- Overworld Style & Lighting Quick-Tweak Bar (Visible in Overworld) -->
       <div class="overworld-toolbar" id="overworld-toolbar">
-        <span class="ow-location-pill" id="ow-location-pill">?? Living Room (Day 2 of Summer)</span>
-        <button id="btn-open-calendar" class="ui-btn primary-btn calendar-toolbar-btn" style="padding: 4px 10px; font-size: 12px; background: linear-gradient(135deg, #059669, #10b981); border-color: #34d399;" title="Town Weekly Calendar & Daily Events (Key: C)">?? <span id="calendar-btn-day-label">Monday</span> � Day <span id="calendar-btn-day-num">1</span></button>
-        <button id="btn-open-phone" class="ui-btn primary-btn phone-toolbar-btn" style="padding: 4px 10px; font-size: 12px; background: linear-gradient(135deg, #4f46e5, #6366f1); border-color: #818cf8;" title="Mythos Mobile Smartphone (Key: P)">?? Phone <span id="phone-alert-badge" class="phone-badge-pill hidden">!</span></button>
+        <span class="ow-location-pill" id="ow-location-pill">🏠 Living Room (Day 2 of Summer)</span>
+        <button id="btn-open-calendar" class="ui-btn primary-btn calendar-toolbar-btn" style="padding: 4px 10px; font-size: 12px; background: linear-gradient(135deg, #059669, #10b981); border-color: #34d399;" title="Town Weekly Calendar & Daily Events (Key: C)">📅 <span id="calendar-btn-day-label">Monday</span> • Day <span id="calendar-btn-day-num">1</span></button>
+        <button id="btn-open-phone" class="ui-btn primary-btn phone-toolbar-btn" style="padding: 4px 10px; font-size: 12px; background: linear-gradient(135deg, #4f46e5, #6366f1); border-color: #818cf8;" title="Mythos Mobile Smartphone (Key: P)">📱 Phone <span id="phone-alert-badge" class="phone-badge-pill hidden">!</span></button>
         <button id="btn-open-inventory" class="ui-btn primary-btn backpack-toolbar-btn" title="Open Adventurer Backpack & Inventory (Key: I)"><img src="Sprites/Overworld/backpack_icon.png" class="hud-backpack-img" alt=""> Backpack <span id="inv-badge-count" class="inv-badge-pill">0</span></button>
-        <button id="btn-open-binder" class="ui-btn primary-btn binder-toolbar-btn locked" style="padding: 4px 10px; font-size: 12px; background: linear-gradient(135deg, #1e3a8a, #2563eb); border-color: #60a5fa;" title="Old Card Binder (Locked � Defeat Friend to Unlock)">?? Old Card Binder <span id="binder-badge-count" class="inv-badge-pill">0</span></button>
-        <button id="btn-open-playing-deck" class="ui-btn primary-btn deck-toolbar-btn" style="padding: 4px 10px; font-size: 12px; background: linear-gradient(135deg, #78350f, #b45309); border-color: #fbbf24;" title="Build the Playing Deck you take into Mythos battles">?? Playing Deck <span id="deck-badge-count" class="inv-badge-pill">0</span></button>
-        <button id="btn-open-creator" class="ui-btn secondary" style="padding: 4px 10px; font-size: 12px;" title="Customize Character or World Save">?? Character</button>
+        <button id="btn-open-binder" class="ui-btn primary-btn binder-toolbar-btn locked" style="padding: 4px 10px; font-size: 12px; background: linear-gradient(135deg, #1e3a8a, #2563eb); border-color: #60a5fa;" title="Old Card Binder (Locked — Defeat Friend to Unlock)">📖 Old Card Binder <span id="binder-badge-count" class="inv-badge-pill">0</span></button>
+        <button id="btn-open-playing-deck" class="ui-btn primary-btn deck-toolbar-btn" style="padding: 4px 10px; font-size: 12px; background: linear-gradient(135deg, #78350f, #b45309); border-color: #fbbf24;" title="Build the Playing Deck you take into Mythos battles">🃏 Playing Deck <span id="deck-badge-count" class="inv-badge-pill">0</span></button>
+        <button id="btn-open-creator" class="ui-btn secondary" style="padding: 4px 10px; font-size: 12px;" title="Customize Character or World Save">👤 Character</button>
         <select id="ow-time-select" class="ow-select" title="Time of Day Shader">
-          <option value="day" selected>?? Summer Day</option>
-          <option value="sunset">?? Golden Hour</option>
-          <option value="night">?? Cozy Night</option>
+          <option value="day" selected>☀️ Summer Day</option>
+          <option value="sunset">🌅 Golden Hour</option>
+          <option value="night">🌙 Cozy Night</option>
         </select>
       </div>
 
       <div class="header-controls">
-        <button id="btn-switch-view" class="ui-btn primary-btn" title="Switch between Open World and Mythos Tabletop Arena">?? Quick Duel</button>
+        <button id="btn-switch-view" class="ui-btn primary-btn" title="Switch between Open World and Mythos Tabletop Arena">🃏 Quick Duel</button>
         <div class="round-counter arena-only-ctrl hidden" id="arena-round-counter">Rnd <span id="round-num">1</span></div>
-        <button id="btn-toggle-card" class="ui-btn mobile-only-btn arena-only-ctrl hidden" title="View Active Beast">?? <span class="btn-lbl">Card</span></button>
-        <button id="btn-toggle-log" class="ui-btn mobile-only-btn arena-only-ctrl hidden" title="View Tactical Log & Roster">?? <span class="btn-lbl">Log</span></button>
+        <button id="btn-toggle-card" class="ui-btn mobile-only-btn arena-only-ctrl hidden" title="View Active Beast">🃏 <span class="btn-lbl">Card</span></button>
+        <button id="btn-toggle-log" class="ui-btn mobile-only-btn arena-only-ctrl hidden" title="View Tactical Log & Roster">📜 <span class="btn-lbl">Log</span></button>
         <button id="btn-mode" class="ui-btn secondary arena-only-ctrl hidden" title="Switch between Solo AI and 2P Hotseat"><span id="mode-label">Solo vs AI</span></button>
-        <button id="btn-sound" class="ui-btn icon-btn" title="Toggle Sound">??</button>
-        <button id="btn-reset" class="ui-btn secondary arena-only-ctrl hidden" title="Restart Match">?</button>
+        <button id="btn-sound" class="ui-btn icon-btn" title="Toggle Sound">🔊</button>
+        <button id="btn-reset" class="ui-btn secondary arena-only-ctrl hidden" title="Restart Match">↺</button>
       </div>
     </header>
 
-    <!-- Open-World Pok�mon-Style Top-Down Viewport -->
+    <!-- Open-World Pokémon-Style Top-Down Viewport -->
     <section class="overworld-container" id="overworld-view">
       <!-- Mobile Quick Access HUD Bar (Visible on mobile portrait) -->
       <div class="ow-mobile-header-bar" id="ow-mobile-header-bar">
-        <div class="ow-mobile-loc-tag" id="ow-mobile-loc-tag">?? Living Room � $0</div>
+        <div class="ow-mobile-loc-tag" id="ow-mobile-loc-tag">🏠 Living Room • $0</div>
         <div class="ow-mobile-nav-buttons">
           <button id="btn-mob-phone" class="ow-mob-nav-btn" title="Mythos Mobile Phone">
-            ?? <span class="mob-btn-text">Phone</span> <span id="mob-phone-badge" class="phone-badge-pill hidden">!</span>
+            📱 <span class="mob-btn-text">Phone</span> <span id="mob-phone-badge" class="phone-badge-pill hidden">!</span>
           </button>
           <button id="btn-mob-inventory" class="ow-mob-nav-btn" title="Backpack / Inventory">
             <img src="Sprites/Overworld/backpack_icon.png" class="hud-backpack-img-sm" alt=""> <span class="mob-btn-text">Pack</span> <span id="mob-inv-badge" class="inv-badge-pill">0</span>
           </button>
           <button id="btn-mob-binder" class="ow-mob-nav-btn locked" title="Old Card Binder">
-            ?? <span class="mob-btn-text">Binder</span> <span id="mob-binder-badge" class="inv-badge-pill">0</span>
+            📖 <span class="mob-btn-text">Binder</span> <span id="mob-binder-badge" class="inv-badge-pill">0</span>
           </button>
           <button id="btn-mob-creator" class="ow-mob-nav-btn" title="Character Profile">
-            ?? <span class="mob-btn-text">Hero</span>
+            👤 <span class="mob-btn-text">Hero</span>
           </button>
           <button id="btn-mob-dpad-toggle" class="ow-mob-nav-btn hidden" title="Toggle On-Screen Virtual Controls">
-            ?? <span class="mob-btn-text">Pad</span>
+            🎮 <span class="mob-btn-text">Pad</span>
           </button>
         </div>
       </div>
@@ -77,13 +77,13 @@
       <div class="overworld-stage" id="overworld-stage">
         <canvas id="overworld-canvas" width="1024" height="768"></canvas>
         <div class="ow-controls-hint">
-          Walk: <b>WASD / Arrow Keys</b> or <b>Click Tile</b> � Interact / Continue: <b>Space / Enter</b>
+          Walk: <b>WASD / Arrow Keys</b> or <b>Click Tile</b> • Interact / Continue: <b>Space / Enter</b>
         </div>
       </div>
 
       <!-- Bottom: Black Open Space Beneath the Game Map for Text Boxes, Options & Controls -->
       <div class="ow-bottom-deck" id="ow-bottom-deck">
-        <!-- Pok�mon / Stardew Style Dialogue & Response Choices Box (Displays in black space beneath map) -->
+        <!-- Pokémon / Stardew Style Dialogue & Response Choices Box (Displays in black space beneath map) -->
         <div class="ow-dialog-bar hidden" id="ow-dialog-bar">
           <div class="ow-dialog-main">
             <div class="ow-speaker-tag" id="ow-speaker-tag">MIKE</div>
@@ -96,10 +96,10 @@
 
           <div class="ow-dialog-actions" id="ow-dialog-actions">
             <button class="ui-btn primary-btn ow-duel-btn hidden" id="ow-btn-next">
-              Continue ?
+              Continue ▸
             </button>
             <button class="ui-btn primary-btn ow-duel-btn hidden" id="ow-btn-challenge">
-              ?? Play Mythos (Space)
+              ⚔️ Play Mythos (Space)
             </button>
           </div>
         </div>
@@ -108,18 +108,18 @@
         <div class="ow-controls-deck hidden" id="ow-controls-deck">
           <!-- Virtual D-Pad (Removed from screen) -->
           <div class="ow-dpad hidden" id="ow-dpad">
-            <button class="dpad-btn dpad-up" data-dir="up" aria-label="Walk Up">?</button>
-            <button class="dpad-btn dpad-left" data-dir="left" aria-label="Walk Left">?</button>
+            <button class="dpad-btn dpad-up" data-dir="up" aria-label="Walk Up">▲</button>
+            <button class="dpad-btn dpad-left" data-dir="left" aria-label="Walk Left">◀</button>
             <div class="dpad-center"></div>
-            <button class="dpad-btn dpad-right" data-dir="right" aria-label="Walk Right">?</button>
-            <button class="dpad-btn dpad-down" data-dir="down" aria-label="Walk Down">?</button>
+            <button class="dpad-btn dpad-right" data-dir="right" aria-label="Walk Right">▶</button>
+            <button class="dpad-btn dpad-down" data-dir="down" aria-label="Walk Down">▼</button>
           </div>
 
           <!-- Action Buttons -->
           <div class="ow-action-buttons hidden" id="ow-action-buttons">
             <button class="ow-action-btn ow-btn-b" id="ow-btn-b" aria-label="Backpack Inventory">
               <span class="btn-letter">B</span>
-              <span class="btn-subtext">?? PACK</span>
+              <span class="btn-subtext">🎒 PACK</span>
             </button>
             <button class="ow-action-btn ow-btn-a" id="ow-btn-a" aria-label="Action / Interact">
               <span class="btn-letter">A</span>
@@ -134,27 +134,27 @@
     <main class="main-layout gwent-layout hidden" id="arena-view">
       <!-- Floating Top-Left Menu & Score Pill -->
       <div class="gwent-hud-bar" id="gwent-hud-bar">
-        <button type="button" class="ui-btn primary-btn gwent-menu-toggle-btn" id="btn-gwent-menu" title="Open Match Menu & Scoreboards">? Menu</button>
+        <button type="button" class="ui-btn primary-btn gwent-menu-toggle-btn" id="btn-gwent-menu" title="Open Match Menu & Scoreboards">☰ Menu</button>
         <div class="gwent-hud-scores">
-          <span class="hud-team-2">?? <b id="hud-p2-score">0</b></span>
+          <span class="hud-team-2">🌙 <b id="hud-p2-score">0</b></span>
           <span class="gwent-pass-badge hidden" id="hud-opp-passed">PASSED</span>
           <span class="hud-vs">vs</span>
-          <span class="hud-team-1"><b id="hud-p1-score">0</b> ??</span>
+          <span class="hud-team-1"><b id="hud-p1-score">0</b> ☀️</span>
         </div>
         <span class="gwent-hud-round" id="hud-round-pill">R1</span>
-        <button type="button" class="ui-btn gwent-hud-end-turn-btn" id="hud-btn-end-turn" title="End Turn">?? End Turn</button>
-        <button type="button" class="ui-btn gwent-hud-pass-btn" id="hud-btn-pass" title="Pass Round">??? Pass</button>
+        <button type="button" class="ui-btn gwent-hud-end-turn-btn" id="hud-btn-end-turn" title="End Turn">⏭️ End Turn</button>
+        <button type="button" class="ui-btn gwent-hud-pass-btn" id="hud-btn-pass" title="Pass Round">🏳️ Pass</button>
       </div>
 
       <!-- Single-Click Card Ability Popup -->
       <div class="gwent-ability-popup hidden" id="gwent-ability-popup">
         <div class="gwent-ap-header">
           <span class="gwent-ap-title" id="ap-name">Goblin Soldier</span>
-          <button type="button" class="drawer-close-btn gwent-menu-close-btn" id="btn-close-ap" title="Close">?</button>
+          <button type="button" class="drawer-close-btn gwent-menu-close-btn" id="btn-close-ap" title="Close">✕</button>
         </div>
         <div class="gwent-ap-meta">
           <span class="gwent-ap-pill" id="ap-role">Goblin Army</span>
-          <span class="gwent-ap-pill" id="ap-row">?? Melee</span>
+          <span class="gwent-ap-pill" id="ap-row">⚔️ Melee</span>
           <span class="gwent-ap-pill" id="ap-power">Power: 1</span>
         </div>
         <div class="gwent-ap-body" id="ap-ability"></div>
@@ -167,12 +167,12 @@
           <div class="gwent-brand-row">
             <span class="gwent-brand-title">MYTHOS</span>
             <span class="gwent-brand-sub" id="gwent-arena-subtitle">Best of 3</span>
-            <button type="button" class="drawer-close-btn gwent-menu-close-btn" id="btn-close-gwent-menu" title="Close Menu">?</button>
+            <button type="button" class="drawer-close-btn gwent-menu-close-btn" id="btn-close-gwent-menu" title="Close Menu">✕</button>
           </div>
           <div class="gwent-ctrl-buttons">
-            <button id="gwent-btn-world" class="ui-btn primary-btn gwent-mini-btn" title="Return to Open World">??? World</button>
-            <button id="gwent-btn-sound" class="ui-btn icon-btn gwent-mini-btn" title="Toggle Sound">??</button>
-            <button id="gwent-btn-reset" class="ui-btn secondary gwent-mini-btn" title="Restart Match">?</button>
+            <button id="gwent-btn-world" class="ui-btn primary-btn gwent-mini-btn" title="Return to Open World">🗺️ World</button>
+            <button id="gwent-btn-sound" class="ui-btn icon-btn gwent-mini-btn" title="Toggle Sound">🔊</button>
+            <button id="gwent-btn-reset" class="ui-btn secondary gwent-mini-btn" title="Restart Match">↺</button>
           </div>
         </div>
 
@@ -180,18 +180,18 @@
         <div class="gwent-player-box team-2" id="gwent-p2-box">
           <div class="gwent-player-header">
             <div class="gwent-player-identity">
-              <span class="gwent-crest">??</span>
+              <span class="gwent-crest">🌙</span>
               <div>
                 <div class="gwent-player-name" id="gwent-p2-name">A.I.</div>
-                <div class="gwent-player-meta">Hand: <span id="gwent-p2-hand-count">0</span> � Deck: <span id="gwent-p2-deck-count">0</span></div>
+                <div class="gwent-player-meta">Hand: <span id="gwent-p2-hand-count">0</span> • Deck: <span id="gwent-p2-deck-count">0</span></div>
               </div>
             </div>
             <div class="gwent-total-score" id="gwent-p2-score">0</div>
           </div>
           <div class="gwent-gems-row">
             <div class="gwent-gems" id="gwent-p2-gems">
-              <span class="gem intact" title="Round Gem">??</span>
-              <span class="gem intact" title="Round Gem">??</span>
+              <span class="gem intact" title="Round Gem">💎</span>
+              <span class="gem intact" title="Round Gem">💎</span>
             </div>
             <span class="gwent-pass-badge hidden" id="gwent-p2-passed">PASSED</span>
           </div>
@@ -199,7 +199,7 @@
 
         <!-- Round & Turn Status -->
         <div class="gwent-match-status" id="gwent-match-status">
-          <div class="gwent-round-pill" id="gwent-round-pill">ROUND 1 � BEST OF 3</div>
+          <div class="gwent-round-pill" id="gwent-round-pill">ROUND 1 • BEST OF 3</div>
           <div class="gwent-turn-banner" id="gwent-turn-banner">Your Turn</div>
         </div>
 
@@ -207,18 +207,18 @@
         <div class="gwent-player-box team-1 active-turn" id="gwent-p1-box">
           <div class="gwent-player-header">
             <div class="gwent-player-identity">
-              <span class="gwent-crest">??</span>
+              <span class="gwent-crest">☀️</span>
               <div>
                 <div class="gwent-player-name" id="gwent-p1-name">You</div>
-                <div class="gwent-player-meta">Hand: <span id="gwent-p1-hand-count">0</span> � Deck: <span id="gwent-p1-deck-count">0</span></div>
+                <div class="gwent-player-meta">Hand: <span id="gwent-p1-hand-count">0</span> • Deck: <span id="gwent-p1-deck-count">0</span></div>
               </div>
             </div>
             <div class="gwent-total-score" id="gwent-p1-score">0</div>
           </div>
           <div class="gwent-gems-row">
             <div class="gwent-gems" id="gwent-p1-gems">
-              <span class="gem intact" title="Round Gem">??</span>
-              <span class="gem intact" title="Round Gem">??</span>
+              <span class="gem intact" title="Round Gem">💎</span>
+              <span class="gem intact" title="Round Gem">💎</span>
             </div>
             <span class="gwent-pass-badge hidden" id="gwent-p1-passed">PASSED</span>
           </div>
@@ -227,24 +227,24 @@
         <!-- End Turn, Pass Round & Chronicle Actions -->
         <div class="gwent-sidebar-actions">
           <button class="ui-btn gwent-end-turn-btn" id="btn-gwent-end-turn" title="End your turn before exhausting all attacks">
-            ?? END TURN
+            ⏭️ END TURN
           </button>
           <button class="ui-btn gwent-pass-btn" id="btn-gwent-pass" title="Pass this round and save your remaining cards">
-            ??? PASS ROUND
+            🏳️ PASS ROUND
           </button>
           <button class="ui-btn secondary gwent-chronicle-btn" id="btn-open-chronicle" title="Open Match Chronicle Log">
-            ?? Match Chronicle
+            📜 Match Chronicle
           </button>
         </div>
 
         <!-- Compact Graveyards -->
         <div class="gwent-graveyards compact" id="gwent-graveyards">
           <div class="graveyard-box">
-            <span class="gy-label">?? GY: <b id="gy-p1-count">0</b></span>
+            <span class="gy-label">☀️ GY: <b id="gy-p1-count">0</b></span>
             <div class="gy-thumbs" id="gy-p1-thumbs"></div>
           </div>
           <div class="graveyard-box">
-            <span class="gy-label">?? GY: <b id="gy-p2-count">0</b></span>
+            <span class="gy-label">🌙 GY: <b id="gy-p2-count">0</b></span>
             <div class="gy-thumbs" id="gy-p2-thumbs"></div>
           </div>
         </div>
@@ -260,12 +260,12 @@
         <!-- Mulligan / Round Transition Banner -->
         <div class="gwent-mulligan-bar hidden" id="gwent-mulligan-bar">
           <div class="mulligan-info">
-            <span class="mulligan-title">?? OPENING MULLIGAN</span>
+            <span class="mulligan-title">🃏 OPENING MULLIGAN</span>
             <span class="mulligan-sub" id="mulligan-sub">Select up to <b>2 cards</b> in your hand, then click <b>Mulligan</b> to redraw.</span>
           </div>
           <div class="mulligan-actions">
-            <button class="ui-btn gwent-mulligan-btn" id="btn-mulligan-confirm" disabled>?? Mulligan (0/2)</button>
-            <button class="ui-btn primary-btn" id="btn-mulligan-done">? Ready to Duel</button>
+            <button class="ui-btn gwent-mulligan-btn" id="btn-mulligan-confirm" disabled>🔄 Mulligan (0/2)</button>
+            <button class="ui-btn primary-btn" id="btn-mulligan-done">✓ Ready to Duel</button>
           </div>
         </div>
 
@@ -275,7 +275,7 @@
           <div class="gwent-side gwent-side-opp">
             <div class="gwent-row" data-team="2" data-row="ranged" id="row-2-ranged">
               <div class="gwent-row-label">
-                <span class="row-icon">??</span>
+                <span class="row-icon">🏹</span>
                 <span class="row-name">RANGED</span>
               </div>
               <div class="gwent-row-score" id="score-2-ranged">0</div>
@@ -283,7 +283,7 @@
             </div>
             <div class="gwent-row" data-team="2" data-row="melee" id="row-2-melee">
               <div class="gwent-row-label">
-                <span class="row-icon">??</span>
+                <span class="row-icon">⚔️</span>
                 <span class="row-name">MELEE</span>
               </div>
               <div class="gwent-row-score" id="score-2-melee">0</div>
@@ -294,7 +294,7 @@
           <!-- Center Divider & Round Overlay Toast -->
           <div class="gwent-center-divider">
             <div class="gwent-divider-line"></div>
-            <div class="gwent-center-badge" id="gwent-center-badge">MYTHOS � ROUND 1</div>
+            <div class="gwent-center-badge" id="gwent-center-badge">MYTHOS • ROUND 1</div>
             <div class="gwent-divider-line"></div>
           </div>
 
@@ -302,7 +302,7 @@
           <div class="gwent-side gwent-side-player">
             <div class="gwent-row" data-team="1" data-row="melee" id="row-1-melee">
               <div class="gwent-row-label">
-                <span class="row-icon">??</span>
+                <span class="row-icon">⚔️</span>
                 <span class="row-name">MELEE</span>
               </div>
               <div class="gwent-row-score" id="score-1-melee">0</div>
@@ -310,7 +310,7 @@
             </div>
             <div class="gwent-row" data-team="1" data-row="ranged" id="row-1-ranged">
               <div class="gwent-row-label">
-                <span class="row-icon">??</span>
+                <span class="row-icon">🏹</span>
                 <span class="row-name">RANGED</span>
               </div>
               <div class="gwent-row-score" id="score-1-ranged">0</div>
@@ -321,7 +321,7 @@
           <!-- Round Result Overlay Banner (briefly shown between rounds) -->
           <div class="gwent-round-overlay hidden" id="gwent-round-overlay">
             <div class="round-overlay-title" id="round-overlay-title">ROUND 1 VICTORY!</div>
-            <div class="round-overlay-sub" id="round-overlay-sub">You 24 � 18 A.I.</div>
+            <div class="round-overlay-sub" id="round-overlay-sub">You 24 — 18 A.I.</div>
           </div>
         </div>
 
@@ -337,10 +337,10 @@
       <!-- Floating Match Chronicle Window (Toggleable) -->
       <aside class="side-panel log-panel gwent-chronicle-window hidden" id="log-panel">
         <div class="panel-header log-header">
-          <h3>?? MATCH CHRONICLE</h3>
+          <h3>📜 MATCH CHRONICLE</h3>
           <div style="display:flex; gap:6px; align-items:center;">
             <button id="btn-clear-log" class="tiny-btn">Clear</button>
-            <button class="drawer-close-btn" id="btn-close-log" title="Close Chronicle">?</button>
+            <button class="drawer-close-btn" id="btn-close-log" title="Close Chronicle">✕</button>
           </div>
         </div>
         <div class="combat-log" id="combat-log">
@@ -352,15 +352,15 @@
     <!-- Gwent Card Detail Zoom Modal -->
     <div class="modal-overlay hidden" id="gwent-card-modal" style="z-index: 120;">
       <div class="gwent-card-modal-dialog" id="gwent-card-modal-dialog">
-        <button type="button" class="gwent-modal-close" id="btn-close-gwent-card-modal" aria-label="Close">?</button>
+        <button type="button" class="gwent-modal-close" id="btn-close-gwent-card-modal" aria-label="Close">✕</button>
         <div class="gwent-modal-art-col">
           <img id="gwent-modal-img" src="Cards/Phoenix_Card.png" alt="Card Artwork">
         </div>
         <div class="gwent-modal-info-col">
           <div class="gwent-modal-badges">
             <span class="element-tag fire" id="gwent-modal-element">Fire</span>
-            <span class="gwent-modal-badge" id="gwent-modal-row">?? Ranged</span>
-            <span class="gwent-modal-badge rarity" id="gwent-modal-rarity">4? GOLD</span>
+            <span class="gwent-modal-badge" id="gwent-modal-row">🏹 Ranged</span>
+            <span class="gwent-modal-badge rarity" id="gwent-modal-rarity">4★ GOLD</span>
           </div>
           <h2 class="gwent-modal-title" id="gwent-modal-name">Phoenix</h2>
           <div class="gwent-modal-stats-row">
@@ -375,11 +375,11 @@
           </div>
           <div class="gwent-modal-abilities">
             <div class="gwent-modal-ability-card">
-              <div class="ability-heading" id="gwent-modal-ability-title">?? Trails of Fire</div>
+              <div class="ability-heading" id="gwent-modal-ability-title">⚔️ Trails of Fire</div>
               <p id="gwent-modal-ability-desc">Deals 2 damage to every enemy unit on the opposing Melee row.</p>
             </div>
             <div class="gwent-modal-ability-card passive">
-              <div class="ability-heading" id="gwent-modal-passive-title">?? Rebirth</div>
+              <div class="ability-heading" id="gwent-modal-passive-title">🌟 Rebirth</div>
               <p id="gwent-modal-passive-desc">At the start of Round 2 or 3, if in Graveyard, revives onto your Ranged row with 4 Power.</p>
             </div>
           </div>
@@ -397,7 +397,7 @@
         <!-- Draft Header -->
         <div class="draft-header">
           <div class="draft-title-container">
-            <span class="draft-crest">??</span>
+            <span class="draft-crest">⚔️</span>
             <div>
               <h2 class="draft-title">MYTHICAL BEAST DRAFT</h2>
               <div class="draft-subtitle">Assemble your squad: 3 selections for each team</div>
@@ -412,7 +412,7 @@
         <div class="draft-trays-container">
           <div class="draft-team-tray team-1" id="draft-tray-1">
             <div class="tray-title-row">
-              <span class="crest">??</span>
+              <span class="crest">☀️</span>
               <span class="tray-name">SOLAR TEAM</span>
               <span class="tray-counter" id="tray-count-1">0 / 3</span>
             </div>
@@ -427,7 +427,7 @@
 
           <div class="draft-team-tray team-2" id="draft-tray-2">
             <div class="tray-title-row">
-              <span class="crest">??</span>
+              <span class="crest">🌙</span>
               <span class="tray-name" id="tray-name-2">LUNAR TEAM (AI)</span>
               <span class="tray-counter" id="tray-count-2">0 / 3</span>
             </div>
@@ -453,7 +453,7 @@
         <!-- Completion Actions -->
         <div class="draft-actions-bar" id="draft-actions-bar" style="display: none;">
           <button class="ui-btn primary-btn draft-start-btn" id="btn-start-match">
-            ?? ENTER TABLETOP ARENA
+            ⚔️ ENTER TABLETOP ARENA
           </button>
         </div>
       </div>
@@ -462,12 +462,12 @@
     <!-- Winner Modal Overlay -->
     <div class="modal-overlay hidden" id="winner-modal">
       <div class="modal-card">
-        <div class="modal-crest" id="winner-crest">??</div>
+        <div class="modal-crest" id="winner-crest">🏆</div>
         <h2 id="winner-title">VICTORY!</h2>
         <p id="winner-message">Team Solar has eliminated all opposing beasts.</p>
         <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
-          <button class="ui-btn primary-btn" id="btn-rematch">?? Rematch</button>
-          <button class="ui-btn secondary" id="btn-return-overworld">??? Return to Overworld</button>
+          <button class="ui-btn primary-btn" id="btn-rematch">⚔️ Rematch</button>
+          <button class="ui-btn secondary" id="btn-return-overworld">🗺️ Return to Overworld</button>
         </div>
       </div>
     </div>
@@ -476,7 +476,7 @@
     <div class="modal-overlay hidden" id="coin-toss-modal" style="z-index: 105;">
       <div class="coin-toss-card">
         <div class="coin-toss-header">
-          <div class="coin-toss-badge">?? INITIATIVE ROLL</div>
+          <div class="coin-toss-badge">🪙 INITIATIVE ROLL</div>
           <h2 class="coin-toss-title">MYTHOS COIN TOSS</h2>
           <p class="coin-toss-sub">Flipping the celestial coin to decide who strikes first!</p>
         </div>
@@ -484,9 +484,9 @@
         <!-- Contender Callouts -->
         <div class="coin-toss-teams">
           <div class="coin-team-card team-solar" id="coin-team-1">
-            <span class="coin-team-crest">??</span>
+            <span class="coin-team-crest">☀️</span>
             <div class="coin-team-info">
-              <span class="coin-team-side">HEADS � TEAM 1</span>
+              <span class="coin-team-side">HEADS • TEAM 1</span>
               <span class="coin-team-name" id="coin-team1-name">Team Solar</span>
             </div>
           </div>
@@ -494,9 +494,9 @@
           <div class="coin-vs-badge">VS</div>
 
           <div class="coin-team-card team-lunar" id="coin-team-2">
-            <span class="coin-team-crest">??</span>
+            <span class="coin-team-crest">🌙</span>
             <div class="coin-team-info">
-              <span class="coin-team-side">TAILS � TEAM 2</span>
+              <span class="coin-team-side">TAILS • TEAM 2</span>
               <span class="coin-team-name" id="coin-team2-name">Team Lunar</span>
             </div>
           </div>
@@ -510,7 +510,7 @@
             <div class="coin-face coin-face-solar">
               <div class="coin-rim-bezel"></div>
               <div class="coin-face-inner">
-                <span class="coin-symbol">??</span>
+                <span class="coin-symbol">☀️</span>
                 <span class="coin-title">SOLAR</span>
                 <span class="coin-sub" id="coin-solar-sub">PLAYER</span>
               </div>
@@ -519,7 +519,7 @@
             <div class="coin-face coin-face-lunar">
               <div class="coin-rim-bezel"></div>
               <div class="coin-face-inner">
-                <span class="coin-symbol">??</span>
+                <span class="coin-symbol">🌙</span>
                 <span class="coin-title">LUNAR</span>
                 <span class="coin-sub" id="coin-lunar-sub">OPPONENT</span>
               </div>
@@ -533,8 +533,8 @@
             Flip the Mythos coin to determine who takes Turn 1!
           </div>
           <div class="coin-toss-actions">
-            <button class="ui-btn primary-btn coin-action-btn" id="btn-flip-coin">?? Flip Coin</button>
-            <button class="ui-btn primary-btn coin-action-btn hidden" id="btn-start-battle-coin">?? Start Battle</button>
+            <button class="ui-btn primary-btn coin-action-btn" id="btn-flip-coin">🪙 Flip Coin</button>
+            <button class="ui-btn primary-btn coin-action-btn hidden" id="btn-start-battle-coin">⚔️ Start Battle</button>
           </div>
         </div>
       </div>
@@ -543,7 +543,7 @@
     <!-- Intro / Title Screen Overlay -->
     <div class="modal-overlay" id="intro-modal">
       <div class="intro-modal-card">
-        <div class="intro-logo-badge">????</div>
+        <div class="intro-logo-badge">🃏⚔️</div>
         <h1 class="intro-main-title">MYTHOS</h1>
         <p class="intro-subtitle">Open-World Card Trading & Tabletop Tactics</p>
 
@@ -552,20 +552,20 @@
           <div class="save-slot-left">
             <canvas id="continue-avatar-canvas" width="56" height="68"></canvas>
             <div id="continue-world-meta">
-              <div class="save-slot-title">Asher � Oakhaven</div>
+              <div class="save-slot-title">Asher — Oakhaven</div>
               <div class="save-slot-sub">Saved World</div>
             </div>
           </div>
-          <button class="ui-btn primary-btn" id="btn-continue-world">? Continue World</button>
+          <button class="ui-btn primary-btn" id="btn-continue-world">▶ Continue World</button>
         </div>
 
         <div class="intro-actions">
-          <button class="ui-btn primary-btn intro-new-btn" id="btn-new-world">? New World & Character Creator</button>
+          <button class="ui-btn primary-btn intro-new-btn" id="btn-new-world">✨ New World & Character Creator</button>
         </div>
       </div>
     </div>
 
-    <!-- Stardew Valley / Pok�mon Style Character Creator Modal -->
+    <!-- Stardew Valley / Pokémon Style Character Creator Modal -->
     <div class="modal-overlay hidden" id="creator-modal">
       <div class="creator-modal-dialog">
         <div class="creator-header">
@@ -573,7 +573,7 @@
             <h2 class="creator-title">TRAVELER & WORLD CREATOR</h2>
             <p class="creator-sub">Customize your pixel-art duelist and name your new world</p>
           </div>
-          <button class="ui-btn secondary" id="btn-cc-random" title="Randomize Appearance">?? Randomize</button>
+          <button class="ui-btn secondary" id="btn-cc-random" title="Randomize Appearance">🎲 Randomize</button>
         </div>
 
         <div class="creator-body">
@@ -583,10 +583,10 @@
               <canvas id="cc-preview-canvas" width="160" height="180"></canvas>
             </div>
             <div class="creator-dir-row">
-              <button type="button" class="cc-dir-btn active" data-dir="down">?? Front</button>
-              <button type="button" class="cc-dir-btn" data-dir="left">?? Left</button>
-              <button type="button" class="cc-dir-btn" data-dir="right">?? Right</button>
-              <button type="button" class="cc-dir-btn" data-dir="up">?? Back</button>
+              <button type="button" class="cc-dir-btn active" data-dir="down">⬇️ Front</button>
+              <button type="button" class="cc-dir-btn" data-dir="left">⬅️ Left</button>
+              <button type="button" class="cc-dir-btn" data-dir="right">➡️ Right</button>
+              <button type="button" class="cc-dir-btn" data-dir="up">⬆️ Back</button>
             </div>
             <label class="ow-check-label" style="margin-top: 4px;">
               <input type="checkbox" id="cc-toggle-walk" checked>
@@ -650,8 +650,8 @@
         </div>
 
         <div class="creator-footer">
-          <button type="button" class="ui-btn secondary" id="btn-cc-back">? Title Screen</button>
-          <button type="button" class="ui-btn primary-btn creator-start-btn" id="btn-cc-start">? Save & Enter World</button>
+          <button type="button" class="ui-btn secondary" id="btn-cc-back">← Title Screen</button>
+          <button type="button" class="ui-btn primary-btn creator-start-btn" id="btn-cc-start">✨ Save & Enter World</button>
         </div>
       </div>
     </div>
@@ -664,12 +664,12 @@
             <span class="inventory-icon-badge"><img src="Sprites/Overworld/backpack_icon.png" class="inventory-backpack-emblem" alt="Backpack"></span>
             <div>
               <h2 class="inventory-title">DUELIST BACKPACK &amp; SATCHEL</h2>
-              <p class="inventory-sub">Oakhaven Traveler's Pack � Booster Packs, Mythos Cards &amp; Gear</p>
+              <p class="inventory-sub">Oakhaven Traveler's Pack • Booster Packs, Mythos Cards &amp; Gear</p>
             </div>
           </div>
           <div class="inventory-header-actions">
-            <button type="button" class="ui-btn secondary inv-header-binder-btn" id="btn-inv-to-binder">?? Binder ?</button>
-            <div class="inventory-wallet-pill" id="inv-wallet-display">?? $0.00</div>
+            <button type="button" class="ui-btn secondary inv-header-binder-btn" id="btn-inv-to-binder">📖 Binder ▸</button>
+            <div class="inventory-wallet-pill" id="inv-wallet-display">💵 $0.00</div>
           </div>
         </div>
 
@@ -681,7 +681,7 @@
               <button type="button" class="inv-filter-tab" data-filter="card">Cards</button>
               <button type="button" class="inv-filter-tab" data-filter="gear">Gear</button>
             </div>
-            <div class="inv-slot-summary" id="inv-slot-summary">0 Items � 0 Total</div>
+            <div class="inv-slot-summary" id="inv-slot-summary">0 Items • 0 Total</div>
           </div>
 
           <div class="inventory-grid" id="inventory-items-grid">
@@ -699,13 +699,13 @@
               <p id="inv-detail-desc">Your backpack is currently empty. Explore Oakhaven and visit Leo's Card Shop to pick up your first Booster Pack!</p>
               <div class="inv-detail-actions hidden" id="inv-detail-actions">
                 <button type="button" class="ui-btn primary-btn inv-open-pack-btn hidden" id="btn-inv-open-pack">
-                  ? Open Booster Pack
+                  ✨ Open Booster Pack
                 </button>
                 <button type="button" class="ui-btn primary-btn inv-binder-btn hidden" id="btn-inv-put-binder">
-                  ?? Put in Binder
+                  📖 Put in Binder
                 </button>
                 <button type="button" class="ui-btn secondary inv-inspect-btn hidden" id="btn-inv-inspect">
-                  ?? Inspect Creature
+                  🔍 Inspect Creature
                 </button>
               </div>
             </div>
@@ -713,7 +713,7 @@
         </div>
 
         <div class="inventory-footer">
-          <span class="inventory-shortcut-hint">Shortcut: Press <b>I</b> for Backpack � <b>B</b> for Old Card Binder</span>
+          <span class="inventory-shortcut-hint">Shortcut: Press <b>I</b> for Backpack • <b>B</b> for Old Card Binder</span>
           <button type="button" class="ui-btn primary-btn inv-done-btn" id="btn-close-inventory">Done</button>
         </div>
       </div>
@@ -725,25 +725,25 @@
         <!-- Shop Header -->
         <div class="shop-header">
           <div class="shop-title-group">
-            <span class="shop-icon-badge">??</span>
+            <span class="shop-icon-badge">🃏</span>
             <div>
-              <h2 class="shop-title">LEO'S CARD SHOP � BUY &amp; SELL COUNTER</h2>
+              <h2 class="shop-title">LEO'S CARD SHOP • BUY &amp; SELL COUNTER</h2>
               <p class="shop-sub">Buy 1st-Edition Booster Packs ($5) or sell extra cards from your backpack for cash!</p>
             </div>
           </div>
           <div class="shop-header-right">
-            <div class="shop-wallet-pill" id="shop-wallet-display">?? Wallet: $0.00</div>
-            <button type="button" class="shop-close-btn" id="btn-close-shop-x" aria-label="Close Shop">?</button>
+            <div class="shop-wallet-pill" id="shop-wallet-display">💵 Wallet: $0.00</div>
+            <button type="button" class="shop-close-btn" id="btn-close-shop-x" aria-label="Close Shop">✕</button>
           </div>
         </div>
 
         <!-- Shop Navigation Tabs: BUY / SELL -->
         <div class="shop-tabs-nav">
           <button type="button" class="shop-tab-btn active" id="shop-tab-buy" data-tab="buy">
-            ?? BUY PACKS ($5)
+            🛒 BUY PACKS ($5)
           </button>
           <button type="button" class="shop-tab-btn" id="shop-tab-sell" data-tab="sell">
-            ?? SELL CARDS <span class="shop-tab-count-pill" id="shop-sell-count-pill">0</span>
+            💵 SELL CARDS <span class="shop-tab-count-pill" id="shop-sell-count-pill">0</span>
           </button>
         </div>
 
@@ -754,7 +754,7 @@
             <div class="shop-buy-card">
               <div class="shop-pack-artwork-box">
                 <img src="Cards/Mythos_Card_Back.png" alt="Mythos Base Set Booster Pack" class="shop-pack-img">
-                <span class="shop-pack-edition-badge">? 1ST EDITION</span>
+                <span class="shop-pack-edition-badge">✨ 1ST EDITION</span>
               </div>
               <div class="shop-pack-details">
                 <div class="shop-pack-header">
@@ -765,16 +765,16 @@
                   Factory-sealed foil booster pack containing <b>5 random Mythos Game Cards</b>. Rip open the pack to discover new warriors, pack beasts, and war machines!
                 </p>
                 <div class="shop-pack-features">
-                  <span class="shop-feat-pill">?? 5 Cards / Pack</span>
-                  <span class="shop-feat-pill">?? 1st-Edition Holos</span>
-                  <span class="shop-feat-pill">? Rarity 1? to 4?</span>
+                  <span class="shop-feat-pill">📦 5 Cards / Pack</span>
+                  <span class="shop-feat-pill">🔥 1st-Edition Holos</span>
+                  <span class="shop-feat-pill">★ Rarity 1★ to 4★</span>
                 </div>
                 <div class="shop-buy-actions">
                   <button type="button" class="ui-btn primary-btn shop-buy-btn" id="btn-shop-buy-pack">
-                    ?? Buy Base Card Pack ($5.00)
+                    🛒 Buy Base Card Pack ($5.00)
                   </button>
                   <button type="button" class="ui-btn secondary shop-rip-now-btn hidden" id="btn-shop-rip-now">
-                    ? Rip Open Unopened Pack
+                    ✨ Rip Open Unopened Pack
                   </button>
                 </div>
                 <div class="shop-buy-status" id="shop-buy-status"></div>
@@ -786,12 +786,12 @@
           <div class="shop-tab-panel hidden" id="shop-panel-sell">
             <div class="shop-sell-info-banner">
               <div class="shop-sell-info-left">
-                <span>?? <b>Cards in Backpack:</b> Sell spare cards to Leo for store cash.</span>
+                <span>🎒 <b>Cards in Backpack:</b> Sell spare cards to Leo for store cash.</span>
                 <span class="shop-sell-legend">
-                  <b>Pricelist:</b> 1? = 10� � 2? = 20� � 3? = 35� � 4? = 50�
+                  <b>Pricelist:</b> 1★ = 10¢ • 2★ = 20¢ • 3★ = 35¢ • 4★ = 50¢
                 </span>
               </div>
-              <span class="shop-binder-safe-tag">?? Binder cards protected</span>
+              <span class="shop-binder-safe-tag">🔒 Binder cards protected</span>
             </div>
 
             <!-- Sell List Items Container -->
@@ -804,7 +804,7 @@
         <!-- Shop Footer -->
         <div class="shop-footer">
           <div class="shop-footer-hint" id="shop-footer-msg">
-            Leo pays fair market cash for cards: 1? (10�) up to 4? (50�).
+            Leo pays fair market cash for cards: 1★ (10¢) up to 4★ (50¢).
           </div>
           <button type="button" class="ui-btn primary-btn" id="btn-close-shop">
             Done / Exit Shop
@@ -826,17 +826,17 @@
         <div class="binder-content-sheet">
           <div class="binder-header">
             <div class="binder-title-group">
-              <span class="binder-icon-badge">??</span>
+              <span class="binder-icon-badge">📖</span>
               <div>
                 <h2 class="binder-title" id="binder-main-title">OLD CARD BINDER</h2>
-                <p class="binder-sub" id="binder-sub-title">A well-loved 9-pocket trading card binder received from your friend � Click any card to inspect moves, types, and abilities</p>
+                <p class="binder-sub" id="binder-sub-title">A well-loved 9-pocket trading card binder received from your friend • Click any card to inspect moves, types, and abilities</p>
               </div>
             </div>
             <div class="binder-header-actions">
               <span class="binder-counter-pill" id="binder-counter-pill">3 / 9 Sleeves Filled</span>
-              <button type="button" class="ui-btn primary-btn" id="btn-binder-to-deck" style="padding: 4px 10px; font-size: 11px; background: linear-gradient(135deg, #78350f, #b45309); border-color: #fbbf24;">?? Playing Deck</button>
-              <button type="button" class="ui-btn secondary" id="btn-binder-to-inv" style="padding: 4px 10px; font-size: 11px;">?? Backpack</button>
-              <button type="button" class="drawer-close-btn" id="btn-close-binder" title="Close Binder">?</button>
+              <button type="button" class="ui-btn primary-btn" id="btn-binder-to-deck" style="padding: 4px 10px; font-size: 11px; background: linear-gradient(135deg, #78350f, #b45309); border-color: #fbbf24;">🃏 Playing Deck</button>
+              <button type="button" class="ui-btn secondary" id="btn-binder-to-inv" style="padding: 4px 10px; font-size: 11px;">🎒 Backpack</button>
+              <button type="button" class="drawer-close-btn" id="btn-close-binder" title="Close Binder">✕</button>
             </div>
           </div>
 
@@ -844,10 +844,10 @@
           <div class="binder-sort-bar" id="binder-sort-bar">
             <span class="binder-sort-label">Sort By:</span>
             <button type="button" class="binder-sort-btn active" data-sort="default">Slot Order</button>
-            <button type="button" class="binder-sort-btn" data-sort="alpha">?? A�Z</button>
-            <button type="button" class="binder-sort-btn" data-sort="type">??? Type</button>
-            <button type="button" class="binder-sort-btn" data-sort="power">?? Attack Power</button>
-            <button type="button" class="binder-sort-btn" data-sort="stars">? Star Rating</button>
+            <button type="button" class="binder-sort-btn" data-sort="alpha">🔤 A–Z</button>
+            <button type="button" class="binder-sort-btn" data-sort="type">🏷️ Type</button>
+            <button type="button" class="binder-sort-btn" data-sort="power">⚔️ Attack Power</button>
+            <button type="button" class="binder-sort-btn" data-sort="stars">⭐ Star Rating</button>
           </div>
 
           <!-- 9-Pocket Card Sleeves Grid (3x3 Collector Sheet) -->
@@ -857,7 +857,7 @@
 
           <div class="binder-footer">
             <div class="binder-hint">
-              ?? <b>Tip:</b> Click any inserted card to enter <b>Creature Inspect Mode</b> with high-res standalone art, moves, and abilities.
+              💡 <b>Tip:</b> Click any inserted card to enter <b>Creature Inspect Mode</b> with high-res standalone art, moves, and abilities.
             </div>
             <button type="button" class="ui-btn primary-btn" id="btn-binder-done">Done</button>
           </div>
@@ -870,10 +870,10 @@
       <div class="binder-picker-dialog">
         <div class="binder-picker-header">
           <div class="binder-picker-title">
-            <span>?? INSERT CARD INTO OLD CARD BINDER</span>
+            <span>📥 INSERT CARD INTO OLD CARD BINDER</span>
             <span class="binder-picker-target" id="binder-picker-target-label">Sleeve #1</span>
           </div>
-          <button type="button" class="drawer-close-btn" id="btn-close-binder-picker">?</button>
+          <button type="button" class="drawer-close-btn" id="btn-close-binder-picker">✕</button>
         </div>
         <p class="binder-picker-sub">Select an unslotted Mythos card from your backpack to slip into this clear protective pocket:</p>
         <div class="binder-picker-grid" id="binder-picker-cards-grid">
@@ -890,22 +890,22 @@
       <div class="playing-deck-dialog">
         <div class="playing-deck-header">
           <div>
-            <h2 class="playing-deck-title">?? PLAYING DECK</h2>
+            <h2 class="playing-deck-title">🃏 PLAYING DECK</h2>
             <p class="playing-deck-sub">Set up the deck you take into Mythos battles (if under 12 cards, Standard Deck cards fill remaining slots).</p>
           </div>
           <div class="playing-deck-header-actions">
             <span class="binder-counter-pill" id="playing-deck-count-pill">0 Cards</span>
-            <button type="button" class="drawer-close-btn" id="btn-close-playing-deck" title="Close Playing Deck">?</button>
+            <button type="button" class="drawer-close-btn" id="btn-close-playing-deck" title="Close Playing Deck">✕</button>
           </div>
         </div>
 
         <div class="playing-deck-body">
           <div class="playing-deck-col">
             <div class="playing-deck-col-header">
-              <span>?? Your Battle Deck</span>
+              <span>⚔️ Your Battle Deck</span>
               <div class="playing-deck-col-tools">
-                <button type="button" class="ui-btn secondary" id="btn-deck-autofill" style="padding: 4px 8px; font-size: 11px;">? Fill Standard</button>
-                <button type="button" class="ui-btn secondary" id="btn-deck-clear" style="padding: 4px 8px; font-size: 11px;">?? Clear</button>
+                <button type="button" class="ui-btn secondary" id="btn-deck-autofill" style="padding: 4px 8px; font-size: 11px;">✨ Fill Standard</button>
+                <button type="button" class="ui-btn secondary" id="btn-deck-clear" style="padding: 4px 8px; font-size: 11px;">🧹 Clear</button>
               </div>
             </div>
             <div class="playing-deck-list" id="playing-deck-current-list"></div>
@@ -913,7 +913,7 @@
 
           <div class="playing-deck-col">
             <div class="playing-deck-col-header">
-              <span>?? Available Cards (Backpack &amp; Binder)</span>
+              <span>🎒 Available Cards (Backpack &amp; Binder)</span>
             </div>
             <div class="playing-deck-list" id="playing-deck-pool-list"></div>
           </div>
@@ -921,7 +921,7 @@
 
         <div class="playing-deck-footer">
           <span class="playing-deck-status" id="playing-deck-status"></span>
-          <button type="button" class="ui-btn primary-btn" id="btn-playing-deck-done">? Done</button>
+          <button type="button" class="ui-btn primary-btn" id="btn-playing-deck-done">✓ Done</button>
         </div>
       </div>
     </div>
@@ -934,16 +934,16 @@
 
         <div class="inspect-header">
           <div class="inspect-title-group">
-            <span class="inspect-element-crest" id="inspect-element-crest">??</span>
+            <span class="inspect-element-crest" id="inspect-element-crest">🔥</span>
             <div>
               <div class="inspect-badge-row">
-                <span class="inspect-mode-pill">? CREATURE INSPECT MODE</span>
+                <span class="inspect-mode-pill">⚡ CREATURE INSPECT MODE</span>
                 <span class="inspect-type-tag" id="inspect-element-tag">FIRE ELEMENT</span>
               </div>
               <h2 class="inspect-name" id="inspect-creature-name">PHOENIX</h2>
             </div>
           </div>
-          <button type="button" class="ui-btn secondary" id="btn-close-inspect">? Back to Old Card Binder</button>
+          <button type="button" class="ui-btn secondary" id="btn-close-inspect">← Back to Old Card Binder</button>
         </div>
 
         <div class="inspect-body">
@@ -964,34 +964,34 @@
             <div class="inspect-pose-selector">
               <span class="pose-label">POSE PREVIEW:</span>
               <div class="pose-buttons" id="inspect-pose-buttons">
-                <button type="button" class="pose-btn active" data-pose="idle">?? Idle</button>
-                <button type="button" class="pose-btn" data-pose="attack">?? Attack</button>
-                <button type="button" class="pose-btn" data-pose="walk">?? Stride</button>
-                <button type="button" class="pose-btn" data-pose="aoe">?? Special</button>
+                <button type="button" class="pose-btn active" data-pose="idle">🧘 Idle</button>
+                <button type="button" class="pose-btn" data-pose="attack">⚔️ Attack</button>
+                <button type="button" class="pose-btn" data-pose="walk">🏃 Stride</button>
+                <button type="button" class="pose-btn" data-pose="aoe">🌟 Special</button>
               </div>
             </div>
 
             <!-- Core Beast Combat Stats Strip -->
             <div class="inspect-stats-strip">
               <div class="inspect-stat-pill hp">
-                <span class="icon">??</span>
+                <span class="icon">❤️</span>
                 <div class="stat-text">
                   <span class="stat-lbl">MAX HEALTH</span>
                   <span class="stat-val" id="inspect-hp-val">120 HP</span>
                 </div>
               </div>
               <div class="inspect-stat-pill move">
-                <span class="icon">??</span>
+                <span class="icon">👣</span>
                 <div class="stat-text">
                   <span class="stat-lbl">SPEED / MOVE</span>
                   <span class="stat-val" id="inspect-move-val">3 Tiles / Turn</span>
                 </div>
               </div>
               <div class="inspect-stat-pill rarity">
-                <span class="icon">?</span>
+                <span class="icon">⭐</span>
                 <div class="stat-text">
                   <span class="stat-lbl">BASE SET STARS</span>
-                  <span class="stat-val" id="inspect-stars-val">????</span>
+                  <span class="stat-val" id="inspect-stars-val">★★★★</span>
                 </div>
               </div>
             </div>
@@ -1002,11 +1002,11 @@
             <!-- Type & Element Mastery Box -->
             <div class="inspect-card-section">
               <div class="section-title-row">
-                <span class="section-icon">??</span>
+                <span class="section-icon">🌐</span>
                 <h3 class="section-title">ELEMENTAL TYPE & ARCHETYPE</h3>
               </div>
               <div class="element-detail-box" id="inspect-element-box">
-                <div class="element-name" id="inspect-element-full">?? Fire Element Beast</div>
+                <div class="element-name" id="inspect-element-full">🔥 Fire Element Beast</div>
                 <p class="element-desc" id="inspect-element-desc">
                   Harnesses pure solar flame to incinerate adversaries and control battlefield tiles with lingering blazing fire hazards.
                 </p>
@@ -1016,7 +1016,7 @@
             <!-- Tactical Moves (Attacks 1 & 2) -->
             <div class="inspect-card-section">
               <div class="section-title-row">
-                <span class="section-icon">??</span>
+                <span class="section-icon">⚔️</span>
                 <h3 class="section-title">TACTICAL MOVES</h3>
               </div>
               <div class="moves-list">
@@ -1051,7 +1051,7 @@
             <!-- Passive / Unique Ability -->
             <div class="inspect-card-section">
               <div class="section-title-row">
-                <span class="section-icon">?</span>
+                <span class="section-icon">✨</span>
                 <h3 class="section-title">SPECIAL & PASSIVE ABILITIES</h3>
               </div>
               <div class="ability-inspect-card" id="inspect-ability-card">
@@ -1070,10 +1070,10 @@
         <!-- Footer Action Buttons: Remove from Old Card Binder to Inventory -->
         <div class="inspect-footer">
           <button type="button" class="ui-btn secondary" id="btn-inspect-back-bottom">
-            ? Back to Old Card Binder
+            ← Back to Old Card Binder
           </button>
           <button type="button" class="ui-btn primary-btn inspect-remove-btn" id="btn-inspect-remove-from-binder">
-            ?? Remove Card from Old Card Binder (Place in Inventory)
+            📤 Remove Card from Old Card Binder (Place in Inventory)
           </button>
         </div>
       </div>
@@ -1088,7 +1088,7 @@
 
         <!-- Stage Header -->
         <div class="pack-stage-header">
-          <div class="pack-stage-badge" id="pack-stage-badge">? MYTHOS BASE SET � 1ST EDITION BOOSTER ?</div>
+          <div class="pack-stage-badge" id="pack-stage-badge">✨ MYTHOS BASE SET • 1ST EDITION BOOSTER ✨</div>
           <h2 class="pack-stage-title" id="pack-stage-title">BREAK THE SEAL OF MYTHOS</h2>
           <p class="pack-stage-subtitle" id="pack-stage-subtitle">
             Click the sealed Booster Pack <b>3 times</b> to charge <b>The Seal of Mythos</b> and tear open the foil!
@@ -1102,7 +1102,7 @@
           <div class="sealed-booster-wrapper" id="sealed-booster-wrapper" title="Click to charge & tear open!">
             <!-- Top Foil Tear Strip -->
             <div class="pack-foil-top-strip" id="pack-foil-top-strip">
-              <span class="pack-crimp-label">? MYTHOS TCG � 5 CARDS INSIDE ?</span>
+              <span class="pack-crimp-label">★ MYTHOS TCG • 5 CARDS INSIDE ★</span>
               <div class="pack-tear-line"></div>
             </div>
 
@@ -1121,9 +1121,9 @@
 
           <!-- 3-Step Runic Seal Charge Meter -->
           <div class="pack-seal-meter" id="pack-seal-meter">
-            <div class="seal-pip" id="seal-pip-1">??</div>
-            <div class="seal-pip" id="seal-pip-2">??</div>
-            <div class="seal-pip" id="seal-pip-3">?</div>
+            <div class="seal-pip" id="seal-pip-1">🔥</div>
+            <div class="seal-pip" id="seal-pip-2">💧</div>
+            <div class="seal-pip" id="seal-pip-3">⚡</div>
           </div>
         </div>
 
@@ -1135,13 +1135,13 @@
         <!-- Stage Footer Controls -->
         <div class="pack-stage-footer">
           <button type="button" class="ui-btn primary-btn pack-next-btn hidden" id="btn-pack-next-card">
-            Next Card ? (2 of 5)
+            Next Card ▸ (2 of 5)
           </button>
           <button type="button" class="ui-btn secondary hidden" id="btn-pack-view-all">
-            ?? View All 5 Cards
+            👀 View All 5 Cards
           </button>
           <button type="button" class="ui-btn primary-btn pack-collect-btn hidden" id="btn-pack-collect">
-            ?? Collect All 5 Cards into Inventory
+            🎒 Collect All 5 Cards into Inventory
           </button>
         </div>
       </div>
@@ -1153,13 +1153,13 @@
     <div class="calendar-modal-card">
       <div class="calendar-modal-header">
         <div class="calendar-header-title">
-          <span class="calendar-header-icon">??</span>
+          <span class="calendar-header-icon">📅</span>
           <div>
             <h2 class="calendar-title">Town Weekly Calendar</h2>
-            <div class="calendar-subtitle">Summer Season � <span id="cal-current-day-banner">Monday, Day 1</span></div>
+            <div class="calendar-subtitle">Summer Season • <span id="cal-current-day-banner">Monday, Day 1</span></div>
           </div>
         </div>
-        <button id="btn-close-calendar" class="calendar-close-btn" title="Close (Esc)">?</button>
+        <button id="btn-close-calendar" class="calendar-close-btn" title="Close (Esc)">✕</button>
       </div>
 
       <div class="calendar-today-banner" id="cal-today-banner-card">
@@ -1173,7 +1173,7 @@
       </div>
 
       <div class="calendar-modal-footer">
-        <div class="calendar-tip">?? <em>Tip: Return home and sleep in your bed to advance the day!</em></div>
+        <div class="calendar-tip">💡 <em>Tip: Return home and sleep in your bed to advance the day!</em></div>
         <button id="btn-done-calendar" class="ui-btn primary-btn" style="min-width: 120px;">Got It</button>
       </div>
     </div>
@@ -1182,7 +1182,7 @@
   <!-- Bed Sleep Transition Overlay -->
   <div id="sleep-fade-overlay" class="sleep-fade-overlay hidden">
     <div class="sleep-overlay-content">
-      <div class="sleep-moon-icon">??</div>
+      <div class="sleep-moon-icon">🌙</div>
       <div class="sleep-title">Resting for the night...</div>
       <div class="sleep-subtitle">Saving your journey & restoring stamina</div>
     </div>
@@ -1191,8 +1191,8 @@
   <!-- Morning Wake-Up Modal -->
   <div id="morning-wake-modal" class="ui-modal-backdrop hidden">
     <div class="morning-wake-card">
-      <div class="morning-sun-badge">?? GOOD MORNING!</div>
-      <h2 class="morning-day-heading" id="morning-day-heading">Tuesday � Day 2</h2>
+      <div class="morning-sun-badge">☀️ GOOD MORNING!</div>
+      <h2 class="morning-day-heading" id="morning-day-heading">Tuesday • Day 2</h2>
       <div class="morning-divider"></div>
       <div class="morning-event-box">
         <div class="morning-event-tag">TODAY'S TOWN EVENT</div>
@@ -1200,10 +1200,10 @@
         <div class="morning-event-desc" id="morning-event-desc">Pluto is feeling bold! Friendly duels against Pluto have doubled stakes and a $2.00 reward.</div>
       </div>
       <div class="morning-stats-row">
-        <span>? All Beasts Rested & Energized</span>
-        <span>?? Game Auto-Saved</span>
+        <span>✨ All Beasts Rested & Energized</span>
+        <span>💾 Game Auto-Saved</span>
       </div>
-      <button id="btn-wake-up" class="ui-btn primary-btn morning-btn">Rise & Shine ??</button>
+      <button id="btn-wake-up" class="ui-btn primary-btn morning-btn">Rise & Shine ☀️</button>
     </div>
   </div>
 
@@ -1219,7 +1219,7 @@
         <!-- Swipe-Down Top Bar to Exit Phone -->
         <div class="phone-swipe-top-bar" id="phone-swipe-top-bar" title="Swipe down or tap to exit phone">
           <div class="phone-swipe-handle-pill"></div>
-          <span class="phone-swipe-hint">? Swipe down to exit</span>
+          <span class="phone-swipe-hint">⌄ Swipe down to exit</span>
         </div>
 
         <!-- Status Bar -->
@@ -1227,9 +1227,9 @@
           <span class="phone-status-time" id="phone-status-time">9:41 AM</span>
           <span class="phone-status-location" id="phone-status-loc">Oakhaven</span>
           <div class="phone-status-icons">
-            <span class="phone-signal">??</span>
-            <span class="phone-wifi">??</span>
-            <span class="phone-battery">?? 100%</span>
+            <span class="phone-signal">📶</span>
+            <span class="phone-wifi">🛜</span>
+            <span class="phone-battery">🔋 100%</span>
           </div>
         </div>
 
@@ -1247,7 +1247,7 @@
               <!-- App 1: Contacts & Chat -->
               <div class="phone-app-icon-item" data-app="contacts" id="app-btn-contacts">
                 <div class="phone-icon-box bg-contacts">
-                  ??
+                  💬
                   <span class="phone-app-unread-dot hidden" id="dot-contacts"></span>
                 </div>
                 <span class="phone-app-name">Contacts</span>
@@ -1256,7 +1256,7 @@
               <!-- App 2: Mythos Marketplace (Card Listings) -->
               <div class="phone-app-icon-item" data-app="market" id="app-btn-market">
                 <div class="phone-icon-box bg-market">
-                  ??
+                  🤝
                   <span class="phone-app-unread-dot hidden" id="dot-market"></span>
                 </div>
                 <span class="phone-app-name">Card Exchange</span>
@@ -1265,7 +1265,7 @@
               <!-- App 3: Leo's Card Shop Live Feed & Alerts -->
               <div class="phone-app-icon-item" data-app="shopfeed" id="app-btn-shopfeed">
                 <div class="phone-icon-box bg-shop">
-                  ??
+                  🃏
                   <span class="phone-app-unread-dot" id="dot-shopfeed"></span>
                 </div>
                 <span class="phone-app-name">Leo's Alerts</span>
@@ -1274,7 +1274,7 @@
               <!-- App 4: Tournaments & Brackets -->
               <div class="phone-app-icon-item" data-app="tournaments" id="app-btn-tournaments">
                 <div class="phone-icon-box bg-tournaments">
-                  ??
+                  🏆
                   <span class="phone-app-unread-dot hidden" id="dot-tournaments"></span>
                 </div>
                 <span class="phone-app-name">Tournaments</span>
@@ -1283,7 +1283,7 @@
               <!-- App 5: Return to World Tab -->
               <div class="phone-app-icon-item phone-app-return-world" id="app-btn-return-world">
                 <div class="phone-icon-box bg-return-world">
-                  ???
+                  🗺️
                 </div>
                 <span class="phone-app-name">Return to World</span>
               </div>
@@ -1292,13 +1292,13 @@
             <!-- Quick Widget: Today's Town Event Summary -->
             <div class="phone-home-widget" id="phone-home-widget">
               <div class="phone-widget-tag">TODAY IN OAKHAVEN</div>
-              <div class="phone-widget-title" id="phone-widget-title">?? Leo's Booster Restock</div>
+              <div class="phone-widget-title" id="phone-widget-title">🃏 Leo's Booster Restock</div>
               <div class="phone-widget-desc" id="phone-widget-desc">Fresh 1st-Edition packs restocked on shelves!</div>
             </div>
 
             <!-- Wallet Pill on Phone -->
             <div class="phone-wallet-card">
-              <span>?? Digital Wallet Balance</span>
+              <span>👛 Digital Wallet Balance</span>
               <strong id="phone-wallet-val">$0.00</strong>
             </div>
           </div>
@@ -1306,8 +1306,8 @@
           <!-- App View 1: Contacts & Messenger -->
           <div class="phone-view phone-sub-view hidden" id="phone-view-contacts">
             <div class="phone-app-header">
-              <button class="phone-back-btn" id="btn-contacts-back">� Home</button>
-              <div class="phone-app-title">?? Town Contacts</div>
+              <button class="phone-back-btn" id="btn-contacts-back">‹ Home</button>
+              <div class="phone-app-title">👥 Town Contacts</div>
               <span style="width: 36px;"></span>
             </div>
             <div class="phone-contacts-body">
@@ -1316,12 +1316,12 @@
               </div>
               <div class="phone-chat-pane hidden" id="phone-chat-pane">
                 <div class="phone-chat-header">
-                  <button class="phone-chat-back-btn" id="btn-chat-back">� All</button>
+                  <button class="phone-chat-back-btn" id="btn-chat-back">‹ All</button>
                   <div class="phone-chat-user-info">
-                    <span class="phone-chat-user-avatar" id="phone-chat-avatar">??</span>
+                    <span class="phone-chat-user-avatar" id="phone-chat-avatar">👤</span>
                     <div>
                       <div class="phone-chat-user-name" id="phone-chat-name">Mike</div>
-                      <div class="phone-chat-user-status" id="phone-chat-status">? Active now</div>
+                      <div class="phone-chat-user-status" id="phone-chat-status">● Active now</div>
                     </div>
                   </div>
                 </div>
@@ -1334,15 +1334,15 @@
           <!-- App View 2: Mythos Marketplace (Card Listings, Negotiation & Meetups) -->
           <div class="phone-view phone-sub-view hidden" id="phone-view-market">
             <div class="phone-app-header">
-              <button class="phone-back-btn" id="btn-market-back">� Home</button>
-              <div class="phone-app-title">?? Card Exchange</div>
+              <button class="phone-back-btn" id="btn-market-back">‹ Home</button>
+              <div class="phone-app-title">🤝 Card Exchange</div>
               <span style="width: 36px;"></span>
             </div>
             <div id="phone-market-browse" class="phone-market-browse">
               <div class="phone-market-tabs">
-                <button class="phone-market-tab-btn active" id="tab-market-buy">?? Buy</button>
-                <button class="phone-market-tab-btn" id="tab-market-sell">?? Sell</button>
-                <button class="phone-market-tab-btn" id="tab-market-meetups">?? Meetups <span id="market-meetups-count"></span></button>
+                <button class="phone-market-tab-btn active" id="tab-market-buy">🛒 Buy</button>
+                <button class="phone-market-tab-btn" id="tab-market-sell">💰 Sell</button>
+                <button class="phone-market-tab-btn" id="tab-market-meetups">📅 Meetups <span id="market-meetups-count"></span></button>
               </div>
               <div class="phone-market-body">
                 <div class="phone-market-notice" id="phone-market-notice">
@@ -1361,8 +1361,8 @@
           <!-- App View 3: Leo's Card Shop Feed & Stock Alerts -->
           <div class="phone-view phone-sub-view hidden" id="phone-view-shopfeed">
             <div class="phone-app-header">
-              <button class="phone-back-btn" id="btn-shopfeed-back">� Home</button>
-              <div class="phone-app-title">?? Leo's Live Alerts</div>
+              <button class="phone-back-btn" id="btn-shopfeed-back">‹ Home</button>
+              <div class="phone-app-title">🃏 Leo's Live Alerts</div>
               <span style="width: 36px;"></span>
             </div>
             <div class="phone-shopfeed-body" id="phone-shopfeed-body">
@@ -1373,8 +1373,8 @@
           <!-- App View 4: Tournament League App -->
           <div class="phone-view phone-sub-view hidden" id="phone-view-tournaments">
             <div class="phone-app-header">
-              <button class="phone-back-btn" id="btn-tournaments-back">� Home</button>
-              <div class="phone-app-title">?? League Tournaments</div>
+              <button class="phone-back-btn" id="btn-tournaments-back">‹ Home</button>
+              <div class="phone-app-title">🏆 League Tournaments</div>
               <span style="width: 36px;"></span>
             </div>
             <div class="phone-tournaments-body" id="phone-tournaments-body">
@@ -1385,13 +1385,13 @@
 
         <!-- Phone Bottom Navigation Tab Bar -->
         <div class="phone-nav-bar">
-          <button type="button" class="phone-nav-tab-btn" id="btn-phone-home-pill" title="Return to Phone Home Screen">?? Home</button>
-          <button type="button" class="phone-nav-tab-btn phone-return-world-tab" id="btn-phone-return-world" title="Exit Phone and Return to World">??? Return to World</button>
+          <button type="button" class="phone-nav-tab-btn" id="btn-phone-home-pill" title="Return to Phone Home Screen">🏠 Home</button>
+          <button type="button" class="phone-nav-tab-btn phone-return-world-tab" id="btn-phone-return-world" title="Exit Phone and Return to World">🗺️ Return to World</button>
         </div>
       </div>
 
       <!-- Close Phone Button (Floating outside frame) -->
-      <button class="phone-close-hardware-btn" id="btn-close-phone" title="Put away phone (Key: P or Esc)">?</button>
+      <button class="phone-close-hardware-btn" id="btn-close-phone" title="Put away phone (Key: P or Esc)">✕</button>
     </div>
   </div>
 
@@ -1400,13 +1400,13 @@
     <div class="calendar-modal-card tourney-modal-card">
       <div class="calendar-modal-header">
         <div class="calendar-header-title">
-          <span class="calendar-header-icon">??</span>
+          <span class="calendar-header-icon">🏆</span>
           <div>
             <h2 class="calendar-title">Oakhaven Central Park Monday Casual</h2>
-            <div class="calendar-subtitle" id="park-tourney-subtitle">4-Player Round Robin � 1st: $10.00 � 2nd: $5.00</div>
+            <div class="calendar-subtitle" id="park-tourney-subtitle">4-Player Round Robin • 1st: $10.00 • 2nd: $5.00</div>
           </div>
         </div>
-        <button id="btn-close-park-tourney" class="calendar-close-btn" title="Close (Esc)">?</button>
+        <button id="btn-close-park-tourney" class="calendar-close-btn" title="Close (Esc)">✕</button>
       </div>
 
       <div id="park-tourney-status-banner" class="tourney-status-banner">
@@ -1415,14 +1415,14 @@
 
       <div class="tourney-layout-grid">
         <div class="tourney-panel">
-          <div class="tourney-panel-title">?? Round Robin Standings</div>
+          <div class="tourney-panel-title">📊 Round Robin Standings</div>
           <div id="park-tourney-standings" class="tourney-standings-wrap">
             <!-- Populated dynamically -->
           </div>
         </div>
 
         <div class="tourney-panel">
-          <div class="tourney-panel-title">?? 3-Round Match Schedule</div>
+          <div class="tourney-panel-title">⚔️ 3-Round Match Schedule</div>
           <div id="park-tourney-rounds" class="tourney-rounds-wrap">
             <!-- Populated dynamically -->
           </div>
@@ -1430,19 +1430,19 @@
       </div>
 
       <div class="calendar-modal-footer tourney-modal-footer">
-        <div class="calendar-tip" id="park-tourney-footer-tip">?? <em>Playable once every Monday via Chloe, Rowan, or Jasper at Oakhaven Central Park.</em></div>
+        <div class="calendar-tip" id="park-tourney-footer-tip">💡 <em>Playable once every Monday via Chloe, Rowan, or Jasper at Oakhaven Central Park.</em></div>
         <div class="tourney-footer-actions">
           <button id="btn-close-park-tourney-footer" class="ui-btn secondary-btn">Close</button>
-          <button id="btn-start-park-tourney-match" class="ui-btn primary-btn">?? Play Round 1</button>
+          <button id="btn-start-park-tourney-match" class="ui-btn primary-btn">⚔️ Play Round 1</button>
         </div>
       </div>
     </div>
   </div>
 
-  <script src="js/audio.js?v=2.14"></script>
-  <script src="js/character_sprites.js?v=2.14"></script>
-  <script src="js/overworld.js?v=2.14"></script>
-  <script src="js/gwent_cards.js?v=2.14"></script>
-  <script src="js/game.js?v=2.14"></script>
+  <script src="js/audio.js?v=2.16"></script>
+  <script src="js/character_sprites.js?v=2.16"></script>
+  <script src="js/overworld.js?v=2.16"></script>
+  <script src="js/gwent_cards.js?v=2.16"></script>
+  <script src="js/game.js?v=2.16"></script>
 </body>
 </html>
