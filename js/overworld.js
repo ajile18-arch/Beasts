@@ -5686,16 +5686,14 @@
       const challengeBtn = document.getElementById('ow-btn-challenge');
       if (!bar || !speakerEl || !textEl || !choicesEl || !challengeBtn) return;
 
-      bar.classList.remove('hidden', 'tv-broadcast');
-      bar.classList.toggle('top-position', !!topPosition);
-      speakerEl.textContent = speakerText;
-      speakerEl.className = speakerClass;
-
       const isActive = this.activeDialogueNpc === npcId
         || (Array.isArray(altActiveIds) && altActiveIds.includes(this.activeDialogueNpc));
 
       if (isActive) {
-        bar.classList.remove('talk-icon-only');
+        bar.classList.remove('hidden', 'tv-broadcast', 'talk-icon-only');
+        bar.classList.toggle('top-position', !!topPosition);
+        speakerEl.textContent = speakerText;
+        speakerEl.className = speakerClass;
         challengeBtn.classList.remove('ow-talk-btn');
         challengeBtn.title = '';
         if (this.lastShopPromptKey !== promptKey) {
@@ -5722,14 +5720,12 @@
         challengeBtn.classList.toggle('hidden', !showChallenge);
       } else {
         this.lastShopPromptKey = null;
-        bar.classList.add('talk-icon-only');
+        bar.classList.remove('talk-icon-only', 'tv-broadcast');
+        bar.classList.add('hidden');
         choicesEl.classList.add('hidden');
         textEl.innerHTML = '';
-        challengeBtn.textContent = '💬';
-        challengeBtn.title = 'Talk (Space)';
-        challengeBtn.setAttribute('aria-label', 'Talk');
-        challengeBtn.classList.add('ow-talk-btn');
-        challengeBtn.classList.remove('hidden');
+        challengeBtn.classList.remove('ow-talk-btn');
+        challengeBtn.classList.add('hidden');
       }
     }
 
@@ -6840,13 +6836,6 @@
             `📬 MAILBOX — 102 ${wName.toUpperCase()} LANE`,
             `<b>"${pName}'s House"</b> — Your family mailbox. No new mail since morning.`
           );
-        } else if (distPlayerDoor < 1.15) {
-          showStaticPrompt(
-            'player_door',
-            `${pName}'s Front Door`,
-            `🚪 ${pName.toUpperCase()}'S HOUSE`,
-            `<b>Your House</b> — Press Space or walk through the screen door to head inside (Auto-Saves game).`
-          );
         } else if (distFriendDoor < 1.1) {
           if (this.hasOpenedStarterPack) {
             this.activeDialogueNpc = null;
@@ -6888,28 +6877,12 @@
             `🪧 ${wName.toUpperCase()} CROSSROADS`,
             `<b>◄ West:</b> Player's House &nbsp;|&nbsp; <b>► East:</b> ${fName}'s Cottage & North Turn &nbsp;|&nbsp; <b>▼ South to East Market Block:</b> Leo's Card Shop`
           );
-        } else if (distPlutoDoor < 1.15) {
-          showStaticPrompt(
-            'pluto_door',
-            "Pluto's House",
-            `🚪 PLUTO'S HOUSE`,
-            `<b>Pluto's House</b> — A sleek craftsman cottage with deep cosmic-indigo shingles and glowing cyan windowpanes. Step through the front door to visit Pluto in his bedroom!`,
-            { challengeText: "🚪 Enter Pluto's House (Space)" }
-          );
         } else if (distPlutoMailbox < 1.0) {
           showStaticPrompt(
             'pluto_mailbox',
             "Pluto's Mailbox",
             `📬 MAILBOX — 201 SOUTH CONNECTOR AVE`,
             `<b>"Pluto's House"</b> — Sleek purple metallic mailbox with digital address readouts and tech decals.`
-          );
-        } else if (distNovaDoor < 1.15) {
-          showStaticPrompt(
-            'nova_door',
-            "Nova's House",
-            `🚪 NOVA'S HOUSE`,
-            `<b>Nova's House</b> — A handsome celestial navy craftsman cottage with starlight-glowing windows. Step through the front door to visit Nova in her observatory!`,
-            { challengeText: "🚪 Enter Nova's House (Space)" }
           );
         } else if (distNovaMailbox < 1.0) {
           showStaticPrompt(
@@ -6918,28 +6891,12 @@
             `📬 MAILBOX — 301 SOUTH COBBLESTONE WAY`,
             `<b>"Nova's House"</b> — Midnight-blue painted mailbox adorned with celestial constellation decals.`
           );
-        } else if (distSilasDoor < 1.15) {
-          showStaticPrompt(
-            'silas_door',
-            "Silas's House",
-            `🚪 SILAS'S HOUSE`,
-            `<b>Silas's House</b> — A warm cedar craftsman cottage with a stone hearth chimney and hand-carved gables. Step through the front door to visit Silas in his workshop!`,
-            { challengeText: "🚪 Enter Silas's House (Space)" }
-          );
         } else if (distSilasMailbox < 1.0) {
           showStaticPrompt(
             'silas_mailbox',
             "Silas's Mailbox",
             `📬 MAILBOX — 303 SOUTH COBBLESTONE WAY`,
             `<b>"Silas's House"</b> — Solid heartwood oak mailbox hand-carved with Dreadnaught and ancient beast motifs.`
-          );
-        } else if (distMayaDoor < 1.15) {
-          showStaticPrompt(
-            'maya_door',
-            "Maya's House",
-            `🚪 MAYA'S HOUSE`,
-            `<b>Maya's House</b> — A vibrant sage cottage framed by blooming orchid flower boxes and a glass conservatory. Step through the front door to visit Maya!`,
-            { challengeText: "🚪 Enter Maya's House (Space)" }
           );
         } else if (distMayaMailbox < 1.0) {
           showStaticPrompt(
@@ -7782,11 +7739,15 @@
       const newWorldBtn = document.getElementById('btn-new-world');
 
       this.refreshIntroScreen();
+      if (introModal && !introModal.classList.contains('hidden')) {
+        window.sounds?.playIntroMusic?.();
+      }
 
       if (continueBtn) {
         continueBtn.addEventListener('click', () => {
           if (!this.worldSave) return;
           if (window.sounds?.playClick) window.sounds.playClick();
+          window.sounds?.stopIntroMusic?.();
           introModal?.classList.add('hidden');
           this.continueSavedWorld();
         });
@@ -7795,6 +7756,7 @@
       if (newWorldBtn) {
         newWorldBtn.addEventListener('click', () => {
           if (window.sounds?.playClick) window.sounds.playClick();
+          window.sounds?.stopIntroMusic?.();
           introModal?.classList.add('hidden');
           this.openCharacterCreator(true);
         });
@@ -8374,6 +8336,7 @@
         this.startOpeningCutscene(false);
         return;
       }
+      window.sounds?.playBgm?.('overworld');
 
       const app = this.worldSave.playerAppearance || {};
       this.draftAppearance = {
@@ -8541,6 +8504,7 @@
       if (this.isCreatingNewWorld && !this.worldSave) {
         this.refreshIntroScreen();
         document.getElementById('intro-modal')?.classList.remove('hidden');
+        window.sounds?.playIntroMusic?.();
       } else {
         if (this.worldSave) {
           this.draftAppearance = { ...this.worldSave };
@@ -8643,6 +8607,7 @@
           document.getElementById('creator-modal')?.classList.add('hidden');
           this.refreshIntroScreen();
           document.getElementById('intro-modal')?.classList.remove('hidden');
+          window.sounds?.playIntroMusic?.();
         });
       }
 
@@ -8661,6 +8626,7 @@
             this.npcs[0] = this.createFriendNpc(this.friendName);
             document.getElementById('creator-modal')?.classList.add('hidden');
             this.active = true;
+            window.sounds?.playBgm?.('overworld');
             this.startOpeningCutscene(true);
           } else {
             this.saveWorldData(this.draftAppearance);
@@ -8975,8 +8941,8 @@
         for (const entry of clickableNpcs) {
           if (!entry.active || !entry.npc) continue;
           const distBody = Math.hypot(tx - entry.npc.x, ty - entry.npc.y);
-          const distBubble = Math.hypot(tx - entry.npc.x, ty - (entry.npc.y - 1.25));
-          if ((distBody < entry.tapRadius || distBubble < 1.15)
+          const distBubble = Math.hypot(tx - entry.npc.x, ty - (entry.npc.y - 1.35));
+          if ((distBody < entry.tapRadius || distBubble < 1.25)
               && Math.hypot(this.player.x - entry.npc.x, this.player.y - (entry.npc.y + entry.yOffset)) < entry.reachRadius) {
             if (this.activeDialogueNpc !== entry.talkId) {
               this.startTalkingToNpc(entry.talkId);
@@ -17425,17 +17391,21 @@
       const bubbleText = showTalkBubble ? '💬' : entity.bubble;
 
       if (bubbleText) {
-        const by = footY - (isExt ? 68 : 96) - Math.sin(this.tick * 0.09) * 3.5;
+        const bw = showTalkBubble ? 38 : 28;
+        const bh = showTalkBubble ? 27 : 22;
+        const by = footY - (isExt ? (showTalkBubble ? 73 : 68) : (showTalkBubble ? 102 : 96)) - Math.sin(this.tick * 0.09) * 3.5;
         ctx.fillStyle = showTalkBubble ? '#fef08a' : '#fff8eb';
         ctx.beginPath();
-        ctx.roundRect(cx - (showTalkBubble ? 16 : 14), by, (showTalkBubble ? 32 : 28), 22, 6);
+        ctx.roundRect(cx - bw / 2, by, bw, bh, showTalkBubble ? 8 : 6);
         ctx.fill();
         ctx.strokeStyle = showTalkBubble ? '#b45309' : '#3a2416';
-        ctx.lineWidth = showTalkBubble ? 2.2 : 1.6;
+        ctx.lineWidth = showTalkBubble ? 2.4 : 1.6;
         ctx.stroke();
-        ctx.font = isExt ? '12.5px sans-serif' : '14px sans-serif';
+        ctx.font = showTalkBubble
+          ? (isExt ? '15.5px sans-serif' : '17.5px sans-serif')
+          : (isExt ? '12.5px sans-serif' : '14px sans-serif');
         ctx.textAlign = 'center';
-        ctx.fillText(bubbleText, cx, by + 15.5);
+        ctx.fillText(bubbleText, cx, by + (showTalkBubble ? 19.5 : 15.5));
       }
     }
 

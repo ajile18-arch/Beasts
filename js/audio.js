@@ -7,6 +7,17 @@ class SoundController {
   constructor() {
     this.ctx = null;
     this.enabled = true;
+    this.introAudio = null;
+    this._introTargetVol = 0.45;
+    this._introFadeTimer = null;
+    this._introPendingGesture = false;
+    this.desiredBgm = null;
+    this._activeBgm = null;
+    this._bgmTimer = null;
+    this._bgmStep = 0;
+    this._bgmNextTime = 0;
+    this._bgmGain = null;
+    this._bgmNoiseBuf = null;
   }
 
   init() {
@@ -37,7 +48,248 @@ class SoundController {
 
   toggle() {
     this.enabled = !this.enabled;
+    if (!this.enabled) {
+      this.stopIntroMusic(0);
+      this._pauseBgmScheduler();
+    } else if (this.isIntroScreenVisible()) {
+      this.playIntroMusic();
+    } else if (this.desiredBgm) {
+      this.playBgm(this.desiredBgm);
+    }
     return this.enabled;
+  }
+
+  isIntroScreenVisible() {
+    const introModal = document.getElementById('intro-modal');
+    return Boolean(introModal && !introModal.classList.contains('hidden'));
+  }
+
+  playIntroMusic() {
+    if (!this.enabled || !this.isIntroScreenVisible()) return;
+    if (this._introFadeTimer) {
+      clearInterval(this._introFadeTimer);
+      this._introFadeTimer = null;
+    }
+    if (!this.introAudio) {
+      this.introAudio = new Audio('Audio/Iron_Giants_Rise.mp3');
+      this.introAudio.loop = true;
+      this.introAudio.preload = 'auto';
+    }
+    this.introAudio.volume = this._introTargetVol;
+    if (!this.introAudio.paused) {
+      this._introPendingGesture = false;
+      return;
+    }
+    const p = this.introAudio.play();
+    if (p && typeof p.then === 'function') {
+      p.then(() => {
+        this._introPendingGesture = false;
+      }).catch(() => {
+        // Browser blocked unmuted autoplay before first user interaction
+        this._introPendingGesture = true;
+      });
+    }
+  }
+
+  stopIntroMusic(fadeMs = 450) {
+    this._introPendingGesture = false;
+    if (this._introFadeTimer) {
+      clearInterval(this._introFadeTimer);
+      this._introFadeTimer = null;
+    }
+    if (!this.introAudio) return;
+    if (this.introAudio.paused || fadeMs <= 0) {
+      this.introAudio.pause();
+      this.introAudio.currentTime = 0;
+      this.introAudio.volume = this._introTargetVol;
+      return;
+    }
+    const audio = this.introAudio;
+    const startVol = audio.volume;
+    const steps = 10;
+    const stepMs = Math.max(16, Math.floor(fadeMs / steps));
+    let step = 0;
+    this._introFadeTimer = setInterval(() => {
+      step++;
+      const ratio = Math.max(0, 1 - step / steps);
+      audio.volume = startVol * ratio;
+      if (step >= steps) {
+        clearInterval(this._introFadeTimer);
+        this._introFadeTimer = null;
+        audio.pause();
+        audio.currentTime = 0;
+        audio.volume = this._introTargetVol;
+      }
+    }, stepMs);
+  }
+
+  // Background Music (Overworld & Battle) via Web Audio lookahead scheduler
+  playBgm(track) {
+    this.desiredBgm = track || null;
+    if (!track || !this.enabled) {
+      this._pauseBgmScheduler();
+      return;
+    }
+    this.init();
+    if (!this.ctx) return;
+    if (this._activeBgm === track && this._bgmTimer) return;
+    this._pauseBgmScheduler();
+    this._activeBgm = track;
+    this._bgmStep = 0;
+    this._bgmNextTime = this.ctx.currentTime + 0.06;
+
+    if (!this._bgmGain) {
+      this._bgmGain = this.ctx.createGain();
+      this._bgmGain.connect(this.ctx.destination);
+    }
+    const targetVol = track === 'battle' ? 0.26 : 0.22;
+    this._bgmGain.gain.cancelScheduledValues(this.ctx.currentTime);
+    this._bgmGain.gain.setValueAtTime(0.001, this.ctx.currentTime);
+    this._bgmGain.gain.linearRampToValueAtTime(targetVol, this.ctx.currentTime + 0.35);
+
+    const stepDur = track === 'battle' ? 0.105 : 0.29;
+    this._bgmTimer = setInterval(() => {
+      if (!this.enabled || !this.ctx || this.ctx.state !== 'running') return;
+      const horizon = this.ctx.currentTime + 0.22;
+      while (this._bgmNextTime < horizon) {
+        if (this._activeBgm === 'battle') {
+          this._scheduleBattleStep(this._bgmStep, this._bgmNextTime, stepDur);
+        } else {
+          this._scheduleOverworldStep(this._bgmStep, this._bgmNextTime, stepDur);
+        }
+        this._bgmNextTime += stepDur;
+        this._bgmStep = (this._bgmStep + 1) % 32;
+      }
+    }, 75);
+  }
+
+  stopBgm() {
+    this.desiredBgm = null;
+    this._pauseBgmScheduler();
+  }
+
+  _pauseBgmScheduler() {
+    this._activeBgm = null;
+    if (this._bgmTimer) {
+      clearInterval(this._bgmTimer);
+      this._bgmTimer = null;
+    }
+    if (this._bgmGain && this.ctx) {
+      const now = this.ctx.currentTime;
+      this._bgmGain.gain.cancelScheduledValues(now);
+      this._bgmGain.gain.setTargetAtTime(0.0001, now, 0.08);
+    }
+  }
+
+  _playBgmTone(freq, time, dur, type, vol, filterFreq = 0) {
+    if (!freq || !this.ctx || !this._bgmGain) return;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, time);
+    gain.gain.setValueAtTime(0.0001, time);
+    gain.gain.linearRampToValueAtTime(vol, time + Math.min(0.02, dur * 0.2));
+    gain.gain.exponentialRampToValueAtTime(0.0008, time + dur);
+    if (filterFreq > 0) {
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(filterFreq, time);
+      osc.connect(filter);
+      filter.connect(gain);
+    } else {
+      osc.connect(gain);
+    }
+    gain.connect(this._bgmGain);
+    osc.start(time);
+    osc.stop(time + dur + 0.02);
+  }
+
+  _playBgmDrum(kind, time) {
+    if (!this.ctx || !this._bgmGain) return;
+    if (kind === 'kick') {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(135, time);
+      osc.frequency.exponentialRampToValueAtTime(42, time + 0.11);
+      gain.gain.setValueAtTime(0.42, time);
+      gain.gain.exponentialRampToValueAtTime(0.001, time + 0.12);
+      osc.connect(gain);
+      gain.connect(this._bgmGain);
+      osc.start(time);
+      osc.stop(time + 0.13);
+      return;
+    }
+    if (!this._bgmNoiseBuf) {
+      const len = Math.floor(this.ctx.sampleRate * 0.08);
+      this._bgmNoiseBuf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+      const data = this._bgmNoiseBuf.getChannelData(0);
+      for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+    }
+    const src = this.ctx.createBufferSource();
+    src.buffer = this._bgmNoiseBuf;
+    const hp = this.ctx.createBiquadFilter();
+    hp.type = 'highpass';
+    hp.frequency.setValueAtTime(kind === 'snare' ? 1400 : 5200, time);
+    const gain = this.ctx.createGain();
+    const peak = kind === 'snare' ? 0.18 : 0.09;
+    const dur = kind === 'snare' ? 0.08 : 0.04;
+    gain.gain.setValueAtTime(peak, time);
+    gain.gain.exponentialRampToValueAtTime(0.001, time + dur);
+    src.connect(hp);
+    hp.connect(gain);
+    gain.connect(this._bgmGain);
+    src.start(time);
+    src.stop(time + dur + 0.01);
+  }
+
+  _scheduleOverworldStep(step, time, stepDur) {
+    // Cozy pastoral C major -> G -> Am -> F loop (32 eighth-note steps)
+    const bass = [
+      130.81, 0, 196.00, 0, 130.81, 0, 196.00, 0,
+      98.00,  0, 146.83, 0, 98.00,  0, 146.83, 0,
+      110.00, 0, 164.81, 0, 110.00, 0, 164.81, 0,
+      87.31,  0, 130.81, 0, 98.00,  0, 146.83, 0
+    ];
+    const arp = [
+      261.63, 329.63, 392.00, 329.63, 261.63, 329.63, 392.00, 329.63,
+      246.94, 293.66, 392.00, 293.66, 246.94, 293.66, 392.00, 293.66,
+      220.00, 261.63, 329.63, 261.63, 220.00, 261.63, 329.63, 261.63,
+      174.61, 220.00, 261.63, 220.00, 196.00, 246.94, 293.66, 246.94
+    ];
+    const lead = [
+      659.25, 0, 783.99, 659.25, 587.33, 523.25, 587.33, 0,
+      587.33, 0, 659.25, 587.33, 493.88, 0,      392.00, 0,
+      523.25, 0, 659.25, 880.00, 783.99, 659.25, 523.25, 0,
+      587.33, 523.25, 440.00, 0, 392.00, 493.88, 587.33, 0
+    ];
+    if (bass[step]) this._playBgmTone(bass[step], time, stepDur * 1.7, 'triangle', 0.22, 600);
+    if (arp[step]) this._playBgmTone(arp[step], time, stepDur * 0.9, 'sine', 0.09);
+    if (lead[step]) this._playBgmTone(lead[step], time, stepDur * 1.35, 'triangle', 0.16, 2400);
+  }
+
+  _scheduleBattleStep(step, time, stepDur) {
+    // Intense driving D minor tactical battle loop (32 sixteenth-note steps)
+    const bass = [
+      73.42, 73.42, 0, 73.42, 87.31, 0, 73.42, 0,
+      73.42, 73.42, 0, 98.00, 87.31, 0, 65.41, 0,
+      58.27, 58.27, 0, 58.27, 65.41, 0, 58.27, 0,
+      65.41, 65.41, 0, 82.41, 87.31, 0, 110.00, 98.00
+    ];
+    const lead = [
+      293.66, 0, 349.23, 0, 440.00, 0, 466.16, 440.00,
+      349.23, 0, 329.63, 0, 293.66, 0, 261.63, 0,
+      233.08, 0, 293.66, 0, 349.23, 0, 392.00, 349.23,
+      329.63, 0, 440.00, 0, 523.25, 0, 466.16, 440.00
+    ];
+    if (bass[step]) this._playBgmTone(bass[step], time, stepDur * 0.88, 'sawtooth', 0.24, 520);
+    if (lead[step]) {
+      this._playBgmTone(lead[step], time, stepDur * 1.5, 'square', 0.11, 1800);
+      this._playBgmTone(lead[step] * 1.005, time, stepDur * 1.5, 'sawtooth', 0.08, 2200);
+    }
+    if (step % 4 === 0 || step === 14 || step === 30) this._playBgmDrum('kick', time);
+    if (step % 8 === 4) this._playBgmDrum('snare', time);
+    if (step % 2 === 1) this._playBgmDrum('hat', time);
   }
 
   // UI Click
@@ -666,8 +918,27 @@ window.soundFX = sounds;
 
 // Unlock Web Audio on first mobile touch / pointer / key gesture and resume on tab focus
 ['touchstart', 'touchend', 'pointerdown', 'click', 'keydown'].forEach(evt => {
-  document.addEventListener(evt, () => sounds.unlock(), { passive: true, capture: true });
+  document.addEventListener(evt, () => {
+    sounds.unlock();
+    if (sounds._introPendingGesture && sounds.enabled && sounds.isIntroScreenVisible()) {
+      sounds.playIntroMusic();
+    } else if (sounds.desiredBgm && !sounds._activeBgm && sounds.enabled && !sounds.isIntroScreenVisible()) {
+      sounds.playBgm(sounds.desiredBgm);
+    }
+  }, { passive: true, capture: true });
 });
 document.addEventListener('visibilitychange', () => {
-  if (!document.hidden && sounds.enabled) sounds.init();
+  if (document.hidden) {
+    if (sounds.introAudio && !sounds.introAudio.paused) {
+      sounds.introAudio.pause();
+    }
+    sounds._pauseBgmScheduler();
+  } else if (sounds.enabled) {
+    sounds.init();
+    if (sounds.isIntroScreenVisible()) {
+      sounds.playIntroMusic();
+    } else if (sounds.desiredBgm) {
+      sounds.playBgm(sounds.desiredBgm);
+    }
+  }
 });

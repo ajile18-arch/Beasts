@@ -349,7 +349,7 @@
   // ---------------------------------------------------------------------------
   class BeastsGame {
     constructor() {
-      this.VERSION = '2.10';
+      this.VERSION = '2.14';
       this.gameMode = 'ai'; // 'ai' | '2p'
       this.currentView = 'overworld';
       this.currentChallenger = null;
@@ -393,6 +393,8 @@
       document.getElementById('arena-view')?.classList.remove('hidden');
       document.getElementById('arena-turn-tracker')?.classList.remove('hidden');
       document.querySelectorAll('.arena-only-ctrl').forEach(el => el.classList.remove('hidden'));
+      window.sounds?.stopIntroMusic?.();
+      window.sounds?.playBgm?.('battle');
 
       let subtitleText = 'Best of 3';
       const tourneyCtx = challenger?.tournamentContext;
@@ -449,6 +451,7 @@
 
       document.getElementById('overworld-view')?.classList.remove('hidden');
       document.getElementById('overworld-toolbar')?.classList.remove('hidden');
+      window.sounds?.playBgm?.('overworld');
 
       const sub = document.getElementById('header-subtitle');
       if (sub) sub.textContent = '';
