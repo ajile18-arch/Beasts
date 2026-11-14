@@ -22,7 +22,8 @@
       // 16x12 visible grid @ 64px per tile (1024x768 viewport)
       this.COLS = 16;
       this.ROWS = 12;
-      this.EXT_ROWS = 18.5; // Expanded South Block neighborhood height
+      this.EXT_ROWS = 36.5; // Expanded South Block + 3-block Southern Paved Avenue & Roundabout
+      this.EXT_MIN_COL = -23.5; // West extension of South Connector Ave & 4-block Roundabout West Exit
       this.EXT_COLS = 26;   // Expanded East Central Park width (1664px)
       this.EXT_ZOOM = 1.28; // Cozy RPG closer framing (~12.5x9.4 tiles) matching illustrated pixel style
       this.cameraY = 0;
@@ -461,6 +462,102 @@
           outfitStyle: 'jacket',
           outfitColor: 'ranger',
           pantsColor: 'denim',
+          hatStyle: 'none'
+        })
+      };
+    }
+
+    createClaraNpc() {
+      const CS = window.MythosCharacterSprites;
+      return {
+        id: 'clara',
+        name: 'Clara',
+        x: 6.2,
+        y: 5.35,
+        dir: 'down',
+        walkTick: 0,
+        bubble: '🧁',
+        sprite: new CS.CharacterSpriteSheet({
+          name: 'Clara',
+          skin: 'fair',
+          hairStyle: 'long',
+          hairColor: 'auburn',
+          eyeColor: 'amber',
+          outfitStyle: 'hoodie',
+          outfitColor: 'crimson',
+          pantsColor: 'denim',
+          hatStyle: 'none'
+        })
+      };
+    }
+
+    createBramNpc() {
+      const CS = window.MythosCharacterSprites;
+      return {
+        id: 'bram',
+        name: 'Bram',
+        x: 6.2,
+        y: 5.35,
+        dir: 'down',
+        walkTick: 0,
+        bubble: '🪵',
+        sprite: new CS.CharacterSpriteSheet({
+          name: 'Bram',
+          skin: 'tan',
+          hairStyle: 'short',
+          hairColor: 'silver',
+          eyeColor: 'slate',
+          outfitStyle: 'jacket',
+          outfitColor: 'ranger',
+          pantsColor: 'dark',
+          hatStyle: 'cap'
+        })
+      };
+    }
+
+    createMayorNpc() {
+      const CS = window.MythosCharacterSprites;
+      return {
+        id: 'mayor_donald',
+        name: 'Mayor Donald',
+        x: 7.9,
+        y: 5.35,
+        dir: 'down',
+        walkTick: 0,
+        bubble: '🎩',
+        sprite: new CS.CharacterSpriteSheet({
+          name: 'Mayor Donald',
+          skin: 'light',
+          hairStyle: 'short',
+          hairColor: 'silver',
+          eyeColor: 'sapphire',
+          outfitStyle: 'jacket',
+          outfitColor: 'royal',
+          pantsColor: 'dark',
+          hatStyle: 'none'
+        })
+      };
+    }
+
+    createChefNpc() {
+      const CS = window.MythosCharacterSprites;
+      return {
+        id: 'chef_marco',
+        name: 'Chef Marco',
+        x: 5.65,
+        y: 4.42,
+        dir: 'down',
+        walkTick: 0,
+        bubble: '🍽️',
+        sprite: new CS.CharacterSpriteSheet({
+          name: 'Chef Marco',
+          skin: 'tan',
+          hairStyle: 'short',
+          hairColor: 'brown',
+          eyeColor: 'amber',
+          outfitStyle: 'tunic',
+          outfitColor: 'crimson',
+          pantsColor: 'dark',
           hatStyle: 'none'
         })
       };
@@ -5519,7 +5616,7 @@
       const id = interactable.id;
       if (typeof id === 'string' && id.startsWith('meetup_')) return true;
       const friend = this.getFriendNpc();
-      return id === 'friend' || id === 'best_friend' || id === 'friend_duel' || id === 'mom' || id === 'shopkeeper' || id === 'pluto' || id === 'nova' || id === 'silas' || id === 'maya' || id === 'chloe' || id === 'rowan' || id === 'jasper' || interactable === friend || interactable === this.shopkeeperNpc || interactable === this.plutoNpc || interactable === this.novaNpc || interactable === this.silasNpc || interactable === this.mayaNpc || interactable === this.chloeNpc || interactable === this.rowanNpc || interactable === this.jasperNpc;
+      return id === 'friend' || id === 'best_friend' || id === 'friend_duel' || id === 'mom' || id === 'shopkeeper' || id === 'pluto' || id === 'nova' || id === 'silas' || id === 'maya' || id === 'clara' || id === 'bram' || id === 'mayor_donald' || id === 'chef_marco' || id === 'chloe' || id === 'rowan' || id === 'jasper' || interactable === friend || interactable === this.shopkeeperNpc || interactable === this.plutoNpc || interactable === this.novaNpc || interactable === this.silasNpc || interactable === this.mayaNpc || interactable === this.claraNpc || interactable === this.bramNpc || interactable === this.mayorNpc || interactable === this.chefNpc || interactable === this.chloeNpc || interactable === this.rowanNpc || interactable === this.jasperNpc;
     }
 
     startTalkingToNpc(npcId) {
@@ -6715,6 +6812,181 @@
           challengeBtn.classList.remove('ow-talk-btn');
           bar.classList.add('hidden');
         }
+      } else if (this.currentArea === 'clara_interior') {
+        const pName = this.draftAppearance?.name || 'Asher';
+        const clara = this.claraNpc;
+        const distToClara = clara ? Math.hypot(this.player.x - clara.x, this.player.y - (clara.y + 0.85)) : 999;
+        if (distToClara < 1.15) {
+          this.nearInteractable = clara;
+          this.renderNpcChoicePrompt({
+            npcId: 'clara',
+            promptKey: `clara_dialogue_${pName}`,
+            speakerText: '🧁 CLARA — WEST CONNECTOR BAKERY & COTTAGE',
+            talkPromptHtml: `Press <b>Talk</b> to chat with <b>Clara</b> by her warm pastry counter.`,
+            greetingHtml: `<b>Clara:</b> "Welcome in, ${pName}! I just pulled cinnamon honey-tarts out of the oven. Have you strolled further west down South Connector Ave to see <b>Mayor Donald's Manor</b> yet?"`,
+            choices: [
+              {
+                label: `1. 🏛️ "Tell me about Mayor Donald's Manor!"`,
+                primary: true,
+                onSelect: (el) => {
+                  el.innerHTML = `<b>Clara:</b> "It's the grand two-story manor at the west end of South Connector Ave! Mayor Donald keeps his reception hall downstairs and his private study upstairs — just take the grand staircase on the right!"`;
+                }
+              },
+              {
+                label: `2. 🃏 "Do you collect Mythos cards too?"`,
+                onSelect: (el) => {
+                  el.innerHTML = `<b>Clara:</b> "I adore the Forest and Beast cards! Whenever Leo gets new booster packs in, Bram and I trade duplicates over tea."`;
+                }
+              },
+              {
+                label: `3. 👋 "Smells delicious, Clara! See you later!"`,
+                onSelect: () => this.closeDialogue()
+              }
+            ]
+          });
+        } else {
+          this.lastShopPromptKey = null;
+          this.nearInteractable = null;
+          this.activeDialogueNpc = null;
+          challengeBtn.classList.remove('ow-talk-btn');
+          bar.classList.add('hidden');
+        }
+      } else if (this.currentArea === 'bram_interior') {
+        const pName = this.draftAppearance?.name || 'Asher';
+        const bram = this.bramNpc;
+        const distToBram = bram ? Math.hypot(this.player.x - bram.x, this.player.y - (bram.y + 0.85)) : 999;
+        if (distToBram < 1.15) {
+          this.nearInteractable = bram;
+          this.renderNpcChoicePrompt({
+            npcId: 'bram',
+            promptKey: `bram_dialogue_${pName}`,
+            speakerText: '🪵 BRAM — WOODSMAN & CARPENTER',
+            talkPromptHtml: `Press <b>Talk</b> to chat with <b>Bram</b> in his timber workshop.`,
+            greetingHtml: `<b>Bram:</b> "Howdy, ${pName}! I actually built the oak staircase inside <b>Mayor Donald's Manor</b> just west of here. Solid mahogany rails, velvet runner — built to last a century!"`,
+            choices: [
+              {
+                label: `1. 🪜 "The staircase in the Mayor's Manor?"`,
+                primary: true,
+                onSelect: (el) => {
+                  el.innerHTML = `<b>Bram:</b> "Aye! Head into Mayor Donald's front doors, walk past the reception foyer to the back-right corner, and step right up the crimson-carpeted stairs to reach his second-story study!"`;
+                }
+              },
+              {
+                label: `2. ⚔️ "Any Mythos deck tips?"`,
+                onSelect: (el) => {
+                  el.innerHTML = `<b>Bram:</b> "Never forget row placement! Melee warriors can't reach Ranged rows, so tuck your archers and mages safely in the back!"`;
+                }
+              },
+              {
+                label: `3. 👋 "Thanks, Bram! Catch you around!"`,
+                onSelect: () => this.closeDialogue()
+              }
+            ]
+          });
+        } else {
+          this.lastShopPromptKey = null;
+          this.nearInteractable = null;
+          this.activeDialogueNpc = null;
+          challengeBtn.classList.remove('ow-talk-btn');
+          bar.classList.add('hidden');
+        }
+      } else if (this.currentArea === 'mayor_interior') {
+        const distToDesk = Math.hypot(this.player.x - 3.6, this.player.y - 6.1);
+        if (distToDesk < 1.45) {
+          this.lastShopPromptKey = null;
+          this.activeDialogueNpc = null;
+          challengeBtn.classList.remove('ow-talk-btn');
+          this.nearInteractable = { id: 'mayor_foyer_desk', name: 'Manor Reception Ledger' };
+          bar.classList.remove('hidden', 'tv-broadcast');
+          speakerEl.textContent = '🏛️ MANOR RECEPTION LEDGER';
+          speakerEl.className = 'ow-speaker-tag friend';
+          textEl.innerHTML = `<i>"Welcome to 195 South Connector Ave — Residence of Mayor Donald of Oakhaven. Mayor Donald is currently in his upstairs 2nd-floor study."</i>`;
+          challengeBtn.classList.add('hidden');
+        } else {
+          this.lastShopPromptKey = null;
+          this.nearInteractable = null;
+          this.activeDialogueNpc = null;
+          challengeBtn.classList.remove('ow-talk-btn');
+          bar.classList.add('hidden');
+        }
+      } else if (this.currentArea === 'restaurant_interior') {
+        const pName = this.draftAppearance?.name || 'Asher';
+        const chef = this.chefNpc;
+        const distToChef = chef ? Math.hypot(this.player.x - chef.x, this.player.y - (chef.y + 0.85)) : 999;
+        if (distToChef < 2.35) {
+          this.nearInteractable = chef;
+          this.renderNpcChoicePrompt({
+            npcId: 'chef_marco',
+            promptKey: `chef_dialogue_${pName}`,
+            speakerText: '🍽️ CHEF MARCO — OAKHAVEN BISTRO',
+            talkPromptHtml: `Press <b>Talk</b> to speak with <b>Chef Marco</b> at the bistro bar.`,
+            greetingHtml: `<b>Chef Marco:</b> "Buon appetito, ${pName}! Welcome to <b>Oakhaven Bistro</b>! Pull up a stool at the bar or grab a table — our hearth tarts and spiced berry cider are fresh off the pass."`,
+            choices: [
+              {
+                label: `1. 🥧 "What's today's house special?"`,
+                primary: true,
+                onSelect: (el) => {
+                  el.innerHTML = `<b>Chef Marco:</b> "Golden Hearth Tart with honey-glazed orchard pears and a mug of warm spiced berry cider! Best seat in town is right here at the oak bar."`;
+                }
+              },
+              {
+                label: `2. 🏘️ "How is business three blocks west of the roundabout?"`,
+                onSelect: (el) => {
+                  el.innerHTML = `<b>Chef Marco:</b> "Wonderful! Folks stroll down Oakhaven Lane, circle the roundabout, and head west to unwind over dinner and cards!"`;
+                }
+              },
+              {
+                label: `3. 👋 "Smells amazing, Chef! See you soon!"`,
+                onSelect: () => this.closeDialogue()
+              }
+            ]
+          });
+        } else {
+          this.lastShopPromptKey = null;
+          this.nearInteractable = null;
+          this.activeDialogueNpc = null;
+          challengeBtn.classList.remove('ow-talk-btn');
+          bar.classList.add('hidden');
+        }
+      } else if (this.currentArea === 'mayor_2f_interior') {
+        const pName = this.draftAppearance?.name || 'Asher';
+        const mayor = this.mayorNpc;
+        const distToMayor = mayor ? Math.hypot(this.player.x - mayor.x, this.player.y - (mayor.y + 0.85)) : 999;
+        if (distToMayor < 1.25) {
+          this.nearInteractable = mayor;
+          this.renderNpcChoicePrompt({
+            npcId: 'mayor_donald',
+            promptKey: `mayor_dialogue_${pName}`,
+            speakerText: '🎩 MAYOR DONALD — 2ND STORY STUDY',
+            talkPromptHtml: `Press <b>Talk</b> to speak with <b>Mayor Donald</b> in his upstairs study.`,
+            greetingHtml: `<b>Mayor Donald:</b> "Ah, ${pName}! Welcome to the second floor of my manor. From this balcony I can see all of Oakhaven thriving — from Central Park on the east end right down South Connector Avenue!"`,
+            choices: [
+              {
+                label: `1. 🏛️ "What do you think of South Connector Ave?"`,
+                primary: true,
+                onSelect: (el) => {
+                  el.innerHTML = `<b>Mayor Donald:</b> "Extending South Connector Avenue westward was my proudest civic project! With Clara's bakery, Bram's carpentry lodge, and this manor, Oakhaven's west end is flourishing."`;
+                }
+              },
+              {
+                label: `2. 📜 "Tell me about the history of this manor!"`,
+                onSelect: (el) => {
+                  el.innerHTML = `<b>Mayor Donald:</b> "It was built from Oakhaven heartwood and river stone! Downstairs is the formal reception foyer and parlourhearth, and up here is my municipal study and master suite."`;
+                }
+              },
+              {
+                label: `3. 👋 "Great seeing you, Mayor Donald!"`,
+                onSelect: () => this.closeDialogue()
+              }
+            ]
+          });
+        } else {
+          this.lastShopPromptKey = null;
+          this.nearInteractable = null;
+          this.activeDialogueNpc = null;
+          challengeBtn.classList.remove('ow-talk-btn');
+          bar.classList.add('hidden');
+        }
       } else {
         // Exterior Neighborhood & Far-East Block Leo's Card Shop Avenue Prompt (Zoomed-out view)
         const pName = this.draftAppearance?.name || 'Asher';
@@ -6729,6 +7001,9 @@
         const distFriendDoor = Math.hypot(this.player.x - 10.05, this.player.y - 2.95);
         const distPlutoDoor = Math.hypot(this.player.x - 1.98, this.player.y - 8.85);
         const distPlutoMailbox = Math.hypot(this.player.x - 4.75, this.player.y - 9.25);
+        const distClaraMailbox = Math.hypot(this.player.x - (-0.65), this.player.y - 9.25);
+        const distBramMailbox = Math.hypot(this.player.x - (-5.15), this.player.y - 9.25);
+        const distMayorMailbox = Math.hypot(this.player.x - (-10.55), this.player.y - 9.25);
         const distRoadSign = Math.hypot(this.player.x - 7.35, this.player.y - 5.45);
         const distCardShopDoor = Math.hypot(this.player.x - 13.65, this.player.y - 9.25);
         const distNovaDoor = Math.hypot(this.player.x - 1.98, this.player.y - 14.10);
@@ -6971,6 +7246,27 @@
             "Pluto's Mailbox",
             `📬 MAILBOX — 201 SOUTH CONNECTOR AVE`,
             `<b>"Pluto's House"</b> — Sleek purple metallic mailbox with digital address readouts and tech decals.`
+          );
+        } else if (distClaraMailbox < 1.0) {
+          showStaticPrompt(
+            'clara_mailbox',
+            "Clara's Mailbox",
+            `📬 MAILBOX — 199 SOUTH CONNECTOR AVE`,
+            `<b>"Clara's House"</b> — Warm honey-painted mailbox smelling faintly of cinnamon tarts.`
+          );
+        } else if (distBramMailbox < 1.0) {
+          showStaticPrompt(
+            'bram_mailbox',
+            "Bram's Mailbox",
+            `📬 MAILBOX — 197 SOUTH CONNECTOR AVE`,
+            `<b>"Bram's House"</b> — Hand-planed cedar mailbox carved with forest pine motifs.`
+          );
+        } else if (distMayorMailbox < 1.0) {
+          showStaticPrompt(
+            'mayor_mailbox',
+            "Mayor Donald's Mailbox",
+            `📬 MAILBOX — 195 SOUTH CONNECTOR AVE`,
+            `<b>"Mayor Donald's Manor"</b> — Cast-iron & brass estate post bearing the official Oakhaven Town Seal.`
           );
         } else if (distNovaMailbox < 1.0) {
           showStaticPrompt(
@@ -7757,6 +8053,16 @@
           areaLabel = `🏠 Silas's House`;
         } else if (this.currentArea === 'maya_interior') {
           areaLabel = `🏠 Maya's House`;
+        } else if (this.currentArea === 'clara_interior') {
+          areaLabel = `🏠 Clara's House`;
+        } else if (this.currentArea === 'bram_interior') {
+          areaLabel = `🏠 Bram's House`;
+        } else if (this.currentArea === 'mayor_interior') {
+          areaLabel = `🏛️ Mayor Donald's Manor (1F)`;
+        } else if (this.currentArea === 'restaurant_interior') {
+          areaLabel = `🍽️ Oakhaven Bistro`;
+        } else if (this.currentArea === 'mayor_2f_interior') {
+          areaLabel = `🏛️ Mayor Donald's Manor (2F)`;
         } else if (this.currentArea === 'exterior' && this.player && this.player.x >= 16.0) {
           areaLabel = `🌳 Central Park Courtyard`;
         }
@@ -7786,6 +8092,11 @@
         else if (this.currentArea === 'nova_interior') shortArea = `🏠 Nova's`;
         else if (this.currentArea === 'silas_interior') shortArea = `🏠 Silas's`;
         else if (this.currentArea === 'maya_interior') shortArea = `🏠 Maya's`;
+        else if (this.currentArea === 'clara_interior') shortArea = `🏠 Clara's`;
+        else if (this.currentArea === 'bram_interior') shortArea = `🏠 Bram's`;
+        else if (this.currentArea === 'mayor_interior') shortArea = `🏛️ Manor 1F`;
+        else if (this.currentArea === 'mayor_2f_interior') shortArea = `🏛️ Manor 2F`;
+        else if (this.currentArea === 'restaurant_interior') shortArea = `🍽️ Bistro`;
         else if (this.currentArea === 'exterior' && this.player && this.player.x >= 16.0) shortArea = `🌳 Park`;
         mobLocTag.textContent = `${shortArea} • 🎒 ${this.formatMoney(this.gold || 0)}`;
       }
@@ -9000,6 +9311,38 @@
             yOffset: 0.85
           },
           {
+            active: this.currentArea === 'clara_interior',
+            npc: this.claraNpc,
+            talkId: 'clara',
+            tapRadius: 1.3,
+            reachRadius: 1.15,
+            yOffset: 0.85
+          },
+          {
+            active: this.currentArea === 'bram_interior',
+            npc: this.bramNpc,
+            talkId: 'bram',
+            tapRadius: 1.3,
+            reachRadius: 1.15,
+            yOffset: 0.85
+          },
+          {
+            active: this.currentArea === 'mayor_2f_interior',
+            npc: this.mayorNpc,
+            talkId: 'mayor_donald',
+            tapRadius: 1.3,
+            reachRadius: 1.25,
+            yOffset: 0.85
+          },
+          {
+            active: this.currentArea === 'restaurant_interior',
+            npc: this.chefNpc,
+            talkId: 'chef_marco',
+            tapRadius: 1.3,
+            reachRadius: 1.35,
+            yOffset: 0.85
+          },
+          {
             active: this.currentArea === 'exterior',
             npc: this.chloeNpc,
             talkId: 'chloe',
@@ -9274,11 +9617,70 @@
         // East Wall Botanical Microscope Research Desk (x: 11.2..13.8, y: 4.1..5.6)
         if (tx >= 11.2 && ty < 5.6) return true;
         return false;
+      } else if (this.currentArea === 'clara_interior' || this.currentArea === 'bram_interior') {
+        if (tx < 2.2 || tx > 13.8 || ty < 4.15 || ty > 10.35) return true;
+        if (tx < 4.5 && ty < 6.6) return true;
+        if (tx >= 4.7 && tx <= 7.7 && ty < 5.85) return true;
+        if (tx >= 11.2 && ty < 5.6) return true;
+        return false;
+      } else if (this.currentArea === 'mayor_interior') {
+        // 1st Story of Mayor Donald's Manor
+        if (tx < 2.2 || tx > 13.8 || ty < 4.15 || ty > 10.35) return true;
+        // West Wall Reception Desk & Marble Hearth (x: 2.2..4.6, y: 4.1..6.3)
+        if (tx < 4.6 && ty < 6.3) return true;
+        // North Wall Bookcases & Portrait Alcove (x: 5.0..9.6, y: 4.1..5.35)
+        if (tx >= 5.0 && tx <= 9.6 && ty < 5.35) return true;
+        // Grand Staircase to 2nd Floor (x: 11.2..13.5, y: 4.15..6.45) - steps walkable, side banisters solid
+        if (tx >= 10.9 && tx < 11.4 && ty < 6.5) return true;
+        if (tx > 13.3 && ty < 6.5) return true;
+        return false;
+      } else if (this.currentArea === 'mayor_2f_interior') {
+        // 2nd Story of Mayor Donald's Manor
+        if (tx < 2.2 || tx > 13.8 || ty < 4.15 || ty > 10.35) return true;
+        // West Wall Trophy Cabinet & Map Table (x: 2.2..4.6, y: 4.1..6.2)
+        if (tx < 4.6 && ty < 6.2) return true;
+        // North Wall Mayor's Grand Desk & Balcony Doors (x: 5.8..9.6, y: 4.1..5.55)
+        if (tx >= 5.8 && tx <= 9.6 && ty < 5.55) return true;
+        // Staircase down to 1st Floor at Bottom-Right (x: 11.2..13.5, y: 8.15..10.35)
+        if (tx >= 10.9 && tx < 11.4 && ty > 8.1) return true;
+        if (tx > 13.3 && ty > 8.1) return true;
+        return false;
+      } else if (this.currentArea === 'restaurant_interior') {
+        // Oakhaven Bistro Interior (matching Card Shop & Cottage cutaway room bounds)
+        if (tx < 2.2 || tx > 13.8 || ty < 4.15 || ty > 10.35) return true;
+        // West Cellar Rack & Hearth Prep Gondola (tx < 3.45, ty < 5.75)
+        if (tx < 3.45 && ty < 5.75) return true;
+        // Carved Walnut Bistro Bar Counter & 4 Barstools in front of Chef Marco
+        if (tx >= 3.45 && tx <= 7.95 && ty < 6.20) return true;
+        // East Wall Bookshelf & Pastry Display Case
+        if (tx >= 11.4 && ty < 4.85) return true;
+        // 3 Small Carved-Oak Eating Tables with Cushioned Chairs
+        if (tx >= 9.35 && tx <= 11.45 && ty >= 5.15 && ty <= 6.25) return true;
+        if (tx >= 3.05 && tx <= 5.15 && ty >= 7.25 && ty <= 8.35) return true;
+        if (tx >= 9.75 && tx <= 11.85 && ty >= 7.25 && ty <= 8.35) return true;
+        return false;
       } else {
-        // Wider Zoomed-Out Exterior World Bounds with Expanded South Block & Central Park East (Cols 0.5..25.6, Rows 0.5..17.8)
-        // Allow Oakhaven Lane north road extension (x: 14.1..15.5) to reach top of screen (ty >= 0.1)
+        // Wider Zoomed-Out Exterior World Bounds with Expanded South Block, Central Park East & West South Connector Ave
         const inOakhavenNorthRoad = (tx >= 14.1 && tx <= 15.5 && ty >= 0.1 && ty <= 5.25);
-        if (!inOakhavenNorthRoad && (tx < 0.5 || tx > 25.6 || ty < 0.5 || ty > 17.8)) return true;
+        const inOakhavenWestNorthRoad = (tx >= -0.45 && tx < 0.5 && ty >= 0.1 && ty <= 5.25);
+        const inWestSouthConnector = (tx >= -18.0 && tx < 0.5 && ty >= 4.2 && ty <= 11.4);
+        const inMayorBackyard = (tx >= -18.0 && tx <= -9.8 && ty >= 1.15 && ty <= 4.3);
+        const inWestCobblestoneConnector = (tx >= -0.30 && tx <= 0.65 && ty >= 10.5 && ty <= 31.85);
+        const distRoundabout = Math.hypot(tx - 0.175, ty - 32.85);
+        const inRoundaboutRing = (distRoundabout <= 1.58 && distRoundabout >= 0.62);
+        const inRoundaboutWestExit = (tx >= -21.38 && tx <= -1.0 && ty >= 32.38 && ty <= 33.32);
+        const inBistroPlaza = (tx >= -17.8 && tx <= -13.2 && ty >= 31.0 && ty <= 32.5);
+        if (!inOakhavenNorthRoad && !inOakhavenWestNorthRoad && !inWestSouthConnector && !inMayorBackyard && !inWestCobblestoneConnector && !inRoundaboutRing && !inRoundaboutWestExit && !inBistroPlaza && (tx < 0.5 || tx > 25.6 || ty < 0.5 || ty > 17.8)) return true;
+        if (distRoundabout < 0.62) return true; // Roundabout center island
+
+        // Oakhaven Bistro (3 blocks west of Roundabout: x: -17.6..-13.4, y: 28.9..31.7)
+        if (tx >= -17.6 && tx <= -13.4 && ty >= 28.9 && ty <= 31.7) {
+          if (tx >= -15.85 && tx <= -15.15 && ty >= 31.0) return false; // Front door
+          return true;
+        }
+        // Bistro Outdoor Patio Tables flanking the entrance
+        if (tx >= -17.4 && tx <= -16.3 && ty >= 31.75 && ty <= 32.15) return true;
+        if (tx >= -14.7 && tx <= -13.6 && ty >= 31.75 && ty <= 32.15) return true;
 
         // 1. PLAYER'S COTTAGE (North-West Plot: x = 1.1..4.3, y = 0.45..2.95)
         if (tx >= 1.1 && tx <= 4.3 && ty >= 0.45 && ty <= 2.95) {
@@ -9338,6 +9740,57 @@
           return true;
         }
 
+        // 4B. WEST SOUTH CONNECTOR AVE — CLARA'S COTTAGE (199 South Connector Ave: x = -4.2..-1.0, y = 5.95..8.85)
+        if (tx >= -4.2 && tx <= -1.0 && ty >= 5.95 && ty <= 8.85) {
+          if (tx >= -2.45 && tx <= -1.1 && ty >= 7.75) {
+            if (tx >= -2.15 && tx <= -1.45 && ty >= 7.8 && ty <= 8.3) return true;
+            return false;
+          }
+          if (tx >= -3.65 && tx <= -2.95 && ty >= 7.9) return false;
+          return true;
+        }
+        if (tx >= -4.2 && tx <= -1.0 && ty > 8.85 && ty <= 9.28) {
+          if (tx >= -3.65 && tx <= -2.95) return false;
+          return true;
+        }
+
+        // 4C. WEST SOUTH CONNECTOR AVE — BRAM'S COTTAGE (197 South Connector Ave: x = -8.7..-5.5, y = 5.95..8.85)
+        if (tx >= -8.7 && tx <= -5.5 && ty >= 5.95 && ty <= 8.85) {
+          if (tx >= -6.95 && tx <= -5.6 && ty >= 7.75) {
+            if (tx >= -6.65 && tx <= -5.95 && ty >= 7.8 && ty <= 8.3) return true;
+            return false;
+          }
+          if (tx >= -8.15 && tx <= -7.45 && ty >= 7.9) return false;
+          return true;
+        }
+        if (tx >= -8.7 && tx <= -5.5 && ty > 8.85 && ty <= 9.28) {
+          if (tx >= -8.15 && tx <= -7.45) return false;
+          return true;
+        }
+
+        // 4D. MAYOR DONALD'S 2-STORY MANOR (195 South Connector Ave: x = -16.4..-11.2, y = 4.45..8.75)
+        if (tx >= -16.4 && tx <= -11.2 && ty >= 4.45 && ty <= 8.75) {
+          // Grand double front doors threshold (x: -14.35..-13.25, y: 7.95..8.75)
+          if (tx >= -14.35 && tx <= -13.25 && ty >= 7.95) return false;
+          return true;
+        }
+        // Manor stone porch & steps (y: 8.75..9.15)
+        if (tx >= -16.4 && tx <= -11.2 && ty > 8.75 && ty <= 9.15) {
+          if (tx >= -14.35 && tx <= -13.25) return false;
+          return true;
+        }
+        // Manor Estate Perimeter Fence (x: -17.5..-10.0, y: 1.25..9.35, open front gate -14.55..-13.05 & courtyard gate -17.20..-16.40)
+        if (tx >= -17.55 && tx <= -9.95 && ty >= 9.20 && ty <= 9.42) {
+          if ((tx >= -14.55 && tx <= -13.05) || (tx >= -17.20 && tx <= -16.40)) return false;
+          return true;
+        }
+        if (tx >= -17.55 && tx <= -9.95 && ty >= 1.15 && ty <= 1.38) {
+          return true;
+        }
+        if ((tx >= -17.6 && tx <= -17.35 || tx >= -10.15 && tx <= -9.9) && ty >= 1.25 && ty <= 9.35) {
+          return true;
+        }
+
         // 5. SOUTH BLOCK COTTAGES:
         // NOVA'S COTTAGE (South-West Plot: x = 1.1..4.3, y = 11.20..14.10)
         if (tx >= 1.1 && tx <= 4.3 && ty >= 11.20 && ty <= 14.10) {
@@ -9378,6 +9831,9 @@
 
         // 6. Mailboxes, Tree Stump, Gazebo Bench & Signpost Collisions
         if (Math.hypot(tx - 4.75, ty - 3.95) < 0.28) return true; // Player Mailbox
+        if (Math.hypot(tx - (-0.65), ty - 9.25) < 0.28) return true; // Clara Mailbox
+        if (Math.hypot(tx - (-5.15), ty - 9.25) < 0.28) return true; // Bram Mailbox
+        if (Math.hypot(tx - (-10.55), ty - 9.25) < 0.28) return true; // Mayor Donald Mailbox
         if (Math.hypot(tx - 8.15, ty - 3.95) < 0.28) return true; // Mike/AJ Mailbox
         if (Math.hypot(tx - 4.75, ty - 9.25) < 0.28) return true; // Pluto Mailbox
         if (Math.hypot(tx - 4.75, ty - 14.50) < 0.28) return true; // Nova Mailbox
@@ -9407,15 +9863,19 @@
     /** Single-source wooden picket fence placements (x, y, width in tiles). */
     getExteriorFences() {
       return [
-        [0.35, 3.84, 1.15],
+        [0.80, 3.84, 0.70],
         [2.35, 3.84, 1.90],
         [10.50, 3.84, 1.90],
-        [0.35, 9.16, 1.15],
+        [0.80, 9.16, 0.70],
         [2.35, 9.16, 1.90],
-        [0.35, 14.38, 1.15],
+        [0.80, 14.38, 0.70],
         [2.35, 14.38, 1.90],
         [8.05, 14.38, 1.75],
-        [13.15, 14.38, 1.85]
+        [13.15, 14.38, 1.85],
+        [-4.95, 9.16, 1.15],
+        [-2.85, 9.16, 1.85],
+        [-9.45, 9.16, 1.15],
+        [-7.35, 9.16, 1.85]
       ];
     }
 
@@ -9426,21 +9886,19 @@
         [6.0, 0.9, 24, true, 'town'],
         [6.0, 2.0, 22, false, 'town'],
         [6.0, 3.0, 20, false, 'town'],
-        [0.45, 0.9, 23, false, 'town'],
-        [0.55, 2.2, 22, true, 'town'],
+        [-1.05, 0.9, 23, false, 'town'],
+        [-1.05, 2.2, 22, true, 'town'],
         [11.8, 0.9, 24, false, 'town'],
         [12.3, 2.3, 22, true, 'town'],
         [13.1, 3.2, 20, false, 'town'],
         // Middle Block
-        [0.45, 6.2, 22, false, 'town'],
-        [0.50, 8.2, 22, true, 'town'],
         [2.2, 5.55, 18, false, 'town'],
         [3.8, 5.55, 18, true, 'town'],
         [4.9, 6.4, 22, false, 'town'],
         [4.95, 7.28, 19, false, 'town'],
         // South Block
-        [0.45, 11.5, 24, false, 'town'],
-        [0.50, 13.5, 23, true, 'town'],
+        [-1.05, 11.6, 24, false, 'town'],
+        [-1.05, 13.6, 23, true, 'town'],
         [2.2, 10.8, 18, false, 'town'],
         [3.8, 10.8, 18, true, 'town'],
         [4.9, 12.2, 20, false, 'town'],
@@ -9469,7 +9927,19 @@
         [25.5, 11.8, 26, true, 'park_perim'],
         [25.2, 13.5, 24, false, 'park_perim'],
         [18.0, 13.8, 24, false, 'park_perim'],
-        [21.5, 13.8, 24, true, 'park_perim']
+        [21.5, 13.8, 24, true, 'park_perim'],
+        // West South Connector Ave Border Woods & Estate Framing
+        [-4.85, 6.4, 21, false, 'town'],
+        [-9.35, 6.4, 21, true, 'town'],
+        [-18.0, 5.2, 25, false, 'town'],
+        [-18.0, 7.4, 25, true, 'town'],
+        [-18.0, 9.4, 24, false, 'town'],
+        [-2.0, 11.35, 24, false, 'town'],
+        [-5.2, 11.35, 24, true, 'town'],
+        [-8.4, 11.35, 24, false, 'town'],
+        [-11.6, 11.35, 24, true, 'town'],
+        [-14.8, 11.35, 24, false, 'town'],
+        [-17.8, 11.35, 24, true, 'town']
       ];
     }
 
@@ -9489,7 +9959,8 @@
           { cx: 21.1, cy: 9.12, rx: 0.72, ry: 0.56 },           // Central Park Fountain basin
           { cx: 8.33, cy: 7.70, rx: 0.50, ry: 0.27 },           // Middle Town Plaza Fountain basin
           { cx: 7.41, cy: 6.56, rx: 0.22, ry: 0.14 },           // Middle Plaza NW tree trunk
-          { cx: 9.16, cy: 6.61, rx: 0.23, ry: 0.14 }            // Middle Plaza NE tree trunk
+          { cx: 9.16, cy: 6.61, rx: 0.23, ry: 0.14 },           // Middle Plaza NE tree trunk
+          { cx: -13.75, cy: 2.80, rx: 0.52, ry: 0.32 }          // Mayor's Estate Backyard Fountain
         ]
       };
     }
@@ -9572,6 +10043,24 @@
           spriteKey: 'cottage_maya',
           hx: 11.8, hy: 11.20, hw: 3.2, maxY: 14.48,
           doorX: 12.68, doorY: 13.88
+        },
+        {
+          id: 'clara_house',
+          spriteKey: 'cottage_maya',
+          hx: -4.2, hy: 5.95, hw: 3.2, maxY: 9.28,
+          doorX: -3.30, doorY: 8.70
+        },
+        {
+          id: 'bram_house',
+          spriteKey: 'cottage_silas',
+          hx: -8.7, hy: 5.95, hw: 3.2, maxY: 9.28,
+          doorX: -7.80, doorY: 8.70
+        },
+        {
+          id: 'mayor_mansion',
+          spriteKey: 'cottage_player',
+          hx: -16.4, hy: 4.45, hw: 5.2, maxY: 9.15,
+          doorX: -13.80, doorY: 8.65
         }
       ];
     }
@@ -9626,7 +10115,7 @@
 
     /** Redirect an interior click anywhere in or around the exit doorway/mat to the exit trigger point. */
     resolveInteriorExitDoorTarget(tx, ty) {
-      if (this.currentArea === 'exterior') return null;
+      if (this.currentArea === 'exterior' || this.currentArea === 'mayor_2f_interior') return null;
       if (tx >= 7.8 && tx <= 11.8 && ty >= 9.2 && ty <= 12.0) {
         return { id: 'interior_exit', x: 9.8, y: 10.22 };
       }
@@ -10332,6 +10821,114 @@
 
           this.areaTransitionCooldown = 25;
           this.updateHUDSaveInfo();
+        } else if (this.currentArea === 'exterior' && this.player.x >= -3.65 && this.player.x <= -2.95 && this.player.y <= 9.00 && this.player.y >= 8.20) {
+          // Step inside Clara's House (199 South Connector Ave)
+          if (window.sounds?.playMove) window.sounds.playMove();
+          this.currentArea = 'clara_interior';
+          this.player.x = 9.8;
+          this.player.y = 9.15;
+          this.player.dir = 'up';
+          this.player.targetX = null;
+          this.player.targetY = null;
+          this.areaTransitionCooldown = 25;
+          this.updateHUDSaveInfo();
+        } else if (this.currentArea === 'clara_interior' && this.player.x >= 8.2 && this.player.x <= 11.4 && this.player.y >= 9.75) {
+          if (window.sounds?.playMove) window.sounds.playMove();
+          this.currentArea = 'exterior';
+          this.player.x = -3.30;
+          this.player.y = 9.25;
+          this.player.dir = 'down';
+          this.player.targetX = null;
+          this.player.targetY = null;
+          this.areaTransitionCooldown = 25;
+          this.updateHUDSaveInfo();
+        } else if (this.currentArea === 'exterior' && this.player.x >= -8.15 && this.player.x <= -7.45 && this.player.y <= 9.00 && this.player.y >= 8.20) {
+          // Step inside Bram's House (197 South Connector Ave)
+          if (window.sounds?.playMove) window.sounds.playMove();
+          this.currentArea = 'bram_interior';
+          this.player.x = 9.8;
+          this.player.y = 9.15;
+          this.player.dir = 'up';
+          this.player.targetX = null;
+          this.player.targetY = null;
+          this.areaTransitionCooldown = 25;
+          this.updateHUDSaveInfo();
+        } else if (this.currentArea === 'bram_interior' && this.player.x >= 8.2 && this.player.x <= 11.4 && this.player.y >= 9.75) {
+          if (window.sounds?.playMove) window.sounds.playMove();
+          this.currentArea = 'exterior';
+          this.player.x = -7.80;
+          this.player.y = 9.25;
+          this.player.dir = 'down';
+          this.player.targetX = null;
+          this.player.targetY = null;
+          this.areaTransitionCooldown = 25;
+          this.updateHUDSaveInfo();
+        } else if (this.currentArea === 'exterior' && this.player.x >= -14.35 && this.player.x <= -13.25 && this.player.y <= 8.95 && this.player.y >= 7.95) {
+          // Step inside Mayor Donald's 2-Story Manor (1st Story)
+          if (window.sounds?.playMove) window.sounds.playMove();
+          this.currentArea = 'mayor_interior';
+          this.player.x = 9.8;
+          this.player.y = 9.15;
+          this.player.dir = 'up';
+          this.player.targetX = null;
+          this.player.targetY = null;
+          this.areaTransitionCooldown = 25;
+          this.updateHUDSaveInfo();
+        } else if (this.currentArea === 'mayor_interior' && this.player.x >= 8.2 && this.player.x <= 11.4 && this.player.y >= 9.75) {
+          // Exit Mayor Donald's Manor back onto West South Connector Ave
+          if (window.sounds?.playMove) window.sounds.playMove();
+          this.currentArea = 'exterior';
+          this.player.x = -13.80;
+          this.player.y = 9.25;
+          this.player.dir = 'down';
+          this.player.targetX = null;
+          this.player.targetY = null;
+          this.areaTransitionCooldown = 25;
+          this.updateHUDSaveInfo();
+        } else if (this.currentArea === 'exterior' && this.player.x >= -15.85 && this.player.x <= -15.15 && this.player.y <= 31.85 && this.player.y >= 31.00) {
+          // Step inside Oakhaven Bistro (3 blocks west of Roundabout)
+          if (window.sounds?.playMove) window.sounds.playMove();
+          this.currentArea = 'restaurant_interior';
+          this.player.x = 9.8;
+          this.player.y = 9.15;
+          this.player.dir = 'up';
+          this.player.targetX = null;
+          this.player.targetY = null;
+          this.areaTransitionCooldown = 25;
+          this.updateHUDSaveInfo();
+        } else if (this.currentArea === 'restaurant_interior' && this.player.x >= 8.2 && this.player.x <= 11.4 && this.player.y >= 9.75) {
+          // Exit Oakhaven Bistro back onto the paved avenue
+          if (window.sounds?.playMove) window.sounds.playMove();
+          this.currentArea = 'exterior';
+          this.player.x = -15.50;
+          this.player.y = 32.00;
+          this.player.dir = 'down';
+          this.player.targetX = null;
+          this.player.targetY = null;
+          this.areaTransitionCooldown = 25;
+          this.updateHUDSaveInfo();
+        } else if (this.currentArea === 'mayor_interior' && this.player.x >= 11.35 && this.player.x <= 13.35 && this.player.y <= 5.45) {
+          // Climb stairs from 1st Story to 2nd Story of Mayor Donald's Manor!
+          if (window.sounds?.playMove) window.sounds.playMove();
+          this.currentArea = 'mayor_2f_interior';
+          this.player.x = 12.35;
+          this.player.y = 5.55;
+          this.player.dir = 'down';
+          this.player.targetX = null;
+          this.player.targetY = null;
+          this.areaTransitionCooldown = 25;
+          this.updateHUDSaveInfo();
+        } else if (this.currentArea === 'mayor_2f_interior' && this.player.x >= 11.35 && this.player.x <= 13.35 && this.player.y >= 9.35) {
+          // Descend stairs (at bottom-right of 2F) back to 1st Story of Mayor Donald's Manor!
+          if (window.sounds?.playMove) window.sounds.playMove();
+          this.currentArea = 'mayor_interior';
+          this.player.x = 12.35;
+          this.player.y = 6.85;
+          this.player.dir = 'down';
+          this.player.targetX = null;
+          this.player.targetY = null;
+          this.areaTransitionCooldown = 25;
+          this.updateHUDSaveInfo();
         } else if (this.currentArea === 'pluto_interior' && this.player.x >= 8.2 && this.player.x <= 11.4 && this.player.y >= 9.75) {
           // Step out of Pluto's House back onto the South-West block!
           if (window.sounds?.playMove) window.sounds.playMove();
@@ -10435,7 +11032,7 @@
         const targetCamY = targetCenterY - viewH / 2;
         this.cameraY += (targetCamY - this.cameraY) * 0.18;
 
-        const minCenterX = visibleW / 2;
+        const minCenterX = (this.EXT_MIN_COL || 0) * this.TILE + visibleW / 2;
         const maxCenterX = Math.max(minCenterX, this.EXT_COLS * this.TILE - visibleW / 2);
         const targetCenterX = Math.max(minCenterX, Math.min(maxCenterX, this.player.x * this.TILE));
         const targetCamX = targetCenterX - viewW / 2;
@@ -13044,8 +13641,36 @@
       const pngTilesReady = this.isImgReady('tile_grass') && this.isImgReady('tile_dirt')
         && this.isImgReady('tile_flagstone') && this.isImgReady('tile_wood_floor');
       const targetVer = pngTilesReady ? 3 : 2;
-      if (this._pixelArtVer === targetVer && this.cobblePattern && this.flagstonePattern && this.grassPattern && this.treeGreenStamp) return;
+      if (this._pixelArtVer === targetVer && this.cobblePattern && this.flagstonePattern && this.urbanRoadPattern && this.grassPattern && this.treeGreenStamp) return;
       this._pixelArtVer = targetVer;
+
+      // Urban Paved Asphalt Road Pattern (128x128 @ 2x pixel scale)
+      if (!this.urbanRoadPattern) {
+        const uCvs = document.createElement('canvas');
+        uCvs.width = 128; uCvs.height = 128;
+        const uctx = uCvs.getContext('2d');
+        if (uctx) {
+          uctx.fillStyle = '#444d5c';
+          uctx.fillRect(0, 0, 128, 128);
+          const uTones = ['#3d4554', '#4a5464', '#38404e', '#525d6e'];
+          for (let uy = 0; uy < 128; uy += 2) {
+            for (let ux = 0; ux < 128; ux += 2) {
+              const n = this.hash(ux * 0.45, uy * 0.45, 23);
+              if (n > 0.70) {
+                uctx.fillStyle = uTones[Math.floor(n * 19) % uTones.length];
+                uctx.fillRect(ux, uy, 2, 2);
+              }
+            }
+          }
+          for (let i = 0; i < 40; i++) {
+            const sx = Math.floor(this.hash(i, 7) * 60) * 2 + 2;
+            const sy = Math.floor(this.hash(i, 13) * 60) * 2 + 2;
+            uctx.fillStyle = i % 2 === 0 ? '#5f6b7e' : '#313846';
+            uctx.fillRect(sx, sy, 2, 2);
+          }
+          this.urbanRoadPattern = this.ctx.createPattern(uCvs, 'repeat');
+        }
+      }
 
       if (pngTilesReady) {
         this.cobblePattern = this.buildScaledPattern(this.owSprites.tile_dirt, 160, 160);
@@ -14385,21 +15010,23 @@
       });
 
       // 7. South Cutaway Doorstep Threshold & Woven Welcome Mat (Exit at 9.8 * S)
-      const doorX = snap(9.8 * S - 43);
-      const doorY = snap(ry + rh - 22);
-      pxBox(doorX + 4, doorY - 24, 78, 22, opts.matMid, opts.matHi, opts.matDark, INK, 2);
-      ctx.fillStyle = opts.matTrim || '#fbbf24';
-      ctx.fillRect(doorX + 10, doorY - 19, 66, 2);
-      ctx.fillRect(doorX + 10, doorY - 7, 66, 2);
-      if (typeof opts.onMatCrest === 'function') {
-        opts.onMatCrest(doorX, doorY, g);
+      if (!opts.hideSouthDoor) {
+        const doorX = snap(9.8 * S - 43);
+        const doorY = snap(ry + rh - 22);
+        pxBox(doorX + 4, doorY - 24, 78, 22, opts.matMid, opts.matHi, opts.matDark, INK, 2);
+        ctx.fillStyle = opts.matTrim || '#fbbf24';
+        ctx.fillRect(doorX + 10, doorY - 19, 66, 2);
+        ctx.fillRect(doorX + 10, doorY - 7, 66, 2);
+        if (typeof opts.onMatCrest === 'function') {
+          opts.onMatCrest(doorX, doorY, g);
+        }
+        // Walnut door jamb posts & beveled stone step slabs
+        pxBox(doorX - 18, doorY - 8, 18, 22, '#5c3a22', '#855733', '#3b2212', INK, 2.5);
+        pxBox(doorX + 86, doorY - 8, 18, 22, '#5c3a22', '#855733', '#3b2212', INK, 2.5);
+        pxBox(doorX, doorY + 4, 86, 22, opts.stepMid || '#64748b', opts.stepHi || '#94a3b8', opts.stepDark || '#475569', INK, 2.5);
+        ctx.fillStyle = opts.stepDark || '#475569';
+        ctx.fillRect(doorX + 42, doorY + 6, 2, 16);
       }
-      // Walnut door jamb posts & beveled stone step slabs
-      pxBox(doorX - 18, doorY - 8, 18, 22, '#5c3a22', '#855733', '#3b2212', INK, 2.5);
-      pxBox(doorX + 86, doorY - 8, 18, 22, '#5c3a22', '#855733', '#3b2212', INK, 2.5);
-      pxBox(doorX, doorY + 4, 86, 22, opts.stepMid || '#64748b', opts.stepHi || '#94a3b8', opts.stepDark || '#475569', INK, 2.5);
-      ctx.fillStyle = opts.stepDark || '#475569';
-      ctx.fillRect(doorX + 42, doorY + 6, 2, 16);
 
       return g;
     }
@@ -15341,6 +15968,1087 @@
       ctx.fillRect(trrX - 66, trrY - 70, 132, 132);
     }
 
+    _renderStyledCottageInterior(theme) {
+      const t = this.tick || 0;
+      const g = this._drawCutawayRoomShell({
+        voidColor: theme.voidColor,
+        floorTint: theme.floorTint,
+        floorFallbackEven: '#855c3c',
+        floorFallbackOdd: '#785033',
+        wallUpper: theme.wallUpper,
+        wallCourseColor: theme.wallCourseColor,
+        dadoColor: theme.dadoMid,
+        wainscotColor: theme.wainscotColor,
+        railHighlight: theme.railHighlight,
+        panelFill: theme.panelFill,
+        panelTopShade: theme.panelTopShade,
+        panelBottomHi: theme.panelBottomHi,
+        cornerTrimColor: theme.cornerTrimColor,
+        baseboardColor: '#3d2213',
+        pillarMain: theme.wallUpper,
+        pillarHi: '#fff8ec',
+        pillarShade: theme.wallCourseColor,
+        pillarAccent: theme.dadoMid,
+        pillarAccentHi: theme.dadoHi,
+        pillarAccentShade: theme.dadoDark,
+        matMid: theme.dadoMid,
+        matHi: theme.dadoHi,
+        matDark: theme.dadoDark,
+        matTrim: '#fbbf24',
+        onMatCrest: (doorX, doorY, { ctx }) => {
+          ctx.fillStyle = '#fef3c7';
+          ctx.fillRect(doorX + 39, doorY - 15, 8, 4);
+          ctx.fillRect(doorX + 41, doorY - 17, 4, 8);
+        },
+        onFloorDraw: ({ ctx, rx, rw, floorTop, snap, drawChamferedRect, INK }) => {
+          const rugW = 296, rugH = 190;
+          const rugX = snap(rx + rw / 2 - rugW / 2);
+          const rugY = snap(floorTop + 82);
+          ctx.fillStyle = '#e7dec5';
+          for (let fy = rugY + 12; fy < rugY + rugH - 12; fy += 8) {
+            ctx.fillRect(rugX - 6, fy, 6, 4);
+            ctx.fillRect(rugX + rugW, fy, 6, 4);
+          }
+          ctx.fillStyle = 'rgba(20, 12, 8, 0.25)';
+          drawChamferedRect(rugX + 2, rugY + 6, rugW, rugH, 14);
+          ctx.fill();
+          ctx.fillStyle = theme.dadoDark;
+          drawChamferedRect(rugX, rugY, rugW, rugH, 14);
+          ctx.fill();
+          ctx.strokeStyle = INK;
+          ctx.lineWidth = 2.5;
+          ctx.stroke();
+          ctx.fillStyle = theme.dadoMid;
+          drawChamferedRect(rugX + 8, rugY + 8, rugW - 16, rugH - 16, 10);
+          ctx.fill();
+          ctx.strokeStyle = '#fbbf24';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+          ctx.fillStyle = 'rgba(254, 243, 199, 0.10)';
+          for (let py = rugY + 24; py < rugY + rugH - 24; py += 20) {
+            ctx.fillRect(rugX + 20, py, rugW - 40, 4);
+          }
+          ctx.strokeStyle = 'rgba(254, 243, 199, 0.45)';
+          ctx.lineWidth = 1.5;
+          drawChamferedRect(rugX + 20, rugY + 18, rugW - 40, rugH - 36, 6);
+          ctx.stroke();
+          const rcx = snap(rugX + rugW / 2), rcy = snap(rugY + rugH / 2);
+          ctx.fillStyle = '#fbbf24';
+          ctx.beginPath();
+          ctx.moveTo(rcx, rcy - 26);
+          ctx.lineTo(rcx + 34, rcy);
+          ctx.lineTo(rcx, rcy + 26);
+          ctx.lineTo(rcx - 34, rcy);
+          ctx.closePath();
+          ctx.fill();
+          ctx.strokeStyle = INK;
+          ctx.lineWidth = 2;
+          ctx.stroke();
+          ctx.fillStyle = '#fef3c7';
+          ctx.fillRect(rcx - 6, rcy - 6, 12, 12);
+
+          // Warm Hearth Firelight Pool + Diagonal Morning Sunbeam
+          const pulse = 0.20 + Math.sin(t * 0.14) * 0.03;
+          const hearthGlow = ctx.createRadialGradient(396, floorTop + 10, 12, 396, floorTop + 26, 200);
+          hearthGlow.addColorStop(0, `rgba(251, 146, 60, ${pulse + 0.06})`);
+          hearthGlow.addColorStop(0.55, `rgba(245, 158, 11, ${pulse * 0.45})`);
+          hearthGlow.addColorStop(1, 'rgba(245, 158, 11, 0)');
+          ctx.fillStyle = hearthGlow;
+          ctx.fillRect(rx, floorTop - 20, 520, 260);
+
+          const sunBeam = ctx.createLinearGradient(636, floorTop, 560, floorTop + 190);
+          sunBeam.addColorStop(0, 'rgba(254, 240, 138, 0.22)');
+          sunBeam.addColorStop(0.55, 'rgba(254, 240, 138, 0.08)');
+          sunBeam.addColorStop(1, 'rgba(254, 240, 138, 0)');
+          ctx.fillStyle = sunBeam;
+          ctx.beginPath();
+          ctx.moveTo(582, floorTop - 16);
+          ctx.lineTo(692, floorTop - 16);
+          ctx.lineTo(640, floorTop + 176);
+          ctx.lineTo(524, floorTop + 176);
+          ctx.closePath();
+          ctx.fill();
+        }
+      });
+
+      const { ctx, S, rx, ry, floorTop, INK, snap, pxBox } = g;
+
+      // 1. North-Left Wall: Framed Plaque & Hanging Shelf with Jars/Tools
+      const bpX = snap(rx + 74), bpY = snap(ry + 36);
+      ctx.fillStyle = 'rgba(20, 12, 8, 0.30)';
+      ctx.fillRect(bpX + 3, bpY + 5, 98, 56);
+      pxBox(bpX, bpY, 98, 56, '#6c452b', '#a47247', '#452817', INK, 2.5);
+      pxBox(bpX + 6, bpY + 6, 86, 44, theme.plaqueBg, theme.dadoHi, null, '#fef3c7', 1.5);
+      ctx.fillStyle = '#fef3c7';
+      ctx.fillRect(bpX + 16, bpY + 16, 44, 4);
+      ctx.fillRect(bpX + 16, bpY + 26, 62, 3);
+      ctx.fillRect(bpX + 16, bpY + 36, 52, 3);
+
+      const shX = snap(rx + 78), shY = snap(ry + 110);
+      pxBox(shX, shY, 90, 10, '#6c452b', '#a47247', '#452817', INK, 2);
+      pxBox(shX + 10, shY - 14, 14, 14, '#fda4af', '#ffe4e6', '#e11d48', INK, 1.5);
+      pxBox(shX + 36, shY - 16, 16, 16, '#fde047', '#fef9c3', '#d97706', INK, 1.5);
+      pxBox(shX + 64, shY - 12, 14, 12, '#86efac', '#dcfce7', '#16a34a', INK, 1.5);
+
+      // 2. North-Center Staggered Stone Masonry Hearth Fireplace, Mantle, Logs & Apron
+      const fpX = snap(334), fpY = snap(ry + 30), fpW = 126, fpH = snap(floorTop - fpY - 8);
+      ctx.fillStyle = 'rgba(20, 12, 8, 0.34)';
+      ctx.fillRect(fpX + 4, fpY + 4, fpW, fpH);
+      pxBox(fpX, fpY, fpW, fpH, '#64748b', '#94a3b8', '#475569', INK, 2.5);
+      [
+        [8, 6, 34, 18, '#78716c'], [46, 6, 40, 18, '#57534e'], [90, 6, 28, 18, '#78716c'],
+        [8, 28, 44, 18, '#57534e'], [56, 28, 32, 18, '#78716c'], [92, 28, 26, 18, '#57534e'],
+        [8, 50, 28, 18, '#78716c'], [40, 50, 44, 18, '#6b7280'], [88, 50, 30, 18, '#57534e']
+      ].forEach(([sx, sy, sw, sh, col]) => {
+        pxBox(fpX + sx, fpY + sy, sw, sh, col, '#a8a29e', '#44403c', INK, 1.5);
+      });
+      pxBox(fpX + 46, fpY + 16, 34, 34, '#784d31', '#a47247', '#452817', INK, 2);
+      pxBox(fpX + 54, fpY + 24, 18, 18, theme.dadoMid, theme.dadoHi, theme.dadoDark, '#fbbf24', 1.5);
+      pxBox(fpX - 8, fpY + 84, fpW + 16, 14, '#784d31', '#a47247', '#452817', INK, 2.5);
+      pxBox(fpX + 12, fpY + 66, 18, 18, '#f59e0b', '#fef08a', '#b45309', INK, 1.5);
+      pxBox(fpX + fpW - 26, fpY + 70, 10, 14, '#fef3c7', '#ffffff', '#d97706', INK, 1.5);
+
+      const boxX = fpX + 22, boxY = fpY + 102, boxW = fpW - 44, boxH = fpH - 102;
+      pxBox(boxX - 6, boxY - 4, boxW + 12, boxH + 4, '#44403c', '#78716c', null, INK, 2);
+      pxBox(boxX, boxY, boxW, boxH, '#1a110e', null, null, INK, 2);
+      pxBox(boxX + 12, boxY + boxH - 14, boxW - 24, 10, '#6c452b', '#8b5e3c', '#3b2212', INK, 1.5);
+      const fStep = Math.round(Math.sin(t * 0.22) * 2) * 2;
+      const fx = snap(boxX + boxW / 2), fy = snap(boxY + boxH - 14);
+      ctx.fillStyle = '#ea580c';
+      ctx.fillRect(fx - 16, fy - 12 - fStep, 32, 12 + fStep);
+      ctx.fillRect(fx - 10, fy - 22 - fStep, 20, 12);
+      ctx.fillStyle = '#fbbf24';
+      ctx.fillRect(fx - 10, fy - 14 - fStep, 20, 12 + fStep);
+      ctx.fillStyle = '#fef08a';
+      ctx.fillRect(fx - 6, fy - 10, 12, 8);
+
+      const apX = snap(326), apY = snap(floorTop - 10), apW = 142, apH = 38;
+      pxBox(apX, apY, apW, apH, '#64748b', '#94a3b8', '#475569', INK, 2.5);
+      for (let sx = apX + 6; sx < apX + apW - 14; sx += 26) {
+        pxBox(sx, apY + 6, 22, 12, '#78716c', '#a8a29e', null, INK, 1.5);
+        pxBox(sx + 2, apY + 20, 20, 12, '#57534e', '#78716c', null, INK, 1.5);
+      }
+      // Log cradle & poker stand
+      pxBox(snap(302), snap(floorTop + 2), 24, 42, '#292524', null, '#1c1917', INK, 2);
+      pxBox(snap(470), snap(floorTop + 10), 18, 32, '#334155', '#64748b', null, INK, 2);
+
+      // 3. North-Right Wall: Grandfather Clock + Shuttered Sunlit Window + Brass Wall Sconce
+      const gcX = snap(498), gcY = snap(ry + 44);
+      pxBox(gcX, gcY, 54, 150, '#6c452b', '#a47247', '#452817', INK, 2.5);
+      pxBox(gcX - 4, gcY, 62, 14, '#8b5e3c', '#b98556', '#5c3a22', INK, 2);
+      pxBox(gcX + 9, gcY + 20, 36, 36, '#fef3c7', '#ffffff', '#e5d3a3', INK, 2);
+      pxBox(gcX + 13, gcY + 62, 28, 70, '#26150d', null, null, INK, 2);
+      const pSw = Math.round(Math.sin(t * 0.07) * 3) * 2;
+      pxBox(gcX + 21 + pSw, gcY + 108, 12, 12, '#f59e0b', '#fef08a', '#b45309', INK, 2);
+
+      const winX = snap(576), winY = snap(ry + 38), winW = 118, winH = 96;
+      pxBox(winX - 16, winY + 10, 16, winH - 10, theme.dadoMid, theme.dadoHi, theme.dadoDark, INK, 2.5);
+      pxBox(winX + winW, winY + 10, 16, winH - 10, theme.dadoMid, theme.dadoHi, theme.dadoDark, INK, 2.5);
+      pxBox(winX, winY, winW, winH, '#784d31', '#a47247', '#452817', INK, 2.5);
+      ctx.fillStyle = '#bae6fd';
+      ctx.fillRect(winX + 8, winY + 8, winW - 16, winH - 18);
+      ctx.fillStyle = '#22c55e';
+      ctx.fillRect(winX + 8, winY + 54, winW - 16, 32);
+      ctx.fillStyle = '#5c3a22';
+      ctx.fillRect(winX + Math.floor(winW / 2) - 3, winY + 6, 6, winH - 14);
+      ctx.fillRect(winX + 6, winY + 46, winW - 12, 5);
+      pxBox(winX - 6, winY + winH - 10, winW + 12, 10, '#8b5e3c', '#a47247', '#5c3a22', INK, 2.5);
+
+      // 4. West Blocked Zone: Handcrafted Artisan Counter/Workbench + Storage Sack + pot_large + Stool
+      const wbX = snap(2.3 * S), wbY = snap(floorTop + 2), wbW = 132, wbH = 108;
+      ctx.fillStyle = 'rgba(20, 12, 8, 0.36)';
+      ctx.fillRect(wbX + 4, wbY + 8, wbW, wbH);
+      pxBox(wbX + 8, wbY + wbH - 42, 16, 42, '#5c3a22', '#784d31', '#3b2212', INK, 2.5);
+      pxBox(wbX + wbW - 24, wbY + wbH - 42, 16, 42, '#5c3a22', '#784d31', '#3b2212', INK, 2.5);
+      pxBox(wbX + 22, wbY + wbH - 28, wbW - 44, 14, '#4a2b17', '#6c452b', '#2e1a0c', INK, 2);
+      pxBox(wbX, wbY, wbW, 60, '#8b5e3c', '#be8a58', '#5c3a22', INK, 2.5);
+      if (typeof theme.onCounterDraw === 'function') {
+        theme.onCounterDraw(wbX, wbY, wbW, wbH, g);
+      }
+      // Lower West Stool & Large Potted Plant
+      pxBox(wbX + 4, wbY + wbH + 8, 38, 38, '#d6b68a', '#eed8b6', '#a8875b', INK, 2);
+      if (this.isImgReady('pot_large')) {
+        ctx.drawImage(this.owSprites.pot_large, snap(wbX + 48), snap(wbY + wbH - 4), 44, 52);
+      }
+      const stX = snap(wbX + 94), stY = snap(wbY + wbH + 10);
+      pxBox(stX, stY, 38, 22, '#784d31', '#a47247', '#452817', INK, 2.5);
+      pxBox(stX + 4, stY + 4, 30, 12, theme.dadoMid, theme.dadoHi, theme.dadoDark, INK, 1.5);
+
+      // 5. East Blocked Zone: Bookshelf + Potted Fern + Side Table & Tufted Wingback Armchair
+      this._drawEastBookshelfCorner(g, (bkX, bkY, bkW) => {
+        const cx = snap(bkX + bkW / 2), cy = snap(bkY + 2);
+        pxBox(cx - 12, cy - 18, 24, 18, '#fbbf24', '#fef08a', '#b45309', INK, 2);
+      });
+      const rtX = snap(11.3 * S), rtY = snap(floorTop + 30);
+      pxBox(rtX + 18, rtY + 38, 20, 26, '#5c3a22', '#784d31', '#3b2212', INK, 2);
+      pxBox(rtX, rtY, 56, 42, '#784d31', '#a97448', '#452817', INK, 2.5);
+      pxBox(rtX + 10, rtY + 10, 16, 16, '#fef3c7', '#ffffff', '#d6d3d1', INK, 1.5);
+      pxBox(rtX + 30, rtY + 12, 18, 18, theme.dadoMid, theme.dadoHi, theme.dadoDark, '#fbbf24', 1.5);
+
+      const chX = snap(12.38 * S), chY = snap(floorTop + 8), chW = 84, chH = 94;
+      ctx.fillStyle = 'rgba(20, 12, 8, 0.38)';
+      ctx.fillRect(chX + 4, chY + 8, chW, chH);
+      pxBox(chX + 6, chY, chW - 12, 54, theme.chairMain, theme.chairHi, theme.chairDark, INK, 2.5);
+      pxBox(chX + 10, chY + 46, chW - 20, 36, theme.chairHi, '#fde68a', theme.chairMain, INK, 2.5);
+      pxBox(chX, chY + 28, 18, 56, theme.chairMain, theme.chairHi, theme.chairDark, INK, 2.5);
+      pxBox(chX + chW - 18, chY + 28, 18, 56, theme.chairMain, theme.chairHi, theme.chairDark, INK, 2.5);
+    }
+
+    renderClaraHouseInterior() {
+      this._renderStyledCottageInterior({
+        voidColor: '#1b1214',
+        floorTint: 'rgba(180, 80, 40, 0.12)',
+        wallUpper: '#f5e6d0',
+        wallCourseColor: '#e2ccb0',
+        plaqueBg: '#831843',
+        dadoMid: '#be185d',
+        dadoHi: '#ec4899',
+        dadoDark: '#831843',
+        wainscotColor: '#784d31',
+        railHighlight: '#a47247',
+        panelFill: '#5c3a22',
+        panelTopShade: '#3b2212',
+        panelBottomHi: '#8b5e3c',
+        cornerTrimColor: '#d6be96',
+        chairMain: '#9d174d',
+        chairHi: '#db2777',
+        chairDark: '#500724',
+        onCounterDraw: (wbX, wbY, wbW, wbH, { pxBox, INK }) => {
+          // Marble Pastry Slab, Glass-Domed Berry Cake Stand, Cinnamon Tarts & Rolling Pin
+          pxBox(wbX + 8, wbY + 8, 52, 40, '#f8fafc', '#ffffff', '#cbd5e1', INK, 2);
+          pxBox(wbX + 20, wbY + 14, 28, 22, '#f472b6', '#fbcfe8', '#be185d', INK, 1.5);
+          pxBox(wbX + 68, wbY + 10, 52, 36, '#fde68a', '#fef9c3', '#d97706', INK, 2);
+          pxBox(wbX + 74, wbY + 16, 16, 12, '#d97706', '#fef08a', '#92400e', INK, 1.5);
+          pxBox(wbX + 96, wbY + 16, 16, 12, '#d97706', '#fef08a', '#92400e', INK, 1.5);
+        }
+      });
+    }
+
+    renderBramHouseInterior() {
+      this._renderStyledCottageInterior({
+        voidColor: '#10181c',
+        floorTint: 'rgba(20, 70, 80, 0.14)',
+        wallUpper: '#e2e8e4',
+        wallCourseColor: '#cbd5d0',
+        plaqueBg: '#134e4a',
+        dadoMid: '#0f766e',
+        dadoHi: '#14b8a6',
+        dadoDark: '#115e59',
+        wainscotColor: '#5c3a22',
+        railHighlight: '#8b5e3c',
+        panelFill: '#452817',
+        panelTopShade: '#2b180d',
+        panelBottomHi: '#6c452b',
+        cornerTrimColor: '#94a3b8',
+        chairMain: '#78350f',
+        chairHi: '#b45309',
+        chairDark: '#451a03',
+        onCounterDraw: (wbX, wbY, wbW, wbH, { pxBox, INK }) => {
+          // Unrolled Architectural Blueprints, Brass Compass, Joiner's Plane & Mallet
+          pxBox(wbX - 8, wbY + 24, 14, 22, '#475569', '#94a3b8', '#1e293b', INK, 2);
+          pxBox(wbX + 10, wbY + 10, 64, 38, '#1e3a8a', '#3b82f6', '#172554', '#fef3c7', 1.5);
+          pxBox(wbX + 82, wbY + 12, 38, 22, '#b45309', '#f59e0b', '#78350f', INK, 2);
+          pxBox(wbX + 88, wbY + 38, 28, 12, '#94a3b8', '#e2e8f0', '#475569', INK, 1.5);
+        }
+      });
+    }
+
+    _drawManorGrandStaircase(g, isSecondFloor) {
+      const { ctx, S, floorTop, INK, snap, pxBox } = g;
+      const stX = snap(11.25 * S);
+      const stY = isSecondFloor ? snap(8.15 * S) : snap(floorTop - 16);
+      const stW = 140;
+      const stH = 148;
+
+      ctx.fillStyle = 'rgba(16, 10, 8, 0.42)';
+      ctx.fillRect(stX - 6, stY + 6, stW + 16, stH);
+
+      const steps = 7;
+      const stepH = Math.floor(stH / steps);
+      for (let i = 0; i < steps; i++) {
+        const sy = stY + i * stepH;
+        pxBox(stX, sy, stW, stepH + 2, i % 2 === 0 ? '#784d31' : '#6c452b', '#a47247', '#452817', INK, 2);
+        pxBox(stX + 22, sy + 2, stW - 44, stepH - 2, i % 2 === 0 ? '#991b1b' : '#7f1d1d', '#dc2626', '#450a0a', INK, 1.5);
+        ctx.fillStyle = '#fbbf24';
+        ctx.fillRect(stX + 20, sy + stepH - 3, stW - 40, 2);
+      }
+
+      pxBox(stX - 8, stY - 8, 14, stH + 10, '#5c3a22', '#8b5e3c', '#3b2212', INK, 2.5);
+      pxBox(stX + stW - 6, stY - 8, 14, stH + 10, '#5c3a22', '#8b5e3c', '#3b2212', INK, 2.5);
+      pxBox(stX - 10, stY + stH - 12, 18, 18, '#fbbf24', '#fef08a', '#b45309', INK, 2);
+      pxBox(stX + stW - 8, stY + stH - 12, 18, 18, '#fbbf24', '#fef08a', '#b45309', INK, 2);
+    }
+
+    renderMayorMansion1F() {
+      const t = this.tick || 0;
+      const g = this._drawCutawayRoomShell({
+        voidColor: '#141016',
+        floorTint: 'rgba(110, 24, 24, 0.15)',
+        floorFallbackEven: '#7c4d32',
+        floorFallbackOdd: '#6b3f26',
+        wallUpper: '#efe5ce',
+        wallCourseColor: '#dfd0b0',
+        dadoColor: '#881337',
+        wainscotColor: '#5c3a22',
+        railHighlight: '#966540',
+        panelFill: '#452817',
+        panelTopShade: '#2b180d',
+        panelBottomHi: '#784d31',
+        cornerTrimColor: '#cbb992',
+        baseboardColor: '#3b2212',
+        pillarMain: '#efe5ce',
+        pillarHi: '#fffaf0',
+        pillarShade: '#d5c4a1',
+        pillarAccent: '#881337',
+        pillarAccentHi: '#be123c',
+        pillarAccentShade: '#4c0519',
+        matMid: '#881337',
+        matHi: '#be123c',
+        matDark: '#4c0519',
+        matTrim: '#fbbf24',
+        onMatCrest: (doorX, doorY, { ctx }) => {
+          ctx.fillStyle = '#fbbf24';
+          ctx.fillRect(doorX + 37, doorY - 16, 12, 6);
+        },
+        onFloorDraw: ({ ctx, S, rx, rw, ry, rh, floorTop, snap, drawChamferedRect, INK, pxBox }) => {
+          // 1) Grand Crimson-and-Gold Velvet Entry Runner from Double Doors (9.8*S) to Foyer
+          const runX = snap(9.1 * S), runY = snap(floorTop + 60), runW = 92, runH = snap(ry + rh - runY - 20);
+          pxBox(runX, runY, runW, runH, '#881337', '#be123c', '#4c0519', '#fbbf24', 2);
+
+          // 2) Royal Parlour Medallion Carpet with Fringe & Filigree
+          const rugW = 336, rugH = 204;
+          const rugX = snap(rx + 188), rugY = snap(floorTop + 80);
+          ctx.fillStyle = '#e7dec5';
+          for (let fy = rugY + 12; fy < rugY + rugH - 12; fy += 8) {
+            ctx.fillRect(rugX - 6, fy, 6, 4);
+            ctx.fillRect(rugX + rugW, fy, 6, 4);
+          }
+          ctx.fillStyle = '#4c0519';
+          drawChamferedRect(rugX, rugY, rugW, rugH, 14);
+          ctx.fill();
+          ctx.strokeStyle = INK;
+          ctx.lineWidth = 2.5;
+          ctx.stroke();
+          ctx.fillStyle = '#881337';
+          drawChamferedRect(rugX + 8, rugY + 8, rugW - 16, rugH - 16, 10);
+          ctx.fill();
+          ctx.strokeStyle = '#fbbf24';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+          const rcx = snap(rugX + rugW / 2), rcy = snap(rugY + rugH / 2);
+          pxBox(rcx - 28, rcy - 18, 56, 36, '#fbbf24', '#fef08a', '#b45309', INK, 2);
+          pxBox(rcx - 16, rcy - 10, 32, 20, '#881337', '#be123c', null, '#fef3c7', 1.5);
+
+          // 3) Warm Hearth Firelight Pool
+          const pulse = 0.22 + Math.sin(t * 0.14) * 0.03;
+          const hearthGlow = ctx.createRadialGradient(460, floorTop + 12, 12, 460, floorTop + 28, 220);
+          hearthGlow.addColorStop(0, `rgba(251, 146, 60, ${pulse + 0.06})`);
+          hearthGlow.addColorStop(0.55, `rgba(245, 158, 11, ${pulse * 0.45})`);
+          hearthGlow.addColorStop(1, 'rgba(245, 158, 11, 0)');
+          ctx.fillStyle = hearthGlow;
+          ctx.fillRect(rx, floorTop - 20, 620, 270);
+        }
+      });
+
+      const { ctx, S, rx, ry, floorTop, INK, snap, pxBox } = g;
+
+      // 1. North-Left Wall: Gold-Framed Oakhaven Founding Landscape Painting & Brass Candelabra Sconces
+      const ptX = snap(rx + 76), ptY = snap(ry + 36);
+      pxBox(ptX, ptY, 108, 66, '#d97706', '#fef08a', '#92400e', INK, 2.5);
+      pxBox(ptX + 8, ptY + 8, 92, 50, '#1e3a8a', '#38bdf8', '#172554', '#fef3c7', 1.5);
+      ctx.fillStyle = '#15803d';
+      ctx.fillRect(ptX + 12, ptY + 38, 84, 16);
+      ctx.fillStyle = '#fde047';
+      ctx.fillRect(ptX + 72, ptY + 16, 12, 12);
+
+      // 2. North-Center: Twin Library Bookcases + Grand Marble & Mahogany Civic Hearth Fireplace + Grandfather Clock
+      if (this.isImgReady('furniture_bookshelf')) {
+        const bsImg = this.owSprites.furniture_bookshelf;
+        ctx.drawImage(bsImg, snap(4.95 * S), snap(ry + 62), 102, 134);
+        ctx.drawImage(bsImg, snap(8.15 * S), snap(ry + 62), 102, 134);
+      }
+      const fpX = snap(6.55 * S), fpY = snap(ry + 28), fpW = 100, fpH = snap(floorTop - fpY - 8);
+      pxBox(fpX, fpY, fpW, fpH, '#cbd5e1', '#f8fafc', '#64748b', INK, 2.5);
+      pxBox(fpX + 26, fpY + 16, 48, 42, '#b45309', '#fef08a', '#78350f', INK, 2);
+      pxBox(fpX + 34, fpY + 24, 32, 26, '#881337', '#be123c', '#4c0519', '#fef3c7', 1.5);
+      pxBox(fpX - 8, fpY + 84, fpW + 16, 14, '#5c3a22', '#8b5e3c', '#3b2212', INK, 2.5);
+      pxBox(fpX + 14, fpY + 98, fpW - 28, fpH - 98, '#1a110e', null, null, INK, 2);
+      const fStep = Math.round(Math.sin(t * 0.22) * 2) * 2;
+      ctx.fillStyle = '#ea580c';
+      ctx.fillRect(fpX + 28, fpY + fpH - 26 - fStep, 44, 18 + fStep);
+      ctx.fillStyle = '#fef08a';
+      ctx.fillRect(fpX + 36, fpY + fpH - 20, 28, 12);
+      pxBox(fpX - 6, snap(floorTop - 10), fpW + 12, 34, '#cbd5e1', '#f8fafc', '#64748b', INK, 2.5);
+
+      // Heirloom Grandfather Clock beside East Bookcase (x: 9.8*S)
+      const gcX = snap(9.82 * S), gcY = snap(ry + 44);
+      pxBox(gcX, gcY, 50, 148, '#5c3a22', '#8b5e3c', '#3b2212', INK, 2.5);
+      pxBox(gcX + 8, gcY + 18, 34, 34, '#fef3c7', '#ffffff', '#d97706', INK, 2);
+      pxBox(gcX + 12, gcY + 58, 26, 70, '#26150d', null, null, INK, 2);
+      const pSw = Math.round(Math.sin(t * 0.07) * 3) * 2;
+      pxBox(gcX + 19 + pSw, gcY + 104, 12, 12, '#fbbf24', '#fef08a', '#b45309', INK, 2);
+
+      // 3. West Blocked Zone: Handcrafted Mahogany Civic Reception Desk, Guest Registry, Brass Lamp & Velvet Settee (NO Mythos items!)
+      const dkX = snap(2.25 * S), dkY = snap(floorTop + 2), dkW = 140, dkH = 104;
+      ctx.fillStyle = 'rgba(20, 12, 8, 0.38)';
+      ctx.fillRect(dkX + 4, dkY + 8, dkW, dkH);
+      pxBox(dkX, dkY, dkW, 58, '#5c3a22', '#8b5e3c', '#3b2212', INK, 2.5);
+      pxBox(dkX + 6, dkY + 54, dkW - 12, 46, '#452817', '#6c452b', '#2b180d', '#fbbf24', 2);
+      // Emerald leather blotter, open guestbook ledger, quill & brass banker's lamp
+      pxBox(dkX + 14, dkY + 10, 68, 36, '#14532d', '#22c55e', '#052e16', '#fbbf24', 1.5);
+      pxBox(dkX + 24, dkY + 14, 48, 26, '#fef3c7', '#ffffff', '#d6d3d1', INK, 1.5);
+      pxBox(dkX + 94, dkY + 8, 30, 22, '#fbbf24', '#fef08a', '#b45309', INK, 2);
+
+      // Lower West Velvet Parlour Armchair & Large Potted Palm
+      const chX = snap(2.3 * S), chY = snap(dkY + dkH + 6);
+      pxBox(chX + 4, chY, 74, 44, '#881337', '#be123c', '#4c0519', INK, 2.5);
+      pxBox(chX, chY + 16, 82, 32, '#9f1239', '#e11d48', '#4c0519', '#fbbf24', 2);
+      if (this.isImgReady('pot_large')) {
+        ctx.drawImage(this.owSprites.pot_large, snap(3.75 * S), snap(dkY + dkH - 6), 44, 54);
+      }
+      if (this.isImgReady('pot_small')) {
+        ctx.drawImage(this.owSprites.pot_small, snap(10.65 * S), snap(floorTop - 22), 36, 44);
+      }
+
+      // 4. Back-Right: Grand 1st-Story Staircase leading up to 2nd Story!
+      this._drawManorGrandStaircase(g, false);
+    }
+
+    renderMayorMansion2F() {
+      const t = this.tick || 0;
+      const g = this._drawCutawayRoomShell({
+        hideSouthDoor: true,
+        voidColor: '#101320',
+        floorTint: 'rgba(30, 42, 96, 0.16)',
+        floorFallbackEven: '#744c34',
+        floorFallbackOdd: '#643f29',
+        wallUpper: '#e6e2d3',
+        wallCourseColor: '#d0cab6',
+        dadoColor: '#1e3a8a',
+        wainscotColor: '#5c3a22',
+        railHighlight: '#8b5e3c',
+        panelFill: '#452817',
+        panelTopShade: '#2b180d',
+        panelBottomHi: '#6c452b',
+        cornerTrimColor: '#b8b29e',
+        baseboardColor: '#3b2212',
+        pillarMain: '#e6e2d3',
+        pillarHi: '#f8fafc',
+        pillarShade: '#c7c0aa',
+        pillarAccent: '#1e3a8a',
+        pillarAccentHi: '#3b82f6',
+        pillarAccentShade: '#172554',
+        matMid: '#1e3a8a',
+        matHi: '#3b82f6',
+        matDark: '#172554',
+        matTrim: '#fbbf24',
+        onFloorDraw: ({ ctx, rx, rw, floorTop, snap, drawChamferedRect, INK, pxBox }) => {
+          const rugW = 340, rugH = 204;
+          const rugX = snap(rx + rw / 2 - rugW / 2 - 16);
+          const rugY = snap(floorTop + 84);
+          ctx.fillStyle = '#e7dec5';
+          for (let fy = rugY + 12; fy < rugY + rugH - 12; fy += 8) {
+            ctx.fillRect(rugX - 6, fy, 6, 4);
+            ctx.fillRect(rugX + rugW, fy, 6, 4);
+          }
+          ctx.fillStyle = '#172554';
+          drawChamferedRect(rugX, rugY, rugW, rugH, 14);
+          ctx.fill();
+          ctx.strokeStyle = INK;
+          ctx.lineWidth = 2.5;
+          ctx.stroke();
+          ctx.fillStyle = '#1e3a8a';
+          drawChamferedRect(rugX + 8, rugY + 8, rugW - 16, rugH - 16, 10);
+          ctx.fill();
+          ctx.strokeStyle = '#fbbf24';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+          const rcx = snap(rugX + rugW / 2), rcy = snap(rugY + rugH / 2);
+          pxBox(rcx - 30, rcy - 18, 60, 36, '#fbbf24', '#fef08a', '#b45309', INK, 2);
+          pxBox(rcx - 18, rcy - 10, 36, 20, '#1e3a8a', '#3b82f6', null, '#fef3c7', 1.5);
+
+          // Twin Sunbeams from Balcony Windows
+          [[380, 468], [516, 604]].forEach(([bx1, bx2]) => {
+            const beam = ctx.createLinearGradient((bx1 + bx2) / 2, floorTop - 16, (bx1 + bx2) / 2 - 40, floorTop + 200);
+            beam.addColorStop(0, 'rgba(254, 249, 195, 0.24)');
+            beam.addColorStop(1, 'rgba(254, 240, 138, 0)');
+            ctx.fillStyle = beam;
+            ctx.beginPath();
+            ctx.moveTo(bx1, floorTop - 16);
+            ctx.lineTo(bx2, floorTop - 16);
+            ctx.lineTo(bx2 - 52, floorTop + 196);
+            ctx.lineTo(bx1 - 52, floorTop + 196);
+            ctx.closePath();
+            ctx.fill();
+          });
+        }
+      });
+
+      const { ctx, S, rx, ry, floorTop, INK, snap, pxBox } = g;
+
+      // 1. North-Left Wall: Gold-Framed Oakhaven Town Charter & Municipal Map
+      const mpX = snap(rx + 74), mpY = snap(ry + 36);
+      pxBox(mpX, mpY, 108, 62, '#784d31', '#a47247', '#452817', INK, 2.5);
+      pxBox(mpX + 6, mpY + 6, 96, 50, '#fef3c7', '#ffffff', '#d6c4a0', '#b45309', 1.5);
+      ctx.fillStyle = '#15803d';
+      ctx.fillRect(mpX + 16, mpY + 16, 34, 28);
+      ctx.fillStyle = '#3b82f6';
+      ctx.fillRect(mpX + 56, mpY + 18, 34, 10);
+      ctx.fillStyle = '#b45309';
+      ctx.fillRect(mpX + 56, mpY + 34, 34, 8);
+
+      // 2. North-Center: Twin Balcony Paned Windows with Velvet Drapery + Mayor Donald's Resolute Desk
+      [snap(5.85 * S), snap(8.05 * S)].forEach((wx) => {
+        pxBox(wx - 12, snap(ry + 38), 12, 88, '#1e3a8a', '#3b82f6', '#172554', INK, 2);
+        pxBox(wx + 88, snap(ry + 38), 12, 88, '#1e3a8a', '#3b82f6', '#172554', INK, 2);
+        pxBox(wx, snap(ry + 36), 88, 90, '#5c3a22', '#8b5e3c', '#3b2212', INK, 2.5);
+        pxBox(wx + 6, snap(ry + 42), 76, 76, '#bae6fd', '#e0f2fe', '#7dd3fc', INK, 1.5);
+        ctx.fillStyle = '#22c55e';
+        ctx.fillRect(wx + 6, snap(ry + 90), 76, 26);
+        ctx.fillStyle = '#5c3a22';
+        ctx.fillRect(wx + 42, snap(ry + 42), 4, 76);
+        ctx.fillRect(wx + 6, snap(ry + 78), 76, 4);
+      });
+
+      // Tufted Executive Chair + Carved Mahogany Resolute Desk (above Mayor Donald at 7.7, 5.85)
+      pxBox(snap(7.35 * S), snap(floorTop - 22), 52, 36, '#78350f', '#b45309', '#451a03', INK, 2.5);
+      const dkX = snap(5.9 * S), dkY = snap(floorTop + 2), dkW = 218, dkH = 74;
+      ctx.fillStyle = 'rgba(20, 12, 8, 0.36)';
+      ctx.fillRect(dkX + 4, dkY + 8, dkW, dkH);
+      pxBox(dkX, dkY, dkW, 44, '#5c3a22', '#8b5e3c', '#3b2212', INK, 2.5);
+      pxBox(dkX + 8, dkY + 40, dkW - 16, 32, '#452817', '#6c452b', '#2b180d', '#fbbf24', 2);
+      pxBox(dkX + 20, dkY + 8, 96, 28, '#1e3a8a', '#3b82f6', '#172554', '#fbbf24', 1.5);
+      pxBox(dkX + 42, dkY + 12, 52, 20, '#fef3c7', '#ffffff', '#d6d3d1', INK, 1.5);
+      pxBox(dkX + 136, dkY + 6, 28, 22, '#fbbf24', '#fef08a', '#b45309', INK, 2);
+      pxBox(dkX + 174, dkY + 10, 26, 20, '#991b1b', '#dc2626', '#450a0a', '#fbbf24', 1.5);
+
+      // North-Right Library Bookcase & Brass Wall Sconce
+      if (this.isImgReady('furniture_bookshelf')) {
+        ctx.drawImage(this.owSprites.furniture_bookshelf, snap(9.65 * S), snap(ry + 62), 98, 134);
+      }
+
+      // 3. West Blocked Zone: Master Suite Bed (furniture_bed), Nightstand, Reading Table & Velvet Lounge Chair
+      if (this.isImgReady('furniture_bed')) {
+        const bImg = this.owSprites.furniture_bed;
+        const bw = 124;
+        const bh = Math.round(bw * (bImg.height / bImg.width));
+        ctx.drawImage(bImg, snap(2.25 * S), snap(floorTop - 10), bw, bh);
+      } else {
+        pxBox(snap(2.25 * S), snap(floorTop + 2), 118, 110, '#1e3a8a', '#3b82f6', '#172554', INK, 2.5);
+      }
+      // Mahogany Nightstand with Golden Lamp beside Master Bed
+      const nsX = snap(4.15 * S), nsY = snap(floorTop + 4);
+      pxBox(nsX, nsY, 38, 46, '#5c3a22', '#8b5e3c', '#3b2212', INK, 2);
+      pxBox(nsX + 8, nsY - 12, 22, 16, '#fbbf24', '#fef08a', '#b45309', INK, 1.5);
+
+      // Lower West Reading Table & Potted Palm
+      if (this.isImgReady('furniture_table_book')) {
+        ctx.drawImage(this.owSprites.furniture_table_book, snap(2.35 * S), snap(floorTop + 114), 112, 82);
+      }
+      if (this.isImgReady('pot_large')) {
+        ctx.drawImage(this.owSprites.pot_large, snap(4.15 * S), snap(floorTop + 68), 42, 52);
+      }
+
+      // 4. Back-Right: Matching Grand Staircase leading back down to 1st Story!
+      this._drawManorGrandStaircase(g, true);
+    }
+
+    renderRestaurantInterior() {
+      const t = this.tick || 0;
+      const bistroDark = '#450a0a';
+      const bistroMid = '#7f1d1d';
+      const bistroHi = '#b91c1c';
+
+      const g = this._drawCutawayRoomShell({
+        voidColor: '#171110',
+        floorTint: 'rgba(120, 42, 22, 0.12)',
+        floorFallbackEven: '#876645',
+        floorFallbackOdd: '#7a593a',
+        wallUpper: '#ebe4c6',        // Warm parchment plaster matching Card Shop & Cottages
+        wallCourseColor: '#d9d0ae',
+        dadoColor: bistroMid,        // Rich claret-burgundy dado
+        wainscotColor: '#633d24',
+        railHighlight: '#966540',
+        panelFill: '#4d2e1a',
+        panelTopShade: '#361f10',
+        panelBottomHi: '#784b2e',
+        cornerTrimColor: '#c3b893',
+        baseboardColor: '#3d2213',
+        pillarMain: '#ebe4c6',
+        pillarHi: '#f7f3e4',
+        pillarShade: '#cdc4a3',
+        pillarAccent: bistroMid,
+        pillarAccentHi: bistroHi,
+        pillarAccentShade: bistroDark,
+        matMid: bistroMid,
+        matHi: bistroHi,
+        matDark: bistroDark,
+        matTrim: '#fbbf24',
+        stepMid: '#64748b',
+        stepHi: '#94a3b8',
+        stepDark: '#475569',
+        onMatCrest: (doorX, doorY, { ctx }) => {
+          ctx.fillStyle = '#fef08a';
+          ctx.fillRect(doorX + 36, doorY - 17, 14, 7);
+          ctx.fillStyle = '#ef4444';
+          ctx.fillRect(doorX + 40, doorY - 15, 6, 3);
+        },
+        onFloorDraw: ({ ctx, rx, floorTop, snap, drawChamferedRect, INK }) => {
+          // A. Grand Fringed Claret-Burgundy & Gold Bistro Hall Rug under Barstools & Central Aisle
+          const rugX = snap(rx + 64);
+          const rugY = snap(floorTop + 20);
+          const rugW = 376;
+          const rugH = 340;
+
+          ctx.fillStyle = '#e7d5ad';
+          for (let fy = rugY + 26; fy < rugY + rugH - 26; fy += 10) {
+            ctx.fillRect(rugX - 6, fy, 6, 4);
+            ctx.fillRect(rugX + rugW, fy, 6, 4);
+          }
+
+          ctx.fillStyle = 'rgba(20, 12, 10, 0.28)';
+          drawChamferedRect(rugX + 2, rugY + 6, rugW, rugH, 18);
+          ctx.fill();
+
+          ctx.fillStyle = bistroDark;
+          drawChamferedRect(rugX, rugY, rugW, rugH, 18);
+          ctx.fill();
+          ctx.strokeStyle = INK;
+          ctx.lineWidth = 2.5;
+          ctx.stroke();
+
+          ctx.fillStyle = '#5c141b';
+          drawChamferedRect(rugX + 8, rugY + 8, rugW - 16, rugH - 16, 14);
+          ctx.fill();
+          ctx.strokeStyle = '#fbbf24';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
+          for (let py = rugY + 22; py < rugY + rugH - 22; py += 16) {
+            ctx.fillRect(rugX + 24, py, rugW - 48, 2);
+          }
+
+          ctx.strokeStyle = 'rgba(251, 191, 36, 0.36)';
+          ctx.lineWidth = 1.5;
+          drawChamferedRect(rugX + 18, rugY + 18, rugW - 36, rugH - 36, 10);
+          ctx.stroke();
+
+          // Gold filigree corner accents
+          [
+            [rugX + 26, rugY + 26],
+            [rugX + rugW - 32, rugY + 26],
+            [rugX + 26, rugY + rugH - 32],
+            [rugX + rugW - 32, rugY + rugH - 32]
+          ].forEach(([cxp, cyp]) => {
+            ctx.fillStyle = '#fbbf24';
+            ctx.fillRect(cxp, cyp, 6, 6);
+            ctx.fillStyle = '#fef08a';
+            ctx.fillRect(cxp + 2, cyp + 2, 2, 2);
+          });
+
+          // Compass Diamond Medallion in Center Walking Aisle
+          const rcx = snap(rugX + rugW / 2);
+          const rcy = snap(rugY + 216);
+          ctx.fillStyle = bistroDark;
+          ctx.beginPath();
+          ctx.moveTo(rcx, rcy - 34);
+          ctx.lineTo(rcx + 44, rcy);
+          ctx.lineTo(rcx, rcy + 34);
+          ctx.lineTo(rcx - 44, rcy);
+          ctx.closePath();
+          ctx.fill();
+          ctx.strokeStyle = '#fbbf24';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+          ctx.fillStyle = '#f59e0b'; ctx.fillRect(rcx - 12, rcy - 12, 24, 24);
+          ctx.fillStyle = '#fef08a'; ctx.fillRect(rcx - 5, rcy - 5, 10, 10);
+
+          // B. Woven Crimson-Gold Dining Mats under East Dining Tables
+          [[665, 362, 168, 104], [691, 496, 168, 104]].forEach(([mx, my, mw, mh]) => {
+            const ax = snap(mx - mw / 2), ay = snap(my - mh / 2);
+            ctx.fillStyle = 'rgba(20, 12, 10, 0.24)';
+            drawChamferedRect(ax + 2, ay + 6, mw, mh, 12);
+            ctx.fill();
+            ctx.fillStyle = '#5c1922';
+            drawChamferedRect(ax, ay, mw, mh, 12);
+            ctx.fill();
+            ctx.strokeStyle = INK;
+            ctx.lineWidth = 2.5;
+            ctx.stroke();
+            ctx.strokeStyle = '#f59e0b';
+            ctx.lineWidth = 1.5;
+            drawChamferedRect(ax + 8, ay + 8, mw - 16, mh - 16, 8);
+            ctx.stroke();
+          });
+
+          // C. Warm Daylight Beam from North-Right Leaded Bistro Window
+          const beam = ctx.createLinearGradient(588, floorTop - 16, 540, floorTop + 210);
+          beam.addColorStop(0, 'rgba(254, 249, 195, 0.22)');
+          beam.addColorStop(0.55, 'rgba(254, 240, 138, 0.09)');
+          beam.addColorStop(1, 'rgba(254, 240, 138, 0)');
+          ctx.fillStyle = beam;
+          ctx.beginPath();
+          ctx.moveTo(552, floorTop - 16);
+          ctx.lineTo(628, floorTop - 16);
+          ctx.lineTo(582, floorTop + 190);
+          ctx.lineTo(486, floorTop + 190);
+          ctx.closePath();
+          ctx.fill();
+        }
+      });
+
+      const { ctx, S, rx, ry, floorTop, INK, snap, pxBox } = g;
+
+      // Crisp 2px block pixel lettering helper matching renderCardShopInterior
+      const drawPixelWord = (text, cx, cy, col) => {
+        const glyphs = {
+          B: ['11110', '10001', '11110', '10001', '11110'],
+          I: ['11111', '00100', '00100', '00100', '11111'],
+          S: ['01111', '10000', '01110', '00001', '11110'],
+          T: ['11111', '00100', '00100', '00100', '00100'],
+          R: ['11110', '10001', '11110', '10010', '10001'],
+          O: ['01110', '10001', '10001', '10001', '01110']
+        };
+        const scale = 2;
+        const charW = 5 * scale + 4;
+        const startX = snap(cx - (text.length * charW - 4) / 2);
+        ctx.fillStyle = col;
+        for (let i = 0; i < text.length; i++) {
+          const rows = glyphs[text[i]];
+          if (!rows) continue;
+          const gx = startX + i * charW;
+          for (let r = 0; r < rows.length; r++) {
+            for (let c = 0; c < rows[r].length; c++) {
+              if (rows[r][c] === '1') {
+                ctx.fillRect(gx + c * scale, snap(cy + r * scale), scale, scale);
+              }
+            }
+          }
+        }
+      };
+
+      // 1. North-Left Wall: Carved Mahogany Cellar & Pastry Cabinet (x: 146..266, y: 102..246)
+      const cabX = snap(146), cabY = snap(ry + 50), cabW = 120, cabH = 144;
+      ctx.fillStyle = 'rgba(20, 12, 10, 0.36)';
+      ctx.fillRect(cabX + 3, cabY + 6, cabW, cabH);
+      pxBox(cabX, cabY, cabW, cabH, '#6c452b', '#a47247', '#452817', INK, 2.5);
+      pxBox(cabX - 4, cabY, cabW + 8, 16, '#8b5e3c', '#b98556', '#5c3a22', INK, 2);
+
+      const bottleCols = [
+        ['#b91c1c', '#fca5a5'],
+        ['#d97706', '#fef08a'],
+        ['#15803d', '#86efac'],
+        ['#7c3aed', '#ddd6fe']
+      ];
+      for (let s = 0; s < 3; s++) {
+        const sy = cabY + 22 + s * 38;
+        pxBox(cabX + 8, sy, cabW - 16, 32, bistroDark, '#2b090c', bistroMid, INK, 2);
+        for (let p = 0; p < 4; p++) {
+          const px = cabX + 14 + p * 24;
+          if (s === 0 && p === 3) {
+            pxBox(px + 2, sy + 20, 14, 6, '#78350f', '#d97706', null, INK, 1.5);
+            pxBox(px + 4, sy + 6, 10, 14, '#f59e0b', '#fef08a', '#b45309', INK, 1.5);
+          } else {
+            const [fill, hi] = bottleCols[(p + s * 2) % bottleCols.length];
+            pxBox(px + 2, sy + 6, 14, 22, fill, hi, null, '#fef08a', 1.5);
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(px + 6, sy + 12, 6, 6);
+          }
+        }
+      }
+
+      // West Floor Blocked Zone (tx < 3.45, ty < 5.75):
+      // Oak Bakery Bread Gondola & Tapped Spiced Cider Cask
+      const gnX = snap(146), gnY = snap(floorTop + 8), gnW = 72, gnH = 98;
+      ctx.fillStyle = 'rgba(20, 12, 10, 0.34)';
+      ctx.fillRect(gnX + 3, gnY + 6, gnW, gnH);
+      pxBox(gnX, gnY, gnW, 52, '#784d31', '#a47247', '#452817', INK, 2.5);
+      pxBox(gnX + 8, gnY + 8, 24, 18, '#d97706', '#fef08a', '#92400e', INK, 1.5);
+      pxBox(gnX + 38, gnY + 8, 24, 18, '#b45309', '#fde68a', '#78350f', INK, 1.5);
+      pxBox(gnX + 10, gnY + 30, 52, 16, '#8b5e3c', '#b98556', '#5c3a22', INK, 1.5);
+      // Tapped Oak Cider Barrel & Large Potted Plant below
+      pxBox(gnX + 6, gnY + 58, 56, 38, '#6c452b', '#966540', '#3b2212', INK, 2);
+      ctx.fillStyle = '#fbbf24';
+      ctx.fillRect(gnX + 16, gnY + 62, 4, 30);
+      ctx.fillRect(gnX + 48, gnY + 62, 4, 30);
+
+      // 2. North-Center Back Wall Behind Chef Marco: Illuminated "BISTRO" Signboard + Framed Culinary Posters + Back Bar
+      const banX = snap(292), banY = snap(ry + 36), banW = 236, banH = 64;
+      ctx.fillStyle = 'rgba(20, 12, 10, 0.36)';
+      ctx.fillRect(banX + 4, banY + 6, banW, banH);
+      pxBox(banX, banY, banW, banH, '#6c452b', '#a47247', '#452817', INK, 2.5);
+      pxBox(banX + 6, banY + 6, banW - 12, banH - 12, '#2b090c', bistroDark, '#1a0507', '#fbbf24', 2);
+
+      pxBox(banX + 16, banY + 16, 22, 32, '#b91c1c', '#fca5a5', '#7f1d1d', '#fbbf24', 1.5);
+      ctx.fillStyle = '#fde047';
+      ctx.fillRect(banX + 24, banY + 24, 6, 10);
+      pxBox(banX + banW - 38, banY + 16, 22, 32, '#d97706', '#fef08a', '#92400e', '#fbbf24', 1.5);
+      ctx.fillStyle = '#fffbeb';
+      ctx.fillRect(banX + banW - 30, banY + 24, 6, 10);
+
+      drawPixelWord('BISTRO', banX + banW / 2, banY + 16, '#fbbf24');
+      drawPixelWord('BISTRO', banX + banW / 2, banY + 14, '#fef08a');
+      ctx.fillStyle = '#f59e0b';
+      ctx.fillRect(banX + 56, banY + 34, banW - 112, 4);
+      ctx.fillStyle = '#fef08a';
+      ctx.fillRect(banX + 74, banY + 42, banW - 148, 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(banX + 46, banY + 16, 4, 4);
+      ctx.fillRect(banX + banW - 50, banY + 16, 4, 4);
+
+      // Flanking Claret-Burgundy Pennant Ribbons
+      [272, 534].forEach((px) => {
+        pxBox(px, ry + 38, 14, 52, bistroMid, bistroHi, bistroDark, '#fbbf24', 2);
+        ctx.fillStyle = '#fbbf24';
+        ctx.fillRect(px + 4, ry + 78, 6, 6);
+      });
+
+      // Framed Culinary Specials & Vintage Wine Posters on Left & Right behind Chef Marco
+      pxBox(298, ry + 114, 42, 52, '#6c452b', '#a47247', null, INK, 2);
+      pxBox(304, ry + 120, 30, 40, '#991b1b', '#f87171', null, '#fbbf24', 1.5);
+      ctx.fillStyle = '#fef08a';
+      ctx.fillRect(314, ry + 132, 10, 12);
+
+      pxBox(480, ry + 114, 42, 52, '#6c452b', '#a47247', null, INK, 2);
+      pxBox(486, ry + 120, 30, 40, '#78350f', '#fbbf24', null, '#fef08a', 1.5);
+      ctx.fillStyle = '#fef3c7';
+      ctx.fillRect(496, ry + 132, 10, 12);
+
+      // Back-Bar Brass Espresso Brewer & Warm Bistro Lamp behind Left & Right of Chef Marco
+      pxBox(286, floorTop + 2, 48, 42, '#6c452b', '#8b5e3c', '#452817', INK, 2);
+      pxBox(292, floorTop + 14, 36, 10, '#54331e', null, '#361f10', INK, 1.5);
+      pxBox(294, floorTop - 14, 24, 18, '#b45309', '#fbbf24', '#78350f', INK, 1.5);
+
+      pxBox(476, floorTop + 2, 52, 42, '#6c452b', '#8b5e3c', '#452817', INK, 2);
+      pxBox(482, floorTop + 14, 40, 10, '#54331e', null, '#361f10', INK, 1.5);
+      pxBox(490, floorTop - 14, 22, 12, '#b91c1c', '#f87171', '#7f1d1d', INK, 1.5);
+      ctx.fillStyle = '#fef08a';
+      ctx.fillRect(499, floorTop - 2, 4, 6);
+      const lmpGlow = ctx.createRadialGradient(501, floorTop - 6, 4, 501, floorTop - 6, 48);
+      lmpGlow.addColorStop(0, 'rgba(254, 240, 138, 0.26)');
+      lmpGlow.addColorStop(1, 'rgba(254, 240, 138, 0)');
+      ctx.fillStyle = lmpGlow;
+      ctx.fillRect(456, floorTop - 50, 90, 90);
+
+      // 3. North-Right Wall: Arched Leaded Bistro Window + Wall Clock + Framed Menu Plaque (matching Card Shop!)
+      const winX = snap(552), winY = snap(ry + 38), winW = 76, winH = 98, archR = winW / 2;
+      pxBox(winX - 14, winY + 26, 14, winH - 26, bistroMid, bistroHi, bistroDark, INK, 2);
+      pxBox(winX + winW, winY + 26, 14, winH - 26, bistroMid, bistroHi, bistroDark, INK, 2);
+
+      ctx.fillStyle = '#784d31';
+      ctx.beginPath();
+      ctx.arc(winX + archR, winY + archR, archR, Math.PI, 0);
+      ctx.lineTo(winX + winW, winY + winH);
+      ctx.lineTo(winX, winY + winH);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = INK; ctx.lineWidth = 2.5; ctx.stroke();
+      pxBox(winX + archR - 6, winY - 4, 12, 10, '#d97706', '#fef08a', '#92400e', INK, 1.5);
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(winX + archR, winY + archR + 2, archR - 8, Math.PI, 0);
+      ctx.lineTo(winX + winW - 8, winY + winH - 10);
+      ctx.lineTo(winX + 8, winY + winH - 10);
+      ctx.closePath();
+      ctx.clip();
+
+      const wSky = ctx.createLinearGradient(winX, winY, winX, winY + winH);
+      if (this.settings.timeOfDay === 'night') {
+        wSky.addColorStop(0, '#0f172a');
+        wSky.addColorStop(1, '#312e81');
+      } else {
+        wSky.addColorStop(0, '#7dd3fc');
+        wSky.addColorStop(0.65, '#bae6fd');
+        wSky.addColorStop(1, '#fef9c3');
+      }
+      ctx.fillStyle = wSky;
+      ctx.fillRect(winX, winY, winW, winH);
+      ctx.strokeStyle = '#3f2e22';
+      ctx.lineWidth = 2;
+      for (let d = -winH; d < winW + winH; d += 18) {
+        ctx.beginPath();
+        ctx.moveTo(winX + d, winY);
+        ctx.lineTo(winX + d + winH, winY + winH);
+        ctx.moveTo(winX + d, winY + winH);
+        ctx.lineTo(winX + d + winH, winY);
+        ctx.stroke();
+      }
+      ctx.restore();
+      pxBox(winX - 6, winY + winH - 10, winW + 12, 10, '#8b5e3c', '#a47247', '#5c3a22', INK, 2);
+
+      // Wall Clock & Framed Specials Chalkboard (648..708)
+      const clkX = snap(648), clkY = snap(ry + 44);
+      pxBox(clkX, clkY, 44, 46, '#6c452b', '#a47247', '#452817', INK, 2);
+      pxBox(clkX + 8, clkY + 9, 28, 28, '#fef3c7', '#ffffff', '#e5d3a3', INK, 2);
+      ctx.fillStyle = '#26130e';
+      ctx.fillRect(clkX + 21, clkY + 14, 2, 10);
+      ctx.fillRect(clkX + 21, clkY + 22, 8, 2);
+
+      const prX = snap(648), prY = snap(ry + 104);
+      pxBox(prX, prY, 44, 56, '#6c452b', '#a47247', '#452817', INK, 2);
+      pxBox(prX + 6, prY + 6, 32, 44, '#1c2b22', '#263c2f', '#111c15', '#fbbf24', 1.5);
+      ctx.fillStyle = '#fef08a';
+      ctx.fillRect(prX + 12, prY + 14, 20, 4);
+      ctx.fillStyle = '#fde68a';
+      ctx.fillRect(prX + 12, prY + 24, 16, 3);
+      ctx.fillRect(prX + 12, prY + 32, 18, 3);
+
+      // 4. East Wall: Cookbook & Vintage Reserve Shelf + Glass Pastry Display Showcase (matching Card Shop!)
+      this._drawEastBookshelfCorner(g, (bkX, bkY, bkW) => {
+        const tx = snap(bkX + bkW / 2);
+        const ty = snap(bkY + 2);
+        pxBox(tx - 10, ty - 6, 20, 6, '#5c3a22', '#8b5e3c', null, INK, 2);
+        pxBox(tx - 8, ty - 20, 16, 14, '#f59e0b', '#fef08a', '#b45309', INK, 2);
+      });
+
+      const scX = snap(11.44 * S), scY = snap(floorTop + 2), scW = 142, scH = 56;
+      ctx.fillStyle = 'rgba(20, 12, 10, 0.36)';
+      ctx.fillRect(scX + 3, scY + 6, scW, scH);
+      pxBox(scX, scY, scW, scH, '#6c452b', '#a47247', '#452817', INK, 2.5);
+      pxBox(scX + 8, scY + 6, scW - 16, 26, '#1f1614', '#33221e', null, '#fbbf24', 2);
+      ['#f59e0b', '#ef4444', '#fde047', '#fb923c', '#f472b6'].forEach((col, i) => {
+        pxBox(scX + 14 + i * 24, scY + 11, 16, 16, col, '#ffffff', null, '#fef3c7', 1.5);
+      });
+      ctx.fillStyle = 'rgba(254, 240, 138, 0.28)';
+      ctx.fillRect(scX + 26, scY + 8, 4, 20);
+      ctx.fillRect(scX + 86, scY + 10, 4, 18);
+      pxBox(scX + 10, scY + 36, scW - 20, 14, '#4d2e1a', null, '#361f10', INK, 1.5);
+
+      // 5. Three Small Pedestal Carved-Oak Eating Tables with High-Back Cushioned Chairs (matching Card Shop table craftsmanship!)
+      const drawSmallOakEatingTable = (tileX, tileY) => {
+        const tbX = snap(tileX * S);
+        const tbY = snap(tileY * S);
+
+        // Left & Right Carved Walnut Chairs with High Backs & Claret Cushions
+        [tbX - 68, tbX + 38].forEach((chX, idx) => {
+          const chY = snap(tbY - 18);
+          ctx.fillStyle = 'rgba(20, 12, 10, 0.34)';
+          ctx.fillRect(chX + 3, chY + 6, 30, 42);
+          pxBox(chX, chY + 14, 30, 28, '#6c452b', '#8b5e3c', '#452817', INK, 2);
+          pxBox(chX + 4, chY + 16, 22, 16, bistroMid, bistroHi, bistroDark, INK, 1.5);
+          const backX = idx === 0 ? chX : chX + 21;
+          pxBox(backX, chY - 10, 9, 48, '#784d31', '#a47247', '#452817', INK, 2);
+        });
+
+        // Oval Pedestal Oak Table Shadow & Carved Legs
+        ctx.fillStyle = 'rgba(20, 12, 10, 0.40)';
+        ctx.beginPath(); ctx.ellipse(tbX, tbY + 12, 46, 34, 0, 0, Math.PI * 2); ctx.fill();
+        pxBox(tbX - 30, tbY + 16, 10, 22, '#5c3a22', '#784d31', '#3b2212', INK, 2);
+        pxBox(tbX + 20, tbY + 16, 10, 22, '#5c3a22', '#784d31', '#3b2212', INK, 2);
+
+        // Beveled Carved Oak Oval Tabletop
+        ctx.fillStyle = '#5c3a22';
+        ctx.beginPath(); ctx.ellipse(tbX, tbY + 5, 46, 32, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = INK; ctx.lineWidth = 2.5; ctx.stroke();
+
+        ctx.fillStyle = '#966540';
+        ctx.beginPath(); ctx.ellipse(tbX, tbY, 46, 32, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = INK; ctx.lineWidth = 2.5; ctx.stroke();
+
+        ctx.strokeStyle = '#be8a58';
+        ctx.lineWidth = 1.8;
+        ctx.beginPath(); ctx.ellipse(tbX, tbY, 39, 26, 0, 0, Math.PI * 2); ctx.stroke();
+
+        // Woven Claret Runner, Porcelain Plates & Warm Flickering Candle
+        pxBox(tbX - 24, tbY - 14, 48, 28, bistroDark, bistroMid, '#2b090c', '#fbbf24', 1.5);
+        pxBox(tbX - 18, tbY - 6, 12, 12, '#fef3c7', '#ffffff', '#d6c496', INK, 1.5);
+        pxBox(tbX + 6, tbY - 6, 12, 12, '#fef3c7', '#ffffff', '#d6c496', INK, 1.5);
+        const flk = (Math.sin(t * 0.22 + tileX) > 0) ? 2 : 0;
+        pxBox(tbX - 4, tbY - 8, 8, 12, '#fde68a', '#ffffff', '#d97706', INK, 1.5);
+        ctx.fillStyle = '#fb923c';
+        ctx.fillRect(tbX - 2, tbY - 13 - flk, 4, 5 + flk);
+      };
+
+      drawSmallOakEatingTable(10.4, 5.65);
+      drawSmallOakEatingTable(4.1, 7.75);
+      drawSmallOakEatingTable(10.8, 7.75);
+
+      if (this.isImgReady('pot_large')) {
+        ctx.drawImage(this.owSprites.pot_large, snap(2.25 * S), snap(8.85 * S), 42, 50);
+      }
+
+      // Soft Atmospheric Glow over BISTRO Signboard
+      const signGlow = ctx.createRadialGradient(banX + banW / 2, banY + banH / 2, 16, banX + banW / 2, banY + banH / 2, 130);
+      signGlow.addColorStop(0, 'rgba(251, 191, 36, 0.15)');
+      signGlow.addColorStop(1, 'rgba(251, 191, 36, 0)');
+      ctx.fillStyle = signGlow;
+      ctx.fillRect(banX - 30, banY - 20, banW + 60, banH + 60);
+    }
+
+    // Renders the Carved Walnut & Brass Bistro Bar Counter + 4 Cushioned Barstools in front of Chef Marco
+    // (mirroring renderShopCounterForeground so Chef Marco stands naturally behind the bar!)
+    renderBistroCounterForeground() {
+      const ctx = this.ctx;
+      ctx.imageSmoothingEnabled = false;
+      const S = this.TILE;
+      const INK = '#26130e';
+      const cntX = this._snap(3.55 * S);
+      const cntY = this._snap(4.78 * S);
+      const cntW = this._snap(4.25 * S); // 272px
+      const cntH = 54;
+      const nearChef = this.nearInteractable?.id === 'chef_marco';
+
+      ctx.fillStyle = 'rgba(20, 12, 10, 0.36)';
+      ctx.fillRect(cntX + 3, cntY + 8, cntW, cntH);
+
+      // Carved Walnut Bar Carcass & Heavy Polished Oak Countertop
+      this._pxBox(cntX, cntY, cntW, cntH, '#784d31', '#a47247', '#452817', INK, 2.5);
+      this._pxBox(cntX - 4, cntY, cntW + 8, 22, '#966540', '#c99362', '#5c3a22', INK, 2.5);
+
+      // Recessed Front Wainscoting Panels with Brass Footrest & Stud Trim
+      this._pxBox(cntX + 10, cntY + 26, 114, 22, '#54331e', '#361f10', '#784d31', INK, 2);
+      this._pxBox(cntX + 136, cntY + 26, 124, 22, '#54331e', '#361f10', '#784d31', INK, 2);
+      ctx.fillStyle = '#fbbf24';
+      ctx.fillRect(cntX + 64, cntY + 35, 6, 4);
+      ctx.fillRect(cntX + 194, cntY + 35, 6, 4);
+      ctx.fillRect(cntX - 2, cntY + cntH - 4, cntW + 4, 3);
+
+      // Illuminated Glass Tart & Pastry Inset on Left of Bar Counter
+      const glX = cntX + 12, glY = cntY + 3;
+      this._pxBox(glX, glY, 96, 16, '#1f1410', '#36221c', null, nearChef ? '#fef08a' : '#f59e0b', 2);
+      ['#f59e0b', '#ef4444', '#fde047', '#fb923c'].forEach((col, i) => {
+        this._pxBox(glX + 6 + i * 22, glY + 3, 14, 10, col, '#ffffff', null, '#fef3c7', 1.5);
+      });
+      ctx.fillStyle = 'rgba(254, 240, 138, 0.34)';
+      ctx.fillRect(glX + 18, glY + 4, 4, 12);
+      ctx.fillRect(glX + 62, glY + 4, 4, 12);
+
+      // Spiced Cider Pitcher & Ceramic Mugs on Center of Bar
+      const trayX = cntX + 132, trayY = cntY - 8;
+      this._pxBox(trayX, trayY + 8, 52, 14, '#5c3a22', '#8b5e3c', '#3b2212', '#fbbf24', 1.5);
+      this._pxBox(trayX + 6, trayY - 6, 16, 20, '#b45309', '#f59e0b', '#78350f', INK, 1.5);
+      this._pxBox(trayX + 26, trayY + 2, 10, 12, '#fef3c7', '#ffffff', '#d6c496', INK, 1.5);
+      this._pxBox(trayX + 38, trayY + 2, 10, 12, '#fef3c7', '#ffffff', '#d6c496', INK, 1.5);
+
+      // Vintage Brass & Oak Cash Register on Right End of Bar
+      const regX = cntX + cntW - 44, regY = cntY - 14;
+      this._pxBox(regX, regY, 32, 28, '#b45309', '#f59e0b', '#78350f', INK, 2);
+      this._pxBox(regX + 5, regY + 4, 22, 8, '#fef08a', '#ffffff', '#d97706', INK, 1.5);
+      ctx.fillStyle = '#22c55e';
+      ctx.fillRect(regX + 10, regY - 6, 12, 6);
+      this._pxBox(regX + 4, regY + 16, 24, 8, '#78350f', '#92400e', null, INK, 1.5);
+
+      // 4 Carved Walnut & Claret-Cushion Barstools lined up in front of the Bar Counter
+      [4.05, 5.05, 6.05, 7.05].forEach((sx) => {
+        const stX = this._snap(sx * S - 15);
+        const stY = this._snap(5.78 * S);
+        ctx.fillStyle = 'rgba(20, 12, 10, 0.34)';
+        ctx.fillRect(stX + 2, stY + 6, 30, 28);
+        // Carved oak legs & brass footrest rung
+        this._pxBox(stX + 3, stY + 12, 7, 18, '#5c3a22', '#784d31', '#3b2212', INK, 1.5);
+        this._pxBox(stX + 20, stY + 12, 7, 18, '#5c3a22', '#784d31', '#3b2212', INK, 1.5);
+        this._pxBox(stX + 6, stY + 20, 18, 5, '#d97706', '#fef08a', '#92400e', INK, 1);
+        // Beveled walnut base & tufted claret-burgundy cushion
+        this._pxBox(stX, stY + 4, 30, 12, '#6c452b', '#8b5e3c', '#452817', INK, 2);
+        this._pxBox(stX + 2, stY, 26, 12, '#7f1d1d', '#b91c1c', '#450a0a', INK, 2);
+        ctx.fillStyle = '#fbbf24';
+        ctx.fillRect(stX + 6, stY + 4, 3, 3);
+        ctx.fillRect(stX + 21, stY + 4, 3, 3);
+      });
+    }
+
     // =========================================================================
     // EXTERIOR RENDERER — Zoomed-Out Neighborhood, Dual East-West Roads & Card Shop:
     // - Zoomed-out camera perspective showing the full neighborhood & commercial district:
@@ -15366,6 +17074,7 @@
       };
       const S = this.TILE; // 64px
       const W = this.canvas.width;  // 1024
+      const EXT_MIN_X = Math.round((this.EXT_MIN_COL || 0) * S); // -1184px (West South Connector Ave)
       const EXT_W = Math.round(this.EXT_COLS * S); // 1664px (Expanded East Central Park)
       const EXT_H = Math.round(this.EXT_ROWS * S); // 1184px (Expanded South Block)
       const pName = this.draftAppearance?.name || 'Asher';
@@ -15374,7 +17083,7 @@
       // 1. Lush Sunlit Meadow Pixel-Art Grass Base across the neighborhood & Central Park
       this.initCobblestonePattern();
       ctx.fillStyle = this.grassPattern || '#58aa3c';
-      ctx.fillRect(0, 0, EXT_W, EXT_H);
+      ctx.fillRect(EXT_MIN_X, 0, EXT_W - EXT_MIN_X, EXT_H);
 
       // Fallback meadow grass speckles only when PNG tile has not finished decoding
       if (this._pixelArtVer !== 3) {
@@ -15401,40 +17110,356 @@
       const south1W = 1.10 * S;    // Ends at 6.65 * S
       const south2X = 9.95 * S;
       const south2W = 1.00 * S;    // Ends at 10.95 * S
+      const westConnX = -0.35 * S;
+      const westConnW = 1.05 * S;  // Ends at 0.70 * S (west of Nova's house)
       const road2Y = 9.55 * S;
       const road2H = 1.15 * S;     // Ends at 10.70 * S
       const road3Y = 14.80 * S;
       const road3H = 1.15 * S;     // Ends at 15.95 * S
       const fullConnH = (road3Y + road3H) - road1Y;
       const midConnH = (road2Y + road2H) - road1Y;
+      const westConnH = (road3Y + road3H) - road2Y;
 
       const oakhavenTurnX = 14.25 * S;
       const oakhavenTurnW = 1.10 * S;
       const oakhavenRoad1W = (oakhavenTurnX + oakhavenTurnW);
+      const oakhavenWestTurnX = -0.35 * S;
+      const oakhavenWestTurnW = 1.05 * S;
 
       // Warm Ochre Packed-Dirt Path Surface (Upper, Lower, Connectors)
       ctx.fillStyle = this.cobblePattern || '#b98a52';
-      ctx.fillRect(0, road1Y, oakhavenRoad1W, road1H);
+      ctx.fillRect(oakhavenWestTurnX + oakhavenWestTurnW, road1Y, oakhavenRoad1W - (oakhavenWestTurnX + oakhavenWestTurnW), road1H);
       ctx.fillRect(oakhavenTurnX, 0, oakhavenTurnW, road1Y + road1H);
-      ctx.fillRect(0, road3Y, EXT_W, road3H);
+      ctx.fillRect(westConnX + westConnW, road3Y, EXT_W - (westConnX + westConnW), road3H);
       ctx.fillRect(south1X, road1Y, south1W, midConnH);
       ctx.fillRect(south2X, road1Y, south2W, fullConnH);
 
-      // Middle Commercial Road: Irregular Flagstone Cobblestone Street (matching reference!)
+      // Middle Commercial Road (South Connector Ave): Irregular Flagstone Cobblestone Street extended West!
       ctx.fillStyle = this.flagstonePattern || '#988878';
-      ctx.fillRect(0, road2Y, W, road2H);
+      ctx.fillRect(EXT_MIN_X, road2Y, W - EXT_MIN_X, road2H);
+
+      // Continuous North-South Urban Paved Avenue (West of Player's, Pluto's & Nova's Houses: y = 0..15.95*S)
+      const drawUrbanPavedRoad = (ux, uy, uw, uh) => {
+        const x = Math.round(ux), y = Math.round(uy), w = Math.round(uw), h = Math.round(uh);
+        ctx.fillStyle = this.urbanRoadPattern || '#444d5c';
+        ctx.fillRect(x, y, w, h);
+        // Concrete shoulder strips
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillRect(x, y, 5, h);
+        ctx.fillRect(x + w - 5, y, 5, h);
+        ctx.fillStyle = '#64748b';
+        ctx.fillRect(x + 5, y, 2, h);
+        ctx.fillRect(x + w - 7, y, 2, h);
+        // Dashed yellow center lane markings
+        const midX = Math.round(x + w / 2 - 2);
+        for (let dy = y + 10; dy < y + h - 14; dy += 26) {
+          ctx.fillStyle = '#ca8a04';
+          ctx.fillRect(midX + 1, dy + 1, 4, 14);
+          ctx.fillStyle = '#fde047';
+          ctx.fillRect(midX, dy, 4, 13);
+        }
+        // Subtle edge vignette
+        const vGradU = ctx.createLinearGradient(x, 0, x + w, 0);
+        vGradU.addColorStop(0, 'rgba(15, 23, 42, 0.22)');
+        vGradU.addColorStop(0.18, 'rgba(15, 23, 42, 0.03)');
+        vGradU.addColorStop(0.82, 'rgba(15, 23, 42, 0.03)');
+        vGradU.addColorStop(1, 'rgba(15, 23, 42, 0.22)');
+        ctx.fillStyle = vGradU;
+        ctx.fillRect(x, y, w, h);
+      };
+      const southPavedEndY = 31.70 * S; // 3 city blocks (3 x 5.25 tiles) south of Cobblestone Way
+      const rbCx = Math.round(0.175 * S);
+      const rbCy = Math.round(32.85 * S);
+      const rbOuterR = Math.round(1.65 * S);
+      const rbIslandR = Math.round(0.58 * S);
+      const westExitEndX = Math.round(-21.45 * S); // 4 city blocks (4 x 5 tiles) west of roundabout
+      const westExitY = Math.round(rbCy - oakhavenWestTurnW / 2);
+
+      // Horizontal Urban Paved Road helper (used for 4-block West Exit from Roundabout)
+      const drawUrbanPavedRoadH = (ux, uy, uw, uh) => {
+        const x = Math.round(ux), y = Math.round(uy), w = Math.round(uw), h = Math.round(uh);
+        ctx.fillStyle = this.urbanRoadPattern || '#444d5c';
+        ctx.fillRect(x, y, w, h);
+        // Concrete shoulder strips
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillRect(x, y, w, 5);
+        ctx.fillRect(x, y + h - 5, w, 5);
+        ctx.fillStyle = '#64748b';
+        ctx.fillRect(x, y + 5, w, 2);
+        ctx.fillRect(x, y + h - 7, w, 2);
+        // Dashed yellow center lane markings
+        const midY = Math.round(y + h / 2 - 2);
+        for (let dx = x + 12; dx < x + w - 16; dx += 26) {
+          ctx.fillStyle = '#ca8a04';
+          ctx.fillRect(dx + 1, midY + 1, 14, 4);
+          ctx.fillStyle = '#fde047';
+          ctx.fillRect(dx, midY, 13, 4);
+        }
+        // Subtle edge vignette
+        const vGradUH = ctx.createLinearGradient(0, y, 0, y + h);
+        vGradUH.addColorStop(0, 'rgba(15, 23, 42, 0.22)');
+        vGradUH.addColorStop(0.18, 'rgba(15, 23, 42, 0.03)');
+        vGradUH.addColorStop(0.82, 'rgba(15, 23, 42, 0.03)');
+        vGradUH.addColorStop(1, 'rgba(15, 23, 42, 0.22)');
+        ctx.fillStyle = vGradUH;
+        ctx.fillRect(x, y, w, h);
+      };
+
+      drawUrbanPavedRoad(oakhavenWestTurnX, 0, oakhavenWestTurnW, southPavedEndY);
+      drawUrbanPavedRoadH(westExitEndX, westExitY, rbCx - westExitEndX, oakhavenWestTurnW);
+
+      // Urban Paved Roundabout at South End
+      ctx.fillStyle = '#64748b';
+      ctx.beginPath(); ctx.arc(rbCx, rbCy, rbOuterR + 6, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#94a3b8';
+      ctx.beginPath(); ctx.arc(rbCx, rbCy, rbOuterR + 4, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = this.urbanRoadPattern || '#444d5c';
+      ctx.beginPath(); ctx.arc(rbCx, rbCy, rbOuterR, 0, Math.PI * 2); ctx.fill();
+      // Open road mouths so N entry and W exit merge seamlessly without shoulder seams
+      ctx.fillStyle = this.urbanRoadPattern || '#444d5c';
+      ctx.fillRect(Math.round(oakhavenWestTurnX + 7), Math.round(rbCy - rbOuterR - 4), Math.round(oakhavenWestTurnW - 14), 24);
+      ctx.fillRect(Math.round(rbCx - rbOuterR - 4), westExitY + 7, 24, Math.round(oakhavenWestTurnW - 14));
+      // Dashed yellow circular lane line
+      ctx.save();
+      ctx.strokeStyle = '#fde047';
+      ctx.lineWidth = 3;
+      ctx.setLineDash([12, 12]);
+      ctx.beginPath();
+      ctx.arc(rbCx, rbCy, Math.round((rbOuterR + rbIslandR) / 2), 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+      // Center Grassy Roundabout Island with Concrete Curb & Ornamental Shrub
+      ctx.fillStyle = '#64748b';
+      ctx.beginPath(); ctx.arc(rbCx, rbCy, rbIslandR + 5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#cbd5e1';
+      ctx.beginPath(); ctx.arc(rbCx, rbCy, rbIslandR + 3, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = this.grassPattern || '#4e9134';
+      ctx.beginPath(); ctx.arc(rbCx, rbCy, rbIslandR, 0, Math.PI * 2); ctx.fill();
+      if (this.isImgReady('bush_flower')) {
+        const bImg = this.owSprites.bush_flower;
+        const bw = 42, bh = Math.round(42 * (bImg.height / bImg.width));
+        ctx.drawImage(bImg, Math.round(rbCx - bw / 2), Math.round(rbCy - bh / 2), bw, bh);
+      }
+
+      // 3 City-Block Crosswalk Markers & Streetlight Corners along the Southern Paved Extension
+      [20.05 * S, 25.30 * S, 30.55 * S].forEach(by => {
+        const cy = Math.round(by);
+        ctx.fillStyle = '#e2e8f0';
+        for (let sx = Math.round(oakhavenWestTurnX + 10); sx < Math.round(oakhavenWestTurnX + oakhavenWestTurnW - 10); sx += 11) {
+          ctx.fillRect(sx, cy, 6, 14);
+        }
+        // Curb-side streetlamp post on east shoulder
+        const lx = Math.round(oakhavenWestTurnX + oakhavenWestTurnW + 10);
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(lx, cy - 26, 4, 30);
+        ctx.fillStyle = '#fef08a';
+        ctx.fillRect(lx - 2, cy - 31, 8, 6);
+      });
+
+      // 4 City-Block Crosswalk Markers & Streetlight Corners along the Roundabout West Exit
+      [-6.45 * S, -11.45 * S, -16.45 * S, -21.05 * S].forEach(bx => {
+        const cx = Math.round(bx);
+        ctx.fillStyle = '#e2e8f0';
+        for (let sy = westExitY + 10; sy < westExitY + oakhavenWestTurnW - 10; sy += 11) {
+          ctx.fillRect(cx, Math.round(sy), 14, 6);
+        }
+        const ly = westExitY - 6;
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(cx + 4, ly - 26, 4, 28);
+        ctx.fillStyle = '#fef08a';
+        ctx.fillRect(cx + 2, ly - 31, 8, 6);
+      });
+
+      // OAKHAVEN BISTRO (3 Blocks West of Roundabout: x = -17.6..-13.4, y = 28.9..31.7)
+      // Harmonized with drawMythosCardShop() & town Craftsman architecture!
+      const drawOakhavenBistro = () => {
+        const rx = Math.round(-17.6 * S), ry = Math.round(28.9 * S);
+        const rw = Math.round(4.2 * S), rh = Math.round(2.8 * S);
+        const sx = Math.round(-17.28 * S);
+        const sy = Math.round(28.42 * S);
+        const sw = Math.round(3.55 * S);
+        const sh = Math.round(3.30 * S);
+        const roofH = Math.round(1.24 * S);
+        const wallY = sy + roofH;
+
+        // Paved flagstone bistro courtyard apron & stepping-stone path to the paved avenue
+        ctx.fillStyle = this.flagstonePattern || '#988878';
+        ctx.fillRect(rx - 8, ry + rh - 10, rw + 16, Math.round(westExitY - (ry + rh) + 12));
+        drawDrivewayPath(-15.85 * S, 31.65 * S, 0.70 * S, westExitY - 31.65 * S + 4);
+
+        // Illustrated Commercial Storefront Base (using card_shop.png & shop_banner.png harmonized to warm Claret/Amber!)
+        if (this.isImgReady('card_shop')) {
+          const shopImg = this.owSprites.card_shop;
+          const dw = Math.round(sw + 18);
+          const dh = Math.round(dw * (shopImg.height / shopImg.width));
+          const dx = Math.round(-15.50 * S - dw / 2);
+          const dy = Math.round(sy + sh - dh - 4);
+
+          ctx.fillStyle = 'rgba(18, 12, 8, 0.34)';
+          ctx.beginPath();
+          ctx.ellipse(dx + dw / 2, dy + dh - 6, Math.round(dw * 0.48), 12, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          if (this.isImgReady('shop_banner')) {
+            const bImg = this.owSprites.shop_banner;
+            const bh = 64;
+            const bw = Math.round(bh * (bImg.width / bImg.height));
+            ctx.save();
+            ctx.filter = 'hue-rotate(130deg) saturate(1.18)';
+            ctx.drawImage(bImg, Math.round(dx - bw - 4), Math.round(wallY + 2), bw, bh);
+            ctx.restore();
+          }
+
+          ctx.save();
+          ctx.filter = 'sepia(0.18) hue-rotate(-12deg) saturate(1.08)';
+          ctx.drawImage(shopImg, dx, dy, dw, dh);
+          ctx.restore();
+
+          // Replace the rooftop sign face on card_shop.png with matching pixel-beveled "OAKHAVEN BISTRO" signboard
+          const sBoxX = dx + Math.round(dw * 0.214);
+          const sBoxY = dy + Math.round(dh * 0.222);
+          const sBoxW = Math.round(dw * 0.572);
+          const sBoxH = Math.round(dh * 0.176);
+          ctx.fillStyle = '#201210';
+          ctx.fillRect(sBoxX, sBoxY, sBoxW, sBoxH);
+          ctx.fillStyle = '#d89b38';
+          ctx.fillRect(sBoxX + 2, sBoxY + 2, sBoxW - 4, sBoxH - 4);
+          ctx.fillStyle = '#3b1216';
+          ctx.fillRect(sBoxX + 5, sBoxY + 5, sBoxW - 10, sBoxH - 10);
+          ctx.fillStyle = '#fde68a';
+          ctx.font = 'bold 11px Cinzel, Georgia, serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('OAKHAVEN BISTRO', sBoxX + sBoxW / 2, sBoxY + Math.round(sBoxH * 0.64));
+
+          // Replace the blue card-poster windows with warm Candlelit Bistro Display Windows & Striped Valances
+          const drawBistroDisplayWindow = (wx, wy, ww, wh) => {
+            ctx.fillStyle = '#2b1610';
+            ctx.fillRect(wx, wy, ww, wh);
+            const wg = ctx.createLinearGradient(wx, wy, wx, wy + wh);
+            wg.addColorStop(0, '#7c2d12');
+            wg.addColorStop(0.55, '#d97706');
+            wg.addColorStop(1, '#fef3c7');
+            ctx.fillStyle = wg;
+            ctx.fillRect(wx + 2, wy + 2, ww - 4, wh - 4);
+
+            // Striped Claret & Cream Bistro Window Valance along top of window
+            for (let ax = 2; ax < ww - 4; ax += 10) {
+              ctx.fillStyle = (Math.floor(ax / 10) % 2 === 0) ? '#991b1b' : '#fffaf0';
+              ctx.fillRect(wx + ax, wy + 2, Math.min(10, ww - 2 - ax), 9);
+            }
+            ctx.fillStyle = '#fbbf24';
+            ctx.fillRect(wx + 2, wy + 11, ww - 4, 2);
+
+            // Silhouetted Candlelit Bistro Table, Tart Dome & Hanging Brass Lamp inside window
+            ctx.fillStyle = '#fef08a';
+            ctx.fillRect(wx + Math.floor(ww / 2) - 4, wy + 16, 8, 5);
+            ctx.fillStyle = '#451a03';
+            ctx.fillRect(wx + 8, wy + wh - 14, ww - 16, 10);
+            ctx.fillStyle = '#fffaf0';
+            ctx.fillRect(wx + 12, wy + wh - 16, ww - 24, 4);
+            ctx.fillStyle = '#ef4444';
+            ctx.fillRect(wx + Math.floor(ww / 2) - 3, wy + wh - 22, 6, 6);
+
+            // Crisp diagonal pixel glass reflection streaks matching drawMythosCardShop
+            ctx.fillStyle = 'rgba(255, 250, 230, 0.55)';
+            ctx.fillRect(wx + 8, wy + 16, 10, 2);
+            ctx.fillRect(wx + 6, wy + 18, 6, 2);
+            ctx.fillRect(wx + ww - 16, wy + wh - 12, 8, 2);
+          };
+          const winW = Math.round(dw * 0.238);
+          const winH = Math.round(dh * 0.342);
+          const winY = dy + Math.round(dh * 0.512);
+          drawBistroDisplayWindow(dx + Math.round(dw * 0.100), winY, winW, winH);
+          drawBistroDisplayWindow(dx + Math.round(dw * 0.662), winY, winW, winH);
+
+          // Warm amber glow inside the double entrance door glass panes
+          const dPaneY = dy + Math.round(dh * 0.585);
+          const dPaneW = Math.round(dw * 0.056);
+          const dPaneH = Math.round(dh * 0.225);
+          [dx + Math.round(dw * 0.418), dx + Math.round(dw * 0.526)].forEach(px => {
+            ctx.fillStyle = '#f59e0b';
+            ctx.fillRect(px, dPaneY, dPaneW, dPaneH);
+            ctx.fillStyle = '#fef3c7';
+            ctx.fillRect(px + 2, dPaneY + 2, dPaneW - 4, Math.round(dPaneH * 0.55));
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+            ctx.fillRect(px + 3, dPaneY + 4, 4, 8);
+          });
+        }
+
+        // Flowering Shrubs & Potted Plants framing the Bistro Courtyard (Sprites/Overworld/pot_*.png & bush_flower.png)
+        [
+          [-16.10 * S, 31.38 * S, false],
+          [-14.95 * S, 31.38 * S, false],
+          [-17.48 * S, 31.42 * S, true],
+          [-13.55 * S, 31.42 * S, true]
+        ].forEach(([px, py, isLarge]) => {
+          const key = isLarge ? 'pot_large' : 'pot_small';
+          if (this.isImgReady(key)) {
+            const img = this.owSprites[key];
+            const ph = isLarge ? 32 : 26;
+            const pw = Math.round(ph * (img.width / img.height));
+            ctx.drawImage(img, Math.round(px), Math.round(py), pw, ph);
+          }
+        });
+
+        // Outdoor Carved-Oak Bistro Patio Tables flanking entrance
+        [-16.85 * S, -14.15 * S].forEach(tx => {
+          const cx = Math.round(tx), cy = Math.round(31.95 * S);
+          ctx.fillStyle = 'rgba(18, 12, 8, 0.34)';
+          ctx.beginPath(); ctx.ellipse(cx, cy + 7, 19, 8, 0, 0, Math.PI * 2); ctx.fill();
+          // Carved oak tabletop + cream linen & candle
+          ctx.fillStyle = '#5c3a22';
+          ctx.beginPath(); ctx.ellipse(cx, cy + 2, 17, 10, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.strokeStyle = '#20140e';
+          ctx.lineWidth = 1.8;
+          ctx.stroke();
+          ctx.fillStyle = '#966540';
+          ctx.beginPath(); ctx.ellipse(cx, cy, 17, 10, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.stroke();
+          ctx.fillStyle = '#fffaf0';
+          ctx.fillRect(cx - 8, cy - 4, 16, 8);
+          ctx.fillStyle = '#f59e0b';
+          ctx.fillRect(cx - 2, cy - 3, 4, 4);
+          // Claret & Gold Umbrella Canopy
+          ctx.fillStyle = '#7f1d1d';
+          ctx.beginPath(); ctx.arc(cx, cy - 15, 17, Math.PI, 0); ctx.fill();
+          ctx.strokeStyle = '#20140e';
+          ctx.lineWidth = 1.8;
+          ctx.stroke();
+          ctx.fillStyle = '#fbbf24';
+          ctx.fillRect(cx - 15, cy - 17, 30, 2);
+        });
+
+        // Town-Style Parchment & Dark-Timber Plaque matching Oakhaven Cottages & Manor
+        const bLabel = '🍽️ Oakhaven Bistro';
+        ctx.font = 'bold 10px "Georgia", serif';
+        const bw = Math.max(128, Math.round(ctx.measureText(bLabel).width + 20));
+        const bx = Math.round(-15.50 * S - bw / 2), by = Math.round(30.48 * S);
+        ctx.fillStyle = 'rgba(20, 12, 6, 0.36)';
+        ctx.beginPath(); ctx.roundRect(bx, by + 2, bw, 17, 4); ctx.fill();
+        ctx.fillStyle = '#f6ebd4';
+        ctx.beginPath(); ctx.roundRect(bx, by, bw, 17, 4); ctx.fill();
+        ctx.fillStyle = '#fffaf0';
+        ctx.fillRect(bx + 3, by + 1, bw - 6, 2);
+        ctx.strokeStyle = '#3a2416';
+        ctx.lineWidth = 1.6;
+        ctx.beginPath(); ctx.roundRect(bx, by, bw, 17, 4); ctx.stroke();
+        ctx.fillStyle = '#26170c';
+        ctx.textAlign = 'center';
+        ctx.fillText(bLabel, -15.50 * S, by + 12);
+      };
 
       // Soft warm shadow cast by grass borders onto the dirt/stone roads
-      const drawRoadVignette = (ry, rh, rw = W) => {
+      const drawRoadVignette = (ry, rh, rw = W, rx = 0) => {
         const vGrad = ctx.createLinearGradient(0, ry, 0, ry + rh);
         vGrad.addColorStop(0, 'rgba(36, 22, 10, 0.28)');
         vGrad.addColorStop(0.18, 'rgba(36, 22, 10, 0.05)');
         vGrad.addColorStop(0.82, 'rgba(36, 22, 10, 0.02)');
         vGrad.addColorStop(1, 'rgba(36, 22, 10, 0.20)');
         ctx.fillStyle = vGrad;
-        ctx.fillRect(0, ry, rw, rh);
+        ctx.fillRect(rx, ry, rw, rh);
       };
-      drawRoadVignette(road1Y, road1H, oakhavenRoad1W);
+      drawRoadVignette(road1Y, road1H, oakhavenRoad1W - (oakhavenWestTurnX + oakhavenWestTurnW), oakhavenWestTurnX + oakhavenWestTurnW);
       const vGradNorth = ctx.createLinearGradient(oakhavenTurnX, 0, oakhavenTurnX + oakhavenTurnW, 0);
       vGradNorth.addColorStop(0, 'rgba(36, 22, 10, 0.25)');
       vGradNorth.addColorStop(0.2, 'rgba(36, 22, 10, 0.04)');
@@ -15442,8 +17467,8 @@
       vGradNorth.addColorStop(1, 'rgba(36, 22, 10, 0.22)');
       ctx.fillStyle = vGradNorth;
       ctx.fillRect(oakhavenTurnX, 0, oakhavenTurnW, road1Y + road1H);
-      drawRoadVignette(road2Y, road2H, W);
-      drawRoadVignette(road3Y, road3H, EXT_W);
+      drawRoadVignette(road2Y, road2H, W - EXT_MIN_X, EXT_MIN_X);
+      drawRoadVignette(road3Y, road3H, EXT_W - (westConnX + westConnW), westConnX + westConnW);
 
       // Walkways with Organic Rounded Stepping Stones (no rigid grey box)
       const drawDrivewayPath = (px, py, pw, ph) => {
@@ -15470,10 +17495,15 @@
       drawDrivewayPath(1.71 * S, 3.22 * S, 0.50 * S, road1Y - 3.22 * S + 4);
       drawDrivewayPath(9.79 * S, 3.22 * S, 0.50 * S, road1Y - 3.22 * S + 4);
       drawDrivewayPath(1.71 * S, 8.85 * S, 0.50 * S, road2Y - 8.85 * S + 4);
+      drawDrivewayPath(-3.59 * S, 8.85 * S, 0.50 * S, road2Y - 8.85 * S + 4);
+      drawDrivewayPath(-8.09 * S, 8.85 * S, 0.50 * S, road2Y - 8.85 * S + 4);
+      drawDrivewayPath(-14.35 * S, 8.75 * S, 1.10 * S, road2Y - 8.75 * S + 4);
+      drawDrivewayPath(-17.20 * S, 9.15 * S, 0.80 * S, road2Y - 9.15 * S + 4);
       drawDrivewayPath(13.25 * S, 9.05 * S, 0.80 * S, road2Y - 9.05 * S + 4);
       drawDrivewayPath(1.71 * S, 14.15 * S, 0.50 * S, road3Y - 14.15 * S + 4);
       drawDrivewayPath(7.35 * S, 14.15 * S, 0.50 * S, road3Y - 14.15 * S + 4);
       drawDrivewayPath(12.43 * S, 14.15 * S, 0.50 * S, road3Y - 14.15 * S + 4);
+      drawOakhavenBistro();
 
       // Organic Raised 3/4 Turf-Lip & Rounded Stone Curb Edges along Grass-to-Road Borders
       const drawStoneCurbH = (cx, cy, cw, side = 'bot') => {
@@ -15531,23 +17561,39 @@
 
       // Upper Road Top Curbs (bottom overhang of north grass plots)
       [
-        { x: 0, w: 1.71 * S },
+        { x: oakhavenWestTurnX + oakhavenWestTurnW, w: 1.71 * S - (oakhavenWestTurnX + oakhavenWestTurnW) },
         { x: 2.21 * S, w: (9.79 - 2.21) * S },
         { x: 10.29 * S, w: oakhavenTurnX - 10.29 * S }
       ].forEach(c => drawStoneCurbH(c.x, road1Y - 6, c.w, 'bot'));
+      drawStoneCurbV(oakhavenWestTurnX - 6, 0, road2Y, 'right');
+      drawStoneCurbV(oakhavenWestTurnX - 6, road2Y + road2H, (rbCy - rbOuterR) - (road2Y + road2H) + 12, 'right');
+      drawStoneCurbV(oakhavenWestTurnX + oakhavenWestTurnW, 0, road1Y, 'left');
+      drawStoneCurbV(oakhavenWestTurnX + oakhavenWestTurnW, road1Y + road1H, road2Y - (road1Y + road1H), 'left');
+      drawStoneCurbV(oakhavenWestTurnX + oakhavenWestTurnW, road2Y + road2H, road3Y - (road2Y + road2H), 'left');
+      drawStoneCurbV(oakhavenWestTurnX + oakhavenWestTurnW, road3Y + road3H, (rbCy - rbOuterR) - (road3Y + road3H) + 12, 'left');
+      drawStoneCurbH(westExitEndX, westExitY - 6, (-15.85 * S) - westExitEndX, 'bot');
+      drawStoneCurbH(-15.15 * S, westExitY - 6, (rbCx - rbOuterR) - (-15.15 * S) + 12, 'bot');
+      drawStoneCurbH(westExitEndX, westExitY + oakhavenWestTurnW, (rbCx - rbOuterR) - westExitEndX + 12, 'top');
+      drawStoneCurbV(westExitEndX - 6, westExitY - 6, oakhavenWestTurnW + 12, 'right');
       drawStoneCurbV(oakhavenTurnX - 6, 0, road1Y, 'right');
 
       // Upper Road Bottom Curbs (top lip of middle grass plots)
       [
-        { x: 0, w: south1X },
+        { x: oakhavenWestTurnX + oakhavenWestTurnW, w: south1X - (oakhavenWestTurnX + oakhavenWestTurnW) },
         { x: south1X + south1W, w: south2X - (south1X + south1W) },
         { x: south2X + south2W, w: (oakhavenTurnX + oakhavenTurnW) - (south2X + south2W) }
       ].forEach(c => drawStoneCurbH(c.x, road1Y + road1H, c.w, 'top'));
       drawStoneCurbV(oakhavenTurnX + oakhavenTurnW, 0, road1Y + road1H + 6, 'left');
 
-      // Middle Road Top Curbs
+      // Middle Road Top & Bottom Curbs (including West South Connector Ave extension)
+      drawStoneCurbH(EXT_MIN_X, road2Y - 6, (-17.20 * S) - EXT_MIN_X, 'bot');
+      drawStoneCurbH(-16.40 * S, road2Y - 6, (-14.35 - (-16.40)) * S, 'bot');
+      drawStoneCurbH(-13.25 * S, road2Y - 6, (-8.09 - (-13.25)) * S, 'bot');
+      drawStoneCurbH(-7.59 * S, road2Y - 6, (-3.59 - (-7.59)) * S, 'bot');
+      drawStoneCurbH(-3.09 * S, road2Y - 6, (-0.35 - (-3.09)) * S, 'bot');
+      drawStoneCurbH(EXT_MIN_X, road2Y + road2H, westConnX - EXT_MIN_X, 'top');
       [
-        { x: 0, w: 1.71 * S },
+        { x: oakhavenWestTurnX + oakhavenWestTurnW, w: 1.71 * S - (oakhavenWestTurnX + oakhavenWestTurnW) },
         { x: 2.21 * S, w: south1X - 2.21 * S },
         { x: south1X + south1W, w: south2X - (south1X + south1W) },
         { x: south2X + south2W, w: (13.25 * S) - (south2X + south2W) },
@@ -15556,13 +17602,13 @@
 
       // Middle Road Bottom Curbs
       [
-        { x: 0, w: south2X },
+        { x: westConnX + westConnW, w: south2X - (westConnX + westConnW) },
         { x: south2X + south2W, w: W - (south2X + south2W) }
       ].forEach(c => drawStoneCurbH(c.x, road2Y + road2H, c.w, 'top'));
 
       // Southern Avenue Top Curbs
       [
-        { x: 0, w: 1.71 * S },
+        { x: westConnX + westConnW, w: (1.71 * S) - (westConnX + westConnW) },
         { x: 2.21 * S, w: (7.35 - 2.21) * S },
         { x: 7.85 * S, w: south2X - 7.85 * S },
         { x: south2X + south2W, w: (12.43 * S) - (south2X + south2W) },
@@ -15570,7 +17616,7 @@
       ].forEach(c => drawStoneCurbH(c.x, road3Y - 6, c.w, 'bot'));
 
       // Southern Avenue Bottom Continuous Curb
-      drawStoneCurbH(0, road3Y + road3H, EXT_W, 'top');
+      drawStoneCurbH(westConnX + westConnW, road3Y + road3H, EXT_W - (westConnX + westConnW), 'top');
 
       // Vertical Curbs along North-South Connector Roads
       const connMidH = road2Y - (road1Y + road1H);
@@ -15622,13 +17668,33 @@
       for (const [fx, fy, fw] of this.getExteriorFences()) {
         drawWoodFence(fx * S, fy * S, fw * S);
       }
+      const drawWoodFenceV = (fx, fy, fh) => {
+        const x = Math.round(fx), y = Math.round(fy), h = Math.round(fh);
+        ctx.fillStyle = 'rgba(14, 24, 10, 0.25)';
+        ctx.fillRect(x + 3, y, 4, h);
+        ctx.fillStyle = '#24160c';
+        ctx.fillRect(x - 2, y, 6, h);
+        ctx.fillStyle = '#8c5a32';
+        ctx.fillRect(x - 1, y + 1, 4, h - 2);
+        for (let py = y; py < y + h - 4; py += 16) {
+          ctx.fillStyle = '#24160c';
+          ctx.fillRect(x - 4, py - 2, 10, 10);
+          ctx.fillStyle = '#c2844e';
+          ctx.fillRect(x - 3, py - 1, 8, 8);
+          ctx.fillStyle = '#e2a672';
+          ctx.fillRect(x - 3, py - 1, 8, 2);
+        }
+      };
 
       // Terracotta Potted Plants beside Porches & Fences
       const pots = [
         [4.38 * S, 2.75 * S, true], [4.38 * S, 3.18 * S, false],
         [11.00 * S, 2.75 * S, true], [11.00 * S, 3.18 * S, false],
         [4.38 * S, 8.25 * S, true], [4.38 * S, 8.68 * S, false],
-        [0.75 * S, 14.05 * S, false], [6.55 * S, 14.05 * S, true], [11.55 * S, 14.05 * S, false]
+        [-0.92 * S, 8.25 * S, true], [-0.92 * S, 8.68 * S, false],
+        [-5.42 * S, 8.25 * S, true], [-5.42 * S, 8.68 * S, false],
+        [-14.78 * S, 8.68 * S, true], [-12.92 * S, 8.68 * S, true],
+        [0.85 * S, 14.05 * S, false], [6.55 * S, 14.05 * S, true], [11.55 * S, 14.05 * S, false]
       ];
       pots.forEach(([px, py, isLarge]) => {
         const key = isLarge ? 'pot_large' : 'pot_small';
@@ -15647,6 +17713,7 @@
         const {
           hx, hy, hw,
           spriteKey,
+          spriteFilter = null,
           mirror = false,
           roofDark, roofMid, roofLight,
           sidingCol, sidingLineCol, trimCol,
@@ -15663,7 +17730,10 @@
           ctx.beginPath();
           ctx.ellipse(dx + dw / 2, dy + dh - 8, Math.round(dw * 0.46), 11, 0, 0, Math.PI * 2);
           ctx.fill();
+          ctx.save();
+          if (spriteFilter) ctx.filter = spriteFilter;
           ctx.drawImage(img, dx, dy, dw, dh);
+          ctx.restore();
           return;
         }
 
@@ -16588,6 +18658,202 @@
       };
       drawMythosCardShop();
 
+      // WEST SOUTH CONNECTOR AVE — CLARA'S COTTAGE (199 South Connector Ave)
+      drawNeighborhoodCottage({
+        hx: -4.2 * S,
+        hy: 5.95 * S,
+        hw: 3.2 * S,
+        spriteKey: 'cottage_maya',
+        spriteFilter: 'hue-rotate(-24deg) saturate(1.12)',
+        mirror: false,
+        roofDark: '#6b421c',
+        roofMid: '#8f5a26',
+        roofLight: '#b47434',
+        sidingCol: '#f3e3c8',
+        sidingLineCol: '#d6be96',
+        trimCol: '#fff8ec',
+        doorMatCol: '#db2777',
+        hasChimney: true,
+        glowWindows: true
+      });
+
+      // WEST SOUTH CONNECTOR AVE — BRAM'S COTTAGE (197 South Connector Ave)
+      drawNeighborhoodCottage({
+        hx: -8.7 * S,
+        hy: 5.95 * S,
+        hw: 3.2 * S,
+        spriteKey: 'cottage_silas',
+        spriteFilter: 'hue-rotate(34deg) saturate(1.08)',
+        mirror: true,
+        roofDark: '#1e3f47',
+        roofMid: '#2c5b66',
+        roofLight: '#3e7a87',
+        sidingCol: '#c69e74',
+        sidingLineCol: '#9e774f',
+        trimCol: '#f4ead8',
+        doorMatCol: '#15803d',
+        hasChimney: true,
+        glowWindows: true
+      });
+
+      // MAYOR DONALD'S 2-STORY CRAFTSMAN MANOR & LARGE ESTATE PLOT (195 South Connector Ave)
+      const drawMayorMansion = () => {
+        const ex1 = -17.5 * S;
+        const ex2 = -10.0 * S;
+        const ey1 = 1.25 * S;
+        const ey2 = 9.24 * S;
+
+        // Paved Flagstone Courtyard across the entire fenced-in Manor Estate & Backyard
+        const cyX = Math.round(ex1 + 2);
+        const cyY = Math.round(ey1 + 4);
+        const cyW = Math.round((ex2 - ex1) - 4);
+        const cyH = Math.round((ey2 - ey1) - 2);
+        ctx.fillStyle = this.flagstonePattern || '#988878';
+        ctx.fillRect(cyX, cyY, cyW, cyH);
+        ctx.strokeStyle = 'rgba(42, 30, 20, 0.35)';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(cyX + 3, cyY + 3, cyW - 6, cyH - 6);
+
+        // Estate & Backyard Perimeter Wooden Picket Fences with Front Courtyard Gate (-17.20..-16.40) & Manor Gate (-14.55..-13.05)
+        drawWoodFence(ex1, ey2, (-17.20 * S) - ex1);
+        drawWoodFence(-16.40 * S, ey2, (-14.55 * S) - (-16.40 * S));
+        drawWoodFence(-13.05 * S, ey2, ex2 - (-13.05 * S));
+        drawWoodFence(ex1, ey1, ex2 - ex1);
+        drawWoodFenceV(ex1, ey1, ey2 - ey1);
+        drawWoodFenceV(ex2, ey1, ey2 - ey1);
+
+        // Timber Gate Posts flanking the Front Courtyard Gate
+        [-17.20 * S - 5, -16.40 * S - 3].forEach(gx => {
+          const px = Math.round(gx), py = Math.round(ey2 - 6);
+          ctx.fillStyle = '#24160c';
+          ctx.fillRect(px, py, 8, 22);
+          ctx.fillStyle = '#a47247';
+          ctx.fillRect(px + 1, py + 1, 6, 20);
+          ctx.fillStyle = '#e2a672';
+          ctx.fillRect(px + 1, py + 1, 6, 4);
+        });
+
+        // Flowering & Round Shrubs framing the Estate Grounds & Backyard (Sprites/Overworld/bush_*.png)
+        [
+          [-15.95 * S, 8.95 * S, true],
+          [-14.85 * S, 8.95 * S, true],
+          [-12.75 * S, 8.95 * S, true],
+          [-10.45 * S, 8.95 * S, false],
+          [-17.1 * S, 5.20 * S, false],
+          [-10.45 * S, 5.20 * S, true],
+          [-17.0 * S, 1.85 * S, true],
+          [-10.5 * S, 1.85 * S, false]
+        ].forEach(([bx, by, isFlower]) => {
+          const bKey = isFlower ? 'bush_flower' : 'bush_round';
+          if (this.isImgReady(bKey)) {
+            const bImg = this.owSprites[bKey];
+            const bw = 44;
+            const bh = Math.round(bw * (bImg.height / bImg.width));
+            ctx.drawImage(bImg, Math.round(bx - bw / 2), Math.round(by - bh / 2), bw, bh);
+          }
+        });
+
+        // Fenced Backyard Stone Centerpiece & Pixel-Art Fountain (North of Manor)
+        const fnX = Math.round(-13.75 * S);
+        const fnY = Math.round(2.80 * S);
+        const padW = 112, padH = 76;
+        drawStoneCurbH(fnX - padW / 2, fnY - padH / 2, padW, 'bot');
+        drawStoneCurbH(fnX - padW / 2, fnY + padH / 2 + 6, padW, 'top');
+        if (this.isImgReady('fountain')) {
+          const fImg = this.owSprites.fountain;
+          const fh = 82;
+          const fw = Math.round(fh * (fImg.width / fImg.height));
+          ctx.drawImage(fImg, Math.round(fnX - fw / 2), Math.round(fnY - fh / 2 - 2), fw, fh);
+          const ripple = ((this.tick || 0) * 0.14) % 8;
+          ctx.strokeStyle = 'rgba(205, 248, 255, 0.55)';
+          ctx.lineWidth = 1.4;
+          ctx.beginPath();
+          ctx.ellipse(fnX, fnY + 8, 12 + ripple * 1.4, 5 + ripple * 0.5, 0, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+
+        // 2-STORY ILLUSTRATED PIXEL-ART CRAFTSMAN MANOR (x: -16.4..-11.2, y: 4.45..8.75)
+        const mx = Math.round(-16.4 * S);
+        const my = Math.round(4.45 * S);
+        const mw = Math.round(5.2 * S);
+        const baseBottom = Math.round(8.85 * S);
+
+        // Ground shadow across the wide 2-story manor footprint
+        ctx.fillStyle = 'rgba(18, 12, 8, 0.34)';
+        ctx.beginPath();
+        ctx.ellipse(mx + mw / 2, baseBottom - 8, Math.round(mw * 0.49), 16, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        const pImg = this.isImgReady('cottage_player') ? this.owSprites.cottage_player : null;
+        const fImg = this.isImgReady('cottage_friend') ? this.owSprites.cottage_friend : null;
+        const nImg = this.isImgReady('cottage_nova') ? this.owSprites.cottage_nova : null;
+
+        if (pImg && fImg && nImg) {
+          // 1) 2ND STORY UPPER LEVEL: Twin-gable & central grand dormer story elevated above 1st floor!
+          const wingW = Math.round(3.15 * S);
+          const wingH = Math.round(wingW * (nImg.height / nImg.width));
+          const upperY = baseBottom - wingH - 74;
+
+          // Upper Left & Right 2nd-Story Gable Wings (clipped to upper story & roof so they sit cleanly atop 1F)
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(mx - 20, upperY - 20, mw + 40, Math.round(wingH * 0.76));
+          ctx.clip();
+          ctx.drawImage(nImg, mx + 6, upperY + 8, wingW, wingH);
+          ctx.drawImage(fImg, mx + mw - wingW - 6, upperY + 8, wingW, wingH);
+          // Central 2nd-Story Grand Tower Peak
+          const centerW = Math.round(3.35 * S);
+          const centerH = Math.round(centerW * (nImg.height / nImg.width));
+          ctx.drawImage(nImg, Math.round(mx + (mw - centerW) / 2), upperY - 10, centerW, centerH);
+          ctx.restore();
+
+          // 2) 1ST STORY GRAND MANOR WINGS & SINGLE CENTRAL FRONT PORTICO ENTRANCE
+          const lowW = Math.round(3.25 * S);
+          const lowH = Math.round(lowW * (pImg.height / pImg.width));
+          const lowY = baseBottom - lowH;
+          // Left 1st-story wing uses friend cottage (window/porch on left; its right-side door is hidden behind center portico)
+          ctx.drawImage(fImg, mx - 4, lowY, lowW, lowH);
+          // Right 1st-story wing uses player cottage (window/porch on right; its left-side door is hidden behind center portico)
+          ctx.drawImage(pImg, mx + mw - lowW + 4, lowY, lowW, lowH);
+          // Center 1st-story Grand Entrance Gable aligned with the single usable front door (-13.80 * S)
+          const doorWingW = Math.round(3.30 * S);
+          const doorWingH = Math.round(doorWingW * (pImg.height / pImg.width));
+          const doorWingX = Math.round(-14.72 * S);
+          const doorWingY = baseBottom - doorWingH + 4;
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(doorWingX, doorWingY - 10, Math.round(2.45 * S), doorWingH + 20);
+          ctx.clip();
+          ctx.drawImage(pImg, doorWingX, doorWingY, doorWingW, doorWingH);
+          ctx.restore();
+        }
+
+        // Town-Style Parchment & Dark Timber Plaque on the Manor Portico
+        const signText = "🏛️ Mayor Donald's Manor (2 Stories)";
+        ctx.font = 'bold 10px "Georgia", serif';
+        const plateW = Math.max(176, ctx.measureText(signText).width + 24);
+        const plateX = Math.round(-13.80 * S - plateW / 2);
+        const plateY = Math.round(6.62 * S);
+
+        ctx.fillStyle = 'rgba(20, 12, 6, 0.42)';
+        ctx.beginPath();
+        ctx.roundRect(plateX, plateY + 2, plateW, 18, 4);
+        ctx.fill();
+
+        ctx.fillStyle = '#f6ebd4';
+        ctx.beginPath();
+        ctx.roundRect(plateX, plateY, plateW, 18, 4);
+        ctx.fill();
+        ctx.strokeStyle = '#3a2416';
+        ctx.lineWidth = 1.6;
+        ctx.stroke();
+
+        ctx.fillStyle = '#26170c';
+        ctx.textAlign = 'center';
+        ctx.fillText(signText, Math.round(-13.80 * S), plateY + 13);
+      };
+      drawMayorMansion();
+
       // =======================================================================
       // 4E, 4F, 4G: THE 3 NEW SOUTH BLOCK HOUSES
       // =======================================================================
@@ -16709,6 +18975,9 @@
       const nearPlayerMb = this.nearInteractable?.id === 'player_mailbox';
       const nearFriendMb = this.nearInteractable?.id === 'friend_mailbox';
       const nearPlutoMb = this.nearInteractable?.id === 'pluto_mailbox';
+      const nearClaraMb = this.nearInteractable?.id === 'clara_mailbox';
+      const nearBramMb = this.nearInteractable?.id === 'bram_mailbox';
+      const nearMayorMb = this.nearInteractable?.id === 'mayor_mailbox';
       const nearNovaMb = this.nearInteractable?.id === 'nova_mailbox';
       const nearSilasMb = this.nearInteractable?.id === 'silas_mailbox';
       const nearMayaMb = this.nearInteractable?.id === 'maya_mailbox';
@@ -16716,6 +18985,9 @@
       drawMailbox(4.75 * S, 3.95 * S, `📬 ${pName}'s House`, '#2563eb', nearPlayerMb);
       drawMailbox(8.15 * S, 3.95 * S, `📬 ${fName}'s House`, '#dc2626', nearFriendMb);
       drawMailbox(4.75 * S, 9.25 * S, `📬 Pluto's House`, '#9333ea', nearPlutoMb);
+      drawMailbox(-0.65 * S, 9.25 * S, `📬 Clara's House`, '#f59e0b', nearClaraMb);
+      drawMailbox(-5.15 * S, 9.25 * S, `📬 Bram's House`, '#0d9488', nearBramMb);
+      drawMailbox(-10.55 * S, 9.25 * S, `📬 Mayor Donald`, '#eab308', nearMayorMb);
       drawMailbox(4.75 * S, 14.50 * S, `📬 Nova's House`, '#3b82f6', nearNovaMb);
       drawMailbox(6.45 * S, 14.50 * S, `📬 Silas's House`, '#15803d', nearSilasMb);
       drawMailbox(11.35 * S, 14.50 * S, `📬 Maya's House`, '#f43f5e', nearMayaMb);
@@ -17718,6 +19990,30 @@
         this.mayaNpc.y = 5.35;
         this.mayaNpc.dir = 'down';
         active.push(this.mayaNpc);
+      } else if (area === 'clara_interior') {
+        if (!this.claraNpc) this.claraNpc = this.createClaraNpc();
+        this.claraNpc.x = 6.2;
+        this.claraNpc.y = 5.35;
+        this.claraNpc.dir = 'down';
+        active.push(this.claraNpc);
+      } else if (area === 'bram_interior') {
+        if (!this.bramNpc) this.bramNpc = this.createBramNpc();
+        this.bramNpc.x = 6.2;
+        this.bramNpc.y = 5.35;
+        this.bramNpc.dir = 'down';
+        active.push(this.bramNpc);
+      } else if (area === 'mayor_2f_interior') {
+        if (!this.mayorNpc) this.mayorNpc = this.createMayorNpc();
+        this.mayorNpc.x = 7.7;
+        this.mayorNpc.y = 5.85;
+        this.mayorNpc.dir = 'down';
+        active.push(this.mayorNpc);
+      } else if (area === 'restaurant_interior') {
+        if (!this.chefNpc) this.chefNpc = this.createChefNpc();
+        this.chefNpc.x = 5.65;
+        this.chefNpc.y = 4.42;
+        this.chefNpc.dir = 'down';
+        active.push(this.chefNpc);
       } else if (area === 'exterior') {
         const friend = this.npcs.find(n => n.id === 'best_friend' || n.id === 'friend');
         if (friend && friend.following && !this.friendWaitingAtHouse) {
@@ -17795,6 +20091,16 @@
         this.renderSilasHouseInterior();
       } else if (this.currentArea === 'maya_interior') {
         this.renderMayaHouseInterior();
+      } else if (this.currentArea === 'clara_interior') {
+        this.renderClaraHouseInterior();
+      } else if (this.currentArea === 'bram_interior') {
+        this.renderBramHouseInterior();
+      } else if (this.currentArea === 'mayor_interior') {
+        this.renderMayorMansion1F();
+      } else if (this.currentArea === 'mayor_2f_interior') {
+        this.renderMayorMansion2F();
+      } else if (this.currentArea === 'restaurant_interior') {
+        this.renderRestaurantInterior();
       } else {
         this.renderCraftsmanExterior();
       }
@@ -17842,6 +20148,8 @@
         this.renderShopCounterForeground();
       } else if (this.currentArea === 'pluto_interior') {
         this.renderPlutoDeskForeground();
+      } else if (this.currentArea === 'restaurant_interior') {
+        this.renderBistroCounterForeground();
       }
 
       if (this.settings.showGrid) {
