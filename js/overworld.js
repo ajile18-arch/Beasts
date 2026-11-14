@@ -8647,9 +8647,9 @@
         const scaleY = this.canvas.height / rect.height;
         const cx = (clientX - rect.left) * scaleX;
         const cy = (clientY - rect.top) * scaleY;
-        const zoom = this.currentArea === 'exterior' ? (this.EXT_ZOOM || 1.28) : 1;
-        const tx = (cx / zoom + (this.currentArea === 'exterior' ? (this.cameraX || 0) : 0)) / this.TILE;
-        const ty = (cy / zoom + (this.currentArea === 'exterior' ? (this.cameraY || 0) : 0)) / this.TILE;
+        const zoom = this.getAreaZoom();
+        const tx = (cx / zoom + (this.cameraX || 0)) / this.TILE;
+        const ty = (cy / zoom + (this.cameraY || 0)) / this.TILE;
 
         // Visual golden destination beacon on touch/click
         this.touchBeacon = { x: tx, y: ty, tick: 0 };
@@ -10048,9 +10048,9 @@
         }
       }
 
-      // Smooth camera scroll for the expanded exterior world (zoomed cozy RPG framing)
+      // Smooth camera scroll for exterior & zoomed mobile interiors
+      const zoom = this.getAreaZoom();
       if (this.currentArea === 'exterior') {
-        const zoom = this.EXT_ZOOM || 1.28;
         const viewW = this.canvas.width / zoom;
         const viewH = this.canvas.height / zoom;
         const maxCamY = Math.max(0, this.EXT_ROWS * this.TILE - viewH);
@@ -10066,6 +10066,18 @@
           this._lastInPark = inPark;
           this.updateHUDSaveInfo();
         }
+      } else if (zoom > 1) {
+        const viewW = this.canvas.width / zoom;
+        const viewH = this.canvas.height / zoom;
+        const minCamX = Math.min(64, Math.max(0, (this.canvas.width - viewW) / 2));
+        const maxCamX = Math.max(minCamX, this.canvas.width - viewW - minCamX);
+        const targetCamX = Math.max(minCamX, Math.min(maxCamX, this.player.x * this.TILE - viewW / 2));
+        this.cameraX += (targetCamX - this.cameraX) * 0.18;
+
+        const minCamY = 36;
+        const maxCamY = Math.max(minCamY, this.canvas.height - viewH - 48);
+        const targetCamY = Math.max(minCamY, Math.min(maxCamY, this.player.y * this.TILE - viewH / 2));
+        this.cameraY += (targetCamY - this.cameraY) * 0.18;
       } else {
         this.cameraY = 0;
         this.cameraX = 0;
@@ -17338,6 +17350,17 @@
       return active;
     }
 
+    isMobileViewport() {
+      return window.innerWidth <= 820 || (('ontouchstart' in window || navigator.maxTouchPoints > 0) && window.innerWidth <= 1024);
+    }
+
+    getAreaZoom() {
+      if (this.currentArea === 'exterior') {
+        return this.EXT_ZOOM || 1.28;
+      }
+      return this.isMobileViewport() ? 1.30 : 1;
+    }
+
     render() {
       if (!this.ctx) return;
       const ctx = this.ctx;
@@ -17355,6 +17378,14 @@
       }
 
       const isExt = this.currentArea === 'exterior';
+      const zoom = this.getAreaZoom();
+      const useCameraTransform = isExt || zoom !== 1;
+
+      if (useCameraTransform) {
+        ctx.save();
+        ctx.scale(zoom, zoom);
+        ctx.translate(-Math.round(this.cameraX || 0), -Math.round(this.cameraY || 0));
+      }
 
       if (this.currentArea === 'interior') {
         this.renderCutawayInterior();
@@ -17371,10 +17402,6 @@
       } else if (this.currentArea === 'maya_interior') {
         this.renderMayaHouseInterior();
       } else {
-        ctx.save();
-        const zoom = this.EXT_ZOOM || 1.28;
-        ctx.scale(zoom, zoom);
-        ctx.translate(-Math.round(this.cameraX || 0), -Math.round(this.cameraY || 0));
         this.renderCraftsmanExterior();
       }
 
@@ -17457,7 +17484,7 @@
         }
       }
 
-      if (isExt) {
+      if (useCameraTransform) {
         ctx.restore();
       }
 

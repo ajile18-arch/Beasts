@@ -592,3 +592,39 @@ select {
     overflow-y: auto !important;
   }
 }
+
+/* ----------------------------------------------------------------------------
+   3. MOBILE PORTRAIT OVERWORLD: World Map on the Bottom Half
+   ---------------------------------------------------------------------------- */
+@media (orientation: portrait) {
+  .ow-mobile-header-bar {
+    order: 1 !important;
+  }
+
+  .ow-bottom-deck {
+    order: 2 !important;
+    flex: 1 1 0 !important;
+    min-height: 0 !important;
+    justify-content: flex-end !important;
+    padding: 6px 10px !important;
+  }
+
+  .overworld-stage {
+    order: 3 !important;
+    flex: 0 0 auto !important;
+    width: 100% !important;
+    max-width: 480px !important;
+    height: auto !important;
+    max-height: 50dvh !important;
+    border-top: 2px solid var(--border-gold) !important;
+    border-bottom: none !important;
+    padding-bottom: env(safe-area-inset-bottom, 0px) !important;
+  }
+
+  #overworld-canvas {
+    max-height: 46dvh !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    height: auto !important;
+  }
+}

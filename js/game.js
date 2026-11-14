@@ -728,7 +728,7 @@
     }
 
     canTeamAttackThisTurn(team) {
-      return (this.state?.players?.[team]?.turnsThisRound || 0) >= 1;
+      return Boolean(this.state?.players?.[team]);
     }
 
     hasReadyAttackers(team) {
