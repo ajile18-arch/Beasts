@@ -58,7 +58,7 @@
       this._gold = this.worldSave?.gold ?? 0;
       this.hasMomBoosterMoney = this.worldSave?.hasMomBoosterMoney ?? false;
       this.hasBoughtCardShopPacks = this.worldSave?.hasBoughtCardShopPacks ?? false;
-      this.hasBoughtBase2v2Map = this.worldSave?.hasBoughtBase2v2Map ?? false;
+      this.hasBoughtBase2v2Map = false;
       this.hasOpenedStarterPack = this.worldSave?.hasOpenedStarterPack ?? false;
       this.friendWaitingAtHouse = this.worldSave?.friendWaitingAtHouse ?? false;
       this.hasOldCardBinder = this.worldSave?.hasOldCardBinder ?? false;
@@ -99,9 +99,9 @@
           shortDay: 'Wed',
           title: "Silas's Woodcraft Fair",
           icon: '🪵',
-          highlight: 'Battle Maps Half-Price (50% Off)',
-          desc: "Silas hosts his woodworking display at the local shop! The Base2v2 Tactical Battle Map is discounted by 50% ($7.50 instead of $15.00).",
-          perk: "50% off Base2v2 Battle Map in Leo's Card Shop ($7.50)"
+          highlight: 'Handcrafted Card Frames',
+          desc: "Silas hosts his woodworking display at the local shop! Stop by his cabin or the shop to admire his carved Mythos display frames.",
+          perk: "Woodcraft showcase at Leo's Card Shop"
         },
         {
           id: 'botanical_bloom',
@@ -161,7 +161,9 @@
       this._autosaveToastTimer = null;
       this._initialized = false;
 
-      const rawInv = Array.isArray(this.worldSave?.inventory) ? [...this.worldSave.inventory] : [];
+      const rawInv = Array.isArray(this.worldSave?.inventory)
+        ? this.worldSave.inventory.filter(i => i && i.id !== 'map_base2v2' && i.type !== 'battle_map')
+        : [];
       this.inventory = this.wrapReactiveArray(rawInv.map(i => this.wrapReactiveItem(i)), 'inventory');
       this.selectedInventoryItemId = null;
 
@@ -930,8 +932,7 @@
             { sender: 'npc', text: `Check the Leo's Alerts app anytime to see when we restock or run pack sales!` }
           ],
           replies: [
-            { text: `📦 "Do you have any foil packs left in stock?"`, reply: `Always! Base Set boosters are $10.00 each, and remember that Mondays have a +25% Foil Holo surge rate!` },
-            { text: `🗺️ "Tell me about the Base2v2 Tactical Battle Map."`, reply: `It's Silas's handcrafted arena! On Wednesdays Silas runs a woodcraft promo with 50% off the map!` },
+            { text: `📦 "Do you have any foil packs left in stock?"`, reply: `Always! Base Set boosters are $5.00 each, and remember that Mondays have a +25% Foil Holo surge rate!` },
             { text: `💵 "Do you buy duplicate singles from players?"`, reply: `Yes! You can sell to me directly at my shop counter or post listings on the Card Exchange app to find town buyers!` }
           ]
         },
@@ -1229,15 +1230,6 @@
           text: 'Factory-sealed 1st-Edition foil booster packs ($5.00 each) are fully stocked on our showcase racks. Every pack guarantees 5 collectible Mythos cards with chances at rare foils!'
         },
         {
-          id: 'feed_map',
-          title: 'Base2v2 Tactical Arena Available',
-          tag: 'STORE GEAR',
-          time: 'Store Feature',
-          icon: '⚔️',
-          highlight: false,
-          text: 'Upgrade from 1v1 duels to fast-paced 2v2 tactical tabletop combat! Purchase the official 6×6 Base2v2 Battle Map from Leo for $15.00 (or $7.50 during Wednesday Woodcraft).'
-        },
-        {
           id: 'feed_singles',
           title: 'Singles Buy-Back Counter Open',
           tag: 'TRADE DESK',
@@ -1260,7 +1252,7 @@
           dayText: 'Every Friday • 6:00 PM',
           fee: 'Free Entry',
           prize: '+$1.50 Gold Bounty per win + League Trophy',
-          format: '1v1 / 2v2 Tabletop Duels',
+          format: '1v1 Tabletop Duels',
           location: "Leo's Card Shop — Duel Tables",
           desc: 'The official community dueling league! Bring your best beasts to Leo\'s Card Shop. Every victory earns bonus prize purse cash and league points.'
         },
@@ -1272,7 +1264,7 @@
           dayText: 'Saturday & Sunday • All Day',
           fee: '$2.00 Buy-in',
           prize: '$10.00 Grand Purse + Ultra Rare Holo',
-          format: 'Best-of-3 Base2v2 Elimination',
+          format: 'Best-of-3 Elimination',
           location: 'Central Park Courtyard & Promenade',
           desc: 'The premier summer tournament attracting all master duelists across Oakhaven. Silas, Nova, Pluto, and Maya compete for the championship banner!'
         },
@@ -3169,28 +3161,6 @@
       const hasUnopenedPack = (this.inventory || []).some(i => i.id === 'unopened_base_pack' && i.qty > 0);
       if (ripNowBtn) {
         ripNowBtn.classList.toggle('hidden', !hasUnopenedPack);
-      }
-
-      // Buy Section - Base2v2 Battle Map
-      const mapBuyBtn = document.getElementById('btn-shop-buy-map');
-      const mapPlayBtn = document.getElementById('btn-shop-play-map');
-      const mapCost = activeEvent?.id === 'silas_woodcraft' ? 7.50 : 15.00;
-      if (mapBuyBtn) {
-        if (this.hasBoughtBase2v2Map) {
-          mapBuyBtn.disabled = true;
-          mapBuyBtn.innerHTML = `✅ Already Owned`;
-          mapBuyBtn.classList.add('disabled');
-          mapPlayBtn?.classList.remove('hidden');
-        } else {
-          const hasMoneyForMap = (this.gold || 0) >= mapCost;
-          mapBuyBtn.disabled = !hasMoneyForMap;
-          mapBuyBtn.classList.toggle('disabled', !hasMoneyForMap);
-          const mapDiscountTag = activeEvent?.id === 'silas_woodcraft' ? ' 🪵 [Wednesday 50% Off!]' : '';
-          mapBuyBtn.innerHTML = hasMoneyForMap
-            ? `🛒 Buy Base2v2 Map (${this.formatMoney(mapCost)})${mapDiscountTag}`
-            : `🔒 Need ${this.formatMoney(mapCost)} (Short ${this.formatMoney(mapCost - (this.gold || 0))})`;
-          mapPlayBtn?.classList.add('hidden');
-        }
       }
 
       // Sell Section (Strictly cards in backpack inventory, excluding binder slots)
@@ -6369,23 +6339,6 @@
                 }
           ];
           let optNum = 2;
-          if (this.hasBoughtBase2v2Map) {
-            plutoChoices.push(
-              hasDollar
-                ? {
-                    label: `${optNum++}. 🏟️ "Let's duel on Base2v2 for $1.00 (Select 2 Beasts)!"`,
-                    primary: true,
-                    silentClick: true,
-                    onSelect: () => this.open2v2BeastSelect(this.plutoNpc)
-                  }
-                : {
-                    label: `${optNum++}. 🏟️ "Let's duel on Base2v2 for $1.00!" <i>(Need $1.00)</i>`,
-                    onSelect: (el) => {
-                      el.innerHTML = `<b>Pluto:</b> "We need at least $1.00 each for the wager! Go sell an extra card to Shopkeeper Leo or earn some cash, then let's play Base2v2!"`;
-                    }
-                  }
-            );
-          }
           plutoChoices.push(
             {
               label: `${optNum++}. 💻 "What are you researching on your computer?"`,
@@ -6414,7 +6367,7 @@
           const plutoMeetup = this.getMeetupChoiceObjectsForNpc('pluto', 'pluto_interior');
           this.renderNpcChoicePrompt({
             npcId: 'pluto',
-            promptKey: `pluto_dialogue_${pName}_${hasDollar}_${this.hasBoughtBase2v2Map}_${res || 'none'}${plutoMeetup.keySuffix}`,
+            promptKey: `pluto_dialogue_${pName}_${hasDollar}_${res || 'none'}${plutoMeetup.keySuffix}`,
             speakerText: '💻 PLUTO — BEDROOM COMPUTER DESK',
             talkPromptHtml: `Press <b>Talk</b> to speak with <b>Pluto</b> at his computer desk.`,
             greetingHtml: plutoMeetup.greetingOverride || plutoGreeting,

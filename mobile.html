@@ -459,67 +459,6 @@
       </div>
     </div>
 
-    <!-- 2v2 Beast Selection Modal Overlay -->
-    <div class="modal-overlay hidden" id="beast-select-2v2-modal">
-      <div class="beast-select-dialog">
-        <!-- Header -->
-        <div class="beast-select-header">
-          <div class="beast-select-title-group">
-            <span class="beast-select-icon">🏟️</span>
-            <div>
-              <h2 class="beast-select-title">BASE2V2 • SELECT YOUR 2 BEASTS</h2>
-              <p class="beast-select-sub">Choose <b>2 Beasts</b> from your Backpack Inventory or Old Card Binder to deploy onto the 6×6 battlefield.</p>
-            </div>
-          </div>
-          <button type="button" class="beast-select-close-btn" id="btn-close-2v2-select" aria-label="Close">✕</button>
-        </div>
-
-        <!-- Duo Selection Trays -->
-        <div class="beast-select-trays">
-          <div class="duo-slot-box" id="duo-slot-0" data-slot="0">
-            <div class="duo-slot-label">BEAST 1 (SOLAR LEAD)</div>
-            <div class="duo-slot-content empty" id="duo-content-0">
-              <span class="duo-empty-plus">+</span>
-              <span class="duo-empty-text">Select First Beast</span>
-            </div>
-          </div>
-          <div class="duo-vs-badge">&amp;</div>
-          <div class="duo-slot-box" id="duo-slot-1" data-slot="1">
-            <div class="duo-slot-label">BEAST 2 (SOLAR WING)</div>
-            <div class="duo-slot-content empty" id="duo-content-1">
-              <span class="duo-empty-plus">+</span>
-              <span class="duo-empty-text">Select Second Beast</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Filter Bar -->
-        <div class="beast-select-filters">
-          <div class="beast-filter-tabs">
-            <button type="button" class="filter-tab-btn active" data-filter="all" id="btn-filter-all">All Beasts (<span id="filter-count-all">0</span>)</button>
-            <button type="button" class="filter-tab-btn" data-filter="backpack" id="btn-filter-backpack">🎒 Backpack (<span id="filter-count-backpack">0</span>)</button>
-            <button type="button" class="filter-tab-btn" data-filter="binder" id="btn-filter-binder">📖 Binder (<span id="filter-count-binder">0</span>)</button>
-          </div>
-          <div class="beast-select-hint" id="beast-select-hint">
-            Click any beast card below to assign it to your 2v2 Duo.
-          </div>
-        </div>
-
-        <!-- Beasts Cards Grid -->
-        <div class="beast-select-cards-grid" id="beast-select-cards-grid">
-          <!-- Populated dynamically from player's inventory & binder -->
-        </div>
-
-        <!-- Modal Footer -->
-        <div class="beast-select-footer">
-          <button type="button" class="ui-btn secondary" id="btn-cancel-2v2-select">Cancel</button>
-          <button type="button" class="ui-btn primary-btn btn-launch-2v2" id="btn-launch-2v2" disabled>
-            ⚔️ Enter Base2v2 Arena (Select 2 Beasts)
-          </button>
-        </div>
-      </div>
-    </div>
-
     <!-- Winner Modal Overlay -->
     <div class="modal-overlay hidden" id="winner-modal">
       <div class="modal-card">
@@ -839,38 +778,6 @@
                   </button>
                 </div>
                 <div class="shop-buy-status" id="shop-buy-status"></div>
-              </div>
-            </div>
-
-            <!-- 2. Base2v2 Tactical Battle Map ($15.00) -->
-            <div class="shop-buy-card" id="shop-card-map-base2v2">
-              <div class="shop-map-artwork-box">
-                <img src="Base2v2.png" alt="Base2v2 Battle Map" class="shop-map-preview-img">
-                <span class="shop-pack-edition-badge map-badge">🏟️ 2V2 ARENA</span>
-              </div>
-              <div class="shop-pack-details">
-                <div class="shop-pack-header">
-                  <h3 class="shop-pack-title">Base2v2 Tactical Battle Map</h3>
-                  <span class="shop-pack-price-tag">$15.00</span>
-                </div>
-                <p class="shop-pack-desc">
-                  Official <b>6×6 Mythos Tactical Tabletop Arena</b> framed in ancient weathered stone and wild ivy. Designed for fast, tactical <b>2v2 Beast Skirmishes</b>. When played, choose any 2 Beasts from your Backpack or Binder!
-                </p>
-                <div class="shop-pack-features">
-                  <span class="shop-feat-pill">🏟️ 2v2 Game Mode</span>
-                  <span class="shop-feat-pill">📐 6×6 Grid Arena</span>
-                  <span class="shop-feat-pill">🎒 Pick 2 from Binder/Pack</span>
-                  <span class="shop-feat-pill">⚡ Fast Skirmishes</span>
-                </div>
-                <div class="shop-buy-actions">
-                  <button type="button" class="ui-btn primary-btn shop-buy-btn" id="btn-shop-buy-map">
-                    🛒 Buy Base2v2 Map ($15.00)
-                  </button>
-                  <button type="button" class="ui-btn secondary shop-play-map-btn hidden" id="btn-shop-play-map">
-                    ⚔️ Play Base2v2 Now
-                  </button>
-                </div>
-                <div class="shop-buy-status" id="shop-map-buy-status"></div>
               </div>
             </div>
           </div>
