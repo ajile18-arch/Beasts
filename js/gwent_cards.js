@@ -237,8 +237,8 @@
       cardImg: 'Cards/Goblin_Soldier_Card.jpg',
       abilityTitle: 'Goblin Muster',
       abilityDesc: 'Pulls all other Goblin Soldiers from your deck into your hand.',
-      passiveTitle: 'Swarm Tactics',
-      passiveDesc: 'Thin your deck and flood the Melee row with reinforcements.',
+      passiveTitle: '',
+      passiveDesc: '',
       effects: [
         { type: 'pull_copies_from_deck', cardId: 'goblin_soldier', sound: 'howl', label: '🧌 Goblin Muster' }
       ]

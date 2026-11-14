@@ -665,7 +665,12 @@
       if (roleEl) roleEl.textContent = card.role || 'Unit';
       if (rowEl) rowEl.textContent = `${ROW_ICONS[card.row]} ${ROW_LABELS[card.row]}`;
       if (pwrEl) pwrEl.textContent = `Power: ${card.power}${card.armor > 0 ? ` • 🛡️${card.armor}` : ''}`;
-      if (bodyEl) bodyEl.innerHTML = `<b>${card.abilityTitle}:</b> ${card.abilityDesc}<br><span style="color:#94a3b8;"><b>${card.passiveTitle}:</b> ${card.passiveDesc}</span>`;
+      if (bodyEl) {
+        const passiveHtml = card.passiveDesc
+          ? `<br><span style="color:#94a3b8;"><b>${card.passiveTitle}:</b> ${card.passiveDesc}</span>`
+          : '';
+        bodyEl.innerHTML = `<b>${card.abilityTitle}:</b> ${card.abilityDesc}${passiveHtml}`;
+      }
       popup.classList.remove('hidden');
     }
 
@@ -830,6 +835,20 @@
     }
 
     damageUnit(targetCard, amount, ownerTeam, rowKey) {
+      const battlefield = document.getElementById('gwent-battlefield');
+      const tgtEl = battlefield?.querySelector(`.gwent-card[data-uid="${targetCard.uid}"]`);
+      if (battlefield && tgtEl) {
+        const bfRect = battlefield.getBoundingClientRect();
+        const tRect = tgtEl.getBoundingClientRect();
+        const dmgPop = document.createElement('div');
+        dmgPop.className = 'gwent-dmg-pop';
+        dmgPop.textContent = `-${amount}`;
+        dmgPop.style.left = `${(tRect.left + tRect.width / 2) - bfRect.left}px`;
+        dmgPop.style.top = `${(tRect.top + tRect.height / 2) - bfRect.top}px`;
+        battlefield.appendChild(dmgPop);
+        setTimeout(() => dmgPop.remove(), 680);
+      }
+
       let remaining = amount;
       if (targetCard.armor > 0) {
         const absorbed = Math.min(targetCard.armor, remaining);
@@ -1462,9 +1481,11 @@
       if (abDesc) abDesc.textContent = card.abilityDesc;
 
       const pasTitle = document.getElementById('gwent-modal-passive-title');
-      if (pasTitle) pasTitle.textContent = `🌟 ${card.passiveTitle}`;
       const pasDesc = document.getElementById('gwent-modal-passive-desc');
-      if (pasDesc) pasDesc.textContent = card.passiveDesc;
+      const pasCard = pasTitle?.closest('.gwent-modal-ability-card');
+      if (pasCard) pasCard.classList.toggle('hidden', !card.passiveDesc);
+      if (pasTitle) pasTitle.textContent = card.passiveTitle ? `🌟 ${card.passiveTitle}` : '';
+      if (pasDesc) pasDesc.textContent = card.passiveDesc || '';
 
       window.soundFX?.playClick?.();
       modal.classList.remove('hidden');
