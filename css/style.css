@@ -6374,6 +6374,11 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
     position: relative !important;
   }
 
+  .overworld-container.hidden,
+  .game-header.hidden {
+    display: none !important;
+  }
+
   /* Top Quick HUD / Nav Bar - Sleek, slim and tight to top */
   .ow-mobile-header-bar {
     display: flex !important;
@@ -9253,13 +9258,19 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
 
 .gwent-layout {
   display: block;
-  position: relative;
+  position: fixed;
+  inset: 0;
+  z-index: 80;
   width: 100vw;
   height: 100vh;
   height: 100dvh;
   padding: 6px 12px 0;
   overflow: hidden;
   background: radial-gradient(circle at 50% 45%, #1c1610 0%, #0d0a07 100%);
+}
+
+.gwent-layout.hidden {
+  display: none !important;
 }
 
 .gwent-sidebar {
