@@ -15,7 +15,7 @@
       element: 'fire',
       stars: 4,
       maxHp: 120,
-      cardImg: 'Cards/Phoenix_Card.png',
+      cardImg: 'Cards_Legacy/Phoenix_Card.png',
       spriteBase: 'Sprites/Phoenix/Phoenix',
       sprites: {
         idle_down: 'Sprites/Phoenix/Phoenix_idle_down_256x256.png',
@@ -48,7 +48,7 @@
       element: 'earth',
       stars: 4,
       maxHp: 200,
-      cardImg: 'Cards/Earth_Golem_Card.png',
+      cardImg: 'Cards_Legacy/Earth_Golem_Card.png',
       spriteBase: 'Sprites/Earth_Golem/Earth_Golem',
       sprites: {
         idle_down: 'Sprites/Earth_Golem/Earth_Golem_idle_down_256x256.png',
@@ -81,7 +81,7 @@
       element: 'earth',
       stars: 2,
       maxHp: 100,
-      cardImg: 'Cards/Werewolf_Card.png',
+      cardImg: 'Cards_Legacy/Werewolf_Card.png',
       spriteBase: 'Sprites/Werewolf/Werewolf',
       sprites: {
         idle_down: 'Sprites/Werewolf/Werewolf_idle_down_256x256.png',
@@ -114,7 +114,7 @@
       element: 'poison',
       stars: 4,
       maxHp: 120,
-      cardImg: 'Cards/Hydra_Card.png',
+      cardImg: 'Cards_Legacy/Hydra_Card.png',
       spriteBase: 'Sprites/Hydra/Hydra',
       sprites: {
         idle_down: 'Sprites/Hydra/Hydra_idle_down_256x256.png',
@@ -147,7 +147,7 @@
       element: 'earth',
       stars: 4,
       maxHp: 100,
-      cardImg: 'Cards/Terra_Mother_Card.png',
+      cardImg: 'Cards_Legacy/Terra_Mother_Card.png',
       spriteBase: 'Sprites/Terra_Mother/Terra_Mother',
       sprites: {
         idle_down: 'Sprites/Terra_Mother/Terra_Mother_idle_down_256x256.png',
@@ -180,7 +180,7 @@
       element: 'plant',
       stars: 2,
       maxHp: 160,
-      cardImg: 'Cards/Verdant_Guardian_Card.png',
+      cardImg: 'Cards_Legacy/Verdant_Guardian_Card.png',
       spriteBase: 'Sprites/Verdant_Guardian/Verdant_Guardian',
       sprites: {
         idle_down: 'Sprites/Verdant_Guardian/Verdant_Guardian_idle_down_256x256.png',
@@ -213,7 +213,7 @@
       element: 'earth',
       stars: 4,
       maxHp: 140,
-      cardImg: 'Cards/Dwarf_Warden_Card.png',
+      cardImg: 'Cards_Legacy/Dwarf_Warden_Card.png',
       spriteBase: 'Sprites/Dwarf_Warden/Dwarf_Warden',
       sprites: {
         idle: 'Sprites/Dwarf_Warden/Dwarf_Warden_idle_down_256x256.png',
@@ -254,7 +254,7 @@
       element: 'air',
       stars: 3,
       maxHp: 120,
-      cardImg: 'Cards/Pegasus_Card.png',
+      cardImg: 'Cards_Legacy/Pegasus_Card.png',
       spriteBase: 'Sprites/Pegasus/Pegasus',
       sprites: {
         idle: 'Sprites/Pegasus/Pegasus_idle_down_256x256.png',
@@ -296,7 +296,7 @@
       element: 'metal',
       stars: 2,
       maxHp: 160,
-      cardImg: 'Cards/Dreadnaught_Card.png',
+      cardImg: 'Cards_Legacy/Dreadnaught_Card.png',
       spriteBase: 'Sprites/Dreadnaught/Dreadnaught',
       sprites: {
         idle: 'Sprites/Dreadnaught/Dreadnaught_idle_down_256x256.png',
@@ -394,7 +394,7 @@
       document.getElementById('arena-turn-tracker')?.classList.remove('hidden');
       document.querySelectorAll('.arena-only-ctrl').forEach(el => el.classList.remove('hidden'));
 
-      let subtitleText = 'Gwent • Best of 3';
+      let subtitleText = 'Best of 3';
       const tourneyCtx = challenger?.tournamentContext;
       if (tourneyCtx?.type === 'park_monday_rr') {
         subtitleText = `Park Rnd ${tourneyCtx.round || 1}/3 vs ${challenger.name}`;
@@ -436,6 +436,9 @@
       if (this.aiTimeout) clearTimeout(this.aiTimeout);
       this.currentView = 'overworld';
       this.elWinnerModal?.classList.add('hidden');
+      document.getElementById('winner-modal')?.classList.add('hidden');
+      document.getElementById('gwent-round-overlay')?.classList.add('hidden');
+      document.getElementById('gwent-card-modal')?.classList.add('hidden');
       document.getElementById('draft-modal')?.classList.add('hidden');
       document.getElementById('coin-toss-modal')?.classList.add('hidden');
 
@@ -448,23 +451,53 @@
       document.getElementById('overworld-toolbar')?.classList.remove('hidden');
 
       const sub = document.getElementById('header-subtitle');
-      if (sub) sub.textContent = 'Open-World Card RPG';
+      if (sub) sub.textContent = '';
 
       const switchBtn = document.getElementById('btn-switch-view');
       if (switchBtn) switchBtn.innerHTML = '🃏 Quick Duel';
 
+      const challenger = this.currentChallenger;
+      this.currentChallenger = null;
+
       if (this.overworld) {
         this.overworld.active = true;
-        this.overworld.onReturnFromBattle(this.currentChallenger);
+        try {
+          this.overworld.onReturnFromBattle(challenger);
+        } catch (err) {
+          console.error('onReturnFromBattle error:', err);
+        }
+        try {
+          this.overworld.render();
+        } catch (err) {
+          console.error('Overworld render error on return:', err);
+        }
       }
-      this.currentChallenger = null;
     }
 
     // -------------------------------------------------------------------------
     // Deck & Match Initialization
     // -------------------------------------------------------------------------
-    buildDeck(guaranteedIds = []) {
-      const pool = [...STANDARD_DECK_RECIPE];
+    buildDeck(guaranteedIds = [], customDeckIds = null) {
+      let pool;
+      if (Array.isArray(customDeckIds) && customDeckIds.length > 0) {
+        pool = customDeckIds.filter(id => GWENT_CARDS[id]);
+        if (pool.length < 12) {
+          const hasManson = pool.includes('manson_wolf_father');
+          const filler = STANDARD_DECK_RECIPE.filter(id => !(hasManson && id === 'manson_wolf_father'));
+          for (let i = filler.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [filler[i], filler[j]] = [filler[j], filler[i]];
+          }
+          pool = [...pool, ...filler].slice(0, 12);
+        }
+        for (let i = pool.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [pool[i], pool[j]] = [pool[j], pool[i]];
+        }
+        return pool.map((id, idx) => this.createCardInstance(id, `${id}_${Math.random().toString(36).slice(2, 7)}_${idx}`));
+      }
+
+      pool = [...STANDARD_DECK_RECIPE];
       // Shuffle pool
       for (let i = pool.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -479,13 +512,13 @@
         if (idx !== -1) pool.splice(idx, 1);
         ordered.push(gid);
       });
-      const finalIds = [...ordered, ...pool].slice(0, 12);
+      const finalIds = [...ordered, ...pool].slice(0, Math.max(12, STANDARD_DECK_RECIPE.length));
 
       return finalIds.map((id, idx) => this.createCardInstance(id, `${id}_${Math.random().toString(36).slice(2, 7)}_${idx}`));
     }
 
     createCardInstance(cardId, uid = null) {
-      const tmpl = GWENT_CARDS[cardId] || GWENT_CARDS.werewolf;
+      const tmpl = GWENT_CARDS[cardId] || GWENT_CARDS.goblin_soldier;
       return {
         uid: uid || `${cardId}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
         id: tmpl.id,
@@ -494,6 +527,7 @@
         element: tmpl.element || 'earth',
         stars: tmpl.stars,
         rarity: tmpl.rarity,
+        border: tmpl.border || tmpl.rarity,
         row: tmpl.row,
         basePower: tmpl.basePower,
         power: tmpl.basePower,
@@ -504,7 +538,15 @@
         passiveTitle: tmpl.passiveTitle,
         passiveDesc: tmpl.passiveDesc,
         rebirthUsed: false,
-        attackedThisRound: false
+        resilient: Boolean(tmpl.resilient),
+        shield: Boolean(tmpl.shield),
+        lifestealHeal: Boolean(tmpl.lifestealHeal),
+        onKillPowerGain: tmpl.onKillPowerGain || 0,
+        onKillMaxBonus: tmpl.onKillMaxBonus || 0,
+        killBonusPower: 0,
+        boostRoleAbility: tmpl.boostRoleAbility ? { ...tmpl.boostRoleAbility } : null,
+        mansonBoostedThisTurn: false,
+        attackedThisTurn: false
       };
     }
 
@@ -514,29 +556,40 @@
       this.elWinnerModal?.classList.add('hidden');
       document.getElementById('gwent-round-overlay')?.classList.add('hidden');
 
-      const p1Deck = this.buildDeck(p1Guaranteed);
+      const playingDeckIds = (this.overworld?.playingDeck || []).filter(id => GWENT_CARDS[id]);
+      const p1Deck = this.buildDeck(p1Guaranteed, playingDeckIds);
       const p2Deck = this.buildDeck(p2Guaranteed);
 
       const p1Hand = p1Deck.splice(0, 7);
       const p2Hand = p2Deck.splice(0, 7);
 
+      const playerName = (this.overworld?.playerName && this.overworld.playerName.trim())
+        ? this.overworld.playerName.trim()
+        : 'You';
+
       const oppName = this.currentChallenger?.name
         ? this.currentChallenger.name
-        : (this.gameMode === '2p' ? 'Lunar (P2)' : 'Lunar AI');
+        : (this.gameMode === '2p' ? 'Player 2' : 'A.I.');
+
+      const firstTeam = Math.random() < 0.5 ? 1 : 2;
+      const starterName = firstTeam === 1 ? playerName : oppName;
 
       this.state = {
         round: 1,
-        turnTeam: 1,
+        turnTeam: firstTeam,
         mulliganActive: true,
         mulliganLeft: 2,
+        mulliganSelectedUids: [],
+        playedCardThisTurn: false,
         selectedHandUid: null,
         selectedAttackerUid: null,
-        inspectedCard: p1Hand[0] || this.createCardInstance('phoenix'),
+        inspectedCard: p1Hand[0] || this.createCardInstance('goblin_soldier'),
         players: {
           1: {
-            name: 'Solar (You)',
+            name: playerName,
             gems: 2,
             passed: false,
+            turnsThisRound: 0,
             deck: p1Deck,
             hand: p1Hand,
             graveyard: [],
@@ -547,6 +600,7 @@
             name: oppName,
             gems: 2,
             passed: false,
+            turnsThisRound: 0,
             deck: p2Deck,
             hand: p2Hand,
             graveyard: [],
@@ -557,7 +611,8 @@
       };
 
       this.elLog.innerHTML = '';
-      this.log(`🃏 Mythos Gwent Match started vs. ${oppName}! Draw 7 cards — up to 2 mulligans available.`, 'system');
+      this.log(`🃏 Mythos Match started vs. ${oppName}! Draw 7 cards — up to 2 mulligans available.`, 'system');
+      this.log(`🪙 Coin flip: ${starterName} won the flip and will go first in Round 1!`, 'system');
       if (p1Guaranteed.length) {
         this.log(`✨ Signature cards in opening hand: ${p1Guaranteed.map(id => GWENT_CARDS[id]?.name).join(', ')}.`, 'system');
       }
@@ -571,35 +626,70 @@
     mulliganCard(uid) {
       if (!this.state || !this.state.mulliganActive || this.state.mulliganLeft <= 0) return;
       const p1 = this.state.players[1];
-      const idx = p1.hand.findIndex(c => c.uid === uid);
-      if (idx === -1 || p1.deck.length === 0) return;
+      const card = p1.hand.find(c => c.uid === uid);
+      if (!card || p1.deck.length === 0) return;
 
-      const [swapped] = p1.hand.splice(idx, 1);
-      // Put swapped card at random position in deck, draw top card
-      const insertAt = Math.floor(Math.random() * (p1.deck.length + 1));
-      p1.deck.splice(insertAt, 0, swapped);
-      const drawn = p1.deck.shift();
-      p1.hand.splice(idx, 0, drawn);
-
-      this.state.mulliganLeft--;
-      this.state.inspectedCard = drawn;
-      window.soundFX?.playCardFlipReveal?.(drawn.rarity === 'gold');
-      this.log(`🔄 Mulliganed ${swapped.name} → drew ${drawn.name}.`, 'team1');
-
-      if (this.state.mulliganLeft <= 0) {
-        this.finishMulligan();
+      const selected = this.state.mulliganSelectedUids;
+      const existingIdx = selected.indexOf(uid);
+      if (existingIdx !== -1) {
+        selected.splice(existingIdx, 1);
+      } else if (selected.length < this.state.mulliganLeft) {
+        selected.push(uid);
       } else {
-        this.render();
+        this.log(`⏳ Up to ${this.state.mulliganLeft} cards can be selected for mulligan. Click a selected card to deselect it.`, 'team1');
+        return;
       }
+
+      this.state.inspectedCard = card;
+      window.soundFX?.playClick?.();
+      this.render();
+    }
+
+    confirmMulligan() {
+      if (!this.state || !this.state.mulliganActive) return;
+      const selected = this.state.mulliganSelectedUids || [];
+      if (selected.length === 0) return;
+
+      const p1 = this.state.players[1];
+      const swappedCards = [];
+
+      // Draw replacement cards into each selected slot before returning swapped cards to deck
+      selected.forEach(uid => {
+        const idx = p1.hand.findIndex(c => c.uid === uid);
+        if (idx === -1 || p1.deck.length === 0) return;
+        const [swapped] = p1.hand.splice(idx, 1);
+        const drawn = p1.deck.shift();
+        p1.hand.splice(idx, 0, drawn);
+        swappedCards.push(swapped);
+        this.state.inspectedCard = drawn;
+        this.log(`🔄 Mulliganed ${swapped.name} → drew ${drawn.name}.`, 'team1');
+      });
+
+      // Return swapped cards to random positions in the deck
+      swappedCards.forEach(swapped => {
+        const insertAt = Math.floor(Math.random() * (p1.deck.length + 1));
+        p1.deck.splice(insertAt, 0, swapped);
+      });
+
+      this.state.mulliganLeft = Math.max(0, this.state.mulliganLeft - swappedCards.length);
+      this.state.mulliganSelectedUids = [];
+      window.soundFX?.playCardFlipReveal?.(false);
+      this.finishMulligan();
     }
 
     finishMulligan() {
       if (!this.state) return;
       this.state.mulliganActive = false;
+      this.state.mulliganSelectedUids = [];
       this.state.selectedHandUid = null;
       window.soundFX?.playClick?.();
-      this.log('⚔️ Mulligan complete! Solar moves first in Round 1.', 'system');
+      const starterName = this.state.players[this.state.turnTeam]?.name || 'Player 1';
+      this.log(`⚔️ Mulligan complete! ${starterName} moves first in Round 1.`, 'system');
       this.render();
+
+      if (this.gameMode === 'ai' && this.state.turnTeam === 2) {
+        this.aiTimeout = setTimeout(() => this.runAiTurn(), 700);
+      }
     }
 
     // -------------------------------------------------------------------------
@@ -618,6 +708,36 @@
     getAllBoardCards(team) {
       const r = this.state.players[team].rows;
       return [...r.melee, ...r.ranged];
+    }
+
+    getBoostableAlliesFor(sourceCard, team) {
+      if (!sourceCard?.boostRoleAbility) return [];
+      const targetRole = sourceCard.boostRoleAbility.role;
+      return this.getAllBoardCards(team).filter(c =>
+        c.uid !== sourceCard.uid && c.role === targetRole && !c.mansonBoostedThisTurn
+      );
+    }
+
+    canTeamAttackThisTurn(team) {
+      return (this.state?.players?.[team]?.turnsThisRound || 0) >= 1;
+    }
+
+    hasReadyAttackers(team) {
+      const oppTeam = team === 1 ? 2 : 1;
+      const canAttack = this.canTeamAttackThisTurn(team);
+      const hasOpp = this.getAllBoardCards(oppTeam).length > 0;
+      return this.getAllBoardCards(team).some(c =>
+        (canAttack && !c.attackedThisTurn && hasOpp) || this.getBoostableAlliesFor(c, team).length > 0
+      );
+    }
+
+    resetTurnAttackFlags(team) {
+      if (!this.state) return;
+      this.state.playedCardThisTurn = false;
+      this.getAllBoardCards(team).forEach(c => {
+        c.attackedThisTurn = false;
+        c.mansonBoostedThisTurn = false;
+      });
     }
 
     // -------------------------------------------------------------------------
@@ -664,7 +784,7 @@
       if (nameEl) nameEl.textContent = card.name;
       if (roleEl) roleEl.textContent = card.role || 'Unit';
       if (rowEl) rowEl.textContent = `${ROW_ICONS[card.row]} ${ROW_LABELS[card.row]}`;
-      if (pwrEl) pwrEl.textContent = `Power: ${card.power}${card.armor > 0 ? ` • 🛡️${card.armor}` : ''}`;
+      if (pwrEl) pwrEl.textContent = `Base Power: ${card.power}${card.armor > 0 ? ` • 🛡️${card.armor}` : ''}`;
       if (bodyEl) {
         const passiveHtml = card.passiveDesc
           ? `<br><span style="color:#94a3b8;"><b>${card.passiveTitle}:</b> ${card.passiveDesc}</span>`
@@ -691,18 +811,35 @@
       const oppTeam = activeTeam === 1 ? 2 : 1;
 
       if (ownerTeam === activeTeam) {
+        const selectedCard = this.state.selectedAttackerUid
+          ? this.getAllBoardCards(activeTeam).find(c => c.uid === this.state.selectedAttackerUid)
+          : null;
+
+        if (selectedCard && selectedCard.uid !== card.uid && selectedCard.boostRoleAbility) {
+          const boostable = this.getBoostableAlliesFor(selectedCard, activeTeam);
+          if (boostable.some(c => c.uid === card.uid)) {
+            this.executeAllyBoost(activeTeam, selectedCard, card);
+            return;
+          }
+        }
+
         if (this.state.selectedAttackerUid === card.uid) {
           this.state.selectedAttackerUid = null;
           window.soundFX?.playClick?.();
           this.render();
           return;
         }
-        if (card.attackedThisRound) {
-          this.log(`⏳ ${card.name} has already attacked this round.`, activeTeam === 1 ? 'team1' : 'team2');
-          return;
-        }
-        if (this.getAllBoardCards(oppTeam).length === 0) {
-          this.log(`⚔️ No opposing cards on the board to attack.`, 'system');
+
+        const canAttack = this.canTeamAttackThisTurn(activeTeam) && !card.attackedThisTurn && this.getAllBoardCards(oppTeam).length > 0;
+        const canBoost = this.getBoostableAlliesFor(card, activeTeam).length > 0;
+        if (!canAttack && !canBoost) {
+          if (!this.canTeamAttackThisTurn(activeTeam)) {
+            this.log(`⏳ Neither player can attack on their first turn of Round ${this.state.round}.`, activeTeam === 1 ? 'team1' : 'team2');
+          } else if (card.attackedThisTurn) {
+            this.log(`⏳ ${card.name} has already attacked this turn.`, activeTeam === 1 ? 'team1' : 'team2');
+          } else {
+            this.log(`⚔️ No opposing cards on the board to attack.`, 'system');
+          }
           return;
         }
         this.state.selectedHandUid = null;
@@ -710,32 +847,114 @@
         window.soundFX?.playClick?.();
         this.render();
       } else if (this.state.selectedAttackerUid) {
+        const attacker = this.getAllBoardCards(activeTeam).find(c => c.uid === this.state.selectedAttackerUid);
+        if (attacker && attacker.attackedThisTurn) {
+          this.log(`⏳ ${attacker.name} has already attacked this turn. Click a glowing Wolf Pack ally to boost or click ${attacker.name} to cancel.`, activeTeam === 1 ? 'team1' : 'team2');
+          return;
+        }
         this.executeBoardAttack(activeTeam, this.state.selectedAttackerUid, ownerTeam, card, rowKey);
       }
     }
 
-    executeBoardAttack(attackerTeam, attackerUid, targetTeam, targetCard, targetRow) {
-      const attacker = this.getAllBoardCards(attackerTeam).find(c => c.uid === attackerUid);
-      if (!attacker || attacker.attackedThisRound) return;
+    executeAllyBoost(team, sourceCard, targetCard) {
+      const amt = sourceCard.boostRoleAbility?.amount || 1;
+      targetCard.power += amt;
+      targetCard.mansonBoostedThisTurn = true;
 
-      const dmg = Math.max(1, Math.floor(attacker.power / 2));
-      attacker.attackedThisRound = true;
+      const battlefield = document.getElementById('gwent-battlefield');
+      const tgtEl = battlefield?.querySelector(`.gwent-card[data-uid="${targetCard.uid}"]`);
+      if (battlefield && tgtEl) {
+        const bfRect = battlefield.getBoundingClientRect();
+        const tRect = tgtEl.getBoundingClientRect();
+        const pop = document.createElement('div');
+        pop.className = 'gwent-dmg-pop boost-pop';
+        pop.textContent = `+${amt} 🐺`;
+        pop.style.left = `${(tRect.left + tRect.width / 2) - bfRect.left}px`;
+        pop.style.top = `${(tRect.top + tRect.height / 2) - bfRect.top}px`;
+        battlefield.appendChild(pop);
+        setTimeout(() => pop.remove(), 680);
+      }
+
+      window.soundFX?.playHowl?.();
+      window.soundFX?.playHeal?.();
+      this.log(`🐺 ${sourceCard.name} raised ${targetCard.name}'s Power by +${amt}!`, team === 1 ? 'team1' : 'team2');
+
+      if (sourceCard.attackedThisTurn && this.getBoostableAlliesFor(sourceCard, team).length === 0) {
+        this.state.selectedAttackerUid = null;
+      }
+
+      this.render();
+      if (!(this.gameMode === 'ai' && team === 2)) {
+        const player = this.state.players[team];
+        if ((this.state.playedCardThisTurn || player.hand.length === 0) && !this.hasReadyAttackers(team)) {
+          this.advanceTurn();
+        }
+      }
+    }
+
+    executeBoardAttack(attackerTeam, attackerUid, targetTeam, targetCard, targetRow) {
+      if (!this.canTeamAttackThisTurn(attackerTeam)) return;
+      const attacker = this.getAllBoardCards(attackerTeam).find(c => c.uid === attackerUid);
+      if (!attacker || attacker.attackedThisTurn) return;
+
+      const dmg = Math.max(1, attacker.power);
+      attacker.attackedThisTurn = true;
       this.state.selectedAttackerUid = null;
 
-      // Trigger line animation & elemental attack sound before re-rendering
+      // Trigger line animation & attack sound before re-rendering
       this.playAttackLineAnimation(attacker.uid, targetCard.uid, dmg, attacker.element);
+      window.soundFX?.playAttack?.();
       if (attacker.element === 'fire') window.soundFX?.playFire?.();
       else if (attacker.element === 'poison') window.soundFX?.playPoison?.();
       else if (attacker.element === 'plant') window.soundFX?.playWhip?.();
       else if (attacker.element === 'earth') window.soundFX?.playRock?.();
-      window.soundFX?.playHit?.();
 
       const logType = attackerTeam === 1 ? 'team1' : 'team2';
       this.log(`⚔️ ${attacker.name} attacked ${targetCard.name} for ${dmg} damage!`, logType);
       this.damageUnit(targetCard, dmg, targetTeam, targetRow);
 
+      const targetDestroyed = !this.state.players[targetTeam]?.rows?.[targetRow]?.some(c => c.uid === targetCard.uid);
+      if (targetDestroyed && attacker.onKillPowerGain > 0 && (attacker.killBonusPower || 0) < (attacker.onKillMaxBonus || 0)) {
+        const remainingCap = (attacker.onKillMaxBonus || 0) - (attacker.killBonusPower || 0);
+        const gain = Math.min(attacker.onKillPowerGain, remainingCap);
+        if (gain > 0) {
+          attacker.killBonusPower = (attacker.killBonusPower || 0) + gain;
+          attacker.power += gain;
+          window.soundFX?.playHeal?.();
+          this.log(`😈 ${attacker.name} destroyed ${targetCard.name} and gained +${gain} Power (${attacker.killBonusPower}/${attacker.onKillMaxBonus} bonus)!`, logType);
+        }
+      }
+
+      if (attacker.lifestealHeal && attacker.power < attacker.basePower) {
+        const rawHeal = Math.max(1, Math.floor(dmg / 2));
+        const healed = Math.min(attacker.basePower - attacker.power, rawHeal);
+        if (healed > 0) {
+          attacker.power += healed;
+          const battlefield = document.getElementById('gwent-battlefield');
+          const atkEl = battlefield?.querySelector(`.gwent-card[data-uid="${attacker.uid}"]`);
+          if (battlefield && atkEl) {
+            const bfRect = battlefield.getBoundingClientRect();
+            const aRect = atkEl.getBoundingClientRect();
+            const pop = document.createElement('div');
+            pop.className = 'gwent-dmg-pop boost-pop';
+            pop.textContent = `+${healed} 🩸`;
+            pop.style.left = `${(aRect.left + aRect.width / 2) - bfRect.left}px`;
+            pop.style.top = `${(aRect.top + aRect.height / 2) - bfRect.top}px`;
+            battlefield.appendChild(pop);
+            setTimeout(() => pop.remove(), 680);
+          }
+          window.soundFX?.playHeal?.();
+          this.log(`🩸 ${attacker.name} drained ${healed} Power to heal itself!`, logType);
+        }
+      }
+
       this.render();
-      this.advanceTurn();
+      if (!(this.gameMode === 'ai' && attackerTeam === 2)) {
+        const player = this.state.players[attackerTeam];
+        if ((this.state.playedCardThisTurn || player.hand.length === 0) && !this.hasReadyAttackers(attackerTeam)) {
+          this.advanceTurn();
+        }
+      }
     }
 
     playAttackLineAnimation(attackerUid, targetUid, dmg, element = 'fire') {
@@ -805,6 +1024,10 @@
       const oppTeam = team === 1 ? 2 : 1;
       const opp = this.state.players[oppTeam];
       if (player.passed) return;
+      if (this.state.playedCardThisTurn) {
+        this.log(`⏳ ${player.name} already deployed a card this turn. Attack with ready cards or click End Turn.`, team === 1 ? 'team1' : 'team2');
+        return;
+      }
 
       const idx = player.hand.findIndex(c => c.uid === uid);
       if (idx === -1) return;
@@ -818,6 +1041,7 @@
 
       player.hand.splice(idx, 1);
       player.rows[targetRow].push(card);
+      this.state.playedCardThisTurn = true;
       this.state.selectedHandUid = null;
       this.state.selectedAttackerUid = null;
       this.state.inspectedCard = card;
@@ -831,12 +1055,33 @@
       this.resolveCardAbility(team, card, targetRow, prePlayMyScore, prePlayOppScore, alliesOnBoardBefore);
 
       this.render();
-      this.advanceTurn();
+      if (!(this.gameMode === 'ai' && team === 2) && !this.hasReadyAttackers(team)) {
+        this.advanceTurn();
+      }
     }
 
     damageUnit(targetCard, amount, ownerTeam, rowKey) {
       const battlefield = document.getElementById('gwent-battlefield');
       const tgtEl = battlefield?.querySelector(`.gwent-card[data-uid="${targetCard.uid}"]`);
+
+      if (amount > 0 && targetCard.shield) {
+        targetCard.shield = false;
+        if (battlefield && tgtEl) {
+          const bfRect = battlefield.getBoundingClientRect();
+          const tRect = tgtEl.getBoundingClientRect();
+          const pop = document.createElement('div');
+          pop.className = 'gwent-dmg-pop shield-pop';
+          pop.textContent = '🔰 SHIELD';
+          pop.style.left = `${(tRect.left + tRect.width / 2) - bfRect.left}px`;
+          pop.style.top = `${(tRect.top + tRect.height / 2) - bfRect.top}px`;
+          battlefield.appendChild(pop);
+          setTimeout(() => pop.remove(), 680);
+        }
+        window.soundFX?.playShieldBreak?.();
+        this.log(`🔰 ${targetCard.name}'s Shield absorbed the damage and shattered!`, 'system');
+        return;
+      }
+
       if (battlefield && tgtEl) {
         const bfRect = battlefield.getBoundingClientRect();
         const tRect = tgtEl.getBoundingClientRect();
@@ -850,10 +1095,17 @@
       }
 
       let remaining = amount;
+      let hitArmor = false;
       if (targetCard.armor > 0) {
         const absorbed = Math.min(targetCard.armor, remaining);
         targetCard.armor -= absorbed;
         remaining -= absorbed;
+        if (absorbed > 0) hitArmor = true;
+      }
+      if (hitArmor) {
+        window.soundFX?.playArmorHit?.();
+      } else if (remaining > 0) {
+        window.soundFX?.playHit?.();
       }
       if (remaining > 0) {
         targetCard.power = Math.max(0, targetCard.power - remaining);
@@ -901,6 +1153,23 @@
     // -------------------------------------------------------------------------
     // Passing, Turn Progression & Round Resolution
     // -------------------------------------------------------------------------
+    endTurn(team = this.state?.turnTeam) {
+      if (this.isMatchOver || !this.state || this.state.mulliganActive) return;
+      if (team !== this.state.turnTeam) return;
+      if (this.gameMode === 'ai' && team !== 1) return;
+
+      const player = this.state.players[team];
+      if (player.passed) return;
+
+      this.state.selectedHandUid = null;
+      this.state.selectedAttackerUid = null;
+      this.hideAbilityPopup();
+      window.soundFX?.playClick?.();
+      this.log(`⏭️ ${player.name} ended their turn.`, team === 1 ? 'team1' : 'team2');
+
+      this.advanceTurn();
+    }
+
     passRound(team = this.state?.turnTeam) {
       if (this.isMatchOver || !this.state || this.state.mulliganActive) return;
       if (team !== this.state.turnTeam) return;
@@ -922,6 +1191,10 @@
     advanceTurn() {
       const p1 = this.state.players[1];
       const p2 = this.state.players[2];
+      const finishedTeam = this.state.turnTeam;
+      if (this.state.players[finishedTeam]) {
+        this.state.players[finishedTeam].turnsThisRound = (this.state.players[finishedTeam].turnsThisRound || 0) + 1;
+      }
 
       // Auto-pass if a player has 0 cards left in hand
       if (!p1.passed && p1.hand.length === 0) {
@@ -944,10 +1217,38 @@
         this.state.turnTeam = nextTeam;
       }
 
+      // Reset per-turn attack & card-play state for the active player's new turn
+      this.resetTurnAttackFlags(this.state.turnTeam);
+      this.applyTurnStartBoardPassives(this.state.turnTeam);
+      this.state.selectedHandUid = null;
+      this.state.selectedAttackerUid = null;
+
       this.render();
 
       if (this.gameMode === 'ai' && this.state.turnTeam === 2 && !this.isMatchOver) {
         this.aiTimeout = setTimeout(() => this.runAiTurn(), 700);
+      }
+    }
+
+    applyTurnStartBoardPassives(team) {
+      const player = this.state?.players?.[team];
+      if (!player || player.passed) return;
+      const logType = team === 1 ? 'team1' : 'team2';
+      let triggered = false;
+
+      ['melee', 'ranged'].forEach(rk => {
+        const rowArr = player.rows?.[rk] || [];
+        for (let i = 0; i < rowArr.length - 1; i++) {
+          if (rowArr[i]?.id === 'mothman' && rowArr[i + 1]) {
+            rowArr[i + 1].armor = (rowArr[i + 1].armor || 0) + 1;
+            this.log(`🦋 Mothman's Omen Carapace granted +1 Armor to ${rowArr[i + 1].name}!`, logType);
+            triggered = true;
+          }
+        }
+      });
+
+      if (triggered) {
+        window.soundFX?.playRock?.();
       }
     }
 
@@ -960,14 +1261,14 @@
       let bannerTitle = '';
       if (s1 > s2) {
         p2.gems = Math.max(0, p2.gems - 1);
-        bannerTitle = `☀️ ROUND ${this.state.round} VICTORY!`;
+        bannerTitle = `☀️ ${p1.name.toUpperCase()} WINS ROUND ${this.state.round}!`;
         window.soundFX?.playHeal?.();
-        this.log(`🏆 Solar won Round ${this.state.round} (${s1} vs ${s2})! Lunar loses a Life Gem.`, 'system');
+        this.log(`🏆 ${p1.name} won Round ${this.state.round} (${s1} vs ${s2})! ${p2.name} loses a Life Gem.`, 'system');
       } else if (s2 > s1) {
         p1.gems = Math.max(0, p1.gems - 1);
         bannerTitle = `🌙 ${p2.name.toUpperCase()} WINS ROUND ${this.state.round}`;
         window.soundFX?.playDefeat?.();
-        this.log(`💀 ${p2.name} won Round ${this.state.round} (${s2} vs ${s1}). Solar loses a Life Gem.`, 'system');
+        this.log(`💀 ${p2.name} won Round ${this.state.round} (${s2} vs ${s1}). ${p1.name} loses a Life Gem.`, 'system');
       } else {
         p1.gems = Math.max(0, p1.gems - 1);
         p2.gems = Math.max(0, p2.gems - 1);
@@ -981,7 +1282,7 @@
       const subEl = document.getElementById('round-overlay-sub');
       if (overlay && titleEl && subEl) {
         titleEl.textContent = bannerTitle;
-        subEl.textContent = `Solar ${s1} — ${s2} ${p2.name}`;
+        subEl.textContent = `${p1.name} ${s1} — ${s2} ${p2.name}`;
         overlay.classList.remove('hidden');
       }
 
@@ -1000,22 +1301,34 @@
     startNextRound(startingTeam) {
       this.state.round += 1;
       this.state.turnTeam = startingTeam;
+      this.state.playedCardThisTurn = false;
       this.state.selectedHandUid = null;
       this.state.selectedAttackerUid = null;
 
       [1, 2].forEach(team => {
         const p = this.state.players[team];
         p.passed = false;
+        p.turnsThisRound = 0;
 
-        // Move all board cards to graveyard
+        // Move non-resilient board cards to graveyard; keep resilient cards on the battlefield
         ['melee', 'ranged'].forEach(rk => {
+          const survivors = [];
           while (p.rows[rk].length > 0) {
             const c = p.rows[rk].pop();
-            c.power = c.basePower;
-            c.armor = GWENT_CARDS[c.id]?.armor || 0;
-            c.attackedThisRound = false;
-            if (c.id !== 'thorn_sapling') p.graveyard.push(c);
+            if (c.resilient) {
+              c.attackedThisTurn = false;
+              survivors.unshift(c);
+              this.log(`🛡️ ${p.name}'s ${c.name} is Resilient and stays on the battlefield!`, team === 1 ? 'team1' : 'team2');
+            } else {
+              c.power = c.basePower;
+              c.armor = GWENT_CARDS[c.id]?.armor || 0;
+              c.shield = Boolean(GWENT_CARDS[c.id]?.shield);
+              c.mansonBoostedThisTurn = false;
+              c.attackedThisTurn = false;
+              if (c.id !== 'thorn_sapling') p.graveyard.push(c);
+            }
           }
+          p.rows[rk] = survivors;
         });
 
         // Phoenix Rebirth passive
@@ -1037,7 +1350,8 @@
       });
 
       window.soundFX?.playCardFlipReveal?.(false);
-      this.log(`🃏 Round ${this.state.round} begins! Both players drew up to 2 cards.`, 'system');
+      const starterName = this.state.players[startingTeam]?.name || 'Player 1';
+      this.log(`🃏 Round ${this.state.round} begins! Both players drew up to 2 cards. ${starterName} goes first.`, 'system');
       this.render();
 
       if (this.gameMode === 'ai' && this.state.turnTeam === 2) {
@@ -1122,6 +1436,53 @@
       }
 
       this.playCardToRow(2, bestChoice.card.uid, bestChoice.row);
+      this.runAiAttacksAndEnd();
+    }
+
+    runAiAttacksAndEnd() {
+      if (this.isMatchOver || !this.state || this.state.turnTeam !== 2) return;
+
+      // Use any ally-boost abilities (e.g. Manson, Wolf Father) on unboosted allies first
+      const booster = this.getAllBoardCards(2).find(c => this.getBoostableAlliesFor(c, 2).length > 0);
+      if (booster) {
+        const allyTarget = this.getBoostableAlliesFor(booster, 2)[0];
+        this.aiTimeout = setTimeout(() => {
+          if (this.isMatchOver || !this.state || this.state.turnTeam !== 2) return;
+          this.executeAllyBoost(2, booster, allyTarget);
+          this.runAiAttacksAndEnd();
+        }, 380);
+        return;
+      }
+
+      const readyAttackers = this.canTeamAttackThisTurn(2)
+        ? this.getAllBoardCards(2).filter(c => !c.attackedThisTurn)
+        : [];
+      const oppTargets = [];
+      ['melee', 'ranged'].forEach(rk => {
+        this.state.players[1].rows[rk].forEach(c => oppTargets.push({ card: c, rowKey: rk }));
+      });
+
+      if (readyAttackers.length === 0 || oppTargets.length === 0) {
+        this.advanceTurn();
+        return;
+      }
+
+      const attacker = readyAttackers[0];
+      const dmg = Math.max(1, attacker.power);
+      // Prefer a target that will be destroyed, otherwise the highest-power target
+      oppTargets.sort((a, b) => {
+        const aKills = (a.card.power + a.card.armor) <= dmg ? 1 : 0;
+        const bKills = (b.card.power + b.card.armor) <= dmg ? 1 : 0;
+        if (bKills !== aKills) return bKills - aKills;
+        return b.card.power - a.card.power;
+      });
+      const target = oppTargets[0];
+
+      this.aiTimeout = setTimeout(() => {
+        if (this.isMatchOver || !this.state || this.state.turnTeam !== 2) return;
+        this.executeBoardAttack(2, attacker.uid, 1, target.card, target.rowKey);
+        this.runAiAttacksAndEnd();
+      }, 420);
     }
 
     // -------------------------------------------------------------------------
@@ -1132,7 +1493,7 @@
       const isPlayerVictory = winningTeam === 1;
       const p1 = this.state.players[1];
       const p2 = this.state.players[2];
-      const winnerTitle = isPlayerVictory ? 'SOLAR VICTORY!' : `${p2.name.toUpperCase()} WINS!`;
+      const winnerTitle = isPlayerVictory ? `${p1.name.toUpperCase()} WINS!` : `${p2.name.toUpperCase()} WINS!`;
 
       const titleEl = document.getElementById('winner-title');
       const msgEl = document.getElementById('winner-message');
@@ -1145,7 +1506,7 @@
           const isWagerTuesday = activeEvent?.id === 'wager_tuesday';
           const wagerAmt = isWagerTuesday ? '$2.00' : '$1.00';
           msgEl.innerHTML = `
-            You outsmarted <b>Pluto</b> in Mythos Gwent (${p1.gems}–${p2.gems} Gems)!<br>
+            You outsmarted <b>Pluto</b> in Mythos (${p1.gems}–${p2.gems} Gems)!<br>
             <div style="margin-top: 14px; padding: 12px 16px; background: rgba(16, 185, 129, 0.22); border: 2px solid #34d399; border-radius: 12px; color: #6ee7b7; text-align: center;">
               🪙 <b>WAGER WON: +${wagerAmt} GOLD!</b><br>
               <span style="font-size: 13px; color: #f8fafc;">Pluto paid out his ${wagerAmt} bet!</span>
@@ -1153,17 +1514,17 @@
           `;
           this.overworld?.handlePlutoBattleResult?.(true);
         } else {
-          msgEl.innerHTML = `<b>Pluto</b> won the Mythos Gwent match.<br><div style="margin-top: 12px; color: #fca5a5;">🪙 You lost your wager to Pluto.</div>`;
+          msgEl.innerHTML = `<b>Pluto</b> won the Mythos match.<br><div style="margin-top: 12px; color: #fca5a5;">🪙 You lost your wager to Pluto.</div>`;
           this.overworld?.handlePlutoBattleResult?.(false);
         }
       } else if (isPlayerVictory && this.currentChallenger?.id === 'maya' && msgEl) {
-        msgEl.innerHTML = `You defeated <b>Maya</b> in Mythos Gwent!<br><div style="margin-top: 12px; color: #86efac;">🌿 Maya: "Breathtaking card synergy!"</div>`;
+        msgEl.innerHTML = `You defeated <b>Maya</b> in Mythos!<br><div style="margin-top: 12px; color: #86efac;">🌿 Maya: "Breathtaking card synergy!"</div>`;
         this.overworld?.handleMayaBattleResult?.(true);
       } else if (isPlayerVictory && this.currentChallenger?.id === 'silas' && msgEl) {
-        msgEl.innerHTML = `You defeated <b>Silas</b> in Mythos Gwent!<br><div style="margin-top: 12px; color: #fde68a;">⚙️ Earned +$2.00 & Dwarf Warden Foil Card!</div>`;
+        msgEl.innerHTML = `You defeated <b>Silas</b> in Mythos!<br><div style="margin-top: 12px; color: #fde68a;">⚙️ Earned +$2.00 & Dwarf Warden Foil Card!</div>`;
         this.overworld?.handleSilasBattleResult?.(true);
       } else if (isPlayerVictory && this.currentChallenger?.id === 'nova' && msgEl) {
-        msgEl.innerHTML = `You defeated <b>Nova</b> in Mythos Gwent!<br><div style="margin-top: 12px; color: #e9d5ff;">✨ Earned +$2.00 & Pegasus Foil Card!</div>`;
+        msgEl.innerHTML = `You defeated <b>Nova</b> in Mythos!<br><div style="margin-top: 12px; color: #e9d5ff;">✨ Earned +$2.00 & Pegasus Foil Card!</div>`;
         this.overworld?.handleNovaBattleResult?.(true);
       } else if (this.currentChallenger?.tournamentContext?.type === 'park_monday_rr' && msgEl) {
         document.getElementById('btn-rematch')?.classList.add('hidden');
@@ -1182,7 +1543,7 @@
           msgEl.innerHTML += `<br><div style="margin-top: 10px; color: #fde68a;">🏆 Tournament Complete! Rank: #${summary.playerRank}</div>`;
         }
       } else if (isPlayerVictory && this.currentChallenger && msgEl) {
-        msgEl.innerHTML = `You defeated <b>${this.currentChallenger.name}</b> in Mythos Gwent!<br><div style="margin-top: 12px; color: #93c5fd;">🎁 Old Card Binder unlocked in Overworld!</div>`;
+        msgEl.innerHTML = `You defeated <b>${this.currentChallenger.name}</b> in Mythos!<br><div style="margin-top: 12px; color: #93c5fd;">🎁 Old Card Binder unlocked in Overworld!</div>`;
         this.overworld?.grantOldCardBinder?.(this.currentChallenger);
       } else if (msgEl) {
         msgEl.textContent = isPlayerVictory
@@ -1241,22 +1602,32 @@
       document.getElementById('gwent-p2-box')?.classList.toggle('active-turn', this.state.turnTeam === 2 && !this.state.mulliganActive);
       document.getElementById('gwent-p1-passed')?.classList.toggle('hidden', !p1.passed);
       document.getElementById('gwent-p2-passed')?.classList.toggle('hidden', !p2.passed);
+      document.getElementById('hud-opp-passed')?.classList.toggle('hidden', !p2.passed);
+      document.querySelector('.gwent-side-player')?.classList.toggle('team-passed', Boolean(p1.passed));
+      document.querySelector('.gwent-side-opp')?.classList.toggle('team-passed', Boolean(p2.passed));
+      const showTurnHighlight = !this.state.mulliganActive && !this.isMatchOver;
+      document.querySelector('.gwent-side-player')?.classList.toggle('active-turn-side', showTurnHighlight && this.state.turnTeam === 1);
+      document.querySelector('.gwent-side-opp')?.classList.toggle('active-turn-side', showTurnHighlight && this.state.turnTeam === 2);
 
       this.renderGems('gwent-p1-gems', p1.gems);
       this.renderGems('gwent-p2-gems', p2.gems);
 
       document.getElementById('gwent-round-pill').textContent = `ROUND ${this.state.round} • BEST OF 3`;
-      document.getElementById('gwent-center-badge').textContent = `MYTHOS GWENT • ROUND ${this.state.round}`;
+      document.getElementById('gwent-center-badge').textContent = `MYTHOS • ROUND ${this.state.round}`;
       document.getElementById('gwent-turn-banner').textContent = this.state.mulliganActive
         ? `Opening Mulligan (${this.state.mulliganLeft} left)`
-        : (this.state.turnTeam === 1 ? "☀️ Solar's Turn" : `🌙 ${p2.name}'s Turn`);
+        : (this.state.turnTeam === 1 ? `☀️ ${p1.name}'s Turn` : `🌙 ${p2.name}'s Turn`);
 
-      // Pass Button (Sidebar + Floating HUD)
-      const canPass = !this.isMatchOver && !this.state.mulliganActive && (this.gameMode === '2p' || this.state.turnTeam === 1) && !this.state.players[this.state.turnTeam].passed;
+      // End Turn & Pass Buttons (Sidebar + Floating HUD)
+      const canAct = !this.isMatchOver && !this.state.mulliganActive && (this.gameMode === '2p' || this.state.turnTeam === 1) && !this.state.players[this.state.turnTeam].passed;
+      const endTurnBtn = document.getElementById('btn-gwent-end-turn');
+      if (endTurnBtn) endTurnBtn.disabled = !canAct;
+      const hudEndTurnBtn = document.getElementById('hud-btn-end-turn');
+      if (hudEndTurnBtn) hudEndTurnBtn.disabled = !canAct;
       const passBtn = document.getElementById('btn-gwent-pass');
-      if (passBtn) passBtn.disabled = !canPass;
+      if (passBtn) passBtn.disabled = !canAct;
       const hudPassBtn = document.getElementById('hud-btn-pass');
-      if (hudPassBtn) hudPassBtn.disabled = !canPass;
+      if (hudPassBtn) hudPassBtn.disabled = !canAct;
 
       const hudP1 = document.getElementById('hud-p1-score');
       if (hudP1) hudP1.textContent = s1;
@@ -1268,8 +1639,14 @@
       // Mulligan Bar
       const mullBar = document.getElementById('gwent-mulligan-bar');
       const mullSub = document.getElementById('mulligan-sub');
+      const mullConfirmBtn = document.getElementById('btn-mulligan-confirm');
+      const mullSelectedCount = (this.state.mulliganSelectedUids || []).length;
       if (mullBar) mullBar.classList.toggle('hidden', !this.state.mulliganActive);
-      if (mullSub) mullSub.innerHTML = `Click up to <b>${this.state.mulliganLeft} card(s)</b> in your hand to redraw, or press Ready.`;
+      if (mullSub) mullSub.innerHTML = `Select up to <b>${this.state.mulliganLeft} card(s)</b> in your hand, then click <b>Mulligan</b> to redraw (or press Ready).`;
+      if (mullConfirmBtn) {
+        mullConfirmBtn.disabled = !this.state.mulliganActive || mullSelectedCount === 0;
+        mullConfirmBtn.textContent = `🔄 Mulligan (${mullSelectedCount}/${this.state.mulliganLeft})`;
+      }
 
       // Card Inspector
       this.renderInspector(this.state.inspectedCard);
@@ -1308,8 +1685,8 @@
         });
       });
 
-      // Player Hand (shows active player's hand in 2P hotseat, or P1 in AI mode)
-      const viewingTeam = this.gameMode === '2p' ? this.state.turnTeam : 1;
+      // Player Hand (shows active player's hand in 2P hotseat, or P1 during mulligan / AI mode)
+      const viewingTeam = (!this.state.mulliganActive && this.gameMode === '2p') ? this.state.turnTeam : 1;
       const handEl = document.getElementById('gwent-player-hand');
       const hintEl = document.getElementById('gwent-hand-hint');
       if (hintEl) {
@@ -1317,12 +1694,25 @@
           ? this.getAllBoardCards(this.state.turnTeam).find(c => c.uid === this.state.selectedAttackerUid)
           : null;
         if (this.state.mulliganActive) {
-          hintEl.textContent = `Mulligan: Click a card to swap it (${this.state.mulliganLeft} remaining), or hold click to inspect.`;
+          const selCount = (this.state.mulliganSelectedUids || []).length;
+          hintEl.textContent = `Mulligan: Click up to ${this.state.mulliganLeft} cards to select (${selCount} selected), then click Mulligan — or hold click to inspect.`;
         } else if (activeAttacker) {
-          const atkDmg = Math.max(1, Math.floor(activeAttacker.power / 2));
-          hintEl.textContent = `⚔️ ${activeAttacker.name} ready (${atkDmg} Dmg): Click a glowing opposing card to attack, or click ${activeAttacker.name} again to cancel.`;
+          const boostTargets = this.getBoostableAlliesFor(activeAttacker, this.state.turnTeam);
+          if (boostTargets.length > 0 && !activeAttacker.attackedThisTurn) {
+            const atkDmg = Math.max(1, activeAttacker.power);
+            hintEl.textContent = `🐺 ${activeAttacker.name} (${atkDmg} Dmg): Click a glowing Wolf Pack ally to give +1 Power, or click an enemy to attack.`;
+          } else if (boostTargets.length > 0) {
+            hintEl.textContent = `🐺 ${activeAttacker.name}: Click a glowing Wolf Pack ally to give +1 Power, or click ${activeAttacker.name} to cancel.`;
+          } else {
+            const atkDmg = Math.max(1, activeAttacker.power);
+            hintEl.textContent = `⚔️ ${activeAttacker.name} ready (${atkDmg} Dmg): Click a glowing opposing card to attack, or click ${activeAttacker.name} again to cancel.`;
+          }
         } else if (selectedCard) {
           hintEl.textContent = `Selected ${selectedCard.name}: Click a highlighted ${ROW_LABELS[selectedCard.row]} row to deploy (or click card again to quick-play).`;
+        } else if (this.state.playedCardThisTurn) {
+          hintEl.textContent = `Card deployed! Click a glowing board card to attack, or click ⏭️ End Turn.`;
+        } else if (!this.canTeamAttackThisTurn(this.state.turnTeam)) {
+          hintEl.textContent = `First turn of Round ${this.state.round}: Click a hand card to deploy (attacks unlock on your next turn).`;
         } else {
           hintEl.textContent = `Click a hand card to play, click a ready board card to attack, or hold click to view details.`;
         }
@@ -1332,6 +1722,9 @@
         this.state.players[viewingTeam].hand.forEach(c => {
           const el = this.createCardElement(c, false);
           if (c.uid === this.state.selectedHandUid) el.classList.add('selected');
+          if (this.state.mulliganActive && (this.state.mulliganSelectedUids || []).includes(c.uid)) {
+            el.classList.add('mulligan-selected');
+          }
           el.addEventListener('click', () => {
             if (el.dataset.longPressTriggered === '1') {
               delete el.dataset.longPressTriggered;
@@ -1366,26 +1759,40 @@
       if (onBoard && this.state && !this.state.mulliganActive && !this.isMatchOver) {
         const activeTeam = this.state.turnTeam;
         const canControl = this.gameMode === '2p' || activeTeam === 1;
-        if (canControl && ownerTeam === activeTeam && !card.attackedThisRound && this.getAllBoardCards(activeTeam === 1 ? 2 : 1).length > 0) {
+        const canAttack = this.canTeamAttackThisTurn(activeTeam);
+        const hasOpp = this.getAllBoardCards(activeTeam === 1 ? 2 : 1).length > 0;
+        const canAct = (canAttack && !card.attackedThisTurn && hasOpp) || this.getBoostableAlliesFor(card, activeTeam).length > 0;
+        if (canControl && ownerTeam === activeTeam && canAct) {
           extraClasses += ' attack-ready';
         }
         if (this.state.selectedAttackerUid === card.uid) {
           extraClasses += ' attacker-selected';
         }
-        if (this.state.selectedAttackerUid && ownerTeam !== activeTeam) {
+        const selectedCard = this.state.selectedAttackerUid
+          ? this.getAllBoardCards(activeTeam).find(c => c.uid === this.state.selectedAttackerUid)
+          : null;
+        if (selectedCard && ownerTeam !== activeTeam && !selectedCard.attackedThisTurn) {
           extraClasses += ' attack-target';
         }
+        if (selectedCard && ownerTeam === activeTeam && card.uid !== selectedCard.uid && this.getBoostableAlliesFor(selectedCard, activeTeam).some(c => c.uid === card.uid)) {
+          extraClasses += ' boost-target';
+        }
       }
-      el.className = `gwent-card rarity-${card.rarity} ${onBoard ? 'board-card' : ''}${extraClasses}`;
+      if (card.shield) {
+        extraClasses += ' has-shield';
+      }
+      el.className = `gwent-card rarity-${card.border || card.rarity} ${onBoard ? 'board-card' : ''}${extraClasses}`;
       el.dataset.uid = card.uid;
 
       const powerClass = card.power > card.basePower ? 'boosted' : (card.power < card.basePower ? 'damaged' : '');
       const armorHtml = card.armor > 0 ? `<div class="gwent-card-armor">🛡️${card.armor}</div>` : '';
+      const shieldHtml = card.shield ? `<div class="gwent-card-shield-badge" title="Shield: Ignores next instance of damage">🔰</div>` : '';
 
       el.innerHTML = `
         <img class="gwent-card-art" src="${card.cardImg}" alt="${card.name}">
         <div class="gwent-card-power ${powerClass}">${card.power}</div>
         ${armorHtml}
+        ${shieldHtml}
         <div class="gwent-card-row-badge" title="${ROW_LABELS[card.row]}">${ROW_ICONS[card.row]}</div>
         <div class="gwent-card-name-strip">${card.name}</div>
       `;
@@ -1463,14 +1870,12 @@
       const rarEl = document.getElementById('gwent-modal-rarity');
       if (rarEl) rarEl.textContent = `${card.stars}★ ${card.rarity.toUpperCase()}`;
 
+      const pwrVal = card.power ?? card.basePower;
       const pwrEl = document.getElementById('gwent-modal-power');
       if (pwrEl) {
-        pwrEl.textContent = card.power;
-        pwrEl.className = 'stat-val ' + (card.power > card.basePower ? 'boosted' : (card.power < card.basePower ? 'damaged' : ''));
+        pwrEl.textContent = pwrVal;
+        pwrEl.className = 'stat-val ' + (pwrVal > card.basePower ? 'boosted' : (pwrVal < card.basePower ? 'damaged' : ''));
       }
-
-      const basePwrEl = document.getElementById('gwent-modal-base-power');
-      if (basePwrEl) basePwrEl.textContent = card.basePower;
 
       const armorEl = document.getElementById('gwent-modal-armor');
       if (armorEl) armorEl.textContent = card.armor || 0;
@@ -1567,7 +1972,10 @@
       document.getElementById('btn-rematch')?.addEventListener('click', () => this.resetMatch());
       document.getElementById('btn-reset')?.addEventListener('click', () => this.resetMatch());
       document.getElementById('gwent-btn-reset')?.addEventListener('click', () => this.resetMatch());
+      document.getElementById('btn-mulligan-confirm')?.addEventListener('click', () => this.confirmMulligan());
       document.getElementById('btn-mulligan-done')?.addEventListener('click', () => this.finishMulligan());
+      document.getElementById('btn-gwent-end-turn')?.addEventListener('click', () => this.endTurn());
+      document.getElementById('hud-btn-end-turn')?.addEventListener('click', () => this.endTurn());
       document.getElementById('btn-gwent-pass')?.addEventListener('click', () => this.passRound());
       document.getElementById('hud-btn-pass')?.addEventListener('click', () => this.passRound());
       document.getElementById('btn-clear-log')?.addEventListener('click', () => {

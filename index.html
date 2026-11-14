@@ -18,7 +18,7 @@
       <div class="logo-area">
         <h1 class="game-title">MYTHOS</h1>
         <span class="version-tag" id="game-version">v1.41</span>
-        <span class="subtitle" id="header-subtitle">Open-World Card RPG</span>
+        <span class="subtitle" id="header-subtitle"></span>
       </div>
 
       <!-- Overworld Style & Lighting Quick-Tweak Bar (Visible in Overworld) -->
@@ -28,21 +28,13 @@
         <button id="btn-open-phone" class="ui-btn primary-btn phone-toolbar-btn" style="padding: 4px 10px; font-size: 12px; background: linear-gradient(135deg, #4f46e5, #6366f1); border-color: #818cf8;" title="Mythos Mobile Smartphone (Key: P)">📱 Phone <span id="phone-alert-badge" class="phone-badge-pill hidden">!</span></button>
         <button id="btn-open-inventory" class="ui-btn primary-btn backpack-toolbar-btn" title="Open Adventurer Backpack & Inventory (Key: I)"><img src="Sprites/Overworld/backpack_icon.png" class="hud-backpack-img" alt=""> Backpack <span id="inv-badge-count" class="inv-badge-pill">0</span></button>
         <button id="btn-open-binder" class="ui-btn primary-btn binder-toolbar-btn locked" style="padding: 4px 10px; font-size: 12px; background: linear-gradient(135deg, #1e3a8a, #2563eb); border-color: #60a5fa;" title="Old Card Binder (Locked — Defeat Friend to Unlock)">📖 Old Card Binder <span id="binder-badge-count" class="inv-badge-pill">0</span></button>
+        <button id="btn-open-playing-deck" class="ui-btn primary-btn deck-toolbar-btn" style="padding: 4px 10px; font-size: 12px; background: linear-gradient(135deg, #78350f, #b45309); border-color: #fbbf24;" title="Build the Playing Deck you take into Mythos battles">🃏 Playing Deck <span id="deck-badge-count" class="inv-badge-pill">0</span></button>
         <button id="btn-open-creator" class="ui-btn secondary" style="padding: 4px 10px; font-size: 12px;" title="Customize Character or World Save">👤 Character</button>
-        <button id="btn-replay-intro" class="ui-btn secondary" style="padding: 4px 10px; font-size: 12px;" title="Replay the Living Room Opening & TV Commercial">🎬 Replay Intro</button>
         <select id="ow-time-select" class="ow-select" title="Time of Day Shader">
           <option value="day" selected>☀️ Summer Day</option>
           <option value="sunset">🌅 Golden Hour</option>
           <option value="night">🌙 Cozy Night</option>
         </select>
-        <label class="ow-check-label" title="Toggle Dynamic Lighting & Bloom">
-          <input type="checkbox" id="ow-toggle-shaders" checked>
-          <span>✨ Shaders</span>
-        </label>
-        <label class="ow-check-label" title="Show 32x32 Tile Grid">
-          <input type="checkbox" id="ow-toggle-grid">
-          <span>📏 32-Grid</span>
-        </label>
       </div>
 
       <div class="header-controls">
@@ -144,10 +136,12 @@
         <button type="button" class="ui-btn primary-btn gwent-menu-toggle-btn" id="btn-gwent-menu" title="Open Match Menu & Scoreboards">☰ Menu</button>
         <div class="gwent-hud-scores">
           <span class="hud-team-2">🌙 <b id="hud-p2-score">0</b></span>
+          <span class="gwent-pass-badge hidden" id="hud-opp-passed">PASSED</span>
           <span class="hud-vs">vs</span>
           <span class="hud-team-1"><b id="hud-p1-score">0</b> ☀️</span>
         </div>
         <span class="gwent-hud-round" id="hud-round-pill">R1</span>
+        <button type="button" class="ui-btn gwent-hud-end-turn-btn" id="hud-btn-end-turn" title="End Turn">⏭️ End Turn</button>
         <button type="button" class="ui-btn gwent-hud-pass-btn" id="hud-btn-pass" title="Pass Round">🏳️ Pass</button>
       </div>
 
@@ -171,7 +165,7 @@
         <div class="gwent-top-controls">
           <div class="gwent-brand-row">
             <span class="gwent-brand-title">MYTHOS</span>
-            <span class="gwent-brand-sub" id="gwent-arena-subtitle">Gwent • Best of 3</span>
+            <span class="gwent-brand-sub" id="gwent-arena-subtitle">Best of 3</span>
             <button type="button" class="drawer-close-btn gwent-menu-close-btn" id="btn-close-gwent-menu" title="Close Menu">✕</button>
           </div>
           <div class="gwent-ctrl-buttons">
@@ -187,7 +181,7 @@
             <div class="gwent-player-identity">
               <span class="gwent-crest">🌙</span>
               <div>
-                <div class="gwent-player-name" id="gwent-p2-name">Lunar AI</div>
+                <div class="gwent-player-name" id="gwent-p2-name">A.I.</div>
                 <div class="gwent-player-meta">Hand: <span id="gwent-p2-hand-count">0</span> • Deck: <span id="gwent-p2-deck-count">0</span></div>
               </div>
             </div>
@@ -205,7 +199,7 @@
         <!-- Round & Turn Status -->
         <div class="gwent-match-status" id="gwent-match-status">
           <div class="gwent-round-pill" id="gwent-round-pill">ROUND 1 • BEST OF 3</div>
-          <div class="gwent-turn-banner" id="gwent-turn-banner">Solar's Turn</div>
+          <div class="gwent-turn-banner" id="gwent-turn-banner">Your Turn</div>
         </div>
 
         <!-- Player Scoreboard (Solar) -->
@@ -214,7 +208,7 @@
             <div class="gwent-player-identity">
               <span class="gwent-crest">☀️</span>
               <div>
-                <div class="gwent-player-name" id="gwent-p1-name">Solar (You)</div>
+                <div class="gwent-player-name" id="gwent-p1-name">You</div>
                 <div class="gwent-player-meta">Hand: <span id="gwent-p1-hand-count">0</span> • Deck: <span id="gwent-p1-deck-count">0</span></div>
               </div>
             </div>
@@ -229,8 +223,11 @@
           </div>
         </div>
 
-        <!-- Pass Round & Chronicle Actions -->
+        <!-- End Turn, Pass Round & Chronicle Actions -->
         <div class="gwent-sidebar-actions">
+          <button class="ui-btn gwent-end-turn-btn" id="btn-gwent-end-turn" title="End your turn before exhausting all attacks">
+            ⏭️ END TURN
+          </button>
           <button class="ui-btn gwent-pass-btn" id="btn-gwent-pass" title="Pass this round and save your remaining cards">
             🏳️ PASS ROUND
           </button>
@@ -263,9 +260,12 @@
         <div class="gwent-mulligan-bar hidden" id="gwent-mulligan-bar">
           <div class="mulligan-info">
             <span class="mulligan-title">🃏 OPENING MULLIGAN</span>
-            <span class="mulligan-sub" id="mulligan-sub">Click up to <b>2 cards</b> in your hand to redraw, or press Ready.</span>
+            <span class="mulligan-sub" id="mulligan-sub">Select up to <b>2 cards</b> in your hand, then click <b>Mulligan</b> to redraw.</span>
           </div>
-          <button class="ui-btn primary-btn" id="btn-mulligan-done">✓ Ready to Duel</button>
+          <div class="mulligan-actions">
+            <button class="ui-btn gwent-mulligan-btn" id="btn-mulligan-confirm" disabled>🔄 Mulligan (0/2)</button>
+            <button class="ui-btn primary-btn" id="btn-mulligan-done">✓ Ready to Duel</button>
+          </div>
         </div>
 
         <!-- 6 Combat Rows -->
@@ -293,7 +293,7 @@
           <!-- Center Divider & Round Overlay Toast -->
           <div class="gwent-center-divider">
             <div class="gwent-divider-line"></div>
-            <div class="gwent-center-badge" id="gwent-center-badge">MYTHOS GWENT • ROUND 1</div>
+            <div class="gwent-center-badge" id="gwent-center-badge">MYTHOS • ROUND 1</div>
             <div class="gwent-divider-line"></div>
           </div>
 
@@ -320,7 +320,7 @@
           <!-- Round Result Overlay Banner (briefly shown between rounds) -->
           <div class="gwent-round-overlay hidden" id="gwent-round-overlay">
             <div class="round-overlay-title" id="round-overlay-title">ROUND 1 VICTORY!</div>
-            <div class="round-overlay-sub" id="round-overlay-sub">Solar 24 — 18 Lunar</div>
+            <div class="round-overlay-sub" id="round-overlay-sub">You 24 — 18 A.I.</div>
           </div>
         </div>
 
@@ -343,7 +343,7 @@
           </div>
         </div>
         <div class="combat-log" id="combat-log">
-          <div class="log-entry system">Mythos Gwent Arena initialized. Draw your hand and outwit your rival!</div>
+          <div class="log-entry system">Mythos Arena initialized. Draw your hand and outwit your rival!</div>
         </div>
       </aside>
     </main>
@@ -364,12 +364,8 @@
           <h2 class="gwent-modal-title" id="gwent-modal-name">Phoenix</h2>
           <div class="gwent-modal-stats-row">
             <div class="gwent-modal-stat-box">
-              <span class="stat-lbl">POWER</span>
-              <span class="stat-val" id="gwent-modal-power">8</span>
-            </div>
-            <div class="gwent-modal-stat-box">
               <span class="stat-lbl">BASE POWER</span>
-              <span class="stat-val" id="gwent-modal-base-power">8</span>
+              <span class="stat-val" id="gwent-modal-power">8</span>
             </div>
             <div class="gwent-modal-stat-box" id="gwent-modal-armor-box">
               <span class="stat-lbl">ARMOR</span>
@@ -792,7 +788,7 @@
             <span class="shop-icon-badge">🃏</span>
             <div>
               <h2 class="shop-title">LEO'S CARD SHOP • BUY &amp; SELL COUNTER</h2>
-              <p class="shop-sub">Buy 1st-Edition Booster Packs ($10) or sell extra cards from your backpack for cash!</p>
+              <p class="shop-sub">Buy 1st-Edition Booster Packs ($5) or sell extra cards from your backpack for cash!</p>
             </div>
           </div>
           <div class="shop-header-right">
@@ -804,7 +800,7 @@
         <!-- Shop Navigation Tabs: BUY / SELL -->
         <div class="shop-tabs-nav">
           <button type="button" class="shop-tab-btn active" id="shop-tab-buy" data-tab="buy">
-            🛒 BUY PACKS ($10)
+            🛒 BUY PACKS ($5)
           </button>
           <button type="button" class="shop-tab-btn" id="shop-tab-sell" data-tab="sell">
             💵 SELL CARDS <span class="shop-tab-count-pill" id="shop-sell-count-pill">0</span>
@@ -823,19 +819,19 @@
               <div class="shop-pack-details">
                 <div class="shop-pack-header">
                   <h3 class="shop-pack-title">1st-Edition Mythos Base Card Pack</h3>
-                  <span class="shop-pack-price-tag">$10.00</span>
+                  <span class="shop-pack-price-tag">$5.00</span>
                 </div>
                 <p class="shop-pack-desc">
-                  Factory-sealed foil booster pack containing <b>3 random Mythos Game Cards</b>. Rip open the pack to discover elemental Beasts (Fire, Earth, Poison, Plant) and battle-tested moves!
+                  Factory-sealed foil booster pack containing <b>5 random Mythos Game Cards</b>. Rip open the pack to discover new warriors, pack beasts, and war machines!
                 </p>
                 <div class="shop-pack-features">
-                  <span class="shop-feat-pill">📦 3 Cards / Pack</span>
+                  <span class="shop-feat-pill">📦 5 Cards / Pack</span>
                   <span class="shop-feat-pill">🔥 1st-Edition Holos</span>
                   <span class="shop-feat-pill">★ Rarity 1★ to 4★</span>
                 </div>
                 <div class="shop-buy-actions">
                   <button type="button" class="ui-btn primary-btn shop-buy-btn" id="btn-shop-buy-pack">
-                    🛒 Buy Base Card Pack ($10.00)
+                    🛒 Buy Base Card Pack ($5.00)
                   </button>
                   <button type="button" class="ui-btn secondary shop-rip-now-btn hidden" id="btn-shop-rip-now">
                     ✨ Rip Open Unopened Pack
@@ -930,9 +926,20 @@
             </div>
             <div class="binder-header-actions">
               <span class="binder-counter-pill" id="binder-counter-pill">3 / 9 Sleeves Filled</span>
+              <button type="button" class="ui-btn primary-btn" id="btn-binder-to-deck" style="padding: 4px 10px; font-size: 11px; background: linear-gradient(135deg, #78350f, #b45309); border-color: #fbbf24;">🃏 Playing Deck</button>
               <button type="button" class="ui-btn secondary" id="btn-binder-to-inv" style="padding: 4px 10px; font-size: 11px;">🎒 Backpack</button>
               <button type="button" class="drawer-close-btn" id="btn-close-binder" title="Close Binder">✕</button>
             </div>
+          </div>
+
+          <!-- Binder Sort Controls -->
+          <div class="binder-sort-bar" id="binder-sort-bar">
+            <span class="binder-sort-label">Sort By:</span>
+            <button type="button" class="binder-sort-btn active" data-sort="default">Slot Order</button>
+            <button type="button" class="binder-sort-btn" data-sort="alpha">🔤 A–Z</button>
+            <button type="button" class="binder-sort-btn" data-sort="type">🏷️ Type</button>
+            <button type="button" class="binder-sort-btn" data-sort="power">⚔️ Attack Power</button>
+            <button type="button" class="binder-sort-btn" data-sort="stars">⭐ Star Rating</button>
           </div>
 
           <!-- 9-Pocket Card Sleeves Grid (3x3 Collector Sheet) -->
@@ -966,6 +973,47 @@
         </div>
         <div class="binder-picker-footer">
           <button type="button" class="ui-btn secondary" id="btn-cancel-binder-picker">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Playing Deck Builder Modal (Deck Taken Into Battles) -->
+    <div class="modal-overlay hidden" id="playing-deck-modal">
+      <div class="playing-deck-dialog">
+        <div class="playing-deck-header">
+          <div>
+            <h2 class="playing-deck-title">🃏 PLAYING DECK</h2>
+            <p class="playing-deck-sub">Set up the deck you take into Mythos battles (if under 12 cards, Standard Deck cards fill remaining slots).</p>
+          </div>
+          <div class="playing-deck-header-actions">
+            <span class="binder-counter-pill" id="playing-deck-count-pill">0 Cards</span>
+            <button type="button" class="drawer-close-btn" id="btn-close-playing-deck" title="Close Playing Deck">✕</button>
+          </div>
+        </div>
+
+        <div class="playing-deck-body">
+          <div class="playing-deck-col">
+            <div class="playing-deck-col-header">
+              <span>⚔️ Your Battle Deck</span>
+              <div class="playing-deck-col-tools">
+                <button type="button" class="ui-btn secondary" id="btn-deck-autofill" style="padding: 4px 8px; font-size: 11px;">✨ Fill Standard</button>
+                <button type="button" class="ui-btn secondary" id="btn-deck-clear" style="padding: 4px 8px; font-size: 11px;">🧹 Clear</button>
+              </div>
+            </div>
+            <div class="playing-deck-list" id="playing-deck-current-list"></div>
+          </div>
+
+          <div class="playing-deck-col">
+            <div class="playing-deck-col-header">
+              <span>🎒 Available Cards (Backpack &amp; Binder)</span>
+            </div>
+            <div class="playing-deck-list" id="playing-deck-pool-list"></div>
+          </div>
+        </div>
+
+        <div class="playing-deck-footer">
+          <span class="playing-deck-status" id="playing-deck-status"></span>
+          <button type="button" class="ui-btn primary-btn" id="btn-playing-deck-done">✓ Done</button>
         </div>
       </div>
     </div>
@@ -1146,7 +1194,7 @@
           <div class="sealed-booster-wrapper" id="sealed-booster-wrapper" title="Click to charge & tear open!">
             <!-- Top Foil Tear Strip -->
             <div class="pack-foil-top-strip" id="pack-foil-top-strip">
-              <span class="pack-crimp-label">★ MYTHOS TCG • 3 CARDS INSIDE ★</span>
+              <span class="pack-crimp-label">★ MYTHOS TCG • 5 CARDS INSIDE ★</span>
               <div class="pack-tear-line"></div>
             </div>
 
@@ -1179,13 +1227,13 @@
         <!-- Stage Footer Controls -->
         <div class="pack-stage-footer">
           <button type="button" class="ui-btn primary-btn pack-next-btn hidden" id="btn-pack-next-card">
-            Next Card ▸ (2 of 3)
+            Next Card ▸ (2 of 5)
           </button>
           <button type="button" class="ui-btn secondary hidden" id="btn-pack-view-all">
-            👀 View All 3 Cards
+            👀 View All 5 Cards
           </button>
           <button type="button" class="ui-btn primary-btn pack-collect-btn hidden" id="btn-pack-collect">
-            🎒 Collect All 3 Cards into Inventory
+            🎒 Collect All 5 Cards into Inventory
           </button>
         </div>
       </div>

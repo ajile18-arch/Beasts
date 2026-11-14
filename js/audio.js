@@ -526,7 +526,124 @@ class SoundController {
       osc.stop(startTime + (i === chord.length - 1 ? 1.2 : 0.6));
     });
   }
+
+  // Card Attack Swoosh & Strike
+  playAttack() {
+    if (!this.enabled) return;
+    this.init();
+    const now = this.ctx.currentTime;
+
+    // Whoosh noise sweep
+    const bufferSize = Math.floor(this.ctx.sampleRate * 0.16);
+    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = Math.random() * 2 - 1;
+    }
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = buffer;
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.Q.value = 1.8;
+    filter.frequency.setValueAtTime(1600, now);
+    filter.frequency.exponentialRampToValueAtTime(320, now + 0.15);
+
+    const nGain = this.ctx.createGain();
+    nGain.gain.setValueAtTime(0.01, now);
+    nGain.gain.linearRampToValueAtTime(0.28, now + 0.03);
+    nGain.gain.exponentialRampToValueAtTime(0.005, now + 0.16);
+
+    noise.connect(filter);
+    filter.connect(nGain);
+    nGain.connect(this.ctx.destination);
+    noise.start(now);
+
+    // Punchy strike transient
+    const osc = this.ctx.createOscillator();
+    const oGain = this.ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(240, now + 0.02);
+    osc.frequency.exponentialRampToValueAtTime(65, now + 0.14);
+    oGain.gain.setValueAtTime(0.32, now + 0.02);
+    oGain.gain.exponentialRampToValueAtTime(0.005, now + 0.14);
+    osc.connect(oGain);
+    oGain.connect(this.ctx.destination);
+    osc.start(now + 0.02);
+    osc.stop(now + 0.14);
+  }
+
+  // Metallic Armor Clank when an attack hits Armor
+  playArmorHit() {
+    if (!this.enabled) return;
+    this.init();
+    const now = this.ctx.currentTime;
+    const freqs = [480, 745, 1190];
+    freqs.forEach((f, i) => {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = i === 0 ? 'triangle' : 'square';
+      osc.frequency.setValueAtTime(f, now);
+      osc.frequency.exponentialRampToValueAtTime(f * 0.88, now + 0.22);
+
+      gain.gain.setValueAtTime(0.18 / (i + 1), now);
+      gain.gain.exponentialRampToValueAtTime(0.002, now + 0.22);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.22);
+    });
+  }
+
+  // Crystalline Energy Shatter when a Shield breaks
+  playShieldBreak() {
+    if (!this.enabled) return;
+    this.init();
+    const now = this.ctx.currentTime;
+
+    // High-pass shatter noise burst
+    const bufferSize = Math.floor(this.ctx.sampleRate * 0.28);
+    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = Math.random() * 2 - 1;
+    }
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = buffer;
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'highpass';
+    filter.frequency.setValueAtTime(2200, now);
+
+    const nGain = this.ctx.createGain();
+    nGain.gain.setValueAtTime(0.28, now);
+    nGain.gain.exponentialRampToValueAtTime(0.003, now + 0.28);
+
+    noise.connect(filter);
+    filter.connect(nGain);
+    nGain.connect(this.ctx.destination);
+    noise.start(now);
+
+    // Cascading crystalline glass shards
+    const shards = [1960, 1540, 2320, 1180, 880];
+    shards.forEach((freq, idx) => {
+      const osc = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      const t = now + idx * 0.035;
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, t);
+      osc.frequency.exponentialRampToValueAtTime(freq * 0.72, t + 0.14);
+      g.gain.setValueAtTime(0.14, t);
+      g.gain.exponentialRampToValueAtTime(0.002, t + 0.14);
+      osc.connect(g);
+      g.connect(this.ctx.destination);
+      osc.start(t);
+      osc.stop(t + 0.14);
+    });
+  }
 }
 
 const sounds = new SoundController();
 window.sounds = sounds;
+window.soundFX = sounds;

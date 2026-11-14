@@ -132,9 +132,9 @@
           shortDay: 'Sat',
           title: "Weekend Town Market",
           icon: '🏷️',
-          highlight: 'Booster Sale ($8.00 per pack)',
-          desc: "The weekend outdoor market brings discounts to Leo's Card Shop! 1st-Edition Booster Packs are on sale for $8.00 (regularly $10.00).",
-          perk: "Booster packs discounted to $8.00"
+          highlight: 'Booster Sale ($4.00 per pack)',
+          desc: "The weekend outdoor market brings discounts to Leo's Card Shop! 1st-Edition Booster Packs are on sale for $4.00 (regularly $5.00).",
+          perk: "Booster packs discounted to $4.00"
         },
         {
           id: 'stargazer_astronomy',
@@ -171,10 +171,14 @@
         : Array(9).fill(null);
       while (rawBinder.length < 9) rawBinder.push(null);
       this.binderSlots = this.wrapReactiveArray(rawBinder.map(s => s ? this.wrapReactiveItem(s) : null), 'binder');
+      this.consolidateBinderStacks();
       this.inspectingCard = null;
       this.inspectingSlotIndex = null;
       this.inspectingPose = 'idle';
       this.binderPickerTargetIndex = null;
+      this.playingDeck = Array.isArray(this.worldSave?.playingDeck)
+        ? [...this.worldSave.playingDeck]
+        : [];
 
       // Ensure progressed players receive Pegasus and Dreadnaught cards to test immediately
       if (this.hasOpenedStarterPack && !this.inventory.some(i => i.beastId === 'pegasus') && !this.binderSlots?.some(s => s && s.beastId === 'pegasus')) {
@@ -1045,109 +1049,160 @@
 
     getMarketplaceListings() {
       const friendName = this.friendName || 'Mike';
-      return [
+      const cards = window.MythosGwentCards?.CARDS || {};
+      const formatCardMeta = (cardId, fallbackLabel) => {
+        const c = cards[cardId];
+        if (!c) return { cardName: fallbackLabel, element: '🃏 Mythos Card', img: 'Cards/Mythos_Card_Back.png' };
+        const armorTxt = c.armor > 0 ? ` • 🛡️${c.armor}` : '';
+        return {
+          cardName: c.name,
+          element: `${'★'.repeat(c.stars || 1)} ${c.role || 'Unit'} • ${c.basePower} PWR${armorTxt}`,
+          img: c.cardImg
+        };
+      };
+
+      const buySpecs = [
         {
           id: 'mkt_buy_1',
-          type: 'buy',
           npcId: 'maya',
-          beastId: 'werewolf',
-          cardName: 'Werewolf',
-          element: '🌑 Dark • 140 HP',
-          basePrice: 5.50,
-          price: 5.50,
+          beastId: 'werewolf_pup',
+          fallback: 'Werewolf Pup',
+          price: 4.50,
           seller: 'Maya',
           avatar: '🌿',
           location: "Maya's House, Landmark, or Yours",
-          note: 'Mint condition duplicate from base pack. Happy to negotiate where and when we meet!',
-          img: 'Cards/Werewolf_Card.png'
+          note: 'Pulled a spare Werewolf Pup from a 5-card booster! Great for Wolf Pack decks.'
         },
         {
           id: 'mkt_buy_2',
-          type: 'buy',
           npcId: 'silas',
-          beastId: 'earth_golem',
-          cardName: 'Earth Golem',
-          element: '🪨 Earth • 200 HP',
-          basePrice: 6.00,
-          price: 6.00,
+          beastId: 'scrap_heap',
+          fallback: 'Scrap Heap',
+          price: 6.50,
           seller: 'Silas',
           avatar: '⚒️',
           location: "Silas's House, Landmark, or Yours",
-          note: 'Rock Barrier defense single. Pick a day & venue and send an offer!',
-          img: 'Cards/Earth_Golem_Card.png'
+          note: 'Silver-border Machine with Shield & 2 Armor. Pick a day & venue and send an offer!'
         },
         {
           id: 'mkt_buy_3',
-          type: 'buy',
           npcId: 'pluto',
-          beastId: 'hydra',
-          cardName: 'Hydra',
-          element: '💧 Water • 160 HP',
-          basePrice: 7.00,
-          price: 7.00,
+          beastId: 'orc_infantry',
+          fallback: 'Orc Infantry',
+          price: 6.00,
           seller: 'Pluto',
           avatar: '💻',
           location: "Pluto's House, Landmark, or Yours",
-          note: 'Multi-target Venom Strike beast. Open to counter-offers depending on meetup spot.',
-          img: 'Cards/Hydra_Card.png'
+          note: 'Boosts all Melee Orc Army allies by +1 Power. Open to counter-offers!'
         },
         {
           id: 'mkt_buy_4',
-          type: 'buy',
           npcId: 'nova',
-          beastId: 'phoenix',
-          cardName: 'Phoenix (Holo)',
-          element: '🔥 Fire • 120 HP',
-          basePrice: 12.00,
-          price: 12.00,
+          beastId: 'minerva_wolf_mother',
+          fallback: 'Minerva, Wolf Mother',
+          price: 11.50,
           seller: 'Nova',
           avatar: '✨',
           location: "Nova's House, Landmark, or Yours",
-          note: 'Flaming Talons & Rebirth burst! Cheaper if you visit my observatory.',
-          img: 'Cards/Phoenix_Card.png'
+          note: '3★ Gold Wolf Pack matriarch — grants +2 Armor to your pack on deploy!'
         },
         {
+          id: 'mkt_buy_5',
+          npcId: 'silas',
+          beastId: 'rust_bucket',
+          fallback: 'Rust Bucket',
+          price: 4.00,
+          seller: 'Silas',
+          avatar: '⚒️',
+          location: "Silas's House, Landmark, or Yours",
+          note: 'Resilient Machine that stays on the board between rounds!'
+        }
+      ];
+
+      const sellSpecs = [
+        {
           id: 'mkt_sell_1',
-          type: 'sell',
           npcId: 'friend',
-          beastId: 'phoenix',
-          cardName: 'Phoenix',
-          element: '🔥 Fire Beast',
-          basePrice: 8.50,
-          payout: 8.50,
+          beastId: 'manson_wolf_father',
+          fallback: 'Manson, Wolf Father',
+          payout: 14.00,
           buyer: friendName,
           avatar: '🧢',
           location: `${friendName}'s House, Landmark, or Yours`,
-          note: 'Looking to buy 1x Phoenix to round out my aggressive fire burn deck!'
+          note: 'Looking to buy 1x Manson, Wolf Father (4★ Decorative Gold) for my Wolf Pack deck!'
         },
         {
           id: 'mkt_sell_2',
-          type: 'sell',
           npcId: 'pluto',
-          beastId: 'earth_golem',
-          cardName: 'Earth Golem',
-          element: '🪨 Earth Beast',
-          basePrice: 5.00,
-          payout: 5.00,
+          beastId: 'orc_slinger',
+          fallback: 'Orc Slinger',
+          payout: 5.50,
           buyer: 'Pluto',
           avatar: '💻',
           location: "Pluto's House, Landmark, or Yours",
-          note: 'Need an Earth tank card for damage-mitigation calculation tests.'
+          note: 'Need a Ranged Orc Army unit to pair with my Orc Infantry.'
         },
         {
           id: 'mkt_sell_3',
-          type: 'sell',
           npcId: 'maya',
-          beastId: 'werewolf',
-          cardName: 'Werewolf',
-          element: '🌑 Dark Beast',
-          basePrice: 4.50,
-          payout: 4.50,
+          beastId: 'goblin_archer',
+          fallback: 'Goblin Archer',
+          payout: 3.50,
           buyer: 'Maya',
           avatar: '🌿',
           location: "Maya's House, Landmark, or Yours",
-          note: 'Looking for a Werewolf card to trade to a visiting collector!'
+          note: 'Looking for an extra Goblin Archer for Ranged Goblin Army synergy!'
+        },
+        {
+          id: 'mkt_sell_4',
+          npcId: 'silas',
+          beastId: 'goblin_soldier',
+          fallback: 'Goblin Soldier',
+          payout: 3.50,
+          buyer: 'Silas',
+          avatar: '⚒️',
+          location: "Silas's House, Landmark, or Yours",
+          note: 'Buying spare Goblin Soldiers for quick Melee swarm builds.'
         }
+      ];
+
+      return [
+        ...buySpecs.map(s => {
+          const meta = formatCardMeta(s.beastId, s.fallback);
+          return {
+            id: s.id,
+            type: 'buy',
+            npcId: s.npcId,
+            beastId: s.beastId,
+            cardName: meta.cardName,
+            element: meta.element,
+            basePrice: s.price,
+            price: s.price,
+            seller: s.seller,
+            avatar: s.avatar,
+            location: s.location,
+            note: s.note,
+            img: meta.img
+          };
+        }),
+        ...sellSpecs.map(s => {
+          const meta = formatCardMeta(s.beastId, s.fallback);
+          return {
+            id: s.id,
+            type: 'sell',
+            npcId: s.npcId,
+            beastId: s.beastId,
+            cardName: meta.cardName,
+            element: meta.element,
+            basePrice: s.payout,
+            payout: s.payout,
+            buyer: s.buyer,
+            avatar: s.avatar,
+            location: s.location,
+            note: s.note,
+            img: meta.img
+          };
+        })
       ];
     }
 
@@ -1171,7 +1226,7 @@
           time: 'Official Store Bulletin',
           icon: '📦',
           highlight: false,
-          text: 'Factory-sealed 1st-Edition foil booster packs ($10.00 each) are fully stocked on our showcase racks. Every pack guarantees 3 collectible beast cards with chances at rare foils!'
+          text: 'Factory-sealed 1st-Edition foil booster packs ($5.00 each) are fully stocked on our showcase racks. Every pack guarantees 5 collectible Mythos cards with chances at rare foils!'
         },
         {
           id: 'feed_map',
@@ -2232,8 +2287,31 @@
     // -------------------------------------------------------------------------
     // Player Inventory, Base Set Card Catalog & Theatrical Pack Opening System
     // -------------------------------------------------------------------------
+    getMythosPackCatalog() {
+      const reg = window.MythosGwentCards;
+      if (!reg?.CARDS) return [];
+      const rowIcons = reg.ROW_ICONS || { melee: '⚔️', ranged: '🏹', agile: '🌀' };
+      return Object.values(reg.CARDS)
+        .filter(c => !c.isToken)
+        .map(c => {
+          const armorTxt = c.armor > 0 ? ` • 🛡️${c.armor}` : '';
+          const abilityTxt = c.abilityDesc ? `${c.abilityTitle}: ${c.abilityDesc}` : (c.passiveDesc || 'Mythos Unit Card');
+          return {
+            id: `card_${c.id}`,
+            beastId: c.id,
+            name: `${c.name} (Mythos Card)`,
+            shortName: c.name,
+            element: c.role || c.element || 'Unit',
+            stars: c.stars || 1,
+            badgeLabel: `${rowIcons[c.row] || '🃏'} ${c.role || 'Unit'} • ${c.basePower} PWR${armorTxt}`,
+            cardImg: c.cardImg,
+            desc: `<b>${c.name} (${c.role || 'Unit'} • ${c.basePower} Power${c.armor > 0 ? `, ${c.armor} Armor` : ''})</b> — ${abilityTxt}`
+          };
+        });
+    }
+
     getBaseSetCardCatalog() {
-      return [
+      const legacy = [
         {
           id: 'card_phoenix',
           beastId: 'phoenix',
@@ -2334,6 +2412,9 @@
           desc: '<b>Dreadnaught (Metal • 160 HP)</b> — Base Set Mythos Card. Moves: <b>Magma Fist</b> (25 Dmg + permanent Magma Pool), <b>Fortress</b> (intercepts damage for ally within 3x3 for 1t), &amp; <b>Burning Heart</b> (if alone, deals 35 Dmg and can Fortress self).'
         }
       ];
+      const mythosCards = this.getMythosPackCatalog();
+      const seen = new Set(mythosCards.map(c => c.id));
+      return [...mythosCards, ...legacy.filter(c => !seen.has(c.id))];
     }
 
     addInventoryItem(itemDef) {
@@ -2578,7 +2659,56 @@
         }
       };
 
-      return catalog[cleanId] || (window.BEAST_TEMPLATES && window.BEAST_TEMPLATES[cleanId]) || null;
+      const found = catalog[cleanId] || (window.BEAST_TEMPLATES && window.BEAST_TEMPLATES[cleanId]);
+      if (found) return found;
+
+      const mythosCard = window.MythosGwentCards?.CARDS?.[cleanId];
+      if (mythosCard) {
+        const rowLabel = mythosCard.row
+          ? mythosCard.row.charAt(0).toUpperCase() + mythosCard.row.slice(1)
+          : 'Agile';
+        const armorText = mythosCard.armor ? ` • 🛡️ ${mythosCard.armor} Armor` : '';
+        return {
+          id: mythosCard.id,
+          name: mythosCard.name,
+          element: mythosCard.element || 'earth',
+          stars: mythosCard.stars || 1,
+          isMythosCard: true,
+          maxHp: mythosCard.basePower ?? 1,
+          baseMove: rowLabel,
+          cardImg: mythosCard.cardImg,
+          sprites: {
+            idle: mythosCard.cardImg,
+            attack: mythosCard.cardImg,
+            walk: mythosCard.cardImg,
+            aoe: mythosCard.cardImg
+          },
+          skills: {
+            atk1: {
+              name: `${rowLabel} Power`,
+              range: rowLabel,
+              dmg: `${mythosCard.basePower ?? 1} PWR${armorText}`,
+              type: mythosCard.role || 'Unit',
+              desc: `${mythosCard.rarity ? mythosCard.rarity.toUpperCase() + ' ' : ''}${mythosCard.role || 'Mythos Unit'} deployed to the ${rowLabel} row.`
+            },
+            atk2: {
+              name: mythosCard.passiveTitle || 'No Passive',
+              range: rowLabel,
+              dmg: mythosCard.passiveTitle ? 'Passive' : '—',
+              type: 'Passive',
+              desc: mythosCard.passiveDesc || 'No passive effect.'
+            },
+            ability: {
+              name: mythosCard.abilityTitle || 'No Ability',
+              type: 'Card Ability',
+              desc: mythosCard.abilityDesc || 'No special ability.'
+            }
+          },
+          elementLore: `${mythosCard.role || 'Mythos Unit'} (${(mythosCard.rarity || 'bronze').toUpperCase()}) • ${rowLabel} Row • Base Power ${mythosCard.basePower ?? 1}${armorText}`
+        };
+      }
+
+      return null;
     }
 
     // -------------------------------------------------------------------------
@@ -2859,7 +2989,7 @@
     buyBaseCardPack() {
       const activeEvent = this.getCurrentDayEvent();
       const isDiscountDay = activeEvent?.id === 'weekend_market';
-      const cost = isDiscountDay ? 8.00 : 10.00;
+      const cost = isDiscountDay ? 4.00 : 5.00;
       if ((this.gold || 0) < cost) {
         if (window.sounds?.playClick) window.sounds.playClick();
         const statusEl = document.getElementById('shop-buy-status');
@@ -3026,7 +3156,7 @@
       const buyBtn = document.getElementById('btn-shop-buy-pack');
       const ripNowBtn = document.getElementById('btn-shop-rip-now');
       const activeEvent = this.getCurrentDayEvent();
-      const packCost = activeEvent?.id === 'weekend_market' ? 8.00 : 10.00;
+      const packCost = activeEvent?.id === 'weekend_market' ? 4.00 : 5.00;
       const hasMoneyForPack = (this.gold || 0) >= packCost;
       if (buyBtn) {
         buyBtn.disabled = !hasMoneyForPack;
@@ -4089,10 +4219,45 @@
       }
     }
 
+    consolidateBinderStacks() {
+      if (!Array.isArray(this.binderSlots)) return false;
+      const seenByKey = new Map();
+      let changed = false;
+
+      for (let i = 0; i < this.binderSlots.length; i++) {
+        const slot = this.binderSlots[i];
+        if (!slot) continue;
+        const key = slot.beastId || slot.id;
+        if (!key) continue;
+
+        if (seenByKey.has(key)) {
+          const targetSlot = seenByKey.get(key);
+          targetSlot.qty = (targetSlot.qty || 1) + (slot.qty || 1);
+          this.binderSlots[i] = null;
+          changed = true;
+        } else {
+          if (!slot.qty || slot.qty < 1) {
+            slot.qty = 1;
+            changed = true;
+          }
+          seenByKey.set(key, slot);
+        }
+      }
+
+      return changed;
+    }
+
     renderBinderModal() {
+      if (this.consolidateBinderStacks()) {
+        this.saveWorldData(this.draftAppearance);
+      }
       const gridEl = document.getElementById('binder-slots-grid');
       const counterPill = document.getElementById('binder-counter-pill');
       const binderBadgeEl = document.getElementById('binder-badge-count');
+      const deckBadgeEl = document.getElementById('deck-badge-count');
+      if (deckBadgeEl) {
+        deckBadgeEl.textContent = String((this.playingDeck || []).length);
+      }
 
       const slottedCount = this.getSlottedBinderCount();
       if (counterPill) {
@@ -4103,23 +4268,64 @@
       }
       if (!gridEl) return;
 
+      const sortMode = this.binderSortBy || 'default';
+      document.querySelectorAll('#binder-sort-bar .binder-sort-btn').forEach(btn => {
+        btn.classList.toggle('active', (btn.dataset.sort || 'default') === sortMode);
+      });
+
+      const getSortMeta = (card) => {
+        const cleanId = String(card.beastId || card.id || '').toLowerCase().replace('card_', '').trim();
+        const gwentDef = window.MythosGwentCards?.CARDS?.[cleanId];
+        const creatureDef = gwentDef ? null : this.getCreatureData?.(cleanId);
+        const name = (card.shortName || card.name || '').toLowerCase();
+        const type = String(gwentDef?.role || card.element || creatureDef?.element || 'zz').toLowerCase();
+        const power = Number(
+          gwentDef?.basePower ??
+          (typeof creatureDef?.skills?.atk1?.dmg === 'number' ? creatureDef.skills.atk1.dmg : 0)
+        ) || 0;
+        const stars = Number(gwentDef?.stars ?? card.stars ?? creatureDef?.stars ?? 0) || 0;
+        return { name, type, power, stars };
+      };
+
+      let entries = Array.from({ length: 9 }, (_, i) => ({
+        slotIndex: i,
+        card: this.binderSlots[i]
+      }));
+
+      if (sortMode !== 'default') {
+        const filled = entries.filter(e => Boolean(e.card));
+        const empty = entries.filter(e => !e.card);
+        filled.sort((a, b) => {
+          const ma = getSortMeta(a.card);
+          const mb = getSortMeta(b.card);
+          if (sortMode === 'alpha') return ma.name.localeCompare(mb.name);
+          if (sortMode === 'type') return ma.type.localeCompare(mb.type) || ma.name.localeCompare(mb.name);
+          if (sortMode === 'power') return (mb.power - ma.power) || ma.name.localeCompare(mb.name);
+          if (sortMode === 'stars') return (mb.stars - ma.stars) || ma.name.localeCompare(mb.name);
+          return a.slotIndex - b.slotIndex;
+        });
+        entries = [...filled, ...empty];
+      }
+
       gridEl.innerHTML = '';
 
-      for (let i = 0; i < 9; i++) {
-        const card = this.binderSlots[i];
+      entries.forEach(({ slotIndex: i, card }) => {
         const slotEl = document.createElement('div');
 
         if (card) {
+          const qty = card.qty || 1;
           slotEl.className = 'binder-slot slotted';
           slotEl.innerHTML = `
-            <div class="binder-card-thumb-wrap">
+            <div class="binder-card-thumb-wrap" style="position:relative;">
               <img src="${card.cardImg}" alt="${card.name}" class="binder-card-thumb-img">
+              ${qty > 1 ? `<span class="binder-qty-badge">x${qty}</span>` : ''}
             </div>
             <div class="binder-card-info-row">
-              <span class="binder-card-name">${card.shortName || card.name}</span>
+              <span class="binder-card-name">${card.shortName || card.name}${qty > 1 ? ` <b style="color:#fde68a;">(x${qty})</b>` : ''}</span>
               <span class="binder-card-element-pill ${card.element?.toLowerCase() || 'fire'}">${card.element || 'Beast'}</span>
             </div>
             <div class="binder-slot-hover-bar">
+              <button type="button" class="binder-slot-btn add-deck" title="Quick add to Playing Deck">🃏 + Deck</button>
               <button type="button" class="binder-slot-btn inspect">🔍 Inspect</button>
               <button type="button" class="binder-slot-btn remove">📤 To Inventory</button>
             </div>
@@ -4127,10 +4333,25 @@
 
           // Clicking anywhere on the card or the inspect button opens Creature Inspect Mode!
           slotEl.addEventListener('click', (ev) => {
-            if (ev.target.closest('.binder-slot-btn.remove')) return;
+            if (ev.target.closest('.binder-slot-btn.remove') || ev.target.closest('.binder-slot-btn.add-deck')) return;
             if (window.sounds?.playClick) window.sounds.playClick();
             this.openCreatureInspect(card, i);
           });
+
+          const addDeckBtn = slotEl.querySelector('.binder-slot-btn.add-deck');
+          if (addDeckBtn) {
+            addDeckBtn.addEventListener('click', (ev) => {
+              ev.stopPropagation();
+              const cardId = card.beastId || (card.id?.startsWith('card_') ? card.id.replace('card_', '') : null);
+              if (cardId) {
+                const res = this.addCardToPlayingDeck(cardId);
+                const hintEl = document.querySelector('#binder-modal .binder-hint');
+                if (hintEl && res?.message) {
+                  hintEl.innerHTML = res.message;
+                }
+              }
+            });
+          }
 
           const removeBtn = slotEl.querySelector('.binder-slot-btn.remove');
           if (removeBtn) {
@@ -4156,7 +4377,7 @@
         }
 
         gridEl.appendChild(slotEl);
-      }
+      });
     }
 
     // Binder Card Picker Modal (Select card from backpack to insert into sleeve)
@@ -4209,9 +4430,16 @@
       this.binderPickerTargetIndex = null;
     }
 
-    // Insert a single card from Inventory into a designated binder slot
+    // Insert a single card from Inventory into a designated binder slot (stacks identical cards)
     insertCardIntoBinder(cardId, targetSlotIndex = null) {
-      let destIndex = targetSlotIndex;
+      const invIndex = this.inventory.findIndex(i => i.id === cardId && i.qty > 0);
+      if (invIndex === -1) return;
+
+      const item = this.inventory[invIndex];
+      const existingSlotIndex = this.binderSlots.findIndex(
+        s => s && (s.id === cardId || (item.beastId && s.beastId === item.beastId))
+      );
+      let destIndex = existingSlotIndex !== -1 ? existingSlotIndex : targetSlotIndex;
       if (destIndex === null || destIndex === undefined || destIndex < 0 || destIndex >= 9) {
         destIndex = this.binderSlots.findIndex(s => !s);
       }
@@ -4220,28 +4448,29 @@
         return;
       }
 
-      const invIndex = this.inventory.findIndex(i => i.id === cardId && i.qty > 0);
-      if (invIndex === -1) return;
-
-      const item = this.inventory[invIndex];
-
       // Remove 1 quantity from inventory
       item.qty -= 1;
       if (item.qty <= 0) {
         this.inventory.splice(invIndex, 1);
       }
 
-      // Slip into binder sleeve
-      this.binderSlots[destIndex] = {
-        id: item.id,
-        beastId: item.beastId || item.id.replace('card_', ''),
-        name: item.name,
-        shortName: item.shortName || item.name,
-        element: item.element || 'Fire',
-        stars: item.stars || 4,
-        cardImg: item.cardImg,
-        desc: item.desc || ''
-      };
+      // Stack into existing matching sleeve or slip into empty binder sleeve
+      if (existingSlotIndex !== -1) {
+        const existing = this.binderSlots[existingSlotIndex];
+        existing.qty = (existing.qty || 1) + 1;
+      } else {
+        this.binderSlots[destIndex] = {
+          id: item.id,
+          beastId: item.beastId || item.id.replace('card_', ''),
+          name: item.name,
+          shortName: item.shortName || item.name,
+          element: item.element || 'Fire',
+          stars: item.stars || 4,
+          qty: 1,
+          cardImg: item.cardImg,
+          desc: item.desc || ''
+        };
+      }
 
       if (window.sounds?.playCardFlipReveal) {
         window.sounds.playCardFlipReveal(false);
@@ -4256,13 +4485,224 @@
       this.updateHUDSaveInfo();
     }
 
+    // -------------------------------------------------------------------------
+    // Playing Deck Builder (Deck Taken Into Battles)
+    // -------------------------------------------------------------------------
+    getOwnedMythosCardPool() {
+      const reg = window.MythosGwentCards?.CARDS || {};
+      const counts = {};
+      const addCount = (cardId, qty = 1) => {
+        if (!cardId || !reg[cardId] || reg[cardId].isToken) return;
+        counts[cardId] = (counts[cardId] || 0) + qty;
+      };
+      (this.inventory || []).forEach(item => {
+        if (item.type === 'mythos_card' || item.id?.startsWith('card_')) {
+          const cid = item.beastId || item.id?.replace('card_', '');
+          addCount(cid, item.qty || 1);
+        }
+      });
+      (this.binderSlots || []).forEach(slot => {
+        if (slot) {
+          const cid = slot.beastId || slot.id?.replace('card_', '');
+          addCount(cid, slot.qty || 1);
+        }
+      });
+      return counts;
+    }
+
+    addCardToPlayingDeck(cardId) {
+      const reg = window.MythosGwentCards?.CARDS || {};
+      const cardDef = reg[cardId];
+      if (!cardDef || cardDef.isToken) {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        return { ok: false, message: '⚠️ Only Mythos battle cards can be added to the Playing Deck.' };
+      }
+
+      const inDeckCount = (this.playingDeck || []).filter(id => id === cardId).length;
+      const maxPerDeck = cardDef?.maxDeckCopies ?? (cardId === 'manson_wolf_father' ? 1 : 3);
+      if (inDeckCount >= maxPerDeck) {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        return { ok: false, message: `⚠️ Limit reached: ${cardDef.name} is limited to ${maxPerDeck} copy/copies per deck.` };
+      }
+
+      this.playingDeck.push(cardId);
+      if (window.sounds?.playCardFlipReveal) {
+        window.sounds.playCardFlipReveal(cardDef.rarity === 'gold');
+      } else if (window.sounds?.playClick) {
+        window.sounds.playClick();
+      }
+      this.saveWorldData(this.draftAppearance);
+      this.updateHUDSaveInfo();
+      this.renderPlayingDeckModal();
+      return { ok: true, message: `✅ Added <b>${cardDef.name}</b> to your Playing Deck (${this.playingDeck.length} cards).` };
+    }
+
+    removeCardFromPlayingDeck(index) {
+      if (index < 0 || index >= (this.playingDeck || []).length) return;
+      const [removedId] = this.playingDeck.splice(index, 1);
+      if (window.sounds?.playClick) window.sounds.playClick();
+      this.saveWorldData(this.draftAppearance);
+      this.updateHUDSaveInfo();
+      this.renderPlayingDeckModal();
+      const cardDef = window.MythosGwentCards?.CARDS?.[removedId];
+      const statusEl = document.getElementById('playing-deck-status');
+      if (statusEl && cardDef) {
+        statusEl.textContent = `Removed ${cardDef.name} from Playing Deck.`;
+      }
+    }
+
+    clearPlayingDeck() {
+      this.playingDeck = [];
+      if (window.sounds?.playClick) window.sounds.playClick();
+      this.saveWorldData(this.draftAppearance);
+      this.updateHUDSaveInfo();
+      this.renderPlayingDeckModal();
+      const statusEl = document.getElementById('playing-deck-status');
+      if (statusEl) statusEl.textContent = 'Playing Deck cleared (battles will use the Standard Deck until cards are added).';
+    }
+
+    autoFillPlayingDeck() {
+      const std = window.MythosGwentCards?.getDeckRecipe?.('standard') || [];
+      this.playingDeck = [...std];
+      if (window.sounds?.playCardFlipReveal) window.sounds.playCardFlipReveal(false);
+      this.saveWorldData(this.draftAppearance);
+      this.updateHUDSaveInfo();
+      this.renderPlayingDeckModal();
+      const statusEl = document.getElementById('playing-deck-status');
+      if (statusEl) statusEl.textContent = `Loaded Standard Deck (${this.playingDeck.length} cards).`;
+    }
+
+    togglePlayingDeckModal(forceOpen) {
+      const modal = document.getElementById('playing-deck-modal');
+      if (!modal) return;
+      const shouldOpen = forceOpen !== undefined ? forceOpen : modal.classList.contains('hidden');
+      if (window.sounds?.playClick) window.sounds.playClick();
+      if (shouldOpen) {
+        this.renderPlayingDeckModal();
+        modal.classList.remove('hidden');
+      } else {
+        modal.classList.add('hidden');
+      }
+    }
+
+    renderPlayingDeckModal() {
+      const countPill = document.getElementById('playing-deck-count-pill');
+      const currentList = document.getElementById('playing-deck-current-list');
+      const poolList = document.getElementById('playing-deck-pool-list');
+      const statusEl = document.getElementById('playing-deck-status');
+      const reg = window.MythosGwentCards?.CARDS || {};
+
+      if (countPill) {
+        countPill.textContent = `${(this.playingDeck || []).length} Cards`;
+      }
+      if (!currentList || !poolList) return;
+
+      const attachThumbLongPress = (imgEl, cardDef) => {
+        if (!imgEl || !cardDef) return;
+        imgEl.title = 'Hold click (or right-click) for full card details';
+        let holdTimer = null;
+        const cancelHold = () => {
+          if (holdTimer) {
+            clearTimeout(holdTimer);
+            holdTimer = null;
+          }
+        };
+        imgEl.addEventListener('pointerdown', (e) => {
+          if (e.button !== 0 && e.pointerType === 'mouse') return;
+          cancelHold();
+          holdTimer = setTimeout(() => {
+            holdTimer = null;
+            if (window.sounds?.playClick) window.sounds.playClick();
+            window.game?.openCardModal?.(cardDef);
+          }, 350);
+        });
+        imgEl.addEventListener('pointerup', cancelHold);
+        imgEl.addEventListener('pointerleave', cancelHold);
+        imgEl.addEventListener('pointercancel', cancelHold);
+        imgEl.addEventListener('contextmenu', (e) => {
+          e.preventDefault();
+          if (window.sounds?.playClick) window.sounds.playClick();
+          window.game?.openCardModal?.(cardDef);
+        });
+      };
+
+      currentList.innerHTML = '';
+      if (!this.playingDeck || this.playingDeck.length === 0) {
+        currentList.innerHTML = `<div style="padding: 16px; text-align: center; color: #94a3b8; font-size: 12px;">Your Playing Deck is empty. Add cards from the right (or from your Binder), or click <b>✨ Fill Standard</b>.</div>`;
+      } else {
+        const grouped = [];
+        const groupMap = {};
+        this.playingDeck.forEach((cid, idx) => {
+          if (!groupMap[cid]) {
+            groupMap[cid] = { cid, count: 0, lastIndex: idx };
+            grouped.push(groupMap[cid]);
+          }
+          groupMap[cid].count += 1;
+          groupMap[cid].lastIndex = idx;
+        });
+
+        grouped.forEach(entry => {
+          const c = reg[entry.cid];
+          if (!c) return;
+          const row = document.createElement('div');
+          row.className = 'playing-deck-row';
+          row.innerHTML = `
+            <img src="${c.cardImg}" alt="${c.name}" class="playing-deck-thumb">
+            <div class="playing-deck-row-info">
+              <div class="playing-deck-row-name">${c.name}${entry.count > 1 ? `<span class="playing-deck-qty-badge">x${entry.count}</span>` : ''}</div>
+              <div class="playing-deck-row-meta">${'★'.repeat(c.stars || 1)} ${c.role || 'Unit'} • ${c.basePower} PWR${c.armor > 0 ? ` • 🛡️${c.armor}` : ''}</div>
+            </div>
+            <button type="button" class="ui-btn secondary" style="padding: 4px 8px; font-size: 11px;">➖ Remove</button>
+          `;
+          row.querySelector('button')?.addEventListener('click', () => this.removeCardFromPlayingDeck(entry.lastIndex));
+          attachThumbLongPress(row.querySelector('.playing-deck-thumb'), c);
+          currentList.appendChild(row);
+        });
+      }
+
+      poolList.innerHTML = '';
+      const ownedCounts = this.getOwnedMythosCardPool();
+      const ownedIds = Object.keys(ownedCounts);
+      if (ownedIds.length === 0) {
+        poolList.innerHTML = `<div style="padding: 16px; text-align: center; color: #94a3b8; font-size: 12px;">No Mythos cards in your Backpack or Binder yet. Open Booster Packs at Leo's Card Shop!</div>`;
+      } else {
+        ownedIds.forEach(cid => {
+          const c = reg[cid];
+          if (!c) return;
+          const inDeck = (this.playingDeck || []).filter(id => id === cid).length;
+          const maxPerDeck = c?.maxDeckCopies ?? (cid === 'manson_wolf_father' ? 1 : 3);
+          const row = document.createElement('div');
+          row.className = 'playing-deck-row';
+          row.innerHTML = `
+            <img src="${c.cardImg}" alt="${c.name}" class="playing-deck-thumb">
+            <div class="playing-deck-row-info">
+              <div class="playing-deck-row-name">${c.name} <span style="color:#fbbf24;">(Owned: ${ownedCounts[cid]})</span></div>
+              <div class="playing-deck-row-meta">${'★'.repeat(c.stars || 1)} ${c.role || 'Unit'} • ${c.basePower} PWR • In Deck: ${inDeck}/${maxPerDeck}</div>
+            </div>
+            <button type="button" class="ui-btn primary-btn" style="padding: 4px 8px; font-size: 11px;" ${inDeck >= maxPerDeck ? 'disabled' : ''}>➕ Add</button>
+          `;
+          row.querySelector('button')?.addEventListener('click', () => {
+            const res = this.addCardToPlayingDeck(cid);
+            if (statusEl && res?.message) statusEl.innerHTML = res.message;
+          });
+          attachThumbLongPress(row.querySelector('.playing-deck-thumb'), c);
+          poolList.appendChild(row);
+        });
+      }
+    }
+
     // Remove a single card from the binder and return it to backpack inventory
     removeCardFromBinder(slotIndex) {
       if (slotIndex < 0 || slotIndex >= 9) return;
       const card = this.binderSlots[slotIndex];
       if (!card) return;
 
-      this.binderSlots[slotIndex] = null;
+      const remaining = (card.qty || 1) - 1;
+      if (remaining > 0) {
+        card.qty = remaining;
+      } else {
+        this.binderSlots[slotIndex] = null;
+      }
 
       // Add back into player's inventory
       this.addInventoryItem({
@@ -4342,8 +4782,8 @@
         circleEl.style.boxShadow = `0 0 24px ${elColors[elKey] || '#fbbf24'}, inset 0 0 16px ${elColors[elKey] || '#fbbf24'}`;
       }
 
-      if (hpVal) hpVal.textContent = `${beast.maxHp} HP`;
-      if (moveVal) moveVal.textContent = `${beast.baseMove} Tiles / Turn`;
+      if (hpVal) hpVal.textContent = beast.isMythosCard ? `${beast.maxHp} PWR` : `${beast.maxHp} HP`;
+      if (moveVal) moveVal.textContent = beast.isMythosCard ? `${beast.baseMove} Row` : `${beast.baseMove} Tiles / Turn`;
       if (starsVal) starsVal.textContent = '★'.repeat(beast.stars || 4);
 
       if (elBoxName) elBoxName.innerHTML = `${elIcons[elKey] || '✨'} ${beast.element.toUpperCase()} ELEMENT BEAST`;
@@ -4427,17 +4867,18 @@
     }
 
     // -------------------------------------------------------------------------
-    // Theatrical & Suspenseful Booster Pack Opening Ritual (3 Cards Per Pack)
+    // Theatrical & Suspenseful Booster Pack Opening Ritual (5 Cards Per Pack)
     // -------------------------------------------------------------------------
-    rollThreePackCards() {
-      const catalog = this.getBaseSetCardCatalog();
-      // Shuffle a copy of the Base Set catalog and draw 3 cards for this Booster Pack
+    rollFivePackCards() {
+      const mythosPool = this.getMythosPackCatalog();
+      const catalog = mythosPool.length > 0 ? mythosPool : this.getBaseSetCardCatalog();
+      // Shuffle a copy of the Mythos catalog and draw 5 cards for this Booster Pack
       const pool = [...catalog];
       for (let i = pool.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [pool[i], pool[j]] = [pool[j], pool[i]];
       }
-      const drawn = pool.slice(0, 3).map(c => ({ ...c }));
+      const drawn = pool.slice(0, 5).map(c => ({ ...c }));
       const activeEvent = this.getCurrentDayEvent();
       if (activeEvent?.id === 'leo_restock') {
         // Monday: Leo's Booster Restock - +25% Holo & Rare Foil Surge!
@@ -4448,6 +4889,10 @@
         });
       }
       return drawn;
+    }
+
+    rollThreePackCards() {
+      return this.rollFivePackCards();
     }
 
     startBoosterPackOpening(packItemId = 'unopened_base_pack') {
@@ -4463,7 +4908,7 @@
         chargeClicks: 0,
         isRipping: false,
         cardsDealt: false,
-        pulledCards: this.rollThreePackCards(),
+        pulledCards: this.rollFivePackCards(),
         currentCardIndex: 0,
         flippedIndices: new Set(),
         collected: false
@@ -4721,8 +5166,8 @@
       const cardsRow = document.getElementById('pack-cards-reveal-row');
 
       if (badgeEl) badgeEl.textContent = '✨ BOOSTER PACK COMPLETE ✨';
-      if (titleEl) titleEl.textContent = '✨ ALL 3 CARDS PULLED! ✨';
-      if (subEl) subEl.innerHTML = 'All 3 Mythos Cards unsealed! Collect them to add them to your backpack inventory:';
+      if (titleEl) titleEl.textContent = '✨ ALL 5 CARDS PULLED! ✨';
+      if (subEl) subEl.innerHTML = 'All 5 Mythos Cards unsealed! Collect them to add them to your backpack inventory:';
 
       nextBtn?.classList.add('hidden');
       viewAllBtn?.classList.add('hidden');
@@ -5655,7 +6100,7 @@
           bar.classList.add('tv-broadcast');
           speakerEl.textContent = '📺 LIVING ROOM TV';
           speakerEl.className = 'ow-speaker-tag tv';
-          textEl.innerHTML = `<i>"🔥 MYTHOS BOOSTER PACKS: Just $10 a pack at Leo's Card Shop! Collect Phoenix, Earth Golem, Hydra, Werewolf & more!"</i>`;
+          textEl.innerHTML = `<i>"🔥 MYTHOS BOOSTER PACKS: Just $5 a pack at Leo's Card Shop! Collect Goblin Soldier, Werewolf Pup, Minerva, Manson & more!"</i>`;
           challengeBtn.classList.add('hidden');
         } else if (distToBed < 1.7) {
           this.lastShopPromptKey = null;
@@ -5870,7 +6315,7 @@
           bar.classList.remove('tv-broadcast');
           speakerEl.textContent = '✨ 1ST-EDITION MYTHOS DISPLAY RACK';
           speakerEl.className = 'ow-speaker-tag friend';
-          textEl.innerHTML = `Rows of gleaming foil <b>MYTHOS Base Set Booster Packs</b> ($10 each, 3 Cards per pack) and collector starter boxes line the shelves of <b>Leo's Card Shop</b>.`;
+          textEl.innerHTML = `Rows of gleaming foil <b>MYTHOS Base Set Booster Packs</b> ($5 each, 5 Cards per pack) and collector starter boxes line the shelves of <b>Leo's Card Shop</b>.`;
           challengeBtn.classList.add('hidden');
         } else if (distToTable < 1.55) {
           this.lastShopPromptKey = null;
@@ -7240,6 +7685,7 @@
         hasOldCardBinder: this.hasOldCardBinder ?? false,
         inventory: cleanInventory,
         binderSlots: cleanBinderSlots,
+        playingDeck: [...(this.playingDeck || [])],
         storyState: this.storyState,
         currentArea: this.currentArea,
         playerPos: {
@@ -7271,6 +7717,10 @@
       const locPill = document.getElementById('ow-location-pill');
       const badgeEl = document.getElementById('inv-badge-count');
       const binderBadgeEl = document.getElementById('binder-badge-count');
+      const deckBadgeEl = document.getElementById('deck-badge-count');
+      if (deckBadgeEl) {
+        deckBadgeEl.textContent = String((this.playingDeck || []).length);
+      }
       const calDayLabel = document.getElementById('calendar-btn-day-label');
       const calDayNum = document.getElementById('calendar-btn-day-num');
       if (calDayLabel) calDayLabel.textContent = this.getCurrentDayName();
@@ -7584,6 +8034,29 @@
         });
       }
 
+      const binderToDeckBtn = document.getElementById('btn-binder-to-deck');
+      if (binderToDeckBtn) {
+        binderToDeckBtn.addEventListener('click', () => {
+          this.toggleBinderModal(false);
+          this.togglePlayingDeckModal(true);
+        });
+      }
+
+      document.querySelectorAll('#binder-sort-bar .binder-sort-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          if (window.sounds?.playClick) window.sounds.playClick();
+          this.binderSortBy = btn.dataset.sort || 'default';
+          this.renderBinderModal();
+        });
+      });
+
+      // Playing Deck Modal Handlers
+      document.getElementById('btn-open-playing-deck')?.addEventListener('click', () => this.togglePlayingDeckModal(true));
+      document.getElementById('btn-close-playing-deck')?.addEventListener('click', () => this.togglePlayingDeckModal(false));
+      document.getElementById('btn-playing-deck-done')?.addEventListener('click', () => this.togglePlayingDeckModal(false));
+      document.getElementById('btn-deck-clear')?.addEventListener('click', () => this.clearPlayingDeck());
+      document.getElementById('btn-deck-autofill')?.addEventListener('click', () => this.autoFillPlayingDeck());
+
       const invToBinderBtn = document.getElementById('btn-inv-to-binder');
       if (invToBinderBtn) {
         invToBinderBtn.addEventListener('click', () => {
@@ -7804,6 +8277,7 @@
         : Array(9).fill(null);
       while (rawBinder.length < 9) rawBinder.push(null);
       this.binderSlots = this.wrapReactiveArray(rawBinder.map(s => s ? this.wrapReactiveItem(s) : null), 'binder');
+      this.consolidateBinderStacks();
 
       // Restore Area & Story State
       this.currentArea = this.worldSave.currentArea || 'interior';
@@ -7832,7 +8306,7 @@
 
       if (this.currentArea === 'interior') {
         if (this.hasMomBoosterMoney) {
-          mom.x = 14.8;
+          mom.x = 12.5;
           mom.y = 6.2;
           mom.targetX = null;
           mom.targetY = null;
@@ -16830,10 +17304,17 @@
       if (area === 'interior') {
         let mom = this.npcs.find(n => n.id === 'mom');
         if (mom) {
+          if (mom.x > 13.4 || mom.x < 2.4 || mom.y < 4.5 || mom.y > 10.2) {
+            mom.x = 12.5;
+            mom.y = 6.2;
+            mom.targetX = null;
+            mom.targetY = null;
+            mom.dir = 'left';
+          }
           active.push(mom);
         } else if (this.hasMomBoosterMoney) {
           mom = this.createMomNpc();
-          mom.x = 14.8;
+          mom.x = 12.5;
           mom.y = 6.2;
           mom.targetX = null;
           mom.targetY = null;
@@ -17041,11 +17522,17 @@
     }
 
     loop() {
-      this.tick++;
-      this.update();
-      this.render();
-      this.renderCreatorPreview();
       requestAnimationFrame(() => this.loop());
+      this.tick++;
+      try {
+        this.update();
+        if (this.active) {
+          this.render();
+        }
+        this.renderCreatorPreview();
+      } catch (err) {
+        console.error('Overworld loop error:', err);
+      }
     }
   }
 

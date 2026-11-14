@@ -34,196 +34,9 @@
   };
 
   // ---------------------------------------------------------------------------
-  // Card Registry (Current 9 Mythos Cards + Summoned Tokens)
+  // Card Registry (New Mythos Card Set)
   // ---------------------------------------------------------------------------
   const CARDS = {
-    phoenix: {
-      id: 'phoenix',
-      name: 'Phoenix',
-      role: 'mage',
-      element: 'fire',
-      stars: 4,
-      rarity: 'gold',
-      row: 'ranged',
-      basePower: 8,
-      armor: 0,
-      cardImg: 'Cards/Phoenix_Card.png',
-      abilityTitle: 'Trails of Fire',
-      abilityDesc: 'Deals 2 damage to every enemy unit on the opposing Melee row.',
-      passiveTitle: 'Rebirth',
-      passiveDesc: 'At the start of Round 2 or 3, if in Graveyard, revives onto your Ranged row with 4 Power (once per match).',
-      effects: [
-        { type: 'damage_row', rows: ['melee'], amount: 2, sound: 'fire', label: '🔥 Trails of Fire' }
-      ],
-      rebirthPower: 4,
-      rebirthRow: 'ranged'
-    },
-
-    earth_golem: {
-      id: 'earth_golem',
-      name: 'Earth Golem',
-      role: 'tank',
-      element: 'earth',
-      stars: 4,
-      rarity: 'gold',
-      row: 'melee',
-      basePower: 10,
-      armor: 0,
-      cardImg: 'Cards/Earth_Golem_Card.png',
-      abilityTitle: 'Rock Barrier',
-      abilityDesc: 'Boosts all other allied units on your Melee row by +2 Power.',
-      passiveTitle: 'Terraform',
-      passiveDesc: 'Frontline Earth titan with massive base power.',
-      effects: [
-        { type: 'boost_row_allies', amount: 2, excludeSelf: true, sound: 'rock', label: '🪨 Rock Barrier' }
-      ]
-    },
-
-    werewolf: {
-      id: 'werewolf',
-      name: 'Werewolf',
-      role: 'warrior',
-      element: 'earth',
-      stars: 2,
-      rarity: 'bronze',
-      row: 'melee',
-      basePower: 5,
-      armor: 0,
-      cardImg: 'Cards/Werewolf_Card.png',
-      abilityTitle: 'Howl',
-      abilityDesc: 'Boosts all other allied units on your Melee row by +1 Power.',
-      passiveTitle: 'Pack Bond',
-      passiveDesc: 'Gains +2 Power if another Werewolf is already on your Melee row.',
-      effects: [
-        { type: 'boost_row_allies', amount: 1, excludeSelf: true, sound: 'howl', label: '🐺 Howl' },
-        { type: 'boost_self_if_ally', allyId: 'werewolf', sameRowOnly: true, amount: 2, label: '🐺 Pack Bond' }
-      ]
-    },
-
-    hydra: {
-      id: 'hydra',
-      name: 'Hydra',
-      role: 'assassin',
-      element: 'poison',
-      stars: 4,
-      rarity: 'gold',
-      row: 'ranged',
-      basePower: 7,
-      armor: 0,
-      cardImg: 'Cards/Hydra_Card.png',
-      abilityTitle: 'Venomous Bite',
-      abilityDesc: 'Deals 3 damage to the strongest enemy unit on the board.',
-      passiveTitle: 'Swamp Regenerator',
-      passiveDesc: 'Boosts all other allied units on your Ranged row by +1 Power.',
-      effects: [
-        { type: 'damage_strongest_enemy', rows: ['melee', 'ranged'], amount: 3, sound: 'poison', label: '🐍 Venomous Bite' },
-        { type: 'boost_row_allies', amount: 1, excludeSelf: true, label: '🌿 Swamp Regenerator' }
-      ]
-    },
-
-    terra_mother: {
-      id: 'terra_mother',
-      name: 'Terra-Mother',
-      role: 'summoner',
-      element: 'earth',
-      stars: 4,
-      rarity: 'gold',
-      row: 'ranged',
-      basePower: 7,
-      armor: 0,
-      cardImg: 'Cards/Terra_Mother_Card.png',
-      abilityTitle: 'Thorn of Life',
-      abilityDesc: 'Summons a 3-Power Thorn Sapling onto your Melee row.',
-      passiveTitle: 'Nature Blessing',
-      passiveDesc: 'Boosts all Earth & Plant allies on your side of the board by +1 Power.',
-      effects: [
-        { type: 'summon_token', tokenId: 'thorn_sapling', row: 'melee', sound: 'heal', label: '🌱 Thorn of Life' },
-        { type: 'boost_element_allies', elements: ['earth', 'plant'], amount: 1, excludeSelf: true, label: '🌿 Nature Blessing' }
-      ]
-    },
-
-    verdant_guardian: {
-      id: 'verdant_guardian',
-      name: 'Verdant Guardian',
-      role: 'warrior',
-      element: 'plant',
-      stars: 2,
-      rarity: 'bronze',
-      row: 'melee',
-      basePower: 6,
-      armor: 0,
-      cardImg: 'Cards/Verdant_Guardian_Card.png',
-      abilityTitle: 'Thorn Bush',
-      abilityDesc: 'Deals 2 damage to the strongest enemy unit on the opposing Melee row.',
-      passiveTitle: 'Sapling Strength',
-      passiveDesc: 'Gains +4 Power if your total score is lower than your opponent\'s when played.',
-      effects: [
-        { type: 'damage_strongest_enemy', rows: ['melee'], amount: 2, sound: 'whip', label: '🌿 Thorn Bush' },
-        { type: 'boost_self_if_trailing', amount: 4, sound: 'heal', label: '💪 Sapling Strength' }
-      ]
-    },
-
-    dwarf_warden: {
-      id: 'dwarf_warden',
-      name: 'Dwarf Warden',
-      role: 'tank',
-      element: 'earth',
-      stars: 4,
-      rarity: 'gold',
-      row: 'ranged',
-      basePower: 7,
-      armor: 2,
-      cardImg: 'Cards/Dwarf_Warden_Card.png',
-      abilityTitle: 'Hammer Throw',
-      abilityDesc: 'Deals 3 damage to the strongest enemy unit on the opposing Ranged row.',
-      passiveTitle: 'Bullwark',
-      passiveDesc: 'Enters play with 2 Armor that absorbs incoming damage first.',
-      effects: [
-        { type: 'damage_strongest_enemy', rows: ['ranged'], amount: 3, sound: 'hit', label: '🔨 Hammer Throw' }
-      ]
-    },
-
-    pegasus: {
-      id: 'pegasus',
-      name: 'Pegasus',
-      role: 'support',
-      element: 'air',
-      stars: 3,
-      rarity: 'silver',
-      row: 'agile',
-      basePower: 6,
-      armor: 0,
-      cardImg: 'Cards/Pegasus_Card.png',
-      abilityTitle: 'Soar (Agile)',
-      abilityDesc: 'Can be deployed onto Melee or Ranged.',
-      passiveTitle: 'Inspire',
-      passiveDesc: 'Boosts all other allied units on the chosen row by +2 Power.',
-      effects: [
-        { type: 'boost_row_allies', amount: 2, excludeSelf: true, sound: 'heal', label: '🦅 Inspire' }
-      ]
-    },
-
-    dreadnaught: {
-      id: 'dreadnaught',
-      name: 'Dreadnaught',
-      role: 'tank',
-      element: 'metal',
-      stars: 2,
-      rarity: 'bronze',
-      row: 'melee',
-      basePower: 6,
-      armor: 0,
-      cardImg: 'Cards/Dreadnaught_Card.png',
-      abilityTitle: 'Magma Fist',
-      abilityDesc: 'Deals 2 damage to the strongest enemy unit on the board.',
-      passiveTitle: 'Burning Heart',
-      passiveDesc: 'Gains +5 Power if Dreadnaught is the only unit on your side when played.',
-      effects: [
-        { type: 'damage_strongest_enemy', rows: ['melee', 'ranged'], amount: 2, sound: 'fire', label: '🌋 Magma Fist' },
-        { type: 'boost_self_if_alone', amount: 5, label: '❤️‍🔥 Burning Heart' }
-      ]
-    },
-
     goblin_soldier: {
       id: 'goblin_soldier',
       name: 'Goblin Soldier',
@@ -242,6 +55,313 @@
       effects: [
         { type: 'pull_copies_from_deck', cardId: 'goblin_soldier', sound: 'howl', label: '🧌 Goblin Muster' }
       ]
+    },
+
+    goblin_archer: {
+      id: 'goblin_archer',
+      name: 'Goblin Archer',
+      role: 'Goblin Army',
+      element: 'earth',
+      stars: 1,
+      rarity: 'bronze',
+      row: 'ranged',
+      basePower: 1,
+      armor: 0,
+      cardImg: 'Cards/Goblin_Archer_Card.jpg',
+      abilityTitle: 'Archer Muster',
+      abilityDesc: 'Pulls all other Goblin Archers from your deck into your hand.',
+      passiveTitle: '',
+      passiveDesc: '',
+      effects: [
+        { type: 'pull_copies_from_deck', cardId: 'goblin_archer', sound: 'whip', label: '🏹 Archer Muster' }
+      ]
+    },
+
+    orc_infantry: {
+      id: 'orc_infantry',
+      name: 'Orc Infantry',
+      role: 'Orc Army',
+      element: 'metal',
+      stars: 2,
+      rarity: 'bronze',
+      border: 'silver',
+      row: 'melee',
+      basePower: 2,
+      armor: 2,
+      cardImg: 'Cards/Orc_Infantry_Card.jpg',
+      abilityTitle: 'Orcish Shield Wall',
+      abilityDesc: 'Adds +1 Armor to an adjacent card on the row if it is part of the Orc Army.',
+      passiveTitle: '',
+      passiveDesc: '',
+      effects: [
+        { type: 'grant_adjacent_role_armor', role: 'Orc Army', amount: 1, sound: 'rock', label: '🛡️ Shield Wall' }
+      ]
+    },
+
+    orc_slinger: {
+      id: 'orc_slinger',
+      name: 'Orc Slinger',
+      role: 'Orc Army',
+      element: 'metal',
+      stars: 2,
+      rarity: 'bronze',
+      border: 'silver',
+      row: 'ranged',
+      basePower: 2,
+      armor: 1,
+      cardImg: 'Cards/Orc_Slinger_Card.jpg',
+      abilityTitle: 'Orcish Volley',
+      abilityDesc: 'Gives any other Orc Army card in your Ranged row +1 Power.',
+      passiveTitle: '',
+      passiveDesc: '',
+      effects: [
+        { type: 'boost_role_allies', roles: ['Orc Army'], rows: ['ranged'], amount: 1, excludeSelf: true, sound: 'whip', label: '🪨 Orcish Volley' }
+      ]
+    },
+
+    werewolf_pup: {
+      id: 'werewolf_pup',
+      name: 'Werewolf Pup',
+      role: 'Wolf Pack',
+      element: 'earth',
+      stars: 1,
+      rarity: 'bronze',
+      border: 'bronze',
+      row: 'melee',
+      basePower: 2,
+      armor: 0,
+      cardImg: 'Cards/Werewolf_Pup_Card.jpg',
+      abilityTitle: 'Howl',
+      abilityDesc: 'Doubles the power of all Wolf Pack cards on your side of the board. Stackable with additional Werewolf Pups.',
+      passiveTitle: '',
+      passiveDesc: '',
+      effects: [
+        { type: 'double_role_power', roles: ['Wolf Pack'], excludeSelf: true, sound: 'howl', label: '🐺 Howl' }
+      ]
+    },
+
+    minerva_wolf_mother: {
+      id: 'minerva_wolf_mother',
+      name: 'Minerva, Wolf Mother',
+      role: 'Wolf Pack',
+      element: 'earth',
+      stars: 3,
+      rarity: 'gold',
+      border: 'gold',
+      row: 'melee',
+      basePower: 3,
+      armor: 2,
+      cardImg: 'Cards/Minerva_Wolf_Mother_Card.jpg',
+      abilityTitle: "Mother's Aegis",
+      abilityDesc: 'When deployed, give all other Wolf Pack cards on your side of the board +2 Armor.',
+      passiveTitle: '',
+      passiveDesc: '',
+      effects: [
+        { type: 'grant_role_armor', roles: ['Wolf Pack'], amount: 2, excludeSelf: true, sound: 'rock', label: "🛡️ Mother's Aegis" }
+      ]
+    },
+
+    rust_bucket: {
+      id: 'rust_bucket',
+      name: 'Rust Bucket',
+      role: 'Machine',
+      element: 'metal',
+      stars: 1,
+      rarity: 'bronze',
+      border: 'bronze',
+      row: 'melee',
+      basePower: 1,
+      armor: 2,
+      resilient: true,
+      cardImg: 'Cards/Rust_Bucket_Card.jpg',
+      abilityTitle: 'Resilient',
+      abilityDesc: 'Stays on the battlefield at the end of the round instead of moving to the Graveyard.',
+      passiveTitle: 'Resilient',
+      passiveDesc: 'Persists into the next round.',
+      effects: []
+    },
+
+    scrap_heap: {
+      id: 'scrap_heap',
+      name: 'Scrap Heap',
+      role: 'Machine',
+      element: 'metal',
+      stars: 2,
+      rarity: 'silver',
+      border: 'silver',
+      row: 'melee',
+      basePower: 2,
+      armor: 2,
+      shield: true,
+      cardImg: 'Cards/Scrap_Heap_Card.jpg',
+      abilityTitle: 'Shield',
+      abilityDesc: 'Ignores the next instance of damage, then the Shield breaks and is removed.',
+      passiveTitle: 'Shield',
+      passiveDesc: 'Absorbs one incoming hit.',
+      effects: []
+    },
+
+    manson_wolf_father: {
+      id: 'manson_wolf_father',
+      name: 'Manson, Wolf Father',
+      role: 'Wolf Pack',
+      element: 'earth',
+      stars: 4,
+      rarity: 'gold',
+      border: 'decorative-gold',
+      maxDeckCopies: 1,
+      row: 'agile',
+      basePower: 4,
+      armor: 0,
+      boostRoleAbility: { role: 'Wolf Pack', amount: 1 },
+      cardImg: 'Cards/Manson_Wolf_Father_Card.jpg',
+      abilityTitle: "Alpha's Command",
+      abilityDesc: 'Select Manson on the board, then click each allied Wolf Pack member once per turn to raise their Power by +1.',
+      passiveTitle: 'Deck Limit: 1',
+      passiveDesc: 'Limited to 1 copy per deck.',
+      effects: []
+    },
+
+    vampire_thrall: {
+      id: 'vampire_thrall',
+      name: 'Vampire Thrall',
+      role: 'Vampire',
+      element: 'poison',
+      stars: 2,
+      rarity: 'silver',
+      border: 'silver',
+      row: 'melee',
+      basePower: 2,
+      armor: 0,
+      lifestealHeal: true,
+      cardImg: 'Cards/Vampire_Thrall_Card.jpg',
+      abilityTitle: 'Blood Leech',
+      abilityDesc: 'Attacking returns half of the attack damage dealt to heal Vampire Thrall (up to its Base Power).',
+      passiveTitle: 'Lifesteal',
+      passiveDesc: 'Sustains itself in melee combat.',
+      effects: []
+    },
+
+    gooba_goblin_king: {
+      id: 'gooba_goblin_king',
+      name: 'Gooba, Goblin King',
+      role: 'Goblin Army',
+      element: 'earth',
+      stars: 5,
+      rarity: 'gold',
+      border: 'decorative-gold',
+      row: 'ranged',
+      basePower: 5,
+      armor: 2,
+      cardImg: 'Cards/Gooba_Goblin_King_Card.jpg',
+      abilityTitle: 'Royal Decree',
+      abilityDesc: 'When played, also play any 1- or 2-star Goblin Army card from your hand.',
+      passiveTitle: 'Goblin Sovereign',
+      passiveDesc: 'Commands the Goblin Army from the Ranged row.',
+      effects: [],
+      onPlay(ctx) {
+        const { game, team, targetRow, logType } = ctx;
+        const player = game.state?.players?.[team];
+        if (!player || !Array.isArray(player.hand) || player.hand.length === 0) return;
+
+        // Prefer highest-star (2-star then 1-star), highest-power eligible Goblin Army card in hand
+        let bestIdx = -1;
+        let bestScore = -1;
+        player.hand.forEach((c, idx) => {
+          const def = CARDS[c.id];
+          const role = c.role || def?.role;
+          const stars = Number(c.stars ?? def?.stars ?? 0);
+          if (role === 'Goblin Army' && (stars === 1 || stars === 2)) {
+            const score = stars * 100 + (c.power || 0);
+            if (score > bestScore) {
+              bestScore = score;
+              bestIdx = idx;
+            }
+          }
+        });
+
+        if (bestIdx === -1) return;
+
+        const [bonusCard] = player.hand.splice(bestIdx, 1);
+        const bonusRow = bonusCard.row === 'agile'
+          ? (targetRow || 'ranged')
+          : (bonusCard.row || 'melee');
+        const bonusPreMyScore = game.getTotalScore(team);
+        const bonusPreOppScore = game.getTotalScore(team === 1 ? 2 : 1);
+        const bonusAlliesBefore = game.getAllBoardCards(team).length;
+
+        player.rows[bonusRow].push(bonusCard);
+        playSound('howl');
+        game.log(
+          `👑 Royal Decree! Gooba, Goblin King also plays ${bonusCard.name} (${bonusCard.power}) to ${ROW_LABELS[bonusRow] || bonusRow}!`,
+          logType
+        );
+        game.resolveCardAbility(team, bonusCard, bonusRow, bonusPreMyScore, bonusPreOppScore, bonusAlliesBefore);
+      },
+      estimateAiValue(rowKey, ctx) {
+        const { game, team } = ctx;
+        const player = game.state?.players?.[team];
+        let est = 5 + 1; // 5 power + 2 armor value
+        const hasGoblinInHand = (player?.hand || []).some(c => {
+          const def = CARDS[c.id];
+          const role = c.role || def?.role;
+          const stars = Number(c.stars ?? def?.stars ?? 0);
+          return role === 'Goblin Army' && (stars === 1 || stars === 2);
+        });
+        if (hasGoblinInHand) est += 4;
+        return est;
+      }
+    },
+
+    mothman: {
+      id: 'mothman',
+      name: 'Mothman',
+      role: 'Monster',
+      element: 'air',
+      stars: 3,
+      rarity: 'gold',
+      border: 'gold',
+      maxDeckCopies: 2,
+      row: 'agile',
+      basePower: 3,
+      armor: 1,
+      cardImg: 'Cards/Mothman_Card.jpg',
+      abilityTitle: 'Omen Carapace',
+      abilityDesc: 'Boosts the Armor of the creature to its right by +1 each turn while Mothman is on the board.',
+      passiveTitle: 'Deck Limit: 2',
+      passiveDesc: 'Limited to 2 copies per playing deck.',
+      effects: [],
+      estimateAiValue(rowKey, ctx) {
+        const { game, team } = ctx;
+        const rowArr = game.state?.players?.[team]?.rows?.[rowKey] || [];
+        // Value is higher when played to the left of an existing unit or early in a round
+        return 3 + 0.5 + (rowArr.length === 0 ? 2 : 1);
+      }
+    },
+
+    jersey_devil: {
+      id: 'jersey_devil',
+      name: 'Jersey Devil',
+      role: 'Monster',
+      element: 'fire',
+      stars: 3,
+      rarity: 'gold',
+      border: 'gold',
+      maxDeckCopies: 1,
+      row: 'agile',
+      basePower: 2,
+      armor: 0,
+      onKillPowerGain: 1,
+      onKillMaxBonus: 3,
+      cardImg: 'Cards/Jersey_Devil_Card.jpg',
+      abilityTitle: 'Pine Barrens Stalker',
+      abilityDesc: 'When Jersey Devil destroys an enemy, it gains +1 Power (up to +3 additional Power).',
+      passiveTitle: 'Deck Limit: 1',
+      passiveDesc: 'Limited to 1 copy per playing deck.',
+      effects: [],
+      estimateAiValue() {
+        return 2 + 1.5;
+      }
     },
 
     thorn_sapling: {
@@ -269,12 +389,19 @@
   // ---------------------------------------------------------------------------
   const DECK_RECIPES = {
     standard: [
-      'phoenix', 'earth_golem', 'hydra', 'terra_mother', 'dwarf_warden',
-      'pegasus',
-      'werewolf',
-      'verdant_guardian',
-      'dreadnaught',
-      'goblin_soldier', 'goblin_soldier', 'goblin_soldier'
+      'goblin_soldier', 'goblin_soldier', 'goblin_soldier',
+      'goblin_archer', 'goblin_archer', 'goblin_archer',
+      'orc_infantry', 'orc_infantry',
+      'orc_slinger', 'orc_slinger',
+      'werewolf_pup', 'werewolf_pup',
+      'minerva_wolf_mother',
+      'rust_bucket', 'rust_bucket',
+      'scrap_heap', 'scrap_heap',
+      'manson_wolf_father',
+      'vampire_thrall', 'vampire_thrall',
+      'gooba_goblin_king',
+      'mothman', 'mothman',
+      'jersey_devil'
     ]
   };
 
@@ -381,9 +508,10 @@
         case 'boost_role_allies':
         case 'boost_element_allies': {
           const allowedRoles = eff.roles || eff.elements || [];
+          const targetRows = eff.rows || ['melee', 'ranged'];
           let count = 0;
-          ['melee', 'ranged'].forEach(rk => {
-            myRows[rk].forEach(c => {
+          targetRows.forEach(rk => {
+            (myRows[rk] || []).forEach(c => {
               const match = eff.roles ? allowedRoles.includes(c.role) : allowedRoles.includes(c.element);
               if ((!eff.excludeSelf || c.uid !== card.uid) && match) {
                 c.power += eff.amount;
@@ -424,6 +552,53 @@
           }
           break;
         }
+        case 'grant_adjacent_role_armor': {
+          const rowArr = myRows[targetRow] || [];
+          const idx = rowArr.indexOf(card);
+          const neighbors = [rowArr[idx - 1], rowArr[idx + 1]].filter(Boolean);
+          const match = neighbors.find(n => n.role === eff.role);
+          if (match) {
+            match.armor = (match.armor || 0) + (eff.amount || 1);
+            playSound(eff.sound || 'rock');
+            game.log(`${eff.label || '🛡️ Fortify'} granted +${eff.amount || 1} Armor to adjacent ${match.name}!`, logType);
+          }
+          break;
+        }
+        case 'double_role_power': {
+          const allowedRoles = eff.roles || [];
+          let count = 0;
+          ['melee', 'ranged'].forEach(rk => {
+            (myRows[rk] || []).forEach(c => {
+              if ((!eff.excludeSelf || c.uid !== card.uid) && allowedRoles.includes(c.role)) {
+                c.power *= 2;
+                count++;
+              }
+            });
+          });
+          if (count > 0) {
+            playSound(eff.sound || 'howl');
+            game.log(`${eff.label || '🐺 Howl'} doubled the power of ${count} Wolf Pack unit(s)!`, logType);
+          }
+          break;
+        }
+        case 'grant_role_armor': {
+          const allowedRoles = eff.roles || [];
+          const amt = eff.amount || 2;
+          let count = 0;
+          ['melee', 'ranged'].forEach(rk => {
+            (myRows[rk] || []).forEach(c => {
+              if ((!eff.excludeSelf || c.uid !== card.uid) && allowedRoles.includes(c.role)) {
+                c.armor = (c.armor || 0) + amt;
+                count++;
+              }
+            });
+          });
+          if (count > 0) {
+            playSound(eff.sound || 'rock');
+            game.log(`${eff.label || '🛡️ Pack Armor'} granted +${amt} Armor to ${count} Wolf Pack unit(s)!`, logType);
+          }
+          break;
+        }
       }
     });
 
@@ -443,6 +618,19 @@
     }
 
     let est = card.power;
+    if (cardDef?.resilient && game.state?.round < 3) {
+      est += card.power + (card.armor || 0) * 0.5;
+    }
+    if (cardDef?.shield) {
+      est += 2;
+    }
+    if (cardDef?.boostRoleAbility) {
+      const roleAllies = game.getAllBoardCards(team).filter(c => c.role === cardDef.boostRoleAbility.role).length;
+      est += roleAllies * (cardDef.boostRoleAbility.amount || 1);
+    }
+    if (cardDef?.lifestealHeal) {
+      est += 1;
+    }
     const myRows = game.state.players[team].rows;
     const oppRows = game.state.players[oppTeam].rows;
     const effects = cardDef?.effects || [];
@@ -479,7 +667,14 @@
         case 'boost_role_allies':
         case 'boost_element_allies': {
           const allowed = eff.roles || eff.elements || [];
-          est += game.getAllBoardCards(team).filter(c => eff.roles ? allowed.includes(c.role) : allowed.includes(c.element)).length * eff.amount;
+          const targetRows = eff.rows || ['melee', 'ranged'];
+          let matches = 0;
+          targetRows.forEach(rk => {
+            (myRows[rk] || []).forEach(c => {
+              if (eff.roles ? allowed.includes(c.role) : allowed.includes(c.element)) matches++;
+            });
+          });
+          est += matches * eff.amount;
           break;
         }
         case 'draw_cards':
@@ -489,6 +684,27 @@
           const targetId = eff.cardId || card.id;
           const copiesInDeck = game.state.players[team].deck.filter(c => c.id === targetId).length;
           est += copiesInDeck * 3;
+          break;
+        }
+        case 'grant_adjacent_role_armor': {
+          const rowArr = myRows[rowKey] || [];
+          const last = rowArr[rowArr.length - 1];
+          if (last && last.role === eff.role) est += (eff.amount || 1);
+          break;
+        }
+        case 'double_role_power': {
+          const allowedRoles = eff.roles || [];
+          const wolfPower = game.getAllBoardCards(team)
+            .filter(c => allowedRoles.includes(c.role))
+            .reduce((s, c) => s + c.power, 0);
+          est += wolfPower + (eff.excludeSelf ? 0 : card.power);
+          break;
+        }
+        case 'grant_role_armor': {
+          const allowedRoles = eff.roles || [];
+          const amt = eff.amount || 2;
+          const matches = game.getAllBoardCards(team).filter(c => allowedRoles.includes(c.role)).length;
+          est += matches * amt + (eff.excludeSelf ? 0 : amt);
           break;
         }
       }
