@@ -6441,22 +6441,22 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
     display: none !important;
   }
 
-  /* Overlay Container at Bottom of Screen for Dialogue Popups */
+  /* Overlay Container at Top of Screen for Dialogue Popups */
   .ow-bottom-deck {
     position: absolute !important;
     left: 0 !important;
     right: 0 !important;
-    bottom: 0 !important;
-    top: auto !important;
+    top: 26px !important;
+    bottom: auto !important;
     display: flex !important;
     flex: none !important;
     width: 100% !important;
     max-width: 100% !important;
     background: transparent !important;
     flex-direction: column !important;
-    justify-content: flex-end !important;
+    justify-content: flex-start !important;
     align-items: center !important;
-    padding: 8px 10px calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+    padding: 6px 10px !important;
     overflow: visible !important;
     box-sizing: border-box !important;
     pointer-events: none !important;

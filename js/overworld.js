@@ -10087,7 +10087,7 @@
           this._lastInPark = inPark;
           this.updateHUDSaveInfo();
         }
-      } else if (zoom > 1) {
+      } else if (isCover || zoom !== 1) {
         const padX = 96;
         const minCenterX = Math.min(this.canvas.width / 2, padX + visibleW / 2);
         const maxCenterX = Math.max(minCenterX, this.canvas.width - padX - visibleW / 2);
@@ -17233,6 +17233,12 @@
       ctx.globalCompositeOperation = 'lighter';
 
       if (this.currentArea === 'interior' || this.currentArea === 'friend_interior' || this.currentArea === 'card_shop_interior') {
+        ctx.save();
+        const zoom = this.getAreaZoom();
+        if (zoom !== 1 || this.cameraX || this.cameraY) {
+          ctx.scale(zoom, zoom);
+          ctx.translate(-Math.round(this.cameraX || 0), -Math.round(this.cameraY || 0));
+        }
         // Warm Sunlight Beam from the Arched Diamond-Pane Window!
         if (timeOfDay !== 'night') {
           const sunGrad = ctx.createLinearGradient(9.8 * S, 2.2 * S, 11.2 * S, 6.8 * S);
@@ -17268,6 +17274,7 @@
           ctx.closePath();
           ctx.fill();
         }
+        ctx.restore();
 
         if (this.currentArea === 'interior' && this.tvFlashTicks > 0) {
           ctx.fillStyle = `rgba(186, 230, 253, ${(this.tvFlashTicks / 35) * 0.55})`;
@@ -17380,9 +17387,9 @@
 
     getAreaZoom() {
       if (this.currentArea === 'exterior') {
-        return this.EXT_ZOOM || 1.28;
+        return this.isMobileViewport() ? 0.95 : (this.EXT_ZOOM || 1.28);
       }
-      return this.isMobileViewport() ? 1.36 : 1;
+      return this.isMobileViewport() ? 1.04 : 1;
     }
 
     render() {
@@ -17403,7 +17410,7 @@
 
       const isExt = this.currentArea === 'exterior';
       const zoom = this.getAreaZoom();
-      const useCameraTransform = isExt || zoom !== 1;
+      const useCameraTransform = isExt || zoom !== 1 || Boolean(this.cameraX) || Boolean(this.cameraY);
 
       if (useCameraTransform) {
         ctx.save();
