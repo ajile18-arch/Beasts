@@ -4,9 +4,41 @@
    Desktop webapp (css/style.css) is completely unaffected by changes here.
    ============================================================================ */
 
-/* Always keep top HUD clean on mobile: score readout & A.I. hand live inside ☰ Menu */
-.gwent-hud-scores,
-.gwent-opp-hand-bar {
+/* Disable native mobile long-press callout / copy / share / save menus */
+*,
+*::before,
+*::after {
+  -webkit-touch-callout: none !important;
+  -webkit-user-select: none !important;
+  user-select: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+}
+
+img,
+svg,
+canvas {
+  -webkit-user-drag: none !important;
+}
+
+.gwent-card img,
+.gwent-opp-hand-bar img,
+button img,
+.ui-btn img,
+.ow-mob-nav-btn img,
+.dpad-btn * {
+  pointer-events: none !important;
+}
+
+input,
+textarea,
+select {
+  -webkit-touch-callout: default !important;
+  -webkit-user-select: text !important;
+  user-select: text !important;
+}
+
+/* Always keep top HUD clean on mobile: score readout lives inside ☰ Menu */
+.gwent-hud-scores {
   display: none !important;
 }
 
@@ -89,19 +121,36 @@
     white-space: nowrap !important;
   }
 
-  /* Pack board + hand upward and reserve bottom space for the non-blocking card info box */
+  /* Pack board + hand with room below for the full card info pill */
   .gwent-board-container {
     padding-top: 38px !important;
-    padding-bottom: calc(104px + env(safe-area-inset-bottom, 14px)) !important;
+    padding-bottom: calc(120px + env(safe-area-inset-bottom, 14px)) !important;
     gap: 4px !important;
     height: 100% !important;
     justify-content: flex-start !important;
     box-sizing: border-box !important;
   }
 
-  /* A.I. hand & deck counts live inside the Menu drawer on mobile */
+  /* Show opponent's card backs centered directly above the game board */
   .gwent-opp-hand-bar {
-    display: none !important;
+    display: flex !important;
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    width: 100% !important;
+    min-height: 28px !important;
+    padding: 2px 6px !important;
+    gap: 4px !important;
+    justify-content: center !important;
+    align-items: center !important;
+    flex-shrink: 0 !important;
+  }
+
+  .gwent-card-back-mini {
+    width: 20px !important;
+    height: 28px !important;
+    margin-left: 0 !important;
+    flex-shrink: 0 !important;
   }
 
   .gwent-sidebar .gwent-ctrl-buttons {
@@ -235,10 +284,10 @@
     padding: 1.5px 2px !important;
   }
 
-  /* Elevated, Floating Player Hand Dock — high up in the thumb zone */
+  /* Player Hand Dock — lowered down comfortably into the thumb zone */
   .gwent-hand-tray {
     height: 130px !important;
-    margin: 4px 2px 0 !important;
+    margin: 20px 2px 0 !important;
     padding: 5px 8px 6px !important;
     border-radius: 12px !important;
     border: 2px solid #8c6b43 !important;
@@ -321,25 +370,36 @@
     transform: translateY(-7px) scale(1.04) !important;
   }
 
-  /* Ability Popup sits below the Hand Dock so it NEVER covers placeable board rows */
+  /* Full-size readable Card Info Pill at the bottom (never covers placeable board rows) */
   .gwent-ability-popup {
     top: auto !important;
-    bottom: calc(6px + env(safe-area-inset-bottom, 10px)) !important;
-    left: 8px !important;
-    right: 8px !important;
+    bottom: calc(8px + env(safe-area-inset-bottom, 10px)) !important;
+    left: 6px !important;
+    right: 6px !important;
     width: auto !important;
-    max-height: 92px !important;
-    overflow-y: auto !important;
-    padding: 7px 10px !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow-y: visible !important;
+    padding: 10px 12px !important;
+  }
+
+  .gwent-ap-header {
+    margin-bottom: 4px !important;
   }
 
   .gwent-ap-title {
-    font-size: 13.5px !important;
+    font-size: 14px !important;
+  }
+
+  .gwent-ap-meta {
+    margin-bottom: 6px !important;
+    gap: 5px !important;
   }
 
   .gwent-ap-body {
-    font-size: 11px !important;
-    padding: 5px 8px !important;
+    font-size: 12px !important;
+    line-height: 1.4 !important;
+    padding: 7px 10px !important;
   }
 }
 
@@ -377,10 +437,30 @@
     justify-content: space-between !important;
   }
 
-  /* A.I. hand & score readout live inside the Menu drawer on mobile */
-  .gwent-opp-hand-bar,
+  /* Score readout lives inside the Menu drawer; show opponent card backs above the board */
   .gwent-hud-scores {
     display: none !important;
+  }
+
+  .gwent-opp-hand-bar {
+    display: flex !important;
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    width: 100% !important;
+    min-height: 20px !important;
+    padding: 1px 6px !important;
+    gap: 3px !important;
+    justify-content: center !important;
+    align-items: center !important;
+    flex-shrink: 0 !important;
+  }
+
+  .gwent-card-back-mini {
+    width: 14px !important;
+    height: 20px !important;
+    margin-left: 0 !important;
+    flex-shrink: 0 !important;
   }
 
   .gwent-mulligan-bar {

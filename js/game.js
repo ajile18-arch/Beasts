@@ -349,7 +349,7 @@
   // ---------------------------------------------------------------------------
   class BeastsGame {
     constructor() {
-      this.VERSION = '2.00';
+      this.VERSION = '2.03';
       this.gameMode = 'ai'; // 'ai' | '2p'
       this.currentView = 'overworld';
       this.currentChallenger = null;
@@ -2066,6 +2066,23 @@
       document.getElementById('btn-toggle-log')?.addEventListener('click', toggleChronicle);
       document.getElementById('btn-close-log')?.addEventListener('click', closeDrawers);
       backdrop?.addEventListener('click', closeDrawers);
+
+      // Disable native mobile long-press copy/share/save context menu & selection
+      window.addEventListener('contextmenu', (e) => {
+        if (!e.target?.closest?.('input, textarea')) {
+          e.preventDefault();
+        }
+      }, { passive: false });
+      window.addEventListener('selectstart', (e) => {
+        if (!e.target?.closest?.('input, textarea')) {
+          e.preventDefault();
+        }
+      }, { passive: false });
+      window.addEventListener('dragstart', (e) => {
+        if (!e.target?.closest?.('input, textarea')) {
+          e.preventDefault();
+        }
+      }, { passive: false });
     }
   }
 

@@ -7398,6 +7398,8 @@
           }
         };
 
+        dpad.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
+        dpad.addEventListener('contextmenu', (e) => e.preventDefault());
         dpad.addEventListener('pointerdown', (e) => {
           e.preventDefault();
           activePointerId = e.pointerId;
@@ -7431,6 +7433,8 @@
 
       // Action Button A (Interact / Dialogue / Choice)
       if (btnA) {
+        btnA.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
+        btnA.addEventListener('contextmenu', (e) => e.preventDefault());
         btnA.addEventListener('pointerdown', (e) => {
           e.preventDefault();
           btnA.classList.add('active');
@@ -7442,6 +7446,8 @@
 
       // Action Button B (Quick Inventory / Backpack)
       if (btnB) {
+        btnB.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
+        btnB.addEventListener('contextmenu', (e) => e.preventDefault());
         btnB.addEventListener('pointerdown', (e) => {
           e.preventDefault();
           btnB.classList.add('active');
