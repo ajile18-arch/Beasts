@@ -349,7 +349,7 @@
   // ---------------------------------------------------------------------------
   class BeastsGame {
     constructor() {
-      this.VERSION = '2.16';
+      this.VERSION = '2.27';
       this.gameMode = 'ai'; // 'ai' | '2p'
       this.currentView = 'overworld';
       this.currentChallenger = null;
@@ -730,16 +730,43 @@
       return rows[rowKey].some(c => c.uid !== card.uid && c.role === role);
     }
 
+    getCardRowKey(team, cardUid) {
+      const rows = this.state?.players?.[team]?.rows;
+      if (!rows) return null;
+      for (const rk of ['melee', 'ranged']) {
+        if ((rows[rk] || []).some(c => c.uid === cardUid)) return rk;
+      }
+      return null;
+    }
+
+    canCardAttackTargetRow(attackerTeam, attackerUid, targetRow) {
+      const attackerRow = this.getCardRowKey(attackerTeam, attackerUid);
+      if (attackerRow === 'melee' && targetRow === 'ranged') return false;
+      return true;
+    }
+
+    getValidAttackTargets(attackerTeam, attackerUid) {
+      const oppTeam = attackerTeam === 1 ? 2 : 1;
+      const rows = this.state?.players?.[oppTeam]?.rows;
+      if (!rows) return [];
+      const targets = [];
+      ['melee', 'ranged'].forEach(rk => {
+        if (this.canCardAttackTargetRow(attackerTeam, attackerUid, rk)) {
+          (rows[rk] || []).forEach(c => targets.push({ card: c, rowKey: rk }));
+        }
+      });
+      return targets;
+    }
+
     canTeamAttackThisTurn(team) {
       return Boolean(this.state?.players?.[team]);
     }
 
     hasReadyAttackers(team) {
-      const oppTeam = team === 1 ? 2 : 1;
       const canAttack = this.canTeamAttackThisTurn(team);
-      const hasOpp = this.getAllBoardCards(oppTeam).length > 0;
       return this.getAllBoardCards(team).some(c =>
-        (canAttack && !c.attackedThisTurn && hasOpp) || this.getBoostableAlliesFor(c, team).length > 0
+        (canAttack && !c.attackedThisTurn && this.getValidAttackTargets(team, c.uid).length > 0) ||
+        this.getBoostableAlliesFor(c, team).length > 0
       );
     }
 
@@ -849,13 +876,17 @@
           return;
         }
 
-        const canAttack = this.canTeamAttackThisTurn(activeTeam) && !card.attackedThisTurn && this.getAllBoardCards(oppTeam).length > 0;
+        const hasAnyOpp = this.getAllBoardCards(oppTeam).length > 0;
+        const validTargets = this.getValidAttackTargets(activeTeam, card.uid);
+        const canAttack = this.canTeamAttackThisTurn(activeTeam) && !card.attackedThisTurn && validTargets.length > 0;
         const canBoost = this.getBoostableAlliesFor(card, activeTeam).length > 0;
         if (!canAttack && !canBoost) {
           if (!this.canTeamAttackThisTurn(activeTeam)) {
             this.log(`⏳ Neither player can attack on their first turn of Round ${this.state.round}.`, activeTeam === 1 ? 'team1' : 'team2');
           } else if (card.attackedThisTurn) {
             this.log(`⏳ ${card.name} has already attacked this turn.`, activeTeam === 1 ? 'team1' : 'team2');
+          } else if (hasAnyOpp && this.getCardRowKey(activeTeam, card.uid) === 'melee') {
+            this.log(`⚔️ ${card.name} is on the Melee row and cannot attack the opponent's Ranged row.`, activeTeam === 1 ? 'team1' : 'team2');
           } else {
             this.log(`⚔️ No opposing cards on the board to attack.`, 'system');
           }
@@ -869,6 +900,10 @@
         const attacker = this.getAllBoardCards(activeTeam).find(c => c.uid === this.state.selectedAttackerUid);
         if (attacker && attacker.attackedThisTurn) {
           this.log(`⏳ ${attacker.name} has already attacked this turn. Click a glowing Wolf Pack ally to boost or click ${attacker.name} to cancel.`, activeTeam === 1 ? 'team1' : 'team2');
+          return;
+        }
+        if (attacker && !this.canCardAttackTargetRow(activeTeam, attacker.uid, rowKey)) {
+          this.log(`⚔️ Melee row cards cannot attack the opponent's Ranged row!`, activeTeam === 1 ? 'team1' : 'team2');
           return;
         }
         this.executeBoardAttack(activeTeam, this.state.selectedAttackerUid, ownerTeam, card, rowKey);
@@ -913,6 +948,7 @@
 
     executeBoardAttack(attackerTeam, attackerUid, targetTeam, targetCard, targetRow) {
       if (!this.canTeamAttackThisTurn(attackerTeam)) return;
+      if (!this.canCardAttackTargetRow(attackerTeam, attackerUid, targetRow)) return;
       const attacker = this.getAllBoardCards(attackerTeam).find(c => c.uid === attackerUid);
       if (!attacker || attacker.attackedThisTurn) return;
 
@@ -1479,14 +1515,10 @@
       }
 
       const readyAttackers = this.canTeamAttackThisTurn(2)
-        ? this.getAllBoardCards(2).filter(c => !c.attackedThisTurn)
+        ? this.getAllBoardCards(2).filter(c => !c.attackedThisTurn && this.getValidAttackTargets(2, c.uid).length > 0)
         : [];
-      const oppTargets = [];
-      ['melee', 'ranged'].forEach(rk => {
-        this.state.players[1].rows[rk].forEach(c => oppTargets.push({ card: c, rowKey: rk }));
-      });
 
-      if (readyAttackers.length === 0 || oppTargets.length === 0) {
+      if (readyAttackers.length === 0) {
         this.aiTimeout = setTimeout(() => {
           if (this.isMatchOver || !this.state || this.state.turnTeam !== 2) return;
           this.advanceTurn();
@@ -1495,6 +1527,7 @@
       }
 
       const attacker = readyAttackers[0];
+      const oppTargets = this.getValidAttackTargets(2, attacker.uid);
       const dmg = Math.max(1, attacker.power);
       // Prefer a target that will be destroyed, otherwise the highest-power target
       oppTargets.sort((a, b) => {
@@ -1794,8 +1827,8 @@
         const activeTeam = this.state.turnTeam;
         const canControl = this.gameMode === '2p' || activeTeam === 1;
         const canAttack = this.canTeamAttackThisTurn(activeTeam);
-        const hasOpp = this.getAllBoardCards(activeTeam === 1 ? 2 : 1).length > 0;
-        const canAct = (canAttack && !card.attackedThisTurn && hasOpp) || this.getBoostableAlliesFor(card, activeTeam).length > 0;
+        const hasValidTargets = this.getValidAttackTargets(activeTeam, card.uid).length > 0;
+        const canAct = (canAttack && !card.attackedThisTurn && hasValidTargets) || this.getBoostableAlliesFor(card, activeTeam).length > 0;
         if (canControl && ownerTeam === activeTeam && canAct) {
           extraClasses += ' attack-ready';
         }
@@ -1805,7 +1838,7 @@
         const selectedCard = this.state.selectedAttackerUid
           ? this.getAllBoardCards(activeTeam).find(c => c.uid === this.state.selectedAttackerUid)
           : null;
-        if (selectedCard && ownerTeam !== activeTeam && !selectedCard.attackedThisTurn) {
+        if (selectedCard && ownerTeam !== activeTeam && !selectedCard.attackedThisTurn && this.canCardAttackTargetRow(activeTeam, selectedCard.uid, rowKey)) {
           extraClasses += ' attack-target';
         }
         if (selectedCard && ownerTeam === activeTeam && card.uid !== selectedCard.uid && this.getBoostableAlliesFor(selectedCard, activeTeam).some(c => c.uid === card.uid)) {
@@ -1884,27 +1917,47 @@
     openCardModal(card) {
       if (!card) return;
       const modal = document.getElementById('gwent-card-modal');
-      if (!modal) return;
+      const dialog = document.getElementById('gwent-card-modal-dialog');
+      if (!modal || !dialog) return;
+
+      const stars = Math.max(1, Number(card.stars) || 1);
+      const tierClass = stars >= 4
+        ? 'tier-diamond'
+        : (stars === 3 ? 'tier-gold' : (stars === 2 ? 'tier-silver' : 'tier-bronze'));
+      dialog.classList.remove('tier-bronze', 'tier-silver', 'tier-gold', 'tier-diamond', 'has-traditional-img');
+      dialog.classList.add('traditional-card', tierClass);
+
+      const pwrVal = card.power ?? card.basePower;
+      const armorVal = card.armor || 0;
+      const def = window.MythosGwentCards?.CARDS?.[card.id];
+      const tradImg = card.traditionalCardImg || def?.traditionalCardImg || null;
 
       const img = document.getElementById('gwent-modal-img');
-      if (img) img.src = card.cardImg;
+      if (img) img.src = tradImg || card.cardImg;
+
+      const liveBadge = document.getElementById('gwent-modal-live-badge');
+      if (tradImg) {
+        dialog.classList.add('has-traditional-img');
+        if (liveBadge) {
+          const isModified = pwrVal !== card.basePower;
+          liveBadge.classList.toggle('hidden', !isModified);
+          if (isModified) {
+            liveBadge.textContent = `⚔️ Current Power: ${pwrVal}`;
+          }
+        }
+      } else if (liveBadge) {
+        liveBadge.classList.add('hidden');
+      }
+
+      const crestEl = document.getElementById('gwent-modal-crest-icon');
+      if (crestEl) {
+        const elemIcons = { fire: '🔥', water: '💧', earth: '🪨', air: '🌪️', plant: '🌿', metal: '⚙️' };
+        crestEl.textContent = elemIcons[card.element] || ROW_ICONS[card.row] || '⚔️';
+      }
+
       const nameEl = document.getElementById('gwent-modal-name');
       if (nameEl) nameEl.textContent = card.name;
 
-      const elemEl = document.getElementById('gwent-modal-element');
-      if (elemEl) {
-        const roleName = card.role || card.element || 'warrior';
-        elemEl.textContent = roleName.charAt(0).toUpperCase() + roleName.slice(1);
-        elemEl.className = `element-tag ${card.element || 'earth'}`;
-      }
-
-      const rowEl = document.getElementById('gwent-modal-row');
-      if (rowEl) rowEl.textContent = `${ROW_ICONS[card.row]} ${ROW_LABELS[card.row]}`;
-
-      const rarEl = document.getElementById('gwent-modal-rarity');
-      if (rarEl) rarEl.textContent = `${card.stars}★ ${card.rarity.toUpperCase()}`;
-
-      const pwrVal = card.power ?? card.basePower;
       const pwrEl = document.getElementById('gwent-modal-power');
       if (pwrEl) {
         pwrEl.textContent = pwrVal;
@@ -1912,10 +1965,10 @@
       }
 
       const armorEl = document.getElementById('gwent-modal-armor');
-      if (armorEl) armorEl.textContent = card.armor || 0;
+      if (armorEl) armorEl.textContent = armorVal;
 
       const abTitle = document.getElementById('gwent-modal-ability-title');
-      if (abTitle) abTitle.textContent = `⚔️ ${card.abilityTitle}`;
+      if (abTitle) abTitle.textContent = `${ROW_ICONS[card.row] || '⚔️'} ${card.abilityTitle}`;
       const abDesc = document.getElementById('gwent-modal-ability-desc');
       if (abDesc) abDesc.textContent = card.abilityDesc;
 
@@ -1925,6 +1978,18 @@
       if (pasCard) pasCard.classList.toggle('hidden', !card.passiveDesc);
       if (pasTitle) pasTitle.textContent = card.passiveTitle ? `🌟 ${card.passiveTitle}` : '';
       if (pasDesc) pasDesc.textContent = card.passiveDesc || '';
+
+      const roleRowEl = document.getElementById('gwent-modal-role-row');
+      if (roleRowEl) {
+        const roleLabel = card.role || def?.role || card.element || 'Beast';
+        const rowLabel = ROW_LABELS[card.row] || card.row || 'Agile';
+        roleRowEl.textContent = `${roleLabel} • ${rowLabel}`;
+      }
+
+      const starsEl = document.getElementById('gwent-modal-stars');
+      if (starsEl) {
+        starsEl.textContent = '★'.repeat(stars);
+      }
 
       window.soundFX?.playClick?.();
       modal.classList.remove('hidden');
@@ -2222,18 +2287,9 @@
       };
 
       attachArenaSwipeToExit({
-        frameEl: cardPanel,
-        headerEl: cardPanel?.querySelector('.gwent-top-controls'),
-        onClose: closeDrawers
-      });
-      attachArenaSwipeToExit({
         frameEl: logPanel,
         headerEl: logPanel?.querySelector('.log-header'),
         onClose: closeDrawers
-      });
-      attachArenaSwipeToExit({
-        frameEl: document.getElementById('gwent-card-modal-dialog'),
-        onClose: () => this.closeCardZoomModal()
       });
 
       // Disable native mobile long-press copy/share/save context menu & selection

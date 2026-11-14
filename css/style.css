@@ -97,6 +97,10 @@ body {
   white-space: nowrap;
 }
 
+.header-day-tag {
+  display: none;
+}
+
 .game-title {
   font-family: var(--font-title);
   font-size: 26px;
@@ -10087,21 +10091,231 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   pointer-events: none;
 }
 
-.gwent-card-modal-dialog {
+.gwent-card-modal-dialog.traditional-card {
   position: relative;
-  display: grid;
-  grid-template-columns: 310px 1fr;
-  gap: 24px;
-  width: min(92vw, 760px);
-  background: linear-gradient(155deg, #1e1710 0%, #100c08 100%);
-  border: 2px solid #d97706;
-  border-radius: 16px;
-  padding: 24px;
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.92), 0 0 32px rgba(217, 119, 6, 0.25);
+  display: flex;
+  flex-direction: column;
+  width: min(90vw, 375px);
+  min-height: 500px;
+  max-height: 90dvh;
+  background: #0a0d14;
+  border: 3px solid #d4af37;
+  border-radius: 18px;
+  padding: 0;
+  overflow: hidden;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.92), 0 0 32px rgba(212, 175, 55, 0.28);
   animation: owDialogPop 0.18s ease-out;
+  --trad-accent: #d4af37;
+  --trad-accent-soft: rgba(212, 175, 55, 0.35);
+  --trad-title: #f3dfb0;
+}
+
+.gwent-card-modal-dialog.traditional-card.tier-bronze {
+  border-color: #c27849;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.92), 0 0 28px rgba(194, 120, 73, 0.3);
+  --trad-accent: #d99b66;
+  --trad-accent-soft: rgba(194, 120, 73, 0.45);
+  --trad-title: #f5d6b8;
+}
+
+.gwent-card-modal-dialog.traditional-card.tier-silver {
+  border-color: #cbd5e1;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.92), 0 0 28px rgba(203, 213, 225, 0.3);
+  --trad-accent: #e2e8f0;
+  --trad-accent-soft: rgba(148, 163, 184, 0.45);
+  --trad-title: #f1f5f9;
+}
+
+.gwent-card-modal-dialog.traditional-card.tier-gold {
+  border-color: #eab308;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.92), 0 0 32px rgba(234, 179, 8, 0.34);
+  --trad-accent: #fbbf24;
+  --trad-accent-soft: rgba(234, 179, 8, 0.45);
+  --trad-title: #fef3c7;
+}
+
+.gwent-card-modal-dialog.traditional-card.tier-diamond {
+  border-color: #67e8f9;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.92), 0 0 36px rgba(103, 232, 249, 0.4);
+  --trad-accent: #a5f3fc;
+  --trad-accent-soft: rgba(103, 232, 249, 0.5);
+  --trad-title: #ecfeff;
+}
+
+.trad-card-bg-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 76%;
+  object-fit: cover;
+  object-position: center top;
+  pointer-events: none;
+}
+
+.gwent-card-modal-dialog.has-traditional-img {
+  aspect-ratio: 3 / 4;
+  min-height: 0;
+}
+
+.gwent-card-modal-dialog.has-traditional-img .trad-card-bg-img {
+  height: 100%;
+  object-fit: cover;
+}
+
+.gwent-card-modal-dialog.has-traditional-img .trad-card-vignette,
+.gwent-card-modal-dialog.has-traditional-img .trad-card-overlay {
+  display: none;
+}
+
+.trad-card-vignette {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 50% 26%, rgba(0, 0, 0, 0) 35%, rgba(6, 8, 14, 0.62) 100%),
+    linear-gradient(180deg, rgba(6, 8, 14, 0.35) 0%, rgba(6, 8, 14, 0) 24%, rgba(6, 8, 14, 0.25) 46%, rgba(8, 10, 16, 0.92) 64%, rgba(8, 10, 16, 0.98) 100%);
+  pointer-events: none;
+}
+
+.trad-card-live-badge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 6;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(10, 14, 22, 0.88);
+  border: 1px solid var(--trad-accent);
+  color: var(--trad-title);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.trad-card-overlay {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  justify-content: space-between;
+  overflow-y: auto;
+}
+
+.trad-card-arch {
+  width: 100%;
+  height: 52px;
+  color: var(--trad-accent);
+  flex-shrink: 0;
+  pointer-events: none;
+}
+
+.trad-card-art-spacer {
+  min-height: 140px;
+  flex: 1;
+}
+
+.trad-card-lower {
+  padding: 0 16px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.trad-card-title {
+  text-align: center;
+  font-size: 24px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--trad-title);
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.95);
+}
+
+.trad-stats-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.trad-stat-box {
+  background: linear-gradient(180deg, rgba(16, 20, 30, 0.88) 0%, rgba(10, 12, 18, 0.95) 100%);
+  border: 1px solid var(--trad-accent-soft);
+  border-radius: 10px;
+  padding: 6px 10px;
+  text-align: center;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.75);
+}
+
+.trad-stat-box .stat-lbl {
+  display: block;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: #94a3b8;
+}
+
+.trad-stat-box .stat-val {
+  display: block;
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 22px;
+  font-weight: 900;
+  color: var(--trad-accent);
+  line-height: 1.15;
+}
+
+.trad-ability-box {
+  background: linear-gradient(180deg, rgba(13, 17, 26, 0.92) 0%, rgba(8, 10, 16, 0.98) 100%);
+  border: 1px solid var(--trad-accent-soft);
+  border-radius: 12px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.trad-ability-entry {
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+.trad-ability-entry .ability-heading {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  color: var(--trad-title);
+  margin-bottom: 2px;
+}
+
+.trad-ability-entry p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #e2e8f0;
+}
+
+.trad-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 4px 0;
+}
+
+.trad-role-row {
+  font-size: 12px;
+  font-weight: 700;
+  color: #cbd5e1;
+  letter-spacing: 0.03em;
+}
+
+.trad-stars {
+  font-size: 15px;
+  font-weight: 900;
+  color: var(--trad-accent);
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.9);
+  letter-spacing: 1px;
 }
 
 .gwent-modal-close {
+  z-index: 8;
   position: absolute;
   top: 12px;
   right: 12px;
@@ -10260,14 +10474,12 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
 }
 
 @media (max-width: 720px) {
-  .gwent-card-modal-dialog {
-    grid-template-columns: 1fr;
-    max-height: 90vh;
-    overflow-y: auto;
-    padding: 16px;
+  .gwent-card-modal-dialog.traditional-card {
+    width: min(92vw, 355px);
+    max-height: 88dvh;
   }
-  .gwent-modal-art-col img {
-    max-height: 240px;
+  .trad-card-art-spacer {
+    min-height: 115px;
   }
 }
 

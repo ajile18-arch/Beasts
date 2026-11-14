@@ -6,8 +6,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>Mythos - Open World & Tabletop Card Game</title>
-  <link rel="stylesheet" href="css/style.css?v=2.16">
-  <link rel="stylesheet" href="css/mobile.css?v=2.16">
+  <link rel="stylesheet" href="css/style.css?v=2.25">
+  <link rel="stylesheet" href="css/mobile.css?v=2.25">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=MedievalSharp&family=Metamorphous&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
@@ -18,7 +18,8 @@
     <header class="game-header">
       <div class="logo-area">
         <h1 class="game-title">MYTHOS</h1>
-        <span class="version-tag" id="game-version">v2.16</span>
+        <span class="version-tag" id="game-version">v2.25</span>
+        <span class="header-day-tag" id="header-mobile-day">📅 Monday • Day 1</span>
         <span class="subtitle" id="header-subtitle"></span>
       </div>
 
@@ -86,7 +87,7 @@
         <!-- Pokémon / Stardew Style Dialogue & Response Choices Box (Displays in black space beneath map) -->
         <div class="ow-dialog-bar hidden" id="ow-dialog-bar">
           <div class="ow-dialog-main">
-            <div class="ow-speaker-tag" id="ow-speaker-tag">MIKE</div>
+            <div class="ow-speaker-tag" id="ow-speaker-tag">ROCKY</div>
             <div class="ow-dialog-text" id="ow-dialog-text">
               "It's only day 2 of summer and we are already bored!"
             </div>
@@ -349,41 +350,51 @@
       </aside>
     </main>
 
-    <!-- Gwent Card Detail Zoom Modal -->
+    <!-- Gwent Card Detail Zoom Modal (Traditional Card Layout) -->
     <div class="modal-overlay hidden" id="gwent-card-modal" style="z-index: 120;">
-      <div class="gwent-card-modal-dialog" id="gwent-card-modal-dialog">
+      <div class="gwent-card-modal-dialog traditional-card tier-gold" id="gwent-card-modal-dialog">
         <button type="button" class="gwent-modal-close" id="btn-close-gwent-card-modal" aria-label="Close">✕</button>
-        <div class="gwent-modal-art-col">
-          <img id="gwent-modal-img" src="Cards/Phoenix_Card.png" alt="Card Artwork">
-        </div>
-        <div class="gwent-modal-info-col">
-          <div class="gwent-modal-badges">
-            <span class="element-tag fire" id="gwent-modal-element">Fire</span>
-            <span class="gwent-modal-badge" id="gwent-modal-row">🏹 Ranged</span>
-            <span class="gwent-modal-badge rarity" id="gwent-modal-rarity">4★ GOLD</span>
+        <img id="gwent-modal-img" class="trad-card-bg-img" src="Cards/Phoenix_Card.png" alt="Card Artwork">
+        <div class="trad-card-vignette"></div>
+        <div class="trad-card-live-badge hidden" id="gwent-modal-live-badge"></div>
+
+        <!-- Dynamic Traditional Card Overlay (hidden when pre-rendered traditionalCardImg is active) -->
+        <div class="trad-card-overlay" id="gwent-modal-trad-overlay">
+          <svg viewBox="0 0 340 54" class="trad-card-arch" aria-hidden="true">
+            <path d="M12,48 Q80,14 148,17 M328,48 Q260,14 192,17" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" opacity="0.88"/>
+            <circle cx="170" cy="21" r="14" fill="rgba(10,13,20,0.9)" stroke="currentColor" stroke-width="2.2"/>
+            <text id="gwent-modal-crest-icon" x="170" y="26" text-anchor="middle" font-size="13">⚔️</text>
+          </svg>
+
+          <div class="trad-card-art-spacer"></div>
+
+          <div class="trad-card-lower">
+            <h2 class="gwent-modal-title trad-card-title" id="gwent-modal-name">Phoenix</h2>
+            <div class="gwent-modal-stats-row trad-stats-row">
+              <div class="gwent-modal-stat-box trad-stat-box">
+                <span class="stat-lbl">BASE POWER</span>
+                <span class="stat-val" id="gwent-modal-power">8</span>
+              </div>
+              <div class="gwent-modal-stat-box trad-stat-box" id="gwent-modal-armor-box">
+                <span class="stat-lbl">ARMOR</span>
+                <span class="stat-val" id="gwent-modal-armor">0</span>
+              </div>
+            </div>
+            <div class="gwent-modal-abilities trad-ability-box">
+              <div class="gwent-modal-ability-card trad-ability-entry">
+                <div class="ability-heading" id="gwent-modal-ability-title">⚔️ Trails of Fire</div>
+                <p id="gwent-modal-ability-desc">Deals 2 damage to every enemy unit on the opposing Melee row.</p>
+              </div>
+              <div class="gwent-modal-ability-card passive trad-ability-entry hidden">
+                <div class="ability-heading" id="gwent-modal-passive-title">🌟 Rebirth</div>
+                <p id="gwent-modal-passive-desc">At the start of Round 2 or 3, if in Graveyard, revives onto your Ranged row with 4 Power.</p>
+              </div>
+            </div>
+            <div class="trad-card-footer">
+              <span class="trad-role-row" id="gwent-modal-role-row">Monster • Ranged</span>
+              <span class="trad-stars" id="gwent-modal-stars">★★★</span>
+            </div>
           </div>
-          <h2 class="gwent-modal-title" id="gwent-modal-name">Phoenix</h2>
-          <div class="gwent-modal-stats-row">
-            <div class="gwent-modal-stat-box">
-              <span class="stat-lbl">BASE POWER</span>
-              <span class="stat-val" id="gwent-modal-power">8</span>
-            </div>
-            <div class="gwent-modal-stat-box" id="gwent-modal-armor-box">
-              <span class="stat-lbl">ARMOR</span>
-              <span class="stat-val" id="gwent-modal-armor">0</span>
-            </div>
-          </div>
-          <div class="gwent-modal-abilities">
-            <div class="gwent-modal-ability-card">
-              <div class="ability-heading" id="gwent-modal-ability-title">⚔️ Trails of Fire</div>
-              <p id="gwent-modal-ability-desc">Deals 2 damage to every enemy unit on the opposing Melee row.</p>
-            </div>
-            <div class="gwent-modal-ability-card passive">
-              <div class="ability-heading" id="gwent-modal-passive-title">🌟 Rebirth</div>
-              <p id="gwent-modal-passive-desc">At the start of Round 2 or 3, if in Graveyard, revives onto your Ranged row with 4 Power.</p>
-            </div>
-          </div>
-          <div class="gwent-modal-footer-hint">Click outside or press Esc to close</div>
         </div>
       </div>
     </div>
@@ -1279,14 +1290,6 @@
                 </div>
                 <span class="phone-app-name">Tournaments</span>
               </div>
-
-              <!-- App 5: Return to World Tab -->
-              <div class="phone-app-icon-item phone-app-return-world" id="app-btn-return-world">
-                <div class="phone-icon-box bg-return-world">
-                  🗺️
-                </div>
-                <span class="phone-app-name">Return to World</span>
-              </div>
             </div>
 
             <!-- Quick Widget: Today's Town Event Summary -->
@@ -1439,10 +1442,10 @@
     </div>
   </div>
 
-  <script src="js/audio.js?v=2.16"></script>
-  <script src="js/character_sprites.js?v=2.16"></script>
-  <script src="js/overworld.js?v=2.16"></script>
-  <script src="js/gwent_cards.js?v=2.16"></script>
-  <script src="js/game.js?v=2.16"></script>
+  <script src="js/audio.js?v=2.25"></script>
+  <script src="js/character_sprites.js?v=2.25"></script>
+  <script src="js/overworld.js?v=2.25"></script>
+  <script src="js/gwent_cards.js?v=2.25"></script>
+  <script src="js/game.js?v=2.25"></script>
 </body>
 </html>

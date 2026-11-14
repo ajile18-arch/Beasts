@@ -53,8 +53,8 @@
         ...(this.worldSave ? this.worldSave.playerAppearance : {})
       };
 
-      // Equal 50/50 chance for friend NPC to be named Mike or AJ
-      this.friendName = this.worldSave?.friendName || (Math.random() < 0.5 ? 'Mike' : 'AJ');
+      // Friend NPC is always named Rocky
+      this.friendName = 'Rocky';
       this._gold = this.worldSave?.gold ?? 0;
       this.hasMomBoosterMoney = this.worldSave?.hasMomBoosterMoney ?? false;
       this.hasBoughtCardShopPacks = this.worldSave?.hasBoughtCardShopPacks ?? false;
@@ -729,7 +729,7 @@
 
     /** Home area metadata for every Card Exchange NPC with an enterable cottage. */
     getNpcHomeMeetupInfo(npcId) {
-      const friendName = this.friendName || 'Mike';
+      const friendName = this.friendName || 'Rocky';
       const homes = {
         maya: {
           name: 'Maya',
@@ -894,7 +894,7 @@
     }
 
     getTownContactsList() {
-      const fName = this.friendName || 'Mike';
+      const fName = this.friendName || 'Rocky';
       const pName = this.playerName;
       return [
         {
@@ -1027,7 +1027,7 @@
             { sender: 'npc', text: `Hey ${pName}! I'm always looking to swap cards and arrange meetups.` }
           ],
           replies: [
-            { text: `🤝 "Got any advice on trading cards in town?"`, reply: `Check the Card Exchange app on your phone right now! Maya, Silas, Pluto, Nova, and ${this.friendName || 'Mike'} all negotiate prices and arrange meetups across town.` }
+            { text: `🤝 "Got any advice on trading cards in town?"`, reply: `Check the Card Exchange app on your phone right now! Maya, Silas, Pluto, Nova, and ${this.friendName || 'Rocky'} all negotiate prices and arrange meetups across town.` }
           ]
         },
         {
@@ -1049,7 +1049,7 @@
     }
 
     getMarketplaceListings() {
-      const friendName = this.friendName || 'Mike';
+      const friendName = this.friendName || 'Rocky';
       const cards = window.MythosGwentCards?.CARDS || {};
       const formatCardMeta = (cardId, fallbackLabel) => {
         const c = cards[cardId];
@@ -3076,13 +3076,35 @@
       }
     }
 
+    getTotalOwnedCardCount() {
+      const looseCount = (this.inventory || [])
+        .filter(i => i.type === 'mythos_card' && i.qty > 0)
+        .reduce((s, i) => s + (i.qty || 0), 0);
+      const binderCount = (this.binderSlots || [])
+        .reduce((s, slot) => s + (slot ? (slot.qty || 1) : 0), 0);
+      return looseCount + binderCount;
+    }
+
     sellCardToShop(cardId, sellAll = false) {
       const itemIndex = (this.inventory || []).findIndex(i => i.id === cardId && i.type === 'mythos_card' && i.qty > 0);
       if (itemIndex < 0) return;
 
+      const maxSellable = Math.max(0, this.getTotalOwnedCardCount() - 18);
+      if (maxSellable <= 0) {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        const footerMsg = document.getElementById('shop-footer-msg');
+        if (footerMsg) {
+          footerMsg.innerHTML = `⚠️ Cannot sell! You must keep at least <b>18 total cards</b> between your Binder and Playing Deck/Backpack to have a playable deck.`;
+          footerMsg.className = 'shop-footer-hint highlight';
+        }
+        return;
+      }
+
       const item = this.inventory[itemIndex];
       const unitPrice = this.getCardSellPrice(item);
-      const qtyToSell = sellAll ? item.qty : 1;
+      const requestedQty = sellAll ? item.qty : 1;
+      const qtyToSell = Math.min(requestedQty, maxSellable);
+      if (qtyToSell <= 0) return;
       const totalEarned = Math.round(unitPrice * qtyToSell * 100) / 100;
 
       if (item.qty > qtyToSell) {
@@ -3141,7 +3163,7 @@
           : `🔒 Need ${this.formatMoney(packCost)} (Short ${this.formatMoney(packCost - (this.gold || 0))})`;
       }
 
-      const hasUnopenedPack = (this.inventory || []).some(i => i.id === 'unopened_base_pack' && i.qty > 0);
+      const hasUnopenedPack = (this.inventory || []).some(i => (i.id === 'unopened_starter_pack' || i.id === 'unopened_base_pack') && i.qty > 0);
       if (ripNowBtn) {
         ripNowBtn.classList.toggle('hidden', !hasUnopenedPack);
       }
@@ -3149,6 +3171,8 @@
       // Sell Section (Strictly cards in backpack inventory, excluding binder slots)
       const looseCards = (this.inventory || []).filter(i => i.type === 'mythos_card' && i.qty > 0);
       const totalLooseCount = looseCards.reduce((s, i) => s + (i.qty || 0), 0);
+      const totalOwnedCards = this.getTotalOwnedCardCount();
+      const maxSellable = Math.max(0, totalOwnedCards - 18);
 
       const countPill = document.getElementById('shop-sell-count-pill');
       if (countPill) {
@@ -3170,10 +3194,19 @@
             </div>
           `;
         } else {
+          if (maxSellable <= 0) {
+            const lockNotice = document.createElement('div');
+            lockNotice.className = 'shop-sell-lock-notice';
+            lockNotice.style.cssText = 'grid-column: 1 / -1; padding: 10px 12px; border-radius: 10px; background: rgba(245, 158, 11, 0.14); border: 1px solid rgba(245, 158, 11, 0.45); color: #fde68a; font-size: 12.5px; margin-bottom: 6px;';
+            lockNotice.innerHTML = `🔒 <b>Minimum Deck Protection:</b> You currently have <b>${totalOwnedCards}</b> total cards (Binder + Playing Deck/Backpack). You must keep at least <b>18 cards</b> to maintain a playable deck.`;
+            gridEl.appendChild(lockNotice);
+          }
           looseCards.forEach(card => {
             const unitPrice = this.getCardSellPrice(card);
             const stars = Number(card.stars) || 1;
             const starText = '★'.repeat(stars);
+            const canSellOne = maxSellable >= 1;
+            const canSellAll = maxSellable >= card.qty;
 
             const row = document.createElement('div');
             row.className = 'shop-sell-row';
@@ -3198,11 +3231,11 @@
                 </div>
               </div>
               <div class="shop-sell-card-actions">
-                <button type="button" class="ui-btn primary-btn shop-sell-btn sell-one">
-                  💵 Sell 1 (+${this.formatMoney(unitPrice)})
+                <button type="button" class="ui-btn primary-btn shop-sell-btn sell-one" ${canSellOne ? '' : 'disabled title="Need more than 18 total cards to sell"'}>
+                  ${canSellOne ? `💵 Sell 1 (+${this.formatMoney(unitPrice)})` : '🔒 Min 18 Cards'}
                 </button>
                 ${card.qty > 1 ? `
-                  <button type="button" class="ui-btn secondary shop-sell-btn sell-all">
+                  <button type="button" class="ui-btn secondary shop-sell-btn sell-all" ${canSellAll ? '' : `disabled title="Selling all ${card.qty} would drop below 18 total cards"`}>
                     Sell All x${card.qty} (+${this.formatMoney(unitPrice * card.qty)})
                   </button>
                 ` : ''}
@@ -4137,7 +4170,7 @@
       }
       if (this.friendDefeatedRewardPending) {
         this.friendDefeatedRewardPending = false;
-        const fName = challenger?.name || this.friendName || 'Mike';
+        const fName = challenger?.name || this.friendName || 'Rocky';
 
         // Friend stands facing player with celebratory gift bubble
         this.storyState = 'friend_defeated_celebration';
@@ -4848,9 +4881,39 @@
       return this.rollFivePackCards();
     }
 
+    rollStarterPackCards() {
+      const reg = window.MythosGwentCards?.CARDS || {};
+      const mythosPool = this.getMythosPackCatalog();
+      const catalog = mythosPool.length > 0 ? mythosPool : this.getBaseSetCardCatalog();
+      // Build an expanded pool respecting each card's maxDeckCopies so all 18 cards fit a legal Playing Deck
+      const expanded = [];
+      catalog.forEach(card => {
+        const def = reg[card.beastId];
+        const maxCopies = def?.maxDeckCopies ?? (card.beastId === 'manson_wolf_father' ? 1 : 3);
+        for (let k = 0; k < maxCopies; k++) {
+          expanded.push({ ...card });
+        }
+      });
+      for (let i = expanded.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [expanded[i], expanded[j]] = [expanded[j], expanded[i]];
+      }
+      const drawn = expanded.slice(0, 18);
+      while (drawn.length < 18 && catalog.length > 0) {
+        drawn.push({ ...catalog[drawn.length % catalog.length] });
+      }
+      return drawn;
+    }
+
     startBoosterPackOpening(packItemId = 'unopened_base_pack') {
-      const packItem = this.inventory.find(i => i.id === packItemId && i.qty > 0);
+      let packItem = this.inventory.find(i => i.id === packItemId && i.qty > 0);
+      if (!packItem && packItemId === 'unopened_base_pack') {
+        packItem = this.inventory.find(i => i.id === 'unopened_starter_pack' && i.qty > 0);
+        if (packItem) packItemId = 'unopened_starter_pack';
+      }
       if (!packItem) return;
+
+      const isStarterPack = packItemId === 'unopened_starter_pack' || Boolean(packItem.isStarterPack);
 
       // Close the inventory or shop modal so the full-screen Pack Opening Stage takes center stage
       this.toggleInventoryModal(false);
@@ -4858,10 +4921,11 @@
 
       this.packOpeningState = {
         packItemId,
+        isStarterPack,
         chargeClicks: 0,
         isRipping: false,
         cardsDealt: false,
-        pulledCards: this.rollFivePackCards(),
+        pulledCards: isStarterPack ? this.rollStarterPackCards() : this.rollFivePackCards(),
         currentCardIndex: 0,
         flippedIndices: new Set(),
         collected: false
@@ -4883,8 +4947,16 @@
       if (!modal || !wrapper || !sealedZone || !cardsRow) return;
 
       // Reset stage UI to Phase 1 (Sealed Booster Pack)
-      if (badgeEl) badgeEl.textContent = '✨ MYTHOS BASE SET • 1ST EDITION BOOSTER ✨';
-      if (titleEl) titleEl.textContent = 'BREAK THE SEAL OF MYTHOS';
+      if (badgeEl) {
+        badgeEl.textContent = isStarterPack
+          ? '✨ MYTHOS STARTER PACK • 18-CARD DECK BOX ✨'
+          : '✨ MYTHOS BASE SET • 1ST EDITION BOOSTER ✨';
+      }
+      if (titleEl) {
+        titleEl.textContent = isStarterPack
+          ? 'BREAK THE SEAL OF YOUR 18-CARD STARTER PACK'
+          : 'BREAK THE SEAL OF MYTHOS';
+      }
       if (subEl) {
         subEl.innerHTML = 'Click the sealed Booster Pack <b>3 times</b> to charge <b>The Seal of Mythos</b> and tear open the foil!';
       }
@@ -5071,9 +5143,14 @@
           nextBtn.textContent = `Next Card ▸ (Open Card ${idx + 2} of ${st.pulledCards.length})`;
           nextBtn.classList.remove('hidden');
         }
-      } else {
-        // All 3 cards have been opened!
         if (viewAllBtn) {
+          viewAllBtn.textContent = `🃏 View All ${st.pulledCards.length} Cards`;
+          viewAllBtn.classList.remove('hidden');
+        }
+      } else {
+        // All cards have been opened!
+        if (viewAllBtn) {
+          viewAllBtn.textContent = `🃏 View All ${st.pulledCards.length} Cards`;
           viewAllBtn.classList.remove('hidden');
         }
         if (collectBtn) {
@@ -5118,9 +5195,9 @@
       const collectBtn = document.getElementById('btn-pack-collect');
       const cardsRow = document.getElementById('pack-cards-reveal-row');
 
-      if (badgeEl) badgeEl.textContent = '✨ BOOSTER PACK COMPLETE ✨';
-      if (titleEl) titleEl.textContent = '✨ ALL 5 CARDS PULLED! ✨';
-      if (subEl) subEl.innerHTML = 'All 5 Mythos Cards unsealed! Collect them to add them to your backpack inventory:';
+      if (badgeEl) badgeEl.textContent = st.isStarterPack ? '✨ STARTER PACK COMPLETE ✨' : '✨ BOOSTER PACK COMPLETE ✨';
+      if (titleEl) titleEl.textContent = `✨ ALL ${st.pulledCards.length} CARDS PULLED! ✨`;
+      if (subEl) subEl.innerHTML = `All ${st.pulledCards.length} Mythos Cards unsealed! Collect them to add them to your backpack inventory${st.isStarterPack ? ' and fill out your Playing Deck' : ''}:`;
 
       nextBtn?.classList.add('hidden');
       viewAllBtn?.classList.add('hidden');
@@ -5166,7 +5243,7 @@
         window.sounds.playVictory();
       }
 
-      // Add each of the 3 pulled Mythos Cards directly into the Player's Inventory!
+      // Add each pulled Mythos Card directly into the Player's Inventory!
       st.pulledCards.forEach(card => {
         this.addInventoryItem({
           id: card.id,
@@ -5182,6 +5259,10 @@
           desc: card.desc
         });
       });
+
+      if (st.isStarterPack && (!this.playingDeck || this.playingDeck.length === 0)) {
+        this.playingDeck = st.pulledCards.map(c => c.beastId).filter(Boolean);
+      }
 
       this.hasOpenedStarterPack = true;
       this.storyState = 'friend_challenges_after_pack';
@@ -5209,8 +5290,8 @@
     // -------------------------------------------------------------------------
     startOpeningCutscene(rollNewFriend = false) {
       this.currentArea = 'interior';
-      if (rollNewFriend) {
-        this.friendName = Math.random() < 0.5 ? 'Mike' : 'AJ';
+      if (rollNewFriend || !this.friendName) {
+        this.friendName = 'Rocky';
       }
 
       this.gold = 0;
@@ -5322,8 +5403,11 @@
         this.activeDialogueNpc = null;
         this.renderDialogueUI();
       } else if (this.storyState === 'must_open_pack_before_leaving') {
-        const hasUnopenedPack = (this.inventory || []).some(i => i.id === 'unopened_base_pack' && i.qty > 0);
-        if (hasUnopenedPack) {
+        const hasStarterPack = (this.inventory || []).some(i => i.id === 'unopened_starter_pack' && i.qty > 0);
+        const hasBasePack = (this.inventory || []).some(i => i.id === 'unopened_base_pack' && i.qty > 0);
+        if (hasStarterPack) {
+          this.startBoosterPackOpening('unopened_starter_pack');
+        } else if (hasBasePack) {
           this.startBoosterPackOpening('unopened_base_pack');
         } else {
           this.storyState = 'free_roam';
@@ -5369,15 +5453,16 @@
       this.hasBoughtCardShopPacks = true;
       this.storyState = 'shop_bought_packs';
 
-      // Add 1 Unopened Mythos Base Set Booster Pack to your Inventory (the 2nd pack goes to Mike/AJ!)
+      // Add 1 Unopened Mythos 18-Card Starter Pack to your Inventory (the 2nd starter pack goes to Mike/AJ!)
       this.addInventoryItem({
-        id: 'unopened_base_pack',
-        name: 'Unopened Mythos Base Card Pack',
+        id: 'unopened_starter_pack',
+        name: 'Unopened Mythos Starter Pack (18 Cards)',
         qty: 1,
         icon: '🃏',
         cardImg: 'Cards/Mythos_Card_Back.png',
         type: 'booster_pack',
-        desc: `<b>Unopened Mythos Base Set Booster Pack (1st Edition)</b> — A factory-sealed foil booster pack featuring <b>The Seal of Mythos</b> and <b>3 Mythos Game Cards</b> inside. Click <b>✨ Open Booster Pack</b> below to break the seal! <i>(Purchased at Leo's Card Shop with ${this.friendName}, who got the other pack!)</i>`
+        isStarterPack: true,
+        desc: `<b>Unopened Mythos Starter Pack (18 Cards)</b> — A special 18-card deck box featuring <b>The Seal of Mythos</b> to fill out your playable Playing Deck! Click <b>✨ Open Starter Pack</b> to break the seal! <i>(Purchased at Leo's Card Shop with ${this.friendName}, who got the other Starter Pack!)</i>`
       });
 
       if (this.shopkeeperNpc) {
@@ -5482,7 +5567,7 @@
       if (!bar || !speakerEl || !textEl || !choicesEl || !nextBtn || !challengeBtn) return;
 
       bar.classList.remove('top-position', 'talk-icon-only');
-      const friendName = this.getFriendNpc()?.name || this.friendName || 'Mike';
+      const friendName = this.getFriendNpc()?.name || this.friendName || 'Rocky';
       const playerName = this.draftAppearance?.name || 'Asher';
 
       if (this.storyState === 'intro_waiting') {
@@ -5560,10 +5645,10 @@
         const openNowBtn = document.createElement('button');
         openNowBtn.type = 'button';
         openNowBtn.className = 'ow-choice-btn';
-        openNowBtn.innerHTML = `✨ "Let's open my <b>Mythos Base Card Pack</b> right now!"`;
+        openNowBtn.innerHTML = `✨ "Let's open my <b>18-Card Mythos Starter Pack</b> right now!"`;
         openNowBtn.addEventListener('click', (ev) => {
           ev.stopPropagation();
-          this.startBoosterPackOpening('unopened_base_pack');
+          this.startBoosterPackOpening('unopened_starter_pack');
         });
         choicesEl.appendChild(openNowBtn);
         choicesEl.classList.remove('hidden');
@@ -5576,16 +5661,16 @@
         bar.classList.remove('tv-broadcast');
         speakerEl.textContent = `🃏 ${friendName.toUpperCase()} & SHOPKEEPER LEO`;
         speakerEl.className = 'ow-speaker-tag tv';
-        textEl.innerHTML = `<b>${friendName}:</b> "Whoa, hold up ${playerName}! Don't leave <b>Leo's Card Shop</b> without opening the <b>Mythos Base Card Pack</b> you just got from Leo!"<br><b>Shopkeeper Leo:</b> "That's the best part! Break <b>The Seal of Mythos</b> and see which 3 cards you pulled before you head out!"`;
+        textEl.innerHTML = `<b>${friendName}:</b> "Whoa, hold up ${playerName}! Don't leave <b>Leo's Card Shop</b> without opening the <b>18-Card Mythos Starter Pack</b> you just got from Leo!"<br><b>Shopkeeper Leo:</b> "That's the best part! Break <b>The Seal of Mythos</b> and unseal your 18-card Starter Pack to fill out your Playing Deck before you head out!"`;
 
         choicesEl.innerHTML = '';
         const openBtn = document.createElement('button');
         openBtn.type = 'button';
         openBtn.className = 'ow-choice-btn';
-        openBtn.innerHTML = `✨ "You're right! Let's open my <b>Mythos Base Card Pack</b> right now!"`;
+        openBtn.innerHTML = `✨ "You're right! Let's open my <b>18-Card Starter Pack</b> right now!"`;
         openBtn.addEventListener('click', (ev) => {
           ev.stopPropagation();
-          this.startBoosterPackOpening('unopened_base_pack');
+          this.startBoosterPackOpening('unopened_starter_pack');
         });
         choicesEl.appendChild(openBtn);
         choicesEl.classList.remove('hidden');
@@ -5913,7 +5998,7 @@
 
       if (this.currentArea === 'interior') {
         const friend = this.getFriendNpc();
-        const fName = friend?.name || this.friendName || 'Mike';
+        const fName = friend?.name || this.friendName || 'Rocky';
         const pName = this.draftAppearance?.name || 'Asher';
         const mom = this.npcs.find(n => n.id === 'mom');
         const distToMom = mom ? Math.hypot(this.player.x - mom.x, this.player.y - mom.y) : 999;
@@ -6081,7 +6166,7 @@
           bar.classList.add('hidden');
         }
       } else if (this.currentArea === 'friend_interior') {
-        const fName = this.friendName || 'Mike';
+        const fName = this.friendName || 'Rocky';
         const pName = this.draftAppearance?.name || 'Asher';
         const friend = this.getFriendNpc();
         const distToFriend = friend ? Math.hypot(this.player.x - friend.x, this.player.y - friend.y) : 999;
@@ -6151,7 +6236,7 @@
           bar.classList.add('hidden');
         }
       } else if (this.currentArea === 'card_shop_interior') {
-        const fName = this.friendName || 'Mike';
+        const fName = this.friendName || 'Rocky';
         const pName = this.draftAppearance?.name || 'Asher';
         const keeper = this.shopkeeperNpc;
         // Player can talk to Shopkeeper Leo across the wooden counter (x: 4.5..8.4, y: 4.6..6.5)
@@ -6175,22 +6260,22 @@
               choices: [
                 hasMoney
                   ? {
-                      label: `1. 💬 "Buy 2 MYTHOS Base Set Booster Packs ($20)" — one for me and ${fName}!`,
+                      label: `1. 💬 "Buy 2 MYTHOS 18-Card Starter Packs ($20)" — one for me and ${fName}!`,
                       primary: true,
                       silentClick: true,
                       onSelect: () => this.buyTwoBoosterPacks()
                     }
                   : {
-                      label: `1. 💬 "We want to buy 2 Booster Packs ($20)!" <i>(Need $20)</i>`,
+                      label: `1. 💬 "We want to buy 2 Starter Packs ($20)!" <i>(Need $20)</i>`,
                       primary: true,
                       onSelect: (el) => {
-                        el.innerHTML = `<b>Shopkeeper Leo:</b> "Two Base Set packs come to <b>$20</b>! Looks like your wallet has ${this.formatMoney(this.gold || 0)} right now—check in with your Mom back at home first!"`;
+                        el.innerHTML = `<b>Shopkeeper Leo:</b> "Two 18-Card Starter Packs come to <b>$20</b>! Looks like your wallet has ${this.formatMoney(this.gold || 0)} right now—check in with your Mom back at home first!"`;
                       }
                     },
                 {
-                  label: `2. ✨ "What makes MYTHOS cards so special, Leo?"`,
+                  label: `2. ✨ "What's inside the MYTHOS Starter Pack, Leo?"`,
                   onSelect: (el) => {
-                    el.innerHTML = `<b>Shopkeeper Leo:</b> "Every 1st-Edition Booster Pack holds <b>3 Beast cards</b> — from blazing Phoenixes to soaring Pegasus and armored Golems! Rip them right here at the counter to build your first squad!"`;
+                    el.innerHTML = `<b>Shopkeeper Leo:</b> "Every <b>Starter Pack</b> holds a full <b>18 Beast cards</b> to fill out your playable deck — from blazing Phoenixes to soaring Pegasus and armored Golems! Rip it open right here at the counter!"`;
                   }
                 },
                 {
@@ -6198,13 +6283,14 @@
                   onSelect: () => this.closeDialogue()
                 }
               ],
-              challengeText: hasMoney ? '💵 Buy 2 Packs ($20)' : '👋 Leave (Space)'
+              challengeText: hasMoney ? '💵 Buy 2 Starter Packs ($20)' : '👋 Leave (Space)'
             });
           } else {
             const activeEvent = this.getCurrentDayEvent();
             const packCost = activeEvent?.id === 'weekend_market' ? 8 : 10;
             const hasMoneyForPack = (this.gold || 0) >= packCost;
-            const hasUnopenedPack = (this.inventory || []).some(i => i.id === 'unopened_base_pack' && i.qty > 0);
+            const hasStarterPack = (this.inventory || []).some(i => i.id === 'unopened_starter_pack' && i.qty > 0);
+            const hasUnopenedPack = hasStarterPack || (this.inventory || []).some(i => i.id === 'unopened_base_pack' && i.qty > 0);
             const looseCardCount = (this.inventory || []).filter(i => i.type === 'mythos_card' && i.qty > 0).reduce((s, i) => s + (i.qty || 0), 0);
 
             const leoChoices = [
@@ -6238,8 +6324,10 @@
             }
             if (hasUnopenedPack) {
               leoChoices.push({
-                label: `${nextNum++}. ✨ "Rip open my Mythos Base Card Pack right here!"`,
-                onSelect: () => this.startBoosterPackOpening('unopened_base_pack')
+                label: hasStarterPack
+                  ? `${nextNum++}. ✨ "Rip open my 18-Card Mythos Starter Pack right here!"`
+                  : `${nextNum++}. ✨ "Rip open my Mythos Base Card Pack right here!"`,
+                onSelect: () => this.startBoosterPackOpening(hasStarterPack ? 'unopened_starter_pack' : 'unopened_base_pack')
               });
             }
             leoChoices.push({
@@ -6630,7 +6718,7 @@
       } else {
         // Exterior Neighborhood & Far-East Block Leo's Card Shop Avenue Prompt (Zoomed-out view)
         const pName = this.draftAppearance?.name || 'Asher';
-        const fName = this.friendName || 'Mike';
+        const fName = this.friendName || 'Rocky';
         const wName = this.draftAppearance?.worldName || 'Oakhaven';
         const friend = this.getFriendNpc();
         const distFriendExt = (friend && friend.following) ? Math.hypot(this.player.x - friend.x, this.player.y - friend.y) : 999;
@@ -7015,7 +7103,7 @@
       const id = this.nearInteractable?.id;
       const active = this.activeDialogueNpc;
       const friend = this.getFriendNpc();
-      const friendName = friend?.name || this.friendName || 'Mike';
+      const friendName = friend?.name || this.friendName || 'Rocky';
 
       if (this.nearInteractable && this.isNpc(this.nearInteractable) && !active) {
         this.startTalkingToNpc(id);
@@ -7169,7 +7257,7 @@
       if (this.activeDialogueNpc) {
         btnA?.classList.add('dialogue-mode');
         const active = this.activeDialogueNpc;
-        const friendName = this.getFriendNpc()?.name || this.friendName || 'Mike';
+        const friendName = this.getFriendNpc()?.name || this.friendName || 'Rocky';
         if (typeof active === 'string' && active.startsWith('meetup_')) {
           labelEl.textContent = (this._justCompletedMeetup && this._justCompletedMeetup.meetup.area === this.currentArea)
             ? 'LEAVE 👋'
@@ -7629,6 +7717,10 @@
       const calDayNum = document.getElementById('calendar-btn-day-num');
       if (calDayLabel) calDayLabel.textContent = this.getCurrentDayName();
       if (calDayNum) calDayNum.textContent = String(this.dayNumber || 1);
+      const headerMobileDay = document.getElementById('header-mobile-day');
+      if (headerMobileDay) {
+        headerMobileDay.textContent = `📅 ${this.getCurrentDayName()} • Day ${this.dayNumber || 1}`;
+      }
       if (badgeEl) {
         badgeEl.textContent = String(this.getTotalInventoryCount());
       }
@@ -7802,12 +7894,6 @@
       const phoneReturnWorldBtn = document.getElementById('btn-phone-return-world');
       if (phoneReturnWorldBtn) {
         phoneReturnWorldBtn.addEventListener('click', () => {
-          this.togglePhoneModal(false);
-        });
-      }
-      const appReturnWorldBtn = document.getElementById('app-btn-return-world');
-      if (appReturnWorldBtn) {
-        appReturnWorldBtn.addEventListener('click', () => {
           this.togglePhoneModal(false);
         });
       }
@@ -8308,7 +8394,7 @@
       if (this.worldSave && continueCard) {
         continueCard.classList.remove('hidden');
         const app = this.worldSave.playerAppearance || {};
-        const fName = this.worldSave.friendName || 'Mike';
+        const fName = 'Rocky';
         if (continueMeta) {
           const invCount = Array.isArray(this.worldSave.inventory)
             ? this.worldSave.inventory.reduce((acc, i) => acc + (i.qty || 1), 0)
@@ -8343,7 +8429,7 @@
         ...window.MythosCharacterSprites.DEFAULT_APPEARANCE,
         ...app
       };
-      this.friendName = this.worldSave.friendName || 'Mike';
+      this.friendName = 'Rocky';
       this.playerSprite.setAppearance(this.draftAppearance);
 
       this._gold = this.worldSave.gold ?? 0;
@@ -8622,7 +8708,7 @@
           this.playerSprite.setAppearance(this.draftAppearance);
 
           if (this.isCreatingNewWorld || !this.worldSave) {
-            this.friendName = Math.random() < 0.5 ? 'Mike' : 'AJ';
+            this.friendName = 'Rocky';
             this.npcs[0] = this.createFriendNpc(this.friendName);
             document.getElementById('creator-modal')?.classList.add('hidden');
             this.active = true;
@@ -10930,7 +11016,7 @@
       const S = this.TILE; // 64px
       const W = this.canvas.width;
       const H = this.canvas.height;
-      const fName = this.friendName || 'Mike';
+      const fName = this.friendName || 'Rocky';
       const isAJ = fName === 'AJ';
 
       // 1. Ensure high-res Overworld tile patterns (wood planks, etc.) are built
@@ -15283,7 +15369,7 @@
       const EXT_W = Math.round(this.EXT_COLS * S); // 1664px (Expanded East Central Park)
       const EXT_H = Math.round(this.EXT_ROWS * S); // 1184px (Expanded South Block)
       const pName = this.draftAppearance?.name || 'Asher';
-      const fName = this.friendName || 'Mike';
+      const fName = this.friendName || 'Rocky';
 
       // 1. Lush Sunlit Meadow Pixel-Art Grass Base across the neighborhood & Central Park
       this.initCobblestonePattern();

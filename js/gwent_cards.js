@@ -33,6 +33,46 @@
     agile: 'Agile'
   };
 
+  /** Deploy an eligible Goblin Army card from hand onto the board and resolve its ability. */
+  function playExtraGoblinArmyFromHand(ctx, { sourceName, title, sound = 'howl', maxStars = Infinity }) {
+    const { game, team, targetRow, logType } = ctx;
+    const player = game.state?.players?.[team];
+    if (!player || !Array.isArray(player.hand) || player.hand.length === 0) return;
+
+    let bestIdx = -1;
+    let bestScore = -1;
+    player.hand.forEach((c, idx) => {
+      const def = CARDS[c.id];
+      const role = c.role || def?.role;
+      const stars = Number(c.stars ?? def?.stars ?? 0);
+      if (role === 'Goblin Army' && stars <= maxStars) {
+        const score = stars * 100 + (c.power || 0);
+        if (score > bestScore) {
+          bestScore = score;
+          bestIdx = idx;
+        }
+      }
+    });
+
+    if (bestIdx === -1) return;
+
+    const [bonusCard] = player.hand.splice(bestIdx, 1);
+    const bonusRow = bonusCard.row === 'agile'
+      ? (targetRow || 'ranged')
+      : (bonusCard.row || 'melee');
+    const bonusPreMyScore = game.getTotalScore(team);
+    const bonusPreOppScore = game.getTotalScore(team === 1 ? 2 : 1);
+    const bonusAlliesBefore = game.getAllBoardCards(team).length;
+
+    player.rows[bonusRow].push(bonusCard);
+    if (typeof playSound === 'function') playSound(sound);
+    game.log(
+      `${title}! ${sourceName} also plays ${bonusCard.name} (${bonusCard.power}) to ${ROW_LABELS[bonusRow] || bonusRow}!`,
+      logType
+    );
+    game.resolveCardAbility(team, bonusCard, bonusRow, bonusPreMyScore, bonusPreOppScore, bonusAlliesBefore);
+  }
+
   // ---------------------------------------------------------------------------
   // Card Registry (New Mythos Card Set)
   // ---------------------------------------------------------------------------
@@ -48,6 +88,7 @@
       basePower: 1,
       armor: 0,
       cardImg: 'Cards/Goblin_Soldier_Card.jpg',
+      traditionalCardImg: 'Cards/Goblin_Soldier_Traditional.jpg',
       abilityTitle: 'Goblin Muster',
       abilityDesc: 'Pulls all other Goblin Soldiers from your deck into your hand.',
       passiveTitle: '',
@@ -68,13 +109,29 @@
       basePower: 1,
       armor: 0,
       cardImg: 'Cards/Goblin_Archer_Card.jpg',
+      traditionalCardImg: 'Cards/Goblin_Archer_Traditional.jpg',
       abilityTitle: 'Archer Muster',
-      abilityDesc: 'Pulls all other Goblin Archers from your deck into your hand.',
+      abilityDesc: 'When deployed, also play an extra Goblin Army card from your hand.',
       passiveTitle: '',
       passiveDesc: '',
-      effects: [
-        { type: 'pull_copies_from_deck', cardId: 'goblin_archer', sound: 'whip', label: '🏹 Archer Muster' }
-      ]
+      effects: [],
+      onPlay(ctx) {
+        playExtraGoblinArmyFromHand(ctx, {
+          sourceName: 'Goblin Archer',
+          title: '🏹 Archer Muster',
+          sound: 'whip',
+          maxStars: Infinity
+        });
+      },
+      estimateAiValue(rowKey, ctx) {
+        const { game, team } = ctx;
+        const player = game.state?.players?.[team];
+        const hasGoblinInHand = (player?.hand || []).some(c => {
+          const def = CARDS[c.id];
+          return (c.role || def?.role) === 'Goblin Army';
+        });
+        return 1 + (hasGoblinInHand ? 2 : 0);
+      }
     },
 
     orc_infantry: {
@@ -89,6 +146,7 @@
       basePower: 2,
       armor: 2,
       cardImg: 'Cards/Orc_Infantry_Card.jpg',
+      traditionalCardImg: 'Cards/Orc_Infantry_Traditional.jpg',
       abilityTitle: 'Orcish Shield Wall',
       abilityDesc: 'Adds +1 Armor to an adjacent card on the row if it is part of the Orc Army.',
       passiveTitle: '',
@@ -110,6 +168,7 @@
       basePower: 2,
       armor: 1,
       cardImg: 'Cards/Orc_Slinger_Card.jpg',
+      traditionalCardImg: 'Cards/Orc_Slinger_Traditional.jpg',
       abilityTitle: 'Orcish Volley',
       abilityDesc: 'Gives any other Orc Army card in your Ranged row +1 Power.',
       passiveTitle: '',
@@ -254,49 +313,19 @@
       basePower: 5,
       armor: 2,
       cardImg: 'Cards/Gooba_Goblin_King_Card.jpg',
+      traditionalCardImg: 'Cards/Gooba_Goblin_King_Traditional.jpg',
       abilityTitle: 'Royal Decree',
       abilityDesc: 'When played, also play any 1- or 2-star Goblin Army card from your hand.',
       passiveTitle: 'Goblin Sovereign',
       passiveDesc: 'Commands the Goblin Army from the Ranged row.',
       effects: [],
       onPlay(ctx) {
-        const { game, team, targetRow, logType } = ctx;
-        const player = game.state?.players?.[team];
-        if (!player || !Array.isArray(player.hand) || player.hand.length === 0) return;
-
-        // Prefer highest-star (2-star then 1-star), highest-power eligible Goblin Army card in hand
-        let bestIdx = -1;
-        let bestScore = -1;
-        player.hand.forEach((c, idx) => {
-          const def = CARDS[c.id];
-          const role = c.role || def?.role;
-          const stars = Number(c.stars ?? def?.stars ?? 0);
-          if (role === 'Goblin Army' && (stars === 1 || stars === 2)) {
-            const score = stars * 100 + (c.power || 0);
-            if (score > bestScore) {
-              bestScore = score;
-              bestIdx = idx;
-            }
-          }
+        playExtraGoblinArmyFromHand(ctx, {
+          sourceName: 'Gooba, Goblin King',
+          title: '👑 Royal Decree',
+          sound: 'howl',
+          maxStars: 2
         });
-
-        if (bestIdx === -1) return;
-
-        const [bonusCard] = player.hand.splice(bestIdx, 1);
-        const bonusRow = bonusCard.row === 'agile'
-          ? (targetRow || 'ranged')
-          : (bonusCard.row || 'melee');
-        const bonusPreMyScore = game.getTotalScore(team);
-        const bonusPreOppScore = game.getTotalScore(team === 1 ? 2 : 1);
-        const bonusAlliesBefore = game.getAllBoardCards(team).length;
-
-        player.rows[bonusRow].push(bonusCard);
-        playSound('howl');
-        game.log(
-          `👑 Royal Decree! Gooba, Goblin King also plays ${bonusCard.name} (${bonusCard.power}) to ${ROW_LABELS[bonusRow] || bonusRow}!`,
-          logType
-        );
-        game.resolveCardAbility(team, bonusCard, bonusRow, bonusPreMyScore, bonusPreOppScore, bonusAlliesBefore);
       },
       estimateAiValue(rowKey, ctx) {
         const { game, team } = ctx;

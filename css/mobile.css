@@ -84,6 +84,24 @@ select {
    Lifts the Player Hand Tray high above mobile browser bottom bars / gesture
    zones so every hand card is comfortably selectable with a thumb.
    ---------------------------------------------------------------------------- */
+@media (orientation: portrait) {
+  .header-day-tag {
+    display: inline-flex !important;
+    align-items: center;
+    gap: 3px;
+    font-family: var(--font-body);
+    font-size: 10px;
+    font-weight: 700;
+    color: #6ee7b7;
+    background: rgba(16, 185, 129, 0.15);
+    border: 1px solid rgba(52, 211, 153, 0.4);
+    padding: 2px 6px;
+    border-radius: 999px;
+    line-height: 1;
+    white-space: nowrap;
+  }
+}
+
 @media (orientation: portrait), (max-width: 768px) {
   .gwent-layout {
     padding: 4px 6px 0 !important;
