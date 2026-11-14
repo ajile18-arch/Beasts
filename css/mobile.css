@@ -637,7 +637,10 @@ select {
   display: block !important;
 }
 
-.ow-controls-deck {
+.ow-controls-deck,
+.ow-action-buttons,
+#ow-btn-a,
+#ow-btn-b {
   display: none !important;
 }
 

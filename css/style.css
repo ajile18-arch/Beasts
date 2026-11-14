@@ -6405,33 +6405,33 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
     line-height: 1.1 !important;
   }
 
-  /* Top Half: Game Map Stage - Shifted up and sized to maximize room below */
+  /* Full-Screen Game Map Stage on Mobile */
   .overworld-stage {
-    flex: 0 0 auto !important;
+    flex: 1 1 auto !important;
     width: 100% !important;
-    max-width: 440px !important;
-    height: auto !important;
-    max-height: 31vh !important;
+    max-width: 100% !important;
+    height: 100% !important;
+    max-height: none !important;
+    min-height: 0 !important;
     display: flex !important;
-    align-items: center !important;
+    align-items: stretch !important;
     justify-content: center !important;
     position: relative !important;
     border-radius: 0 !important;
     border: none !important;
-    border-bottom: 2px solid var(--border-gold) !important;
     background: #000000 !important;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.8) !important;
+    box-shadow: none !important;
     overflow: hidden !important;
   }
 
-  /* Overworld Canvas: 4:3 Aspect Ratio, scaled cleanly with pixel perfection */
+  /* Overworld Canvas: fills the phone screen edge-to-edge */
   #overworld-canvas {
-    width: auto !important;
-    height: auto !important;
-    max-height: 31vh !important;
-    max-width: 90vw !important;
-    aspect-ratio: 4 / 3 !important;
-    object-fit: contain !important;
+    width: 100% !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    max-width: 100% !important;
+    aspect-ratio: auto !important;
+    object-fit: cover !important;
     display: block !important;
     image-rendering: pixelated !important;
     touch-action: none !important;
@@ -6441,25 +6441,32 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
     display: none !important;
   }
 
-  /* Bottom Half: Dedicated Black Open Space Beneath the Game Map */
+  /* Overlay Container at Bottom of Screen for Dialogue Popups */
   .ow-bottom-deck {
+    position: absolute !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    top: auto !important;
     display: flex !important;
-    flex: 1 1 auto !important;
+    flex: none !important;
     width: 100% !important;
-    max-width: 480px !important;
-    background: #000000 !important;
+    max-width: 100% !important;
+    background: transparent !important;
     flex-direction: column !important;
-    justify-content: space-between !important;
-    align-items: stretch !important;
-    padding: 6px 10px 8px 10px !important;
-    overflow-y: auto !important;
+    justify-content: flex-end !important;
+    align-items: center !important;
+    padding: 8px 10px calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+    overflow: visible !important;
     box-sizing: border-box !important;
-    position: relative !important;
+    pointer-events: none !important;
+    z-index: 40 !important;
     gap: 6px !important;
   }
 
-  /* Dialogue Box inside the Black Open Space */
+  /* Dialogue Box Overlaying the World */
   .ow-dialog-bar {
+    pointer-events: auto !important;
     position: relative !important;
     inset: auto !important;
     top: auto !important;
@@ -6468,12 +6475,12 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
     transform: none !important;
     animation: modalPop 0.2s ease-out;
     width: 100% !important;
-    max-width: 100% !important;
-    background: linear-gradient(180deg, rgba(18, 24, 38, 0.98), rgba(10, 14, 24, 0.99)) !important;
+    max-width: 520px !important;
+    background: linear-gradient(180deg, rgba(18, 24, 38, 0.96), rgba(10, 14, 24, 0.98)) !important;
     border: 2px solid var(--border-gold) !important;
     border-radius: 12px !important;
     padding: 8px 12px !important;
-    margin: 0 0 3px 0 !important;
+    margin: 0 auto !important;
     display: flex !important;
     flex-direction: column !important;
     gap: 6px !important;
@@ -6567,59 +6574,12 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
     min-height: 42px !important;
   }
 
-  /* Virtual Gamepad Deck in the Black Open Space */
-  .ow-controls-deck {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: flex-end !important;
-    width: 100% !important;
-    padding: 4px 6px 4px 6px !important;
-    margin-top: auto !important;
-    flex-shrink: 0 !important;
-  }
-
-  .ow-controls-deck.hidden {
-    display: none !important;
-  }
-
-  /* Virtual D-Pad - Removed from screen */
-  .ow-dpad {
-    display: none !important;
-  }
-
-  /* Action Buttons A & B */
-  .ow-action-buttons {
-    display: flex !important;
-    align-items: flex-end !important;
-    gap: 12px !important;
-    flex-shrink: 0 !important;
-  }
-
-  .ow-btn-a {
-    width: 62px !important;
-    height: 62px !important;
-  }
-
-  .ow-btn-a .btn-letter {
-    font-size: 20px !important;
-  }
-
-  .ow-btn-a .btn-subtext {
-    font-size: 8px !important;
-  }
-
+  /* Virtual Gamepad Deck & Action Buttons A/B - Hidden on Mobile */
+  .ow-controls-deck,
+  .ow-action-buttons,
+  .ow-btn-a,
   .ow-btn-b {
-    width: 50px !important;
-    height: 50px !important;
-    margin-bottom: 6px !important;
-  }
-
-  .ow-btn-b .btn-letter {
-    font-size: 15px !important;
-  }
-
-  .ow-btn-b .btn-subtext {
-    font-size: 7px !important;
+    display: none !important;
   }
 }
 
@@ -6754,19 +6714,12 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
     display: none !important;
   }
 
-  .ow-dpad {
-    display: none !important;
-  }
-
-  .ow-btn-a {
-    width: 56px !important;
-    height: 56px !important;
-  }
-
+  .ow-controls-deck,
+  .ow-action-buttons,
+  .ow-dpad,
+  .ow-btn-a,
   .ow-btn-b {
-    width: 46px !important;
-    height: 46px !important;
-    margin-bottom: 4px !important;
+    display: none !important;
   }
 
   .ow-dialog-text {

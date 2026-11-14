@@ -10088,15 +10088,15 @@
           this.updateHUDSaveInfo();
         }
       } else if (zoom > 1) {
-        const padX = 64;
+        const padX = 96;
         const minCenterX = Math.min(this.canvas.width / 2, padX + visibleW / 2);
         const maxCenterX = Math.max(minCenterX, this.canvas.width - padX - visibleW / 2);
         const targetCenterX = Math.max(minCenterX, Math.min(maxCenterX, this.player.x * this.TILE));
         const targetCamX = targetCenterX - viewW / 2;
         this.cameraX += (targetCamX - this.cameraX) * 0.18;
 
-        const padTop = 36;
-        const padBottom = 48;
+        const padTop = 52;
+        const padBottom = 84;
         const minCenterY = Math.min(this.canvas.height / 2, padTop + visibleH / 2);
         const maxCenterY = Math.max(minCenterY, this.canvas.height - padBottom - visibleH / 2);
         const targetCenterY = Math.max(minCenterY, Math.min(maxCenterY, this.player.y * this.TILE));
@@ -17382,7 +17382,7 @@
       if (this.currentArea === 'exterior') {
         return this.EXT_ZOOM || 1.28;
       }
-      return this.isMobileViewport() ? 1.30 : 1;
+      return this.isMobileViewport() ? 1.36 : 1;
     }
 
     render() {
