@@ -364,6 +364,33 @@
       }
     },
 
+    merfolk: {
+      id: 'merfolk',
+      name: 'Merfolk',
+      role: 'Water Tribe',
+      element: 'water',
+      stars: 1,
+      rarity: 'bronze',
+      border: 'bronze',
+      maxDeckCopies: 3,
+      row: 'agile',
+      basePower: 1,
+      armor: 1,
+      doubleHitIfRowRole: 'Water Tribe',
+      cardImg: 'Cards/Merfolk_Card.jpg',
+      abilityTitle: 'Twin Tide',
+      abilityDesc: 'Hits twice when attacking if another Water Tribe character is in its row.',
+      passiveTitle: 'Deck Limit: 3',
+      passiveDesc: 'Limited to 3 copies per playing deck.',
+      effects: [],
+      estimateAiValue(rowKey, ctx) {
+        const { game, team } = ctx;
+        const rowArr = game.state?.players?.[team]?.rows?.[rowKey] || [];
+        const hasWaterTribe = rowArr.some(c => c.role === 'Water Tribe');
+        return 1 + 0.5 + (hasWaterTribe ? 1 : 0);
+      }
+    },
+
     thorn_sapling: {
       id: 'thorn_sapling',
       name: 'Thorn Sapling',
@@ -401,7 +428,8 @@
       'vampire_thrall', 'vampire_thrall',
       'gooba_goblin_king',
       'mothman', 'mothman',
-      'jersey_devil'
+      'jersey_devil',
+      'merfolk', 'merfolk', 'merfolk'
     ]
   };
 

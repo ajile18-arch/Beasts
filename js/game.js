@@ -544,6 +544,7 @@
         onKillPowerGain: tmpl.onKillPowerGain || 0,
         onKillMaxBonus: tmpl.onKillMaxBonus || 0,
         killBonusPower: 0,
+        doubleHitIfRowRole: tmpl.doubleHitIfRowRole || null,
         boostRoleAbility: tmpl.boostRoleAbility ? { ...tmpl.boostRoleAbility } : null,
         mansonBoostedThisTurn: false,
         attackedThisTurn: false
@@ -716,6 +717,14 @@
       return this.getAllBoardCards(team).filter(c =>
         c.uid !== sourceCard.uid && c.role === targetRole && !c.mansonBoostedThisTurn
       );
+    }
+
+    hasRowRoleAlly(card, team, role) {
+      if (!card || !role || !this.state?.players?.[team]?.rows) return false;
+      const rows = this.state.players[team].rows;
+      const rowKey = ['melee', 'ranged'].find(rk => rows[rk].some(c => c.uid === card.uid));
+      if (!rowKey) return false;
+      return rows[rowKey].some(c => c.uid !== card.uid && c.role === role);
     }
 
     canTeamAttackThisTurn(team) {
@@ -917,10 +926,18 @@
       else if (attacker.element === 'earth') window.soundFX?.playRock?.();
 
       const logType = attackerTeam === 1 ? 'team1' : 'team2';
+      const hitTwice = Boolean(
+        attacker.doubleHitIfRowRole && this.hasRowRoleAlly(attacker, attackerTeam, attacker.doubleHitIfRowRole)
+      );
       this.log(`⚔️ ${attacker.name} attacked ${targetCard.name} for ${dmg} damage!`, logType);
       this.damageUnit(targetCard, dmg, targetTeam, targetRow);
 
-      const targetDestroyed = !this.state.players[targetTeam]?.rows?.[targetRow]?.some(c => c.uid === targetCard.uid);
+      let targetDestroyed = !this.state.players[targetTeam]?.rows?.[targetRow]?.some(c => c.uid === targetCard.uid);
+      if (hitTwice && !targetDestroyed) {
+        this.log(`🔱 ${attacker.name}'s Twin Tide strikes ${targetCard.name} a second time for ${dmg} damage!`, logType);
+        this.damageUnit(targetCard, dmg, targetTeam, targetRow);
+        targetDestroyed = !this.state.players[targetTeam]?.rows?.[targetRow]?.some(c => c.uid === targetCard.uid);
+      }
       if (targetDestroyed && attacker.onKillPowerGain > 0 && (attacker.killBonusPower || 0) < (attacker.onKillMaxBonus || 0)) {
         const remainingCap = (attacker.onKillMaxBonus || 0) - (attacker.killBonusPower || 0);
         const gain = Math.min(attacker.onKillPowerGain, remainingCap);
@@ -988,6 +1005,7 @@
         plant: '#4ade80',
         poison: '#c084fc',
         air: '#38bdf8',
+        water: '#22d3ee',
         metal: '#f87171'
       };
       const strokeColor = colors[element] || '#f87171';
