@@ -21,24 +21,6 @@
         <span class="subtitle" id="header-subtitle">Open-World Card RPG</span>
       </div>
 
-      <div class="turn-tracker hidden" id="arena-turn-tracker">
-        <div class="team-badge team-1 active" id="team1-badge">
-          <span class="crest">☀️</span>
-          <div class="team-info">
-            <span class="team-label">TEAM 1 (SOLAR)</span>
-            <span class="team-beasts" id="team1-beasts">Phoenix & Earth Golem</span>
-          </div>
-        </div>
-        <div class="turn-divider">VS</div>
-        <div class="team-badge team-2" id="team2-badge">
-          <span class="crest">🌙</span>
-          <div class="team-info">
-            <span class="team-label">TEAM 2 (LUNAR)</span>
-            <span class="team-beasts" id="team2-beasts">Werewolf & Hydra</span>
-          </div>
-        </div>
-      </div>
-
       <!-- Overworld Style & Lighting Quick-Tweak Bar (Visible in Overworld) -->
       <div class="overworld-toolbar" id="overworld-toolbar">
         <span class="ow-location-pill" id="ow-location-pill">🏠 Living Room (Day 2 of Summer)</span>
@@ -155,134 +137,259 @@
       </div>
     </section>
 
-    <!-- Main Workspace Area (Mythos Tabletop Minigame) -->
-    <main class="main-layout hidden" id="arena-view">
-      <!-- Left Column / Mobile Top: Card & Beast (Option B) -->
-      <aside class="side-panel card-panel" id="card-panel">
-        <div class="card-display-container">
-          <div class="card-frame" id="card-frame">
-            <img id="card-img" src="Cards/Phoenix_Card.png" alt="Card Display">
-            <div class="card-hp-overlay">
-              <div class="hp-bar-outer">
-                <div class="hp-bar-inner" id="card-hp-fill" style="width: 100%;"></div>
-              </div>
-              <span id="card-hp-text">120 / 120 HP</span>
-            </div>
+    <!-- Main Workspace Area (Mythos Gwent-Style Card Game) -->
+    <main class="main-layout gwent-layout hidden" id="arena-view">
+      <!-- Floating Top-Left Menu & Score Pill -->
+      <div class="gwent-hud-bar" id="gwent-hud-bar">
+        <button type="button" class="ui-btn primary-btn gwent-menu-toggle-btn" id="btn-gwent-menu" title="Open Match Menu & Scoreboards">☰ Menu</button>
+        <div class="gwent-hud-scores">
+          <span class="hud-team-2">🌙 <b id="hud-p2-score">0</b></span>
+          <span class="hud-vs">vs</span>
+          <span class="hud-team-1"><b id="hud-p1-score">0</b> ☀️</span>
+        </div>
+        <span class="gwent-hud-round" id="hud-round-pill">R1</span>
+        <button type="button" class="ui-btn gwent-hud-pass-btn" id="hud-btn-pass" title="Pass Round">🏳️ Pass</button>
+      </div>
+
+      <!-- Single-Click Card Ability Popup -->
+      <div class="gwent-ability-popup hidden" id="gwent-ability-popup">
+        <div class="gwent-ap-header">
+          <span class="gwent-ap-title" id="ap-name">Goblin Soldier</span>
+          <button type="button" class="drawer-close-btn gwent-menu-close-btn" id="btn-close-ap" title="Close">✕</button>
+        </div>
+        <div class="gwent-ap-meta">
+          <span class="gwent-ap-pill" id="ap-role">Goblin Army</span>
+          <span class="gwent-ap-pill" id="ap-row">⚔️ Melee</span>
+          <span class="gwent-ap-pill" id="ap-power">Power: 1</span>
+        </div>
+        <div class="gwent-ap-body" id="ap-ability"></div>
+      </div>
+
+      <!-- Left Column (Slide-Out Drawer): Controls, Scoreboards & Graveyards -->
+      <aside class="side-panel card-panel gwent-sidebar" id="card-panel">
+        <!-- Compact Header Controls -->
+        <div class="gwent-top-controls">
+          <div class="gwent-brand-row">
+            <span class="gwent-brand-title">MYTHOS</span>
+            <span class="gwent-brand-sub" id="gwent-arena-subtitle">Gwent • Best of 3</span>
+            <button type="button" class="drawer-close-btn gwent-menu-close-btn" id="btn-close-gwent-menu" title="Close Menu">✕</button>
           </div>
-          <div class="beast-live-status" id="beast-live-status">
-            <div class="status-header">
-              <h4 id="status-name">Phoenix</h4>
-              <span class="element-tag fire" id="status-element">Fire</span>
-              <span class="moves-tag" id="status-moves-tag">2 Moves</span>
+          <div class="gwent-ctrl-buttons">
+            <button id="gwent-btn-world" class="ui-btn primary-btn gwent-mini-btn" title="Return to Open World">🗺️ World</button>
+            <button id="gwent-btn-sound" class="ui-btn icon-btn gwent-mini-btn" title="Toggle Sound">🔊</button>
+            <button id="gwent-btn-reset" class="ui-btn secondary gwent-mini-btn" title="Restart Match">↺</button>
+          </div>
+        </div>
+
+        <!-- Opponent Scoreboard (Lunar) -->
+        <div class="gwent-player-box team-2" id="gwent-p2-box">
+          <div class="gwent-player-header">
+            <div class="gwent-player-identity">
+              <span class="gwent-crest">🌙</span>
+              <div>
+                <div class="gwent-player-name" id="gwent-p2-name">Lunar AI</div>
+                <div class="gwent-player-meta">Hand: <span id="gwent-p2-hand-count">0</span> • Deck: <span id="gwent-p2-deck-count">0</span></div>
+              </div>
             </div>
-            <div class="status-moves-summary" id="status-moves-summary">
-              <div class="move-brief" id="brief-move1"><b>⚔️ Talons:</b> 30 Dmg</div>
-              <div class="move-brief" id="brief-move2"><b>⚡ Fire Orb:</b> 50% Reflect</div>
-              <div class="move-brief" id="brief-ability"><b>🌟 Trails:</b> 10 Dmg Hazard</div>
+            <div class="gwent-total-score" id="gwent-p2-score">0</div>
+          </div>
+          <div class="gwent-gems-row">
+            <div class="gwent-gems" id="gwent-p2-gems">
+              <span class="gem intact" title="Round Gem">💎</span>
+              <span class="gem intact" title="Round Gem">💎</span>
             </div>
-            <div class="buff-tags" id="status-buffs">
-              <!-- Dynamically populated with active buffs/debuffs -->
+            <span class="gwent-pass-badge hidden" id="gwent-p2-passed">PASSED</span>
+          </div>
+        </div>
+
+        <!-- Round & Turn Status -->
+        <div class="gwent-match-status" id="gwent-match-status">
+          <div class="gwent-round-pill" id="gwent-round-pill">ROUND 1 • BEST OF 3</div>
+          <div class="gwent-turn-banner" id="gwent-turn-banner">Solar's Turn</div>
+        </div>
+
+        <!-- Player Scoreboard (Solar) -->
+        <div class="gwent-player-box team-1 active-turn" id="gwent-p1-box">
+          <div class="gwent-player-header">
+            <div class="gwent-player-identity">
+              <span class="gwent-crest">☀️</span>
+              <div>
+                <div class="gwent-player-name" id="gwent-p1-name">Solar (You)</div>
+                <div class="gwent-player-meta">Hand: <span id="gwent-p1-hand-count">0</span> • Deck: <span id="gwent-p1-deck-count">0</span></div>
+              </div>
             </div>
-            <div class="beast-switcher-chips" id="beast-switcher-chips">
-              <button class="beast-chip active" data-unit="phoenix">Phoenix</button>
-              <button class="beast-chip" data-unit="earth_golem">Golem</button>
-              <button class="beast-chip" data-unit="werewolf">Werewolf</button>
-              <button class="beast-chip" data-unit="hydra">Hydra</button>
+            <div class="gwent-total-score" id="gwent-p1-score">0</div>
+          </div>
+          <div class="gwent-gems-row">
+            <div class="gwent-gems" id="gwent-p1-gems">
+              <span class="gem intact" title="Round Gem">💎</span>
+              <span class="gem intact" title="Round Gem">💎</span>
             </div>
+            <span class="gwent-pass-badge hidden" id="gwent-p1-passed">PASSED</span>
+          </div>
+        </div>
+
+        <!-- Pass Round & Chronicle Actions -->
+        <div class="gwent-sidebar-actions">
+          <button class="ui-btn gwent-pass-btn" id="btn-gwent-pass" title="Pass this round and save your remaining cards">
+            🏳️ PASS ROUND
+          </button>
+          <button class="ui-btn secondary gwent-chronicle-btn" id="btn-open-chronicle" title="Open Match Chronicle Log">
+            📜 Match Chronicle
+          </button>
+        </div>
+
+        <!-- Compact Graveyards -->
+        <div class="gwent-graveyards compact" id="gwent-graveyards">
+          <div class="graveyard-box">
+            <span class="gy-label">☀️ GY: <b id="gy-p1-count">0</b></span>
+            <div class="gy-thumbs" id="gy-p1-thumbs"></div>
+          </div>
+          <div class="graveyard-box">
+            <span class="gy-label">🌙 GY: <b id="gy-p2-count">0</b></span>
+            <div class="gy-thumbs" id="gy-p2-thumbs"></div>
           </div>
         </div>
       </aside>
 
-      <!-- Center: 10x8 Tactical Board -->
-      <section class="board-container">
-        <div class="board-viewport" id="board-viewport">
-          <div class="board-grid" id="board-grid">
-            <!-- Background Image Layer -->
-            <img src="Game_Board_Playable_Grid_2560x2048.png" class="board-bg" alt="Game Board">
-            
-            <!-- Dynamic Tile Layer (10 cols x 8 rows) -->
-            <div class="grid-cells-layer" id="cells-layer"></div>
-
-            <!-- Hazard / Effects Layer (Fire, Rock Barriers) -->
-            <div class="grid-hazards-layer" id="hazards-layer"></div>
-
-            <!-- Units / Sprites Layer -->
-            <div class="grid-units-layer" id="units-layer"></div>
-
-            <!-- Combat Floating FX Layer -->
-            <div class="grid-fx-layer" id="fx-layer"></div>
-          </div>
+      <!-- Center: Gwent-Style 6-Row Battlefield & Hands -->
+      <section class="board-container gwent-board-container">
+        <!-- Opponent Hand Strip -->
+        <div class="gwent-opp-hand-bar" id="gwent-opp-hand">
+          <!-- Face-down Mythos_Card_Back.png cards -->
         </div>
 
-        <!-- Action Command Dock -->
-        <div class="action-dock" id="action-dock">
-          <div class="active-beast-summary">
-            <div class="active-avatar" id="active-avatar"></div>
-            <div class="active-details">
-              <div class="active-title-row">
-                <span class="name" id="active-name">Select a Beast</span>
-                <span class="moves-left" id="active-moves-left">Moves: 2</span>
+        <!-- Mulligan / Round Transition Banner -->
+        <div class="gwent-mulligan-bar hidden" id="gwent-mulligan-bar">
+          <div class="mulligan-info">
+            <span class="mulligan-title">🃏 OPENING MULLIGAN</span>
+            <span class="mulligan-sub" id="mulligan-sub">Click up to <b>2 cards</b> in your hand to redraw, or press Ready.</span>
+          </div>
+          <button class="ui-btn primary-btn" id="btn-mulligan-done">✓ Ready to Duel</button>
+        </div>
+
+        <!-- 6 Combat Rows -->
+        <div class="gwent-battlefield" id="gwent-battlefield">
+          <!-- Opponent Rows (Lunar) -->
+          <div class="gwent-side gwent-side-opp">
+            <div class="gwent-row" data-team="2" data-row="ranged" id="row-2-ranged">
+              <div class="gwent-row-label">
+                <span class="row-icon">🏹</span>
+                <span class="row-name">RANGED</span>
               </div>
-              <span class="passive-hint" id="active-passive-hint">Click on your piece to activate movement and attacks.</span>
+              <div class="gwent-row-score" id="score-2-ranged">0</div>
+              <div class="gwent-row-cards" id="cards-2-ranged"></div>
+            </div>
+            <div class="gwent-row" data-team="2" data-row="melee" id="row-2-melee">
+              <div class="gwent-row-label">
+                <span class="row-icon">⚔️</span>
+                <span class="row-name">MELEE</span>
+              </div>
+              <div class="gwent-row-score" id="score-2-melee">0</div>
+              <div class="gwent-row-cards" id="cards-2-melee"></div>
             </div>
           </div>
 
-          <div class="ability-buttons-group" id="ability-buttons">
-            <button class="ability-btn" id="btn-move" data-action="move">
-              <span class="btn-icon">👣</span>
-              <div class="btn-text">
-                <span class="btn-title">Move</span>
-                <span class="btn-desc">Standard movement</span>
+          <!-- Center Divider & Round Overlay Toast -->
+          <div class="gwent-center-divider">
+            <div class="gwent-divider-line"></div>
+            <div class="gwent-center-badge" id="gwent-center-badge">MYTHOS GWENT • ROUND 1</div>
+            <div class="gwent-divider-line"></div>
+          </div>
+
+          <!-- Player Rows (Solar) -->
+          <div class="gwent-side gwent-side-player">
+            <div class="gwent-row" data-team="1" data-row="melee" id="row-1-melee">
+              <div class="gwent-row-label">
+                <span class="row-icon">⚔️</span>
+                <span class="row-name">MELEE</span>
               </div>
-            </button>
-            <button class="ability-btn" id="btn-atk1" data-action="atk1">
-              <span class="btn-icon">⚔️</span>
-              <div class="btn-text">
-                <span class="btn-title" id="atk1-title">Attack 1</span>
-                <span class="btn-desc" id="atk1-desc">20 Dmg</span>
+              <div class="gwent-row-score" id="score-1-melee">0</div>
+              <div class="gwent-row-cards" id="cards-1-melee"></div>
+            </div>
+            <div class="gwent-row" data-team="1" data-row="ranged" id="row-1-ranged">
+              <div class="gwent-row-label">
+                <span class="row-icon">🏹</span>
+                <span class="row-name">RANGED</span>
               </div>
-            </button>
-            <button class="ability-btn" id="btn-atk2" data-action="atk2">
-              <span class="btn-icon">⚡</span>
-              <div class="btn-text">
-                <span class="btn-title" id="atk2-title">Attack 2</span>
-                <span class="btn-desc" id="atk2-desc">Special Move</span>
-              </div>
-            </button>
-            <button class="ability-btn special" id="btn-ability" data-action="ability">
-              <span class="btn-icon">🌟</span>
-              <div class="btn-text">
-                <span class="btn-title" id="ability-title">Ability</span>
-                <span class="btn-desc" id="ability-desc">Passive / Active</span>
-              </div>
-            </button>
-            <button class="ui-btn end-turn-btn" id="btn-end-turn">
-              <span>END TURN</span>
-              <span class="shortcut">↵</span>
-            </button>
+              <div class="gwent-row-score" id="score-1-ranged">0</div>
+              <div class="gwent-row-cards" id="cards-1-ranged"></div>
+            </div>
+          </div>
+
+          <!-- Round Result Overlay Banner (briefly shown between rounds) -->
+          <div class="gwent-round-overlay hidden" id="gwent-round-overlay">
+            <div class="round-overlay-title" id="round-overlay-title">ROUND 1 VICTORY!</div>
+            <div class="round-overlay-sub" id="round-overlay-sub">Solar 24 — 18 Lunar</div>
+          </div>
+        </div>
+
+        <!-- Player Hand Tray -->
+        <div class="gwent-hand-tray">
+          <div class="gwent-hand-hint" id="gwent-hand-hint">Select a card from your hand, then click a highlighted row to deploy it.</div>
+          <div class="gwent-player-hand" id="gwent-player-hand">
+            <!-- Playable Mythos cards -->
           </div>
         </div>
       </section>
 
-      <!-- Right Column: Combat Log & Roster -->
-      <aside class="side-panel log-panel" id="log-panel">
-        <div class="panel-header">
-          <h3>MATCH ROSTER</h3>
-          <button class="drawer-close-btn mobile-only-btn" id="btn-close-log" title="Close">✕</button>
-        </div>
-        <div class="roster-list" id="roster-list">
-          <!-- Populated dynamically with health & status -->
-        </div>
-
+      <!-- Floating Match Chronicle Window (Toggleable) -->
+      <aside class="side-panel log-panel gwent-chronicle-window hidden" id="log-panel">
         <div class="panel-header log-header">
-          <h3>TACTICAL LOG</h3>
-          <button id="btn-clear-log" class="tiny-btn">Clear</button>
+          <h3>📜 MATCH CHRONICLE</h3>
+          <div style="display:flex; gap:6px; align-items:center;">
+            <button id="btn-clear-log" class="tiny-btn">Clear</button>
+            <button class="drawer-close-btn" id="btn-close-log" title="Close Chronicle">✕</button>
+          </div>
         </div>
         <div class="combat-log" id="combat-log">
-          <div class="log-entry system">Beasts Tactical Arena v1.41 initialized. Select your beast to begin.</div>
+          <div class="log-entry system">Mythos Gwent Arena initialized. Draw your hand and outwit your rival!</div>
         </div>
       </aside>
     </main>
+
+    <!-- Gwent Card Detail Zoom Modal -->
+    <div class="modal-overlay hidden" id="gwent-card-modal" style="z-index: 120;">
+      <div class="gwent-card-modal-dialog" id="gwent-card-modal-dialog">
+        <button type="button" class="gwent-modal-close" id="btn-close-gwent-card-modal" aria-label="Close">✕</button>
+        <div class="gwent-modal-art-col">
+          <img id="gwent-modal-img" src="Cards/Phoenix_Card.png" alt="Card Artwork">
+        </div>
+        <div class="gwent-modal-info-col">
+          <div class="gwent-modal-badges">
+            <span class="element-tag fire" id="gwent-modal-element">Fire</span>
+            <span class="gwent-modal-badge" id="gwent-modal-row">🏹 Ranged</span>
+            <span class="gwent-modal-badge rarity" id="gwent-modal-rarity">4★ GOLD</span>
+          </div>
+          <h2 class="gwent-modal-title" id="gwent-modal-name">Phoenix</h2>
+          <div class="gwent-modal-stats-row">
+            <div class="gwent-modal-stat-box">
+              <span class="stat-lbl">POWER</span>
+              <span class="stat-val" id="gwent-modal-power">8</span>
+            </div>
+            <div class="gwent-modal-stat-box">
+              <span class="stat-lbl">BASE POWER</span>
+              <span class="stat-val" id="gwent-modal-base-power">8</span>
+            </div>
+            <div class="gwent-modal-stat-box" id="gwent-modal-armor-box">
+              <span class="stat-lbl">ARMOR</span>
+              <span class="stat-val" id="gwent-modal-armor">0</span>
+            </div>
+          </div>
+          <div class="gwent-modal-abilities">
+            <div class="gwent-modal-ability-card">
+              <div class="ability-heading" id="gwent-modal-ability-title">⚔️ Trails of Fire</div>
+              <p id="gwent-modal-ability-desc">Deals 2 damage to every enemy unit on the opposing Melee row.</p>
+            </div>
+            <div class="gwent-modal-ability-card passive">
+              <div class="ability-heading" id="gwent-modal-passive-title">🌟 Rebirth</div>
+              <p id="gwent-modal-passive-desc">At the start of Round 2 or 3, if in Graveyard, revives onto your Ranged row with 4 Power.</p>
+            </div>
+          </div>
+          <div class="gwent-modal-footer-hint">Click outside or press Esc to close</div>
+        </div>
+      </div>
+    </div>
 
     <!-- Mobile Drawer Backdrop -->
     <div class="drawer-backdrop hidden" id="drawer-backdrop"></div>
@@ -1364,6 +1471,7 @@
   <script src="js/audio.js"></script>
   <script src="js/character_sprites.js"></script>
   <script src="js/overworld.js"></script>
+  <script src="js/gwent_cards.js"></script>
   <script src="js/game.js"></script>
 </body>
 </html>

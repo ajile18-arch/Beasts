@@ -8999,3 +8999,1230 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
 
 
 
+
+/* ============================================================================
+   MYTHOS GWENT-STYLE CARD GAME ARENA
+   ============================================================================ */
+
+.gwent-layout {
+  display: block;
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  padding: 6px 12px 0;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 45%, #1c1610 0%, #0d0a07 100%);
+}
+
+.gwent-sidebar {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  bottom: 8px;
+  width: min(275px, 86vw);
+  z-index: 70;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+  padding: 10px;
+  background: linear-gradient(160deg, rgba(22, 17, 12, 0.98), rgba(10, 8, 6, 0.98));
+  border: 1.5px solid #8c6b43;
+  border-radius: 12px;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.9);
+  transform: translateX(calc(-100% - 24px));
+  transition: transform 0.22s ease;
+}
+
+.gwent-sidebar.open {
+  transform: translateX(0);
+}
+
+.gwent-player-box {
+  background: linear-gradient(145deg, rgba(30, 24, 18, 0.95), rgba(16, 12, 9, 0.95));
+  border: 1.5px solid #4b3825;
+  border-radius: 10px;
+  padding: 8px 10px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.gwent-player-box.active-turn {
+  border-color: #f59e0b;
+  box-shadow: 0 0 14px rgba(245, 158, 11, 0.35);
+}
+
+.gwent-player-box.team-2.active-turn {
+  border-color: #60a5fa;
+  box-shadow: 0 0 14px rgba(96, 165, 250, 0.35);
+}
+
+.gwent-player-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.gwent-player-identity {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gwent-crest {
+  font-size: 20px;
+}
+
+.gwent-player-name {
+  font-family: 'Cinzel', serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fde68a;
+}
+
+.gwent-player-meta {
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.gwent-total-score {
+  font-family: 'Cinzel', serif;
+  font-size: 24px;
+  font-weight: 900;
+  min-width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: radial-gradient(circle, #3d2a16 0%, #1a120b 100%);
+  border: 2px solid #d97706;
+  color: #fef3c7;
+  box-shadow: inset 0 0 8px rgba(0,0,0,0.8);
+}
+
+.gwent-player-box.team-2 .gwent-total-score {
+  border-color: #3b82f6;
+  background: radial-gradient(circle, #1e293b 0%, #0f172a 100%);
+  color: #dbeafe;
+}
+
+.gwent-gems-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 6px;
+}
+
+.gwent-gems {
+  display: flex;
+  gap: 6px;
+}
+
+.gwent-gems .gem {
+  font-size: 16px;
+  transition: transform 0.3s, opacity 0.3s, filter 0.3s;
+}
+
+.gwent-gems .gem.broken {
+  opacity: 0.25;
+  filter: grayscale(1);
+  transform: scale(0.8);
+}
+
+.gwent-pass-badge {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(239, 68, 68, 0.22);
+  border: 1px solid #ef4444;
+  color: #fca5a5;
+}
+
+.gwent-match-status {
+  text-align: center;
+  padding: 6px 8px;
+  background: rgba(20, 16, 12, 0.85);
+  border: 1px solid #3f2f1e;
+  border-radius: 8px;
+}
+
+.gwent-round-pill {
+  font-family: 'Cinzel', serif;
+  font-size: 11px;
+  font-weight: 700;
+  color: #d97706;
+  letter-spacing: 1px;
+}
+
+.gwent-turn-banner {
+  font-size: 13px;
+  font-weight: 700;
+  color: #f8fafc;
+  margin-top: 2px;
+}
+
+.gwent-pass-btn {
+  width: 100%;
+  padding: 9px 12px;
+  font-family: 'Cinzel', serif;
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: 0.8px;
+  background: linear-gradient(135deg, #7c2d12, #991b1b);
+  border: 1.5px solid #f87171;
+  color: #fef2f2;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
+}
+
+.gwent-pass-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.45);
+}
+
+.gwent-pass-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.gwent-inspector {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.gwent-inspector .card-frame {
+  max-height: 210px;
+  display: flex;
+  justify-content: center;
+  background: rgba(10, 8, 6, 0.7);
+  border-radius: 10px;
+  padding: 4px;
+}
+
+.gwent-inspector .card-frame img {
+  max-height: 200px;
+  width: auto;
+  object-fit: contain;
+  border-radius: 8px;
+}
+
+.gwent-inspect-stats {
+  display: flex;
+  gap: 6px;
+  margin: 4px 0;
+}
+
+.inspect-power-pill,
+.inspect-rarity-pill {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(245, 158, 11, 0.18);
+  border: 1px solid rgba(245, 158, 11, 0.5);
+  color: #fde68a;
+}
+
+.inspect-rarity-pill {
+  background: rgba(148, 163, 184, 0.15);
+  border-color: rgba(148, 163, 184, 0.4);
+  color: #e2e8f0;
+}
+
+/* Center Gwent Board */
+.gwent-board-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
+  height: 100%;
+  overflow: hidden;
+  padding: 4px 0;
+}
+
+.gwent-opp-hand-bar {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  min-height: 28px;
+  padding: 0 8px;
+}
+
+.gwent-card-back-mini {
+  width: 22px;
+  height: 30px;
+  border-radius: 3px;
+  border: 1px solid #785a3a;
+  object-fit: cover;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.65);
+}
+
+.gwent-mulligan-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: linear-gradient(90deg, rgba(120, 53, 15, 0.9), rgba(69, 26, 3, 0.92));
+  border: 1.5px solid #f59e0b;
+  border-radius: 10px;
+  padding: 8px 14px;
+  box-shadow: 0 4px 18px rgba(245, 158, 11, 0.3);
+}
+
+.mulligan-title {
+  font-family: 'Cinzel', serif;
+  font-size: 13px;
+  font-weight: 800;
+  color: #fde68a;
+  margin-right: 10px;
+}
+
+.mulligan-sub {
+  font-size: 12px;
+  color: #fef3c7;
+}
+
+.gwent-battlefield {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 4px;
+  background: linear-gradient(180deg, rgba(22, 26, 36, 0.85) 0%, rgba(28, 22, 16, 0.92) 50%, rgba(34, 24, 15, 0.9) 100%);
+  border: 2px solid #5c4328;
+  border-radius: 12px;
+  padding: 8px 10px;
+  box-shadow: inset 0 0 36px rgba(0, 0, 0, 0.85);
+}
+
+.gwent-side {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex: 1;
+  min-height: 0;
+}
+
+.gwent-row {
+  flex: 1;
+  min-height: 62px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(15, 12, 9, 0.62);
+  border: 1.5px solid #3c2d1e;
+  border-radius: 8px;
+  padding: 4px 8px;
+  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+}
+
+.gwent-row.valid-drop {
+  border-color: #fbbf24;
+  background: rgba(217, 119, 6, 0.18);
+  box-shadow: 0 0 16px rgba(251, 191, 36, 0.35), inset 0 0 12px rgba(251, 191, 36, 0.2);
+  cursor: pointer;
+}
+
+.gwent-row.valid-drop:hover {
+  background: rgba(217, 119, 6, 0.3);
+}
+
+.gwent-row-label {
+  width: 64px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: #cbd5e1;
+}
+
+.gwent-row-label .row-icon {
+  font-size: 16px;
+}
+
+.gwent-row-label .row-name {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  color: #94a3b8;
+}
+
+.gwent-row-score {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: rgba(30, 24, 18, 0.95);
+  border: 1.5px solid #8c6b43;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Cinzel', serif;
+  font-size: 15px;
+  font-weight: 800;
+  color: #fde68a;
+}
+
+.gwent-row-cards {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 2px 4px;
+  min-height: 54px;
+}
+
+.gwent-center-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 2px 0;
+}
+
+.gwent-divider-line {
+  flex: 1;
+  height: 1.5px;
+  background: linear-gradient(90deg, transparent, #8c6b43, transparent);
+}
+
+.gwent-center-badge {
+  font-family: 'Cinzel', serif;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  color: #fbbf24;
+  padding: 2px 12px;
+  border-radius: 999px;
+  background: rgba(24, 18, 12, 0.95);
+  border: 1px solid #785a3a;
+}
+
+/* Gwent Board & Hand Cards */
+.gwent-card {
+  position: relative;
+  width: 78px;
+  height: 110px;
+  border-radius: 9px;
+  overflow: hidden;
+  border: 2px solid #785a3a;
+  background: #0f0b08;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.18s ease, border-color 0.18s ease;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.85), inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.gwent-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.14) 0%, transparent 42%, rgba(0, 0, 0, 0.35) 100%);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.gwent-card.board-card {
+  width: clamp(86px, 11.5vh, 114px);
+  height: clamp(120px, 16vh, 158px);
+}
+
+.gwent-card.rarity-gold {
+  border: 2px solid #fbbf24;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.9), 0 0 14px rgba(251, 191, 36, 0.4), inset 0 0 8px rgba(251, 191, 36, 0.25);
+}
+
+.gwent-card.rarity-silver {
+  border: 2px solid #cbd5e1;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.88), 0 0 10px rgba(203, 213, 225, 0.25), inset 0 0 6px rgba(255, 255, 255, 0.15);
+}
+
+.gwent-card.rarity-bronze {
+  border: 1px solid #b45309;
+  box-shadow: 0 5px 14px rgba(0, 0, 0, 0.85), inset 0 0 6px rgba(180, 83, 9, 0.2);
+}
+
+.gwent-card:hover {
+  transform: translateY(-5px) scale(1.05);
+  z-index: 5;
+}
+
+.gwent-card.selected {
+  transform: translateY(-8px) scale(1.06);
+  border-color: #38bdf8;
+  box-shadow: 0 0 20px rgba(56, 189, 248, 0.8);
+  z-index: 6;
+}
+
+.gwent-card-art {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  filter: contrast(1.06) saturate(1.08);
+  transition: transform 0.22s ease;
+}
+
+.gwent-card:hover .gwent-card-art {
+  transform: scale(1.04);
+}
+
+.gwent-card-power {
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 5px;
+  border-radius: 7px 7px 12px 12px;
+  background: radial-gradient(circle at 35% 30%, #2b2118 0%, #0d0906 100%);
+  border: 1.5px solid #eab308;
+  color: #fefce8;
+  font-family: 'Cinzel', serif;
+  font-size: 13px;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  text-shadow: 0 1px 3px #000;
+  z-index: 3;
+}
+
+.gwent-card-power.boosted {
+  color: #4ade80;
+  border-color: #22c55e;
+  box-shadow: 0 0 10px rgba(34, 197, 94, 0.55);
+}
+
+.gwent-card-power.damaged {
+  color: #f87171;
+  border-color: #ef4444;
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.55);
+}
+
+.gwent-card-armor {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  padding: 2px 5px;
+  border-radius: 6px;
+  background: linear-gradient(180deg, #334155, #0f172a);
+  border: 1px solid #cbd5e1;
+  color: #f1f5f9;
+  font-size: 10px;
+  font-weight: 800;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.85);
+  z-index: 3;
+}
+
+.gwent-card-row-badge {
+  position: absolute;
+  bottom: 20px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(15, 12, 9, 0.9);
+  border: 1px solid #a17946;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.85);
+  z-index: 3;
+}
+
+.gwent-card-name-strip {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(180deg, rgba(12, 9, 6, 0.72) 0%, rgba(8, 6, 4, 0.96) 100%);
+  border-top: 1px solid rgba(217, 119, 6, 0.35);
+  color: #fef3c7;
+  font-family: 'Cinzel', serif;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  padding: 3px 4px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  z-index: 3;
+}
+
+/* Player Hand Tray (Only card tops peek up to maximize board space) */
+.gwent-hand-tray {
+  background: linear-gradient(180deg, rgba(22, 17, 12, 0.95), rgba(12, 9, 6, 0.98));
+  border: 1.5px solid #4b3825;
+  border-radius: 10px 10px 0 0;
+  padding: 4px 10px 0;
+  height: 62px;
+  overflow: visible;
+  position: relative;
+  z-index: 15;
+}
+
+.gwent-hand-hint {
+  font-size: 10.5px;
+  color: #cbd5e1;
+  text-align: center;
+  margin-bottom: 3px;
+}
+
+.gwent-player-hand {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 8px;
+  height: 44px;
+  overflow: visible;
+  padding: 2px 6px 0;
+}
+
+.gwent-player-hand .gwent-card {
+  width: 74px;
+  height: 104px;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.gwent-player-hand .gwent-card:hover {
+  transform: translateY(-60px) scale(1.06);
+  z-index: 25;
+}
+
+.gwent-player-hand .gwent-card.selected {
+  transform: translateY(-64px) scale(1.08);
+  z-index: 26;
+}
+
+/* Round Overlay */
+.gwent-round-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(10, 8, 6, 0.82);
+  backdrop-filter: blur(4px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+  border-radius: 10px;
+}
+
+.round-overlay-title {
+  font-family: 'Cinzel', serif;
+  font-size: 28px;
+  font-weight: 900;
+  color: #fbbf24;
+  text-shadow: 0 2px 14px rgba(251, 191, 36, 0.55);
+}
+
+.round-overlay-sub {
+  font-size: 15px;
+  font-weight: 700;
+  color: #f8fafc;
+  margin-top: 6px;
+}
+
+/* Graveyard Panel */
+.gwent-graveyards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.graveyard-box {
+  background: rgba(15, 12, 9, 0.75);
+  border: 1px solid #3f2f1e;
+  border-radius: 8px;
+  padding: 6px 8px;
+}
+
+.gy-label {
+  display: block;
+  font-size: 11px;
+  color: #cbd5e1;
+  margin-bottom: 4px;
+}
+
+.gy-thumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-height: 28px;
+}
+
+.gy-thumb-img {
+  width: 24px;
+  height: 34px;
+  object-fit: cover;
+  border-radius: 3px;
+  border: 1px solid #5c4328;
+  cursor: pointer;
+}
+
+@media (max-width: 1024px) {
+  .gwent-layout {
+    grid-template-columns: 1fr;
+    height: auto;
+    min-height: calc(100vh - 58px);
+    overflow-y: auto;
+  }
+}
+
+/* Gwent Card Detail Zoom Modal & Card Zoom Button */
+.gwent-inspector .card-frame {
+  cursor: zoom-in;
+  position: relative;
+}
+
+.gwent-inspector .card-frame::after {
+  content: '🔍 Click to enlarge';
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(15, 12, 9, 0.85);
+  border: 1px solid #785a3a;
+  color: #fde68a;
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+.gwent-card-modal-dialog {
+  position: relative;
+  display: grid;
+  grid-template-columns: 310px 1fr;
+  gap: 24px;
+  width: min(92vw, 760px);
+  background: linear-gradient(155deg, #1e1710 0%, #100c08 100%);
+  border: 2px solid #d97706;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.92), 0 0 32px rgba(217, 119, 6, 0.25);
+  animation: owDialogPop 0.18s ease-out;
+}
+
+.gwent-modal-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1.5px solid #785a3a;
+  background: rgba(24, 18, 12, 0.95);
+  color: #fde68a;
+  font-size: 16px;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gwent-modal-close:hover {
+  border-color: #fbbf24;
+  background: #3d2a16;
+}
+
+.gwent-modal-art-col {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 8, 6, 0.7);
+  border: 1.5px solid #5c4328;
+  border-radius: 12px;
+  padding: 10px;
+}
+
+.gwent-modal-art-col img {
+  width: 100%;
+  max-height: 410px;
+  object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.8);
+}
+
+.gwent-modal-info-col {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  justify-content: center;
+}
+
+.gwent-modal-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.gwent-modal-badge {
+  font-size: 11px;
+  font-weight: 800;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(51, 65, 85, 0.65);
+  border: 1px solid #64748b;
+  color: #f1f5f9;
+}
+
+.gwent-modal-badge.rarity {
+  background: rgba(217, 119, 6, 0.22);
+  border-color: #f59e0b;
+  color: #fde68a;
+}
+
+.gwent-modal-title {
+  font-family: 'Cinzel', serif;
+  font-size: 28px;
+  font-weight: 900;
+  color: #fef3c7;
+  margin: 0;
+}
+
+.gwent-modal-stats-row {
+  display: flex;
+  gap: 10px;
+}
+
+.gwent-modal-stat-box {
+  flex: 1;
+  background: rgba(15, 12, 9, 0.85);
+  border: 1.5px solid #4b3825;
+  border-radius: 10px;
+  padding: 8px 10px;
+  text-align: center;
+}
+
+.gwent-modal-stat-box .stat-lbl {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  color: #94a3b8;
+}
+
+.gwent-modal-stat-box .stat-val {
+  display: block;
+  font-family: 'Cinzel', serif;
+  font-size: 22px;
+  font-weight: 900;
+  color: #fde68a;
+  margin-top: 2px;
+}
+
+.gwent-modal-stat-box .stat-val.boosted {
+  color: #4ade80;
+}
+
+.gwent-modal-stat-box .stat-val.damaged {
+  color: #f87171;
+}
+
+.gwent-modal-abilities {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.gwent-modal-ability-card {
+  background: rgba(30, 24, 18, 0.88);
+  border: 1px solid #5c4328;
+  border-left: 3px solid #f59e0b;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.gwent-modal-ability-card.passive {
+  border-left-color: #38bdf8;
+}
+
+.gwent-modal-ability-card .ability-heading {
+  font-family: 'Cinzel', serif;
+  font-size: 13px;
+  font-weight: 800;
+  color: #fde68a;
+  margin-bottom: 4px;
+}
+
+.gwent-modal-ability-card p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #e2e8f0;
+}
+
+.gwent-modal-footer-hint {
+  font-size: 11px;
+  color: #94a3b8;
+  text-align: right;
+  margin-top: 4px;
+}
+
+@media (max-width: 720px) {
+  .gwent-card-modal-dialog {
+    grid-template-columns: 1fr;
+    max-height: 90vh;
+    overflow-y: auto;
+    padding: 16px;
+  }
+  .gwent-modal-art-col img {
+    max-height: 240px;
+  }
+}
+
+/* Board Card Attack States */
+.gwent-card.attack-ready {
+  box-shadow: 0 0 10px rgba(251, 191, 36, 0.5);
+}
+
+.gwent-card.attacker-selected {
+  transform: translateY(-6px) scale(1.06);
+  border-color: #fbbf24;
+  box-shadow: 0 0 18px rgba(251, 191, 36, 0.9);
+  z-index: 7;
+}
+
+.gwent-card.attack-target {
+  border-color: #ef4444;
+  box-shadow: 0 0 16px rgba(239, 68, 68, 0.8);
+  cursor: crosshair;
+  animation: targetPulse 1.1s infinite ease-in-out;
+}
+
+@keyframes targetPulse {
+  0%, 100% { box-shadow: 0 0 10px rgba(239, 68, 68, 0.65); }
+  50% { box-shadow: 0 0 20px rgba(239, 68, 68, 1); }
+}
+
+/* Attack Line Animation & Floating Damage Pop */
+.gwent-attack-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 30;
+  overflow: visible;
+}
+
+.gwent-attack-beam {
+  stroke-width: 5;
+  stroke-linecap: round;
+  fill: none;
+  filter: drop-shadow(0 0 8px currentColor);
+  animation: gwentBeamStrike 0.45s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes gwentBeamStrike {
+  0% {
+    stroke-dashoffset: var(--beam-len, 300);
+    opacity: 1;
+  }
+  55% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 0;
+  }
+}
+
+.gwent-dmg-pop {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  font-family: 'Cinzel', serif;
+  font-size: 20px;
+  font-weight: 900;
+  color: #f87171;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.95), 0 0 12px rgba(239, 68, 68, 0.85);
+  pointer-events: none;
+  z-index: 31;
+  animation: gwentDmgFloat 0.65s ease-out forwards;
+}
+
+@keyframes gwentDmgFloat {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -40%) scale(0.8);
+  }
+  30% {
+    opacity: 1;
+    transform: translate(-50%, -75%) scale(1.25);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -130%) scale(1);
+  }
+}
+
+/* Floating Match Chronicle Window & Compact Graveyards */
+.gwent-sidebar-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.gwent-chronicle-btn {
+  width: 100%;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 8px;
+}
+
+.gwent-graveyards.compact {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+
+.gwent-graveyards.compact .graveyard-box {
+  padding: 4px 6px;
+}
+
+.gwent-graveyards.compact .gy-thumbs {
+  min-height: 22px;
+}
+
+.gwent-chronicle-window {
+  position: fixed;
+  bottom: 14px;
+  right: 14px;
+  width: min(340px, 92vw);
+  height: 320px;
+  background: linear-gradient(160deg, rgba(24, 19, 14, 0.98), rgba(12, 9, 6, 0.98));
+  border: 1.5px solid #8c6b43;
+  border-radius: 12px;
+  padding: 10px 12px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.88);
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+}
+
+.gwent-chronicle-window.hidden {
+  display: none !important;
+}
+
+.gwent-chronicle-window .combat-log {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* Left Sidebar Top Controls (replaces top header during Gwent) */
+.gwent-top-controls {
+  background: linear-gradient(145deg, rgba(28, 22, 16, 0.95), rgba(14, 10, 7, 0.95));
+  border: 1.5px solid #4b3825;
+  border-radius: 10px;
+  padding: 7px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.gwent-brand-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.gwent-brand-title {
+  font-family: 'Cinzel', serif;
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  color: #fbbf24;
+}
+
+.gwent-brand-sub {
+  font-size: 10px;
+  color: #94a3b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gwent-ctrl-buttons {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.gwent-mini-btn {
+  padding: 4px 7px !important;
+  font-size: 11px !important;
+  border-radius: 6px !important;
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+#gwent-btn-sound,
+#gwent-btn-reset {
+  flex: 0 0 auto;
+  padding: 4px 8px !important;
+}
+
+/* Floating On-Screen Menu & Quick HUD Pill */
+.gwent-hud-bar {
+  position: fixed;
+  top: 8px;
+  left: 12px;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(16, 12, 9, 0.9);
+  border: 1.5px solid #6b5033;
+  border-radius: 999px;
+  padding: 4px 10px 4px 6px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(6px);
+}
+
+.gwent-menu-toggle-btn {
+  padding: 4px 10px !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  border-radius: 999px !important;
+}
+
+.gwent-hud-scores {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'Cinzel', serif;
+  font-size: 13px;
+  font-weight: 800;
+  color: #f8fafc;
+}
+
+.gwent-hud-scores .hud-vs {
+  font-size: 10px;
+  color: #94a3b8;
+  font-family: 'Inter', sans-serif;
+}
+
+.gwent-hud-round {
+  font-size: 11px;
+  font-weight: 800;
+  color: #fbbf24;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(245, 158, 11, 0.16);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+.gwent-hud-pass-btn {
+  padding: 3px 9px !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  border-radius: 999px !important;
+  background: linear-gradient(135deg, #7c2d12, #991b1b) !important;
+  border: 1px solid #f87171 !important;
+  color: #fef2f2 !important;
+}
+
+.gwent-hud-pass-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.gwent-menu-close-btn {
+  width: 24px;
+  height: 24px;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+/* Single-Click Card Ability Popup (Non-blocking so you can still click a row to deploy) */
+.gwent-ability-popup {
+  position: fixed;
+  top: 52px;
+  left: 12px;
+  width: min(300px, 86vw);
+  z-index: 55;
+  background: linear-gradient(155deg, rgba(28, 22, 16, 0.97), rgba(14, 10, 7, 0.97));
+  border: 1.5px solid #d97706;
+  border-radius: 12px;
+  padding: 10px 12px;
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.88);
+  animation: owDialogPop 0.15s ease-out;
+}
+
+.gwent-ability-popup.hidden {
+  display: none !important;
+}
+
+.gwent-ap-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.gwent-ap-title {
+  font-family: 'Cinzel', serif;
+  font-size: 15px;
+  font-weight: 900;
+  color: #fef3c7;
+}
+
+.gwent-ap-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.gwent-ap-pill {
+  font-size: 10.5px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(245, 158, 11, 0.16);
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  color: #fde68a;
+}
+
+.gwent-ap-body {
+  font-size: 12px;
+  line-height: 1.45;
+  color: #e2e8f0;
+  background: rgba(15, 12, 9, 0.72);
+  border-left: 3px solid #f59e0b;
+  border-radius: 6px;
+  padding: 7px 9px;
+}
+
+.gwent-ap-body b {
+  color: #fde68a;
+}
