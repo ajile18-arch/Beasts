@@ -5481,7 +5481,7 @@
 
       if (!bar || !speakerEl || !textEl || !choicesEl || !nextBtn || !challengeBtn) return;
 
-      bar.classList.remove('top-position');
+      bar.classList.remove('top-position', 'talk-icon-only');
       const friendName = this.getFriendNpc()?.name || this.friendName || 'Mike';
       const playerName = this.draftAppearance?.name || 'Asher';
 
@@ -5695,7 +5695,9 @@
         || (Array.isArray(altActiveIds) && altActiveIds.includes(this.activeDialogueNpc));
 
       if (isActive) {
+        bar.classList.remove('talk-icon-only');
         challengeBtn.classList.remove('ow-talk-btn');
+        challengeBtn.title = '';
         if (this.lastShopPromptKey !== promptKey) {
           this.lastShopPromptKey = promptKey;
           choicesEl.innerHTML = '';
@@ -5720,9 +5722,12 @@
         challengeBtn.classList.toggle('hidden', !showChallenge);
       } else {
         this.lastShopPromptKey = null;
+        bar.classList.add('talk-icon-only');
         choicesEl.classList.add('hidden');
-        textEl.innerHTML = talkPromptHtml;
-        challengeBtn.textContent = '💬 Talk (Space)';
+        textEl.innerHTML = '';
+        challengeBtn.textContent = '💬';
+        challengeBtn.title = 'Talk (Space)';
+        challengeBtn.setAttribute('aria-label', 'Talk');
         challengeBtn.classList.add('ow-talk-btn');
         challengeBtn.classList.remove('hidden');
       }
@@ -5794,13 +5799,13 @@
       };
     }
 
-    tryRenderMeetupVisitorPrompt({ maxDist = 1.85, topPosition = false } = {}) {
+    tryRenderMeetupVisitorPrompt({ maxDist = 1.15, topPosition = false } = {}) {
       if (this.storyState !== 'free_roam') return false;
       const justDone = this._justCompletedMeetup;
       if (justDone && justDone.meetup.area === this.currentArea && justDone.meetup.venueType !== 'npc_house') {
         const jm = justDone.meetup;
         const pos = jm.meetupPos || this.getMeetupTargetDetails(jm.npcId, jm.venueType, jm.landmarkId).meetupPos;
-        if (pos && Math.hypot(this.player.x - pos.x, this.player.y - pos.y) < maxDist + 0.4) {
+        if (pos && Math.hypot(this.player.x - pos.x, this.player.y - pos.y) < maxDist + 0.15) {
           const visitorNpc = {
             id: `meetup_${jm.id}`,
             meetupId: jm.id,
@@ -5906,7 +5911,7 @@
         nextBtn.onclick = null;
       }
 
-      bar.classList.remove('top-position');
+      bar.classList.remove('top-position', 'talk-icon-only');
       choicesEl?.classList.add('hidden');
       nextBtn?.classList.add('hidden');
 
@@ -5920,9 +5925,9 @@
         const distToTv = Math.hypot(this.player.x - 7.3, this.player.y - 4.3);
         const distToBed = Math.hypot(this.player.x - 3.2, this.player.y - 5.3);
 
-        if (this.tryRenderMeetupVisitorPrompt({ maxDist: 1.85, topPosition: this.player.y >= 7.5 })) {
+        if (this.tryRenderMeetupVisitorPrompt({ maxDist: 1.15, topPosition: this.player.y >= 7.5 })) {
           // Handled player-house meetup visitor
-        } else if (mom && distToMom < 1.85) {
+        } else if (mom && distToMom < 1.15) {
           this.nearInteractable = mom;
           const momChoices = !this.hasMomBoosterMoney
             ? [
@@ -5977,7 +5982,7 @@
             challengeText: !this.hasMomBoosterMoney ? '💵 Ask Mom for Booster Money ($25)' : '👋 Leave (Space)',
             topPosition: true
           });
-        } else if (distToFriend < 1.8) {
+        } else if (distToFriend < (friend?.following ? 1.05 : 1.15)) {
           this.nearInteractable = friend;
           if (this.storyState === 'intro_waiting') {
             this.renderNpcChoicePrompt({
@@ -6086,7 +6091,7 @@
         const distToFriend = friend ? Math.hypot(this.player.x - friend.x, this.player.y - friend.y) : 999;
         const distToTable = Math.hypot(this.player.x - 5.5, this.player.y - 6.8);
 
-        if (distToFriend < 2.2 || distToTable < 1.85) {
+        if (distToFriend < 1.2 || distToTable < 1.32) {
           this.nearInteractable = { id: 'friend_duel', name: fName };
           const friendDuelChoices = this.hasOldCardBinder
             ? [
@@ -6158,9 +6163,9 @@
         const distToCase = Math.hypot(this.player.x - 11.8, this.player.y - 5.2);
         const distToTable = Math.hypot(this.player.x - 10.6, this.player.y - 7.1);
 
-        if (this.tryRenderMeetupVisitorPrompt({ maxDist: 1.75 })) {
+        if (this.tryRenderMeetupVisitorPrompt({ maxDist: 1.15 })) {
           // Handled Leo's Card Shop landmark meetup visitor
-        } else if (distToKeeper < 1.9) {
+        } else if (distToKeeper < 1.08) {
           this.nearInteractable = { id: 'shopkeeper', name: 'Shopkeeper Leo' };
           if (!this.hasBoughtCardShopPacks) {
             const hasMoney = (this.gold || 0) >= 20;
@@ -6301,7 +6306,7 @@
         const distToBed = Math.hypot(this.player.x - 3.2, this.player.y - 5.4);
         const distToWardrobe = Math.hypot(this.player.x - 12.2, this.player.y - 5.0);
 
-        if (distToPluto < 1.95 || distToDesk < 1.4) {
+        if (distToPluto < 1.08) {
           this.nearInteractable = pluto;
           const hasDollar = (this.gold || 0) >= 1.00;
           const res = this.plutoBattleResult;
@@ -6397,7 +6402,7 @@
         const distToBed = Math.hypot(this.player.x - 3.2, this.player.y - 5.4);
         const distToCharts = Math.hypot(this.player.x - 12.2, this.player.y - 5.0);
 
-        if (distToNova < 1.95 || distToScope < 1.4) {
+        if (distToNova < 1.08) {
           this.nearInteractable = nova;
           const nRes = this.novaBattleResult;
           const novaMeetup = this.getMeetupChoiceObjectsForNpc('nova', 'nova_interior');
@@ -6476,7 +6481,7 @@
         const distToFire = Math.hypot(this.player.x - 6.2, this.player.y - 4.8);
         const distToShelf = Math.hypot(this.player.x - 12.2, this.player.y - 5.0);
 
-        if (distToSilas < 1.95 || distToFire < 1.4) {
+        if (distToSilas < 1.08) {
           this.nearInteractable = silas;
           const sRes = this.silasBattleResult;
           const silasMeetup = this.getMeetupChoiceObjectsForNpc('silas', 'silas_interior');
@@ -6555,7 +6560,7 @@
         const distToGreenhouse = Math.hypot(this.player.x - 6.2, this.player.y - 4.8);
         const distToDesk = Math.hypot(this.player.x - 12.2, this.player.y - 5.0);
 
-        if (distToMaya < 1.95 || distToGreenhouse < 1.4) {
+        if (distToMaya < 1.08) {
           this.nearInteractable = maya;
           const mRes = this.mayaBattleResult;
           const mayaMeetup = this.getMeetupChoiceObjectsForNpc('maya', 'maya_interior');
@@ -6805,11 +6810,11 @@
             leaveLabel: `5. 👋 "Keep up the great sketching, Jasper! (Leave)"`
           }
         ];
-        const nearParkNpc = parkNpcs.find(p => p.npc && p.dist < 1.6);
+        const nearParkNpc = parkNpcs.find(p => p.npc && p.dist < 1.05);
 
-        if ((this.activeDialogueNpc === 'friend' || this.activeDialogueNpc === fName) && distFriendExt < 1.55) {
+        if ((this.activeDialogueNpc === 'friend' || this.activeDialogueNpc === fName) && distFriendExt < 0.85) {
           renderExtFriend();
-        } else if (this.tryRenderMeetupVisitorPrompt({ maxDist: 1.75 })) {
+        } else if (this.tryRenderMeetupVisitorPrompt({ maxDist: 1.05 })) {
           // Handled landmark meetup visitor
         } else if (distCardShopDoor < 1.15) {
           showStaticPrompt(
@@ -7000,7 +7005,7 @@
             `🌳 OAKHAVEN CENTRAL PARK`,
             `<b>Welcome to Oakhaven Central Park!</b> — Established in the valley green. Relax by the courtyard fountain south or join the <b>Monday Casual Round Robin</b> tournament!`
           );
-        } else if (distFriendExt < 1.55) {
+        } else if (distFriendExt < 0.72) {
           renderExtFriend();
         } else {
           this.lastShopPromptKey = null;
@@ -7845,52 +7850,182 @@
         });
       }
 
-      // Swipe-down top bar gesture (and tap) to exit the phone menu
-      const swipeTopBar = document.getElementById('phone-swipe-top-bar');
-      const phoneStatusBar = document.querySelector('.phone-status-bar');
-      const phoneFrame = document.querySelector('#phone-modal .phone-device-frame');
-      [swipeTopBar, phoneStatusBar].filter(Boolean).forEach(barEl => {
-        let startY = null;
-        let currentDeltaY = 0;
+      // Swipe-down top bar & menu-body swipe-down gesture to exit phone and all menu screens
+      const attachMenuSwipeDownToExit = ({ frameEl, barParentEl, headerEl, onClose }) => {
+        if (!frameEl || typeof onClose !== 'function') return;
+        const hostEl = barParentEl || frameEl;
+        let swipeBar = hostEl.querySelector(':scope > .phone-swipe-top-bar');
+        if (!swipeBar) {
+          swipeBar = document.createElement('div');
+          swipeBar.className = 'phone-swipe-top-bar menu-swipe-top-bar';
+          swipeBar.title = 'Swipe down or tap to exit';
+          swipeBar.innerHTML = '<div class="phone-swipe-handle-pill"></div><span class="phone-swipe-hint">⌄ Swipe down to exit</span>';
+          hostEl.insertBefore(swipeBar, hostEl.firstChild);
+        }
 
-        barEl.addEventListener('pointerdown', (e) => {
-          startY = e.clientY;
-          currentDeltaY = 0;
-          if (phoneFrame) phoneFrame.style.transition = 'none';
-          try { barEl.setPointerCapture(e.pointerId); } catch (_) {}
-        });
-
-        barEl.addEventListener('pointermove', (e) => {
-          if (startY === null) return;
-          currentDeltaY = Math.max(0, e.clientY - startY);
-          if (phoneFrame && currentDeltaY > 0) {
-            phoneFrame.style.transform = `translateY(${Math.min(220, currentDeltaY)}px)`;
-          }
-        });
-
-        const endSwipe = () => {
-          if (startY === null) return;
-          const dragged = currentDeltaY;
-          startY = null;
-          currentDeltaY = 0;
-          if (phoneFrame) {
-            phoneFrame.style.transition = '';
-            phoneFrame.style.transform = '';
-          }
-          if (dragged > 28 || barEl === swipeTopBar) {
-            this.togglePhoneModal(false);
-          }
+        const resetFrameTransform = () => {
+          frameEl.style.transition = '';
+          frameEl.style.removeProperty('transform');
         };
 
-        barEl.addEventListener('pointerup', endSwipe);
-        barEl.addEventListener('pointercancel', () => {
-          startY = null;
-          currentDeltaY = 0;
-          if (phoneFrame) {
-            phoneFrame.style.transition = '';
-            phoneFrame.style.transform = '';
-          }
+        [swipeBar, headerEl].filter(Boolean).forEach(barEl => {
+          let startY = null;
+          let currentDeltaY = 0;
+
+          barEl.addEventListener('pointerdown', (e) => {
+            if (barEl !== swipeBar && e.target?.closest?.('button, input, select, textarea, a')) return;
+            startY = e.clientY;
+            currentDeltaY = 0;
+            frameEl.style.transition = 'none';
+            try { barEl.setPointerCapture(e.pointerId); } catch (_) {}
+          });
+
+          barEl.addEventListener('pointermove', (e) => {
+            if (startY === null) return;
+            currentDeltaY = Math.max(0, e.clientY - startY);
+            if (currentDeltaY > 0) {
+              frameEl.style.setProperty('transform', `translateY(${Math.min(240, currentDeltaY)}px)`, 'important');
+            }
+          });
+
+          const endSwipe = () => {
+            if (startY === null) return;
+            const dragged = currentDeltaY;
+            startY = null;
+            currentDeltaY = 0;
+            resetFrameTransform();
+            if (dragged > 28 || (barEl === swipeBar && dragged <= 10)) {
+              onClose();
+            }
+          };
+
+          barEl.addEventListener('pointerup', endSwipe);
+          barEl.addEventListener('pointercancel', () => {
+            startY = null;
+            currentDeltaY = 0;
+            resetFrameTransform();
+          });
         });
+
+        // Also allow swiping down anywhere on the menu screen when scrolled to the top
+        const isScrolledDown = (target) => {
+          let cur = target instanceof Element ? target : null;
+          while (cur && cur !== frameEl.parentElement) {
+            if (cur.scrollTop > 4) return true;
+            cur = cur.parentElement;
+          }
+          return frameEl.scrollTop > 4;
+        };
+
+        let bodyStartX = 0;
+        let bodyStartY = 0;
+        let canBodySwipe = false;
+        let isDraggingBody = false;
+        let bodyDeltaY = 0;
+
+        frameEl.addEventListener('touchstart', (e) => {
+          if (e.touches.length !== 1) return;
+          if (e.target?.closest?.('.phone-swipe-top-bar, input, select, textarea')) return;
+          if (isScrolledDown(e.target)) {
+            canBodySwipe = false;
+            return;
+          }
+          canBodySwipe = true;
+          isDraggingBody = false;
+          bodyDeltaY = 0;
+          bodyStartX = e.touches[0].clientX;
+          bodyStartY = e.touches[0].clientY;
+        }, { passive: true });
+
+        frameEl.addEventListener('touchmove', (e) => {
+          if (!canBodySwipe || e.touches.length !== 1) return;
+          const dx = e.touches[0].clientX - bodyStartX;
+          const dy = e.touches[0].clientY - bodyStartY;
+          if (!isDraggingBody) {
+            if (dy < -8 || (Math.abs(dx) > 10 && Math.abs(dx) > dy) || isScrolledDown(e.target)) {
+              canBodySwipe = false;
+              return;
+            }
+            if (dy > 14 && dy > Math.abs(dx) * 1.25) {
+              isDraggingBody = true;
+              frameEl.style.transition = 'none';
+            }
+          }
+          if (isDraggingBody) {
+            if (e.cancelable) e.preventDefault();
+            bodyDeltaY = Math.max(0, dy);
+            frameEl.style.setProperty('transform', `translateY(${Math.min(240, bodyDeltaY)}px)`, 'important');
+          }
+        }, { passive: false });
+
+        const finishBodySwipe = () => {
+          if (isDraggingBody) {
+            const dragged = bodyDeltaY;
+            resetFrameTransform();
+            if (dragged > 42) {
+              onClose();
+            }
+          }
+          canBodySwipe = false;
+          isDraggingBody = false;
+          bodyDeltaY = 0;
+        };
+
+        frameEl.addEventListener('touchend', finishBodySwipe, { passive: true });
+        frameEl.addEventListener('touchcancel', finishBodySwipe, { passive: true });
+      };
+
+      attachMenuSwipeDownToExit({
+        frameEl: document.querySelector('#phone-modal .phone-device-frame'),
+        barParentEl: document.querySelector('#phone-modal .phone-screen-container'),
+        headerEl: document.querySelector('#phone-modal .phone-status-bar'),
+        onClose: () => this.togglePhoneModal(false)
+      });
+      attachMenuSwipeDownToExit({
+        frameEl: document.querySelector('#inventory-modal .inventory-modal-dialog'),
+        headerEl: document.querySelector('#inventory-modal .inventory-header'),
+        onClose: () => this.toggleInventoryModal(false)
+      });
+      attachMenuSwipeDownToExit({
+        frameEl: document.querySelector('#binder-modal .binder-modal-dialog'),
+        barParentEl: document.querySelector('#binder-modal .binder-content-sheet'),
+        headerEl: document.querySelector('#binder-modal .binder-header'),
+        onClose: () => this.toggleBinderModal(false)
+      });
+      attachMenuSwipeDownToExit({
+        frameEl: document.querySelector('#binder-picker-modal .binder-picker-dialog'),
+        headerEl: document.querySelector('#binder-picker-modal .binder-picker-header'),
+        onClose: () => this.closeBinderCardPicker()
+      });
+      attachMenuSwipeDownToExit({
+        frameEl: document.querySelector('#playing-deck-modal .playing-deck-dialog'),
+        headerEl: document.querySelector('#playing-deck-modal .playing-deck-header'),
+        onClose: () => this.togglePlayingDeckModal(false)
+      });
+      attachMenuSwipeDownToExit({
+        frameEl: document.querySelector('#creature-inspect-modal .inspect-modal-dialog'),
+        headerEl: document.querySelector('#creature-inspect-modal .inspect-header'),
+        onClose: () => this.closeCreatureInspect()
+      });
+      attachMenuSwipeDownToExit({
+        frameEl: document.querySelector('#creator-modal .creator-modal-dialog'),
+        headerEl: document.querySelector('#creator-modal .creator-header'),
+        onClose: () => this.closeCharacterCreator()
+      });
+      attachMenuSwipeDownToExit({
+        frameEl: document.querySelector('#shop-modal .shop-modal-dialog'),
+        headerEl: document.querySelector('#shop-modal .shop-header'),
+        onClose: () => this.toggleShopModal(false)
+      });
+      attachMenuSwipeDownToExit({
+        frameEl: document.querySelector('#calendar-modal .calendar-modal-card'),
+        headerEl: document.querySelector('#calendar-modal .calendar-modal-header'),
+        onClose: () => this.toggleCalendarModal(false)
+      });
+      attachMenuSwipeDownToExit({
+        frameEl: document.querySelector('#park-tournament-modal .tourney-modal-card'),
+        headerEl: document.querySelector('#park-tournament-modal .calendar-modal-header'),
+        onClose: () => this.toggleParkTournamentModal(false)
       });
 
       // App Icon Triggers on Phone Home
@@ -8398,6 +8533,23 @@
       this.syncCreatorUI();
     }
 
+    closeCharacterCreator() {
+      const modal = document.getElementById('creator-modal');
+      if (!modal || modal.classList.contains('hidden')) return;
+      if (window.sounds?.playClick) window.sounds.playClick();
+      modal.classList.add('hidden');
+      if (this.isCreatingNewWorld && !this.worldSave) {
+        this.refreshIntroScreen();
+        document.getElementById('intro-modal')?.classList.remove('hidden');
+      } else {
+        if (this.worldSave) {
+          this.draftAppearance = { ...this.worldSave };
+          this.playerSprite.setAppearance(this.draftAppearance);
+        }
+        this.active = true;
+      }
+    }
+
     buildCreatorControls() {
       const CS = window.MythosCharacterSprites;
 
@@ -8630,9 +8782,11 @@
           { id: 'calendar-modal', close: () => this.toggleCalendarModal(false) },
           { id: 'creature-inspect-modal', close: () => this.closeCreatureInspect() },
           { id: 'binder-picker-modal', close: () => this.closeBinderCardPicker() },
+          { id: 'playing-deck-modal', close: () => this.togglePlayingDeckModal(false) },
           { id: 'binder-modal', close: () => this.toggleBinderModal(false) },
           { id: 'inventory-modal', close: () => this.toggleInventoryModal(false) },
-          { id: 'shop-modal', close: () => this.toggleShopModal(false) }
+          { id: 'shop-modal', close: () => this.toggleShopModal(false) },
+          { id: 'creator-modal', close: () => this.closeCharacterCreator() }
         ];
         const openOverlayModal = overlayModalCloseOrder.find((m) => {
           const el = document.getElementById(m.id);
@@ -8732,95 +8886,97 @@
             active: this.currentArea === 'interior',
             npc: this.npcs.find(n => n.id === 'mom'),
             talkId: 'mom',
-            tapRadius: 1.4,
-            reachRadius: 1.85,
+            tapRadius: 1.2,
+            reachRadius: 1.15,
             yOffset: 0
           },
           {
             active: this.currentArea === 'card_shop_interior',
             npc: this.shopkeeperNpc,
             talkId: 'shopkeeper',
-            tapRadius: 1.6,
-            reachRadius: 1.9,
+            tapRadius: 1.3,
+            reachRadius: 1.08,
             yOffset: 1.05
           },
           {
             active: this.currentArea === 'pluto_interior',
             npc: this.plutoNpc,
             talkId: 'pluto',
-            tapRadius: 1.6,
-            reachRadius: 1.95,
+            tapRadius: 1.3,
+            reachRadius: 1.08,
             yOffset: 0.85
           },
           {
             active: this.currentArea === 'nova_interior',
             npc: this.novaNpc,
             talkId: 'nova',
-            tapRadius: 1.6,
-            reachRadius: 1.95,
+            tapRadius: 1.3,
+            reachRadius: 1.08,
             yOffset: 0.85
           },
           {
             active: this.currentArea === 'silas_interior',
             npc: this.silasNpc,
             talkId: 'silas',
-            tapRadius: 1.6,
-            reachRadius: 1.95,
+            tapRadius: 1.3,
+            reachRadius: 1.08,
             yOffset: 0.85
           },
           {
             active: this.currentArea === 'maya_interior',
             npc: this.mayaNpc,
             talkId: 'maya',
-            tapRadius: 1.6,
-            reachRadius: 1.95,
+            tapRadius: 1.3,
+            reachRadius: 1.08,
             yOffset: 0.85
           },
           {
             active: this.currentArea === 'exterior',
             npc: this.chloeNpc,
             talkId: 'chloe',
-            tapRadius: 1.6,
-            reachRadius: 1.85,
+            tapRadius: 1.25,
+            reachRadius: 1.05,
             yOffset: 0
           },
           {
             active: this.currentArea === 'exterior',
             npc: this.rowanNpc,
             talkId: 'rowan',
-            tapRadius: 1.6,
-            reachRadius: 1.85,
+            tapRadius: 1.25,
+            reachRadius: 1.05,
             yOffset: 0
           },
           {
             active: this.currentArea === 'exterior',
             npc: this.jasperNpc,
             talkId: 'jasper',
-            tapRadius: 1.6,
-            reachRadius: 1.85,
+            tapRadius: 1.25,
+            reachRadius: 1.05,
             yOffset: 0
           },
           {
             active: !!friend && this.getActiveNpcsForArea().includes(friend),
             npc: friend,
             talkId: this.currentArea === 'friend_interior' ? 'friend_duel' : 'friend',
-            tapRadius: 1.5,
-            reachRadius: 2.0,
+            tapRadius: 1.25,
+            reachRadius: this.currentArea === 'exterior' ? 0.72 : (friend?.following ? 1.05 : 1.2),
             yOffset: 0
           },
           ...this.getActiveMeetupVisitorsForArea().map(v => ({
             active: true,
             npc: v,
             talkId: v.id,
-            tapRadius: 1.5,
-            reachRadius: 2.0,
+            tapRadius: 1.25,
+            reachRadius: 1.15,
             yOffset: 0
           }))
         ];
 
         for (const entry of clickableNpcs) {
           if (!entry.active || !entry.npc) continue;
-          if (Math.hypot(tx - entry.npc.x, ty - entry.npc.y) < entry.tapRadius
+          const distBody = Math.hypot(tx - entry.npc.x, ty - entry.npc.y);
+          const distBubble = Math.hypot(tx - entry.npc.x, ty - (entry.npc.y - 1.25));
+          if ((distBody < entry.tapRadius || distBubble < 1.15)
               && Math.hypot(this.player.x - entry.npc.x, this.player.y - (entry.npc.y + entry.yOffset)) < entry.reachRadius) {
             if (this.activeDialogueNpc !== entry.talkId) {
               this.startTalkingToNpc(entry.talkId);
@@ -9850,7 +10006,7 @@
         const fdx = this.player.x - friend.x;
         const fdy = this.player.y - friend.y;
         const fdist = Math.hypot(fdx, fdy);
-        const followThreshold = this.currentArea === 'exterior' ? 0.78 : 1.25;
+        const followThreshold = this.currentArea === 'exterior' ? 1.15 : 1.45;
 
         if (fdist > followThreshold) {
           const fSpeed = this.currentArea === 'exterior' ? 0.039 : 0.043;

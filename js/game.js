@@ -349,7 +349,7 @@
   // ---------------------------------------------------------------------------
   class BeastsGame {
     constructor() {
-      this.VERSION = '2.07';
+      this.VERSION = '2.10';
       this.gameMode = 'ai'; // 'ai' | '2p'
       this.currentView = 'overworld';
       this.currentChallenger = null;
@@ -2091,6 +2091,147 @@
       document.getElementById('btn-toggle-log')?.addEventListener('click', toggleChronicle);
       document.getElementById('btn-close-log')?.addEventListener('click', closeDrawers);
       backdrop?.addEventListener('click', closeDrawers);
+
+      // Swipe-down top bar & menu-body swipe-down gesture to exit Arena Menu, Chronicle & Card Modal
+      const attachArenaSwipeToExit = ({ frameEl, headerEl, onClose }) => {
+        if (!frameEl || typeof onClose !== 'function') return;
+        let swipeBar = frameEl.querySelector(':scope > .phone-swipe-top-bar');
+        if (!swipeBar) {
+          swipeBar = document.createElement('div');
+          swipeBar.className = 'phone-swipe-top-bar menu-swipe-top-bar';
+          swipeBar.title = 'Swipe down or tap to exit';
+          swipeBar.innerHTML = '<div class="phone-swipe-handle-pill"></div><span class="phone-swipe-hint">⌄ Swipe down to exit</span>';
+          frameEl.insertBefore(swipeBar, frameEl.firstChild);
+        }
+
+        const setDragTransform = (dy) => {
+          frameEl.style.setProperty('transform', `translate(0px, ${Math.min(240, dy)}px)`, 'important');
+        };
+        const resetDragTransform = () => {
+          frameEl.style.transition = '';
+          frameEl.style.removeProperty('transform');
+        };
+
+        [swipeBar, headerEl].filter(Boolean).forEach(barEl => {
+          let startY = null;
+          let currentDeltaY = 0;
+
+          barEl.addEventListener('pointerdown', (e) => {
+            if (barEl !== swipeBar && e.target?.closest?.('button, input, select, textarea, a')) return;
+            startY = e.clientY;
+            currentDeltaY = 0;
+            frameEl.style.transition = 'none';
+            try { barEl.setPointerCapture(e.pointerId); } catch (_) {}
+          });
+
+          barEl.addEventListener('pointermove', (e) => {
+            if (startY === null) return;
+            currentDeltaY = Math.max(0, e.clientY - startY);
+            if (currentDeltaY > 0) {
+              setDragTransform(currentDeltaY);
+            }
+          });
+
+          const endSwipe = () => {
+            if (startY === null) return;
+            const dragged = currentDeltaY;
+            startY = null;
+            currentDeltaY = 0;
+            resetDragTransform();
+            if (dragged > 28 || (barEl === swipeBar && dragged <= 10)) {
+              onClose();
+            }
+          };
+
+          barEl.addEventListener('pointerup', endSwipe);
+          barEl.addEventListener('pointercancel', () => {
+            startY = null;
+            currentDeltaY = 0;
+            resetDragTransform();
+          });
+        });
+
+        const isScrolledDown = (target) => {
+          let cur = target instanceof Element ? target : null;
+          while (cur && cur !== frameEl.parentElement) {
+            if (cur.scrollTop > 4) return true;
+            cur = cur.parentElement;
+          }
+          return frameEl.scrollTop > 4;
+        };
+
+        let bodyStartX = 0;
+        let bodyStartY = 0;
+        let canBodySwipe = false;
+        let isDraggingBody = false;
+        let bodyDeltaY = 0;
+
+        frameEl.addEventListener('touchstart', (e) => {
+          if (e.touches.length !== 1) return;
+          if (e.target?.closest?.('.phone-swipe-top-bar, input, select, textarea')) return;
+          if (isScrolledDown(e.target)) {
+            canBodySwipe = false;
+            return;
+          }
+          canBodySwipe = true;
+          isDraggingBody = false;
+          bodyDeltaY = 0;
+          bodyStartX = e.touches[0].clientX;
+          bodyStartY = e.touches[0].clientY;
+        }, { passive: true });
+
+        frameEl.addEventListener('touchmove', (e) => {
+          if (!canBodySwipe || e.touches.length !== 1) return;
+          const dx = e.touches[0].clientX - bodyStartX;
+          const dy = e.touches[0].clientY - bodyStartY;
+          if (!isDraggingBody) {
+            if (dy < -8 || (Math.abs(dx) > 10 && Math.abs(dx) > dy) || isScrolledDown(e.target)) {
+              canBodySwipe = false;
+              return;
+            }
+            if (dy > 14 && dy > Math.abs(dx) * 1.25) {
+              isDraggingBody = true;
+              frameEl.style.transition = 'none';
+            }
+          }
+          if (isDraggingBody) {
+            if (e.cancelable) e.preventDefault();
+            bodyDeltaY = Math.max(0, dy);
+            setDragTransform(bodyDeltaY);
+          }
+        }, { passive: false });
+
+        const finishBodySwipe = () => {
+          if (isDraggingBody) {
+            const dragged = bodyDeltaY;
+            resetDragTransform();
+            if (dragged > 42) {
+              onClose();
+            }
+          }
+          canBodySwipe = false;
+          isDraggingBody = false;
+          bodyDeltaY = 0;
+        };
+
+        frameEl.addEventListener('touchend', finishBodySwipe, { passive: true });
+        frameEl.addEventListener('touchcancel', finishBodySwipe, { passive: true });
+      };
+
+      attachArenaSwipeToExit({
+        frameEl: cardPanel,
+        headerEl: cardPanel?.querySelector('.gwent-top-controls'),
+        onClose: closeDrawers
+      });
+      attachArenaSwipeToExit({
+        frameEl: logPanel,
+        headerEl: logPanel?.querySelector('.log-header'),
+        onClose: closeDrawers
+      });
+      attachArenaSwipeToExit({
+        frameEl: document.getElementById('gwent-card-modal-dialog'),
+        onClose: () => this.closeCardZoomModal()
+      });
 
       // Disable native mobile long-press copy/share/save context menu & selection
       window.addEventListener('contextmenu', (e) => {

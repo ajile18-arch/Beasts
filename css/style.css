@@ -2801,14 +2801,46 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   font-weight: 700;
 }
 
+.ow-dialog-bar.talk-icon-only {
+  width: auto !important;
+  max-width: none !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  pointer-events: none !important;
+}
+
+.ow-dialog-bar.talk-icon-only .ow-dialog-main {
+  display: none !important;
+}
+
+.ow-dialog-bar.talk-icon-only .ow-dialog-actions {
+  width: auto !important;
+  margin: 0 !important;
+  justify-content: center !important;
+  pointer-events: auto !important;
+}
+
 .ow-duel-btn.ow-talk-btn {
+  width: 44px !important;
+  height: 44px !important;
+  min-width: 44px !important;
+  min-height: 44px !important;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  font-size: 20px !important;
+  line-height: 1 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
   background: linear-gradient(135deg, #facc15 0%, #ca8a04 100%) !important;
   color: #1a1500 !important;
-  border-color: #fef08a !important;
-  box-shadow: 0 4px 14px rgba(250, 204, 21, 0.45), 0 0 10px rgba(250, 204, 21, 0.3) !important;
-  font-weight: 800 !important;
-  letter-spacing: 0.5px !important;
+  border: 2px solid #fef08a !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.65), 0 0 12px rgba(250, 204, 21, 0.45) !important;
   animation: talkBtnPulse 1.8s ease-in-out infinite alternate !important;
+  pointer-events: auto !important;
 }
 
 @keyframes talkBtnPulse {
@@ -8954,6 +8986,18 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   font-weight: 700;
   letter-spacing: 0.4px;
   color: #cbd5e1;
+}
+
+.menu-swipe-top-bar {
+  width: 100%;
+  box-sizing: border-box;
+  border-radius: 10px;
+  border: 1px solid rgba(253, 230, 138, 0.28);
+  margin-bottom: 4px;
+  position: sticky;
+  top: 0;
+  z-index: 25;
+  grid-column: 1 / -1;
 }
 
 .phone-app-return-world {
