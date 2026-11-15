@@ -482,21 +482,28 @@
     // -------------------------------------------------------------------------
     buildDeck(guaranteedIds = [], customDeckIds = null) {
       const targetSize = 18;
-      let pool;
+      const fillRandomToTarget = (baseIds) => {
+        const result = [...baseIds];
+        const counts = {};
+        result.forEach(id => { counts[id] = (counts[id] || 0) + 1; });
+        const allIds = Object.keys(GWENT_CARDS);
+        let guard = 0;
+        while (result.length < targetSize && allIds.length > 0 && guard < 500) {
+          guard++;
+          const pick = allIds[Math.floor(Math.random() * allIds.length)];
+          const limit = GWENT_CARDS[pick]?.maxDeckCopies ?? 3;
+          if ((counts[pick] || 0) < limit) {
+            result.push(pick);
+            counts[pick] = (counts[pick] || 0) + 1;
+          }
+        }
+        return result;
+      };
+
       if (Array.isArray(customDeckIds) && customDeckIds.length > 0) {
-        pool = customDeckIds.filter(id => GWENT_CARDS[id]);
+        let pool = customDeckIds.filter(id => GWENT_CARDS[id]);
         if (pool.length < targetSize) {
-          const hasManson = pool.includes('manson_wolf_father');
-          const filler = STANDARD_DECK_RECIPE.filter(id => !(hasManson && id === 'manson_wolf_father'));
-          for (let i = filler.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [filler[i], filler[j]] = [filler[j], filler[i]];
-          }
-          let idx = 0;
-          while (pool.length < targetSize && filler.length > 0) {
-            pool.push(filler[idx % filler.length]);
-            idx++;
-          }
+          pool = fillRandomToTarget(pool);
         }
         pool = pool.slice(0, targetSize);
         for (let i = pool.length - 1; i > 0; i--) {
@@ -506,25 +513,15 @@
         return pool.map((id, idx) => this.createCardInstance(id, `${id}_${Math.random().toString(36).slice(2, 7)}_${idx}`));
       }
 
-      pool = [...STANDARD_DECK_RECIPE];
-      // Shuffle pool
-      for (let i = pool.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [pool[i], pool[j]] = [pool[j], pool[i]];
-      }
-      while (pool.length < targetSize && STANDARD_DECK_RECIPE.length > 0) {
-        pool.push(STANDARD_DECK_RECIPE[pool.length % STANDARD_DECK_RECIPE.length]);
-      }
-
-      // Move guaranteed signature cards to the front so they are drawn into Round 1 hand
+      // When no 18-card deck is built yet, generate a fresh random 18-card deck from all cards every match
       const uniqueGuaranteed = Array.from(new Set(guaranteedIds)).filter(id => GWENT_CARDS[id]);
-      const ordered = [];
-      uniqueGuaranteed.forEach(gid => {
-        const idx = pool.indexOf(gid);
-        if (idx !== -1) pool.splice(idx, 1);
-        ordered.push(gid);
-      });
-      const finalIds = [...ordered, ...pool].slice(0, targetSize);
+      let pool = fillRandomToTarget(uniqueGuaranteed);
+      const rest = pool.slice(uniqueGuaranteed.length);
+      for (let i = rest.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [rest[i], rest[j]] = [rest[j], rest[i]];
+      }
+      const finalIds = [...uniqueGuaranteed, ...rest].slice(0, targetSize);
 
       return finalIds.map((id, idx) => this.createCardInstance(id, `${id}_${Math.random().toString(36).slice(2, 7)}_${idx}`));
     }
@@ -557,9 +554,12 @@
         onKillMaxBonus: tmpl.onKillMaxBonus || 0,
         killBonusPower: 0,
         doubleHitIfRowRole: tmpl.doubleHitIfRowRole || null,
+        allowsMeleeWaterTribeToAttackRanged: Boolean(tmpl.allowsMeleeWaterTribeToAttackRanged),
+        endOfTurnRandomAttacks: tmpl.endOfTurnRandomAttacks ? { ...tmpl.endOfTurnRandomAttacks } : null,
         boostRoleAbility: tmpl.boostRoleAbility ? { ...tmpl.boostRoleAbility } : null,
         mansonBoostedThisTurn: false,
-        attackedThisTurn: false
+        attackedThisTurn: false,
+        frozenTurns: 0
       };
     }
 
@@ -750,7 +750,15 @@
 
     canCardAttackTargetRow(attackerTeam, attackerUid, targetRow) {
       const attackerRow = this.getCardRowKey(attackerTeam, attackerUid);
-      if (attackerRow === 'melee' && targetRow === 'ranged') return false;
+      if (attackerRow === 'melee' && targetRow === 'ranged') {
+        const meleeRow = this.state?.players?.[attackerTeam]?.rows?.melee || [];
+        const attacker = meleeRow.find(c => c.uid === attackerUid);
+        const hasSeaDragon = meleeRow.some(c => c.id === 'sea_dragon' || c.allowsMeleeWaterTribeToAttackRanged);
+        if (attacker && (attacker.id === 'sea_dragon' || attacker.allowsMeleeWaterTribeToAttackRanged || (hasSeaDragon && attacker.role === 'Water Tribe'))) {
+          return true;
+        }
+        return false;
+      }
       return true;
     }
 
@@ -783,7 +791,15 @@
       if (!this.state) return;
       this.state.playedCardThisTurn = false;
       this.getAllBoardCards(team).forEach(c => {
-        c.attackedThisTurn = false;
+        if (c.frozenTurns > 0) {
+          c.frozenTurns -= 1;
+          c.isFrozenThisTurn = true;
+          c.attackedThisTurn = true;
+          this.log(`❄️ ${c.name} is frozen and cannot attack this turn!`, team === 1 ? 'team1' : 'team2');
+        } else {
+          c.isFrozenThisTurn = false;
+          c.attackedThisTurn = false;
+        }
         c.mansonBoostedThisTurn = false;
       });
     }
@@ -1213,7 +1229,12 @@
               `${title}! ${sourceName} also plays ${bonusCard.name} (${bonusCard.power}) to ${ROW_LABELS[bonusRow] || bonusRow}!`,
               logType
             );
-            this.resolveCardAbility(team, bonusCard, bonusRow, bonusPreMyScore, bonusPreOppScore, bonusAlliesBefore);
+            this.state._suppressExtraGoblinPlay = true;
+            try {
+              this.resolveCardAbility(team, bonusCard, bonusRow, bonusPreMyScore, bonusPreOppScore, bonusAlliesBefore);
+            } finally {
+              this.state._suppressExtraGoblinPlay = false;
+            }
           }
           this.render();
           if (!this.state.pendingOptionalPlay && !this.hasReadyAttackers(team)) {
@@ -1228,6 +1249,74 @@
         this.log(`${title}: ${sourceName} holds the Goblin Army in reserve.`, logType);
         this.render();
         if (!this.hasReadyAttackers(team)) {
+          this.advanceTurn();
+        }
+      });
+
+      document.body.appendChild(overlay);
+    }
+
+    promptEnemyTargetChoice({ team, logType, sourceName, title, candidates = [], onSelect }) {
+      if (!this.state || !Array.isArray(candidates) || candidates.length === 0) return;
+
+      this.state.pendingOptionalPlay = true;
+      document.getElementById('gwent-optional-play-modal')?.remove();
+
+      const overlay = document.createElement('div');
+      overlay.id = 'gwent-optional-play-modal';
+      overlay.style.cssText = 'position:fixed; inset:0; z-index:9999; background:rgba(8,10,16,0.78); display:flex; align-items:center; justify-content:center; padding:16px;';
+
+      const cardsHtml = candidates.map(({ card, rowKey }) => {
+        const imgSrc = card.cardImg || card.traditionalCardImg || '';
+        const rowLabel = ROW_LABELS[rowKey] || rowKey || 'Melee';
+        const frozenTag = card.frozenTurns > 0 ? ' • ❄️ Frozen' : '';
+        return `
+          <button type="button" class="ui-btn" data-target-uid="${card.uid}" style="display:flex; flex-direction:column; align-items:center; gap:6px; padding:8px; width:122px; background:rgba(20,30,46,0.95); border:1.5px solid #38bdf8; border-radius:10px; color:#e0f2fe;">
+            <img src="${imgSrc}" alt="${card.name}" style="width:86px; height:115px; object-fit:cover; border-radius:6px;">
+            <span style="font-size:12px; font-weight:700; text-align:center; line-height:1.2;">${card.name}</span>
+            <span style="font-size:11px; color:#bae6fd;">⚔️ ${card.power} • 🛡️ ${card.armor || 0}</span>
+            <span style="font-size:10px; color:#7dd3fc;">${rowLabel}${frozenTag}</span>
+          </button>
+        `;
+      }).join('');
+
+      overlay.innerHTML = `
+        <div style="max-width:560px; width:100%; background:#0f172a; border:2px solid #38bdf8; border-radius:14px; padding:18px; box-shadow:0 18px 48px rgba(0,0,0,0.7); color:#e0f2fe;">
+          <div style="font-size:16px; font-weight:800; color:#7dd3fc; margin-bottom:6px;">${title}</div>
+          <div style="font-size:13px; color:#bae6fd; margin-bottom:14px;">Choose an enemy unit for <strong>${sourceName}</strong> to freeze for its next turn:</div>
+          <div style="display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin-bottom:14px;">${cardsHtml}</div>
+          <div style="display:flex; justify-content:flex-end;">
+            <button type="button" id="btn-enemy-target-skip" class="ui-btn" style="padding:7px 14px; background:rgba(71,85,105,0.45); border:1px solid #94a3b8; border-radius:8px; color:#e2e8f0; font-size:12px; font-weight:700;">Skip</button>
+          </div>
+        </div>
+      `;
+
+      const cleanup = () => {
+        if (this.state) this.state.pendingOptionalPlay = false;
+        overlay.remove();
+      };
+
+      overlay.querySelectorAll('[data-target-uid]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const uid = btn.getAttribute('data-target-uid');
+          const chosen = candidates.find(c => c.card.uid === uid);
+          cleanup();
+          if (chosen && typeof onSelect === 'function') {
+            onSelect(chosen);
+          }
+          this.render();
+          if (!this.state.pendingOptionalPlay && !this.hasReadyAttackers(team)) {
+            this.advanceTurn();
+          }
+        });
+      });
+
+      overlay.querySelector('#btn-enemy-target-skip')?.addEventListener('click', () => {
+        cleanup();
+        window.soundFX?.playClick?.();
+        this.log(`❄️ ${sourceName} held its Freeze in reserve.`, logType);
+        this.render();
+        if (!this.state.pendingOptionalPlay && !this.hasReadyAttackers(team)) {
           this.advanceTurn();
         }
       });
@@ -1282,9 +1371,35 @@
         const rowArr = this.state.players[ownerTeam].rows[rowKey];
         const i = rowArr.indexOf(targetCard);
         if (i !== -1) rowArr.splice(i, 1);
-        this.state.players[ownerTeam].graveyard.push(targetCard);
+        if (!targetCard.isToken) {
+          this.state.players[ownerTeam].graveyard.push(targetCard);
+        }
         window.soundFX?.playDefeat?.();
         this.log(`💀 ${targetCard.name} was destroyed and sent to the Graveyard!`, 'system');
+
+        const spawnCfg = targetCard.isSpawnedCopy ? null : (targetCard.spawnOnDeath || CardReg.getCard(targetCard.id)?.spawnOnDeath);
+        if (spawnCfg) {
+          const insertAt = i !== -1 ? i : rowArr.length;
+          const spawnPower = spawnCfg.spawnPower ?? Math.max(1, Math.floor((targetCard.basePower || 2) / 2));
+          const count = spawnCfg.count || 2;
+          for (let s = 0; s < count; s++) {
+            const spawnId = spawnCfg.cardId || targetCard.id;
+            const spawned = this.createCardInstance(
+              spawnId,
+              `${spawnId}_spawn_${Date.now()}_${s}_${Math.random().toString(36).slice(2, 5)}`
+            );
+            if (spawned) {
+              spawned.power = spawnPower;
+              spawned.basePower = spawnPower;
+              spawned.armor = 0;
+              spawned.isSpawnedCopy = true;
+              spawned.isToken = true;
+              spawned.spawnOnDeath = null;
+              rowArr.splice(insertAt + s, 0, spawned);
+            }
+          }
+          this.log(`🦇 ${targetCard.name} split into ${count} Vampire Bats (${spawnPower} Base Power each)!`, ownerTeam === 1 ? 'team1' : 'team2');
+        }
       }
     }
 
@@ -1360,6 +1475,9 @@
       const p1 = this.state.players[1];
       const p2 = this.state.players[2];
       const finishedTeam = this.state.turnTeam;
+      if (this.state.players[finishedTeam] && !this.state.players[finishedTeam].passed) {
+        this.applyTurnEndBoardPassives(finishedTeam);
+      }
       if (this.state.players[finishedTeam]) {
         this.state.players[finishedTeam].turnsThisRound = (this.state.players[finishedTeam].turnsThisRound || 0) + 1;
       }
@@ -1417,6 +1535,45 @@
 
       if (triggered) {
         window.soundFX?.playRock?.();
+      }
+    }
+
+    applyTurnEndBoardPassives(team) {
+      const player = this.state?.players?.[team];
+      if (!player || player.passed) return;
+      const oppTeam = team === 1 ? 2 : 1;
+      const logType = team === 1 ? 'team1' : 'team2';
+      let triggered = false;
+
+      ['melee', 'ranged'].forEach(rk => {
+        const rowArr = [...(player.rows?.[rk] || [])];
+        rowArr.forEach(card => {
+          const spec = card?.endOfTurnRandomAttacks;
+          if (!spec || card.power <= 0) return;
+          const count = spec.count || 3;
+          const dmg = spec.damage || 1;
+          for (let i = 0; i < count; i++) {
+            const oppRows = this.state?.players?.[oppTeam]?.rows;
+            if (!oppRows) break;
+            const candidates = [];
+            ['melee', 'ranged'].forEach(ork => {
+              (oppRows[ork] || []).forEach(enemy => {
+                if (enemy && enemy.power > 0) {
+                  candidates.push({ card: enemy, rowKey: ork });
+                }
+              });
+            });
+            if (candidates.length === 0) break;
+            const pick = candidates[Math.floor(Math.random() * candidates.length)];
+            this.log(`🔥 ${card.name}'s ${card.abilityTitle || 'Ember Volley'} strikes ${pick.card.name} for ${dmg} damage!`, logType);
+            this.damageUnit(pick.card, dmg, oppTeam, pick.rowKey);
+            triggered = true;
+          }
+        });
+      });
+
+      if (triggered) {
+        window.soundFX?.playFire?.();
       }
     }
 
@@ -1986,6 +2143,10 @@
       if (card.shield) {
         extraClasses += ' has-shield';
       }
+      const isFrozen = (card.frozenTurns || 0) > 0 || Boolean(card.isFrozenThisTurn);
+      if (isFrozen) {
+        extraClasses += ' is-frozen';
+      }
       const factionClass = card.role === 'Wolf Pack' ? ' faction-wolf-pack' : '';
       el.className = `gwent-card rarity-${card.border || card.rarity}${factionClass} ${onBoard ? 'board-card' : ''}${extraClasses}`;
       el.dataset.uid = card.uid;
@@ -1993,12 +2154,14 @@
       const powerClass = card.power > card.basePower ? 'boosted' : (card.power < card.basePower ? 'damaged' : '');
       const armorHtml = card.armor > 0 ? `<div class="gwent-card-armor">🛡️${card.armor}</div>` : '';
       const shieldHtml = card.shield ? `<div class="gwent-card-shield-badge" title="Shield: Ignores next instance of damage">🔰</div>` : '';
+      const iceBorderHtml = isFrozen ? `<div class="gwent-card-ice-overlay" title="Frozen: Cannot attack on its next turn"></div>` : '';
 
       el.innerHTML = `
         <img class="gwent-card-art" src="${card.cardImg}" alt="${card.name}">
         <div class="gwent-card-power ${powerClass}">${card.power}</div>
         ${armorHtml}
         ${shieldHtml}
+        ${iceBorderHtml}
         <div class="gwent-card-row-badge" title="${ROW_LABELS[card.row]}">${ROW_ICONS[card.row]}</div>
         <div class="gwent-card-name-strip">${card.name}</div>
       `;

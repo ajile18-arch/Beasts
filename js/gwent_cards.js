@@ -36,6 +36,7 @@
   /** Deploy an eligible Goblin Army card from hand onto the board and resolve its ability. */
   function playExtraGoblinArmyFromHand(ctx, { sourceName, title, sound = 'howl', maxStars = Infinity, optional = false }) {
     const { game, team, targetRow, logType } = ctx;
+    if (game?.state?._suppressExtraGoblinPlay) return;
     const player = game.state?.players?.[team];
     if (!player || !Array.isArray(player.hand) || player.hand.length === 0) return;
 
@@ -85,7 +86,12 @@
       `${title}! ${sourceName} also plays ${bonusCard.name} (${bonusCard.power}) to ${ROW_LABELS[bonusRow] || bonusRow}!`,
       logType
     );
-    game.resolveCardAbility(team, bonusCard, bonusRow, bonusPreMyScore, bonusPreOppScore, bonusAlliesBefore);
+    game.state._suppressExtraGoblinPlay = true;
+    try {
+      game.resolveCardAbility(team, bonusCard, bonusRow, bonusPreMyScore, bonusPreOppScore, bonusAlliesBefore);
+    } finally {
+      game.state._suppressExtraGoblinPlay = false;
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -322,6 +328,27 @@
       effects: []
     },
 
+    vampire_bat: {
+      id: 'vampire_bat',
+      name: 'Vampire Bat',
+      role: 'Vampire',
+      element: 'poison',
+      stars: 1,
+      rarity: 'bronze',
+      border: 'bronze',
+      row: 'agile',
+      basePower: 2,
+      armor: 0,
+      spawnOnDeath: { cardId: 'vampire_bat', count: 2, spawnPower: 1 },
+      cardImg: 'Cards/Vampire_Bat_Card.jpg',
+      traditionalCardImg: 'Cards/Vampire_Bat_Traditional.jpg',
+      abilityTitle: 'Bat Swarm',
+      abilityDesc: 'When killed, spawns 2 Vampire Bats at half Power (1). Spawned bats cannot split again.',
+      passiveTitle: 'Split',
+      passiveDesc: 'Spawns 2 half-health Vampire Bats once on death.',
+      effects: []
+    },
+
     gooba_goblin_king: {
       id: 'gooba_goblin_king',
       name: 'Gooba, Goblin King',
@@ -443,6 +470,126 @@
         const hasWaterTribe = rowArr.some(c => c.role === 'Water Tribe');
         return 1 + 0.5 + (hasWaterTribe ? 1 : 0);
       }
+    },
+
+    sea_dragon: {
+      id: 'sea_dragon',
+      name: 'Sea Dragon',
+      role: 'Water Tribe',
+      element: 'water',
+      stars: 3,
+      rarity: 'gold',
+      border: 'gold',
+      row: 'agile',
+      basePower: 3,
+      armor: 4,
+      allowsMeleeWaterTribeToAttackRanged: true,
+      cardImg: 'Cards/Sea_Dragon_Card.jpg',
+      traditionalCardImg: 'Cards/Sea_Dragon_Traditional.jpg',
+      abilityTitle: 'Tidal Charge',
+      abilityDesc: "While in Melee, Sea Dragon and Water Tribe allies in Melee can attack the enemy's Ranged row.",
+      passiveTitle: "Merman's Steed",
+      passiveDesc: 'Grants ranged reach from Melee to itself and Water Tribe allies when in the Melee row.',
+      effects: [],
+      estimateAiValue(rowKey, ctx) {
+        const { game, team } = ctx;
+        const meleeArr = game.state?.players?.[team]?.rows?.melee || [];
+        const waterAllies = meleeArr.filter(c => c.role === 'Water Tribe').length;
+        return 3 + 2 + (rowKey === 'melee' ? waterAllies * 1.0 : 0);
+      }
+    },
+
+    pyromanda: {
+      id: 'pyromanda',
+      name: 'PyroManda',
+      role: 'Lizard',
+      element: 'fire',
+      stars: 3,
+      rarity: 'gold',
+      border: 'gold',
+      row: 'ranged',
+      basePower: 4,
+      armor: 2,
+      endOfTurnRandomAttacks: { count: 3, damage: 1 },
+      cardImg: 'Cards/PyroManda_Card.jpg',
+      traditionalCardImg: 'Cards/PyroManda_Traditional.jpg',
+      abilityTitle: 'Ember Volley',
+      abilityDesc: 'At the end of your turn, performs 3 attacks dealing 1 damage each to random enemy units.',
+      passiveTitle: 'Ranged Barrage',
+      passiveDesc: 'Fires 3x 1-damage ember strikes at random enemies at turn end.',
+      effects: [],
+      estimateAiValue(rowKey, ctx) {
+        const { game, team } = ctx;
+        const oppTeam = team === 1 ? 2 : 1;
+        const hasEnemies = game.getAllBoardCards(oppTeam).length > 0;
+        return 4 + 1 + (hasEnemies ? 3 : 0);
+      }
+    },
+
+    frost_skink: {
+      id: 'frost_skink',
+      name: 'Frost Skink',
+      role: 'Lizard',
+      element: 'water',
+      stars: 2,
+      rarity: 'silver',
+      border: 'silver',
+      row: 'melee',
+      basePower: 2,
+      armor: 1,
+      cardImg: 'Cards/Frost_Skink_Card.jpg',
+      traditionalCardImg: 'Cards/Frost_Skink_Traditional.jpg',
+      abilityTitle: 'Freeze',
+      abilityDesc: 'When played, freezes a target enemy unit, stopping it from attacking on its next turn.',
+      passiveTitle: 'Glacial Chill',
+      passiveDesc: 'Frozen enemies cannot attack on their next turn.',
+      effects: [
+        {
+          type: 'custom',
+          run(ctx) {
+            const { game, team, oppTeam, card, logType } = ctx;
+            const oppRows = game.state?.players?.[oppTeam]?.rows;
+            if (!oppRows) return;
+            const enemies = [];
+            ['melee', 'ranged'].forEach(rk => {
+              (oppRows[rk] || []).forEach(c => {
+                if (c && c.power > 0) enemies.push({ card: c, rowKey: rk });
+              });
+            });
+            if (enemies.length === 0) {
+              game.log(`❄️ ${card.name}'s Freeze found no enemy units to target.`, logType);
+              return;
+            }
+            const applyFreeze = (targetCard) => {
+              if (!targetCard) return;
+              targetCard.frozenTurns = Math.max(targetCard.frozenTurns || 0, 1);
+              window.soundFX?.playShieldBreak?.();
+              game.log(`❄️ ${card.name} froze ${targetCard.name}! It cannot attack on its next turn.`, logType);
+            };
+            if (game.gameMode === 'ai' && team === 2) {
+              const nonFrozen = enemies.filter(e => !(e.card.frozenTurns > 0));
+              const pool = nonFrozen.length > 0 ? nonFrozen : enemies;
+              pool.sort((a, b) => b.card.power - a.card.power);
+              applyFreeze(pool[0].card);
+            } else {
+              game.promptEnemyTargetChoice({
+                team,
+                logType,
+                sourceName: card.name,
+                title: '❄️ Freeze — Choose an Enemy to Freeze',
+                candidates: enemies,
+                onSelect: (chosen) => applyFreeze(chosen.card)
+              });
+            }
+          }
+        }
+      ],
+      estimateAiValue(rowKey, ctx) {
+        const { game, team } = ctx;
+        const oppTeam = team === 1 ? 2 : 1;
+        const hasEnemies = game.getAllBoardCards(oppTeam).length > 0;
+        return 2 + 0.5 + (hasEnemies ? 2 : 0);
+      }
     }
   };
 
@@ -461,10 +608,14 @@
       'scrap_heap', 'scrap_heap',
       'manson_wolf_father',
       'vampire_thrall', 'vampire_thrall',
+      'vampire_bat', 'vampire_bat',
       'gooba_goblin_king',
       'mothman', 'mothman',
       'jersey_devil',
-      'merfolk', 'merfolk', 'merfolk'
+      'merfolk', 'merfolk', 'merfolk',
+      'sea_dragon',
+      'pyromanda',
+      'frost_skink', 'frost_skink'
     ]
   };
 
@@ -659,6 +810,12 @@
           if (count > 0) {
             playSound(eff.sound || 'rock');
             game.log(`${eff.label || '🛡️ Pack Armor'} granted +${amt} Armor to ${count} Wolf Pack unit(s)!`, logType);
+          }
+          break;
+        }
+        case 'custom': {
+          if (typeof eff.run === 'function') {
+            eff.run(ctx);
           }
           break;
         }

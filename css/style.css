@@ -11048,6 +11048,21 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   box-shadow: 0 0 12px rgba(56, 189, 248, 0.7), inset 0 0 10px rgba(56, 189, 248, 0.35);
 }
 
+.gwent-card.is-frozen {
+  box-shadow: 0 0 16px rgba(125, 211, 252, 0.85), inset 0 0 14px rgba(186, 230, 253, 0.45);
+}
+
+.gwent-card-ice-overlay {
+  position: absolute;
+  inset: -4px;
+  background-image: url('../Sprites/Effects/ice_border_overlay.png');
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  pointer-events: none;
+  z-index: 5;
+  filter: drop-shadow(0 0 6px rgba(125, 211, 252, 0.85));
+}
+
 .gwent-card-shield-badge {
   position: absolute;
   top: 4px;
