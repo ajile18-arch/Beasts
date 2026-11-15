@@ -13,7 +13,7 @@
  *   - { type: 'boost_self_if_ally', allyId: 'werewolf', sameRowOnly: true, amount: 2 }
  *   - { type: 'boost_self_if_trailing', amount: 4, sound: 'heal' }
  *   - { type: 'boost_self_if_alone', amount: 5 }
- *   - { type: 'summon_token', tokenId: 'thorn_sapling', row: 'melee', sound: 'heal' }
+ *   - { type: 'summon_token', tokenId: '<token_id>', row: 'melee', sound: 'heal' }
  *   - { type: 'boost_role_allies', roles: ['tank','warrior'], amount: 1, excludeSelf: true }
  *   - { type: 'draw_cards', count: 1 }
  */
@@ -34,11 +34,12 @@
   };
 
   /** Deploy an eligible Goblin Army card from hand onto the board and resolve its ability. */
-  function playExtraGoblinArmyFromHand(ctx, { sourceName, title, sound = 'howl', maxStars = Infinity }) {
+  function playExtraGoblinArmyFromHand(ctx, { sourceName, title, sound = 'howl', maxStars = Infinity, optional = false }) {
     const { game, team, targetRow, logType } = ctx;
     const player = game.state?.players?.[team];
     if (!player || !Array.isArray(player.hand) || player.hand.length === 0) return;
 
+    const candidates = [];
     let bestIdx = -1;
     let bestScore = -1;
     player.hand.forEach((c, idx) => {
@@ -46,6 +47,7 @@
       const role = c.role || def?.role;
       const stars = Number(c.stars ?? def?.stars ?? 0);
       if (role === 'Goblin Army' && stars <= maxStars) {
+        candidates.push(c);
         const score = stars * 100 + (c.power || 0);
         if (score > bestScore) {
           bestScore = score;
@@ -55,6 +57,19 @@
     });
 
     if (bestIdx === -1) return;
+
+    if (optional && !(game.gameMode === 'ai' && team === 2) && typeof game.promptOptionalHandPlay === 'function') {
+      game.promptOptionalHandPlay({
+        team,
+        targetRow,
+        logType,
+        sourceName,
+        title,
+        sound,
+        candidates
+      });
+      return;
+    }
 
     const [bonusCard] = player.hand.splice(bestIdx, 1);
     const bonusRow = bonusCard.row === 'agile'
@@ -190,6 +205,7 @@
       basePower: 2,
       armor: 0,
       cardImg: 'Cards/Werewolf_Pup_Card.jpg',
+      traditionalCardImg: 'Cards/Werewolf_Pup_Traditional.jpg',
       abilityTitle: 'Howl',
       abilityDesc: 'Doubles the power of all Wolf Pack cards on your side of the board. Stackable with additional Werewolf Pups.',
       passiveTitle: '',
@@ -211,6 +227,7 @@
       basePower: 3,
       armor: 2,
       cardImg: 'Cards/Minerva_Wolf_Mother_Card.jpg',
+      traditionalCardImg: 'Cards/Minerva_Wolf_Mother_Traditional.jpg',
       abilityTitle: "Mother's Aegis",
       abilityDesc: 'When deployed, give all other Wolf Pack cards on your side of the board +2 Armor.',
       passiveTitle: '',
@@ -233,6 +250,7 @@
       armor: 2,
       resilient: true,
       cardImg: 'Cards/Rust_Bucket_Card.jpg',
+      traditionalCardImg: 'Cards/Rust_Bucket_Traditional.jpg',
       abilityTitle: 'Resilient',
       abilityDesc: 'Stays on the battlefield at the end of the round instead of moving to the Graveyard.',
       passiveTitle: 'Resilient',
@@ -253,6 +271,7 @@
       armor: 2,
       shield: true,
       cardImg: 'Cards/Scrap_Heap_Card.jpg',
+      traditionalCardImg: 'Cards/Scrap_Heap_Traditional.jpg',
       abilityTitle: 'Shield',
       abilityDesc: 'Ignores the next instance of damage, then the Shield breaks and is removed.',
       passiveTitle: 'Shield',
@@ -274,6 +293,7 @@
       armor: 0,
       boostRoleAbility: { role: 'Wolf Pack', amount: 1 },
       cardImg: 'Cards/Manson_Wolf_Father_Card.jpg',
+      traditionalCardImg: 'Cards/Manson_Wolf_Father_Traditional.jpg',
       abilityTitle: "Alpha's Command",
       abilityDesc: 'Select Manson on the board, then click each allied Wolf Pack member once per turn to raise their Power by +1.',
       passiveTitle: 'Deck Limit: 1',
@@ -294,6 +314,7 @@
       armor: 0,
       lifestealHeal: true,
       cardImg: 'Cards/Vampire_Thrall_Card.jpg',
+      traditionalCardImg: 'Cards/Vampire_Thrall_Traditional.jpg',
       abilityTitle: 'Blood Leech',
       abilityDesc: 'Attacking returns half of the attack damage dealt to heal Vampire Thrall (up to its Base Power).',
       passiveTitle: 'Lifesteal',
@@ -315,7 +336,7 @@
       cardImg: 'Cards/Gooba_Goblin_King_Card.jpg',
       traditionalCardImg: 'Cards/Gooba_Goblin_King_Traditional.jpg',
       abilityTitle: 'Royal Decree',
-      abilityDesc: 'When played, also play any 1- or 2-star Goblin Army card from your hand.',
+      abilityDesc: 'When played, you may also play a 1- or 2-star Goblin Army card from your hand.',
       passiveTitle: 'Goblin Sovereign',
       passiveDesc: 'Commands the Goblin Army from the Ranged row.',
       effects: [],
@@ -324,7 +345,8 @@
           sourceName: 'Gooba, Goblin King',
           title: '👑 Royal Decree',
           sound: 'howl',
-          maxStars: 2
+          maxStars: 2,
+          optional: true
         });
       },
       estimateAiValue(rowKey, ctx) {
@@ -355,6 +377,7 @@
       basePower: 3,
       armor: 1,
       cardImg: 'Cards/Mothman_Card.jpg',
+      traditionalCardImg: 'Cards/Mothman_Traditional.jpg',
       abilityTitle: 'Omen Carapace',
       abilityDesc: 'Boosts the Armor of the creature to its right by +1 each turn while Mothman is on the board.',
       passiveTitle: 'Deck Limit: 2',
@@ -383,6 +406,7 @@
       onKillPowerGain: 1,
       onKillMaxBonus: 3,
       cardImg: 'Cards/Jersey_Devil_Card.jpg',
+      traditionalCardImg: 'Cards/Jersey_Devil_Traditional.jpg',
       abilityTitle: 'Pine Barrens Stalker',
       abilityDesc: 'When Jersey Devil destroys an enemy, it gains +1 Power (up to +3 additional Power).',
       passiveTitle: 'Deck Limit: 1',
@@ -407,6 +431,7 @@
       armor: 1,
       doubleHitIfRowRole: 'Water Tribe',
       cardImg: 'Cards/Merfolk_Card.jpg',
+      traditionalCardImg: 'Cards/Merfolk_Traditional.jpg',
       abilityTitle: 'Twin Tide',
       abilityDesc: 'Hits twice when attacking if another Water Tribe character is in its row.',
       passiveTitle: 'Deck Limit: 3',
@@ -418,25 +443,6 @@
         const hasWaterTribe = rowArr.some(c => c.role === 'Water Tribe');
         return 1 + 0.5 + (hasWaterTribe ? 1 : 0);
       }
-    },
-
-    thorn_sapling: {
-      id: 'thorn_sapling',
-      name: 'Thorn Sapling',
-      role: 'summon',
-      element: 'plant',
-      stars: 1,
-      rarity: 'bronze',
-      row: 'melee',
-      basePower: 3,
-      armor: 0,
-      cardImg: 'Sprites/Effects/Thorn_Bush_Tile_256x256.png',
-      abilityTitle: 'Summoned Token',
-      abilityDesc: 'Conjured by Terra-Mother to reinforce the Melee line.',
-      passiveTitle: 'Rooted',
-      passiveDesc: 'Counted as a Plant ally.',
-      isToken: true,
-      effects: []
     }
   };
 

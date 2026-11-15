@@ -100,7 +100,7 @@
   const ARCHETYPE_KEYS = ['jacket', 'hoodie', 'vest', 'trench'];
   const LAYER_NAMES = ['ink', 'skin', 'hair', 'eyes', 'outfit', 'pants'];
   const OUTFIT_TO_KEY = { jacket: 'jacket', hoodie: 'hoodie', vest: 'vest', coat: 'trench' };
-  const HAIR_TO_KEY = { spiky: 'jacket', swept: 'hoodie', bob: 'vest', long: 'vest', ponytail: 'trench' };
+  const HAIR_TO_KEY = { spiky: 'jacket', swept: 'hoodie', bob: 'vest', long: 'long', ponytail: 'trench' };
   const DIR_ROW = { down: 0, left: 1, right: 2, up: 3 };
 
   const spriteBank = {};
@@ -127,13 +127,27 @@
         spriteBank[arch][layer] = img;
       }
     }
+    // Dedicated 'long' hair sheets (shares vest face skin & eyes, replaces hair + hair ink cleanly)
+    const longHair = new Image();
+    longHair.src = 'Sprites/Characters/hero_long_hair.png';
+    longHair.onload = scheduleCreatorRefresh;
+    const longInk = new Image();
+    longInk.src = 'Sprites/Characters/hero_long_ink.png';
+    longInk.onload = scheduleCreatorRefresh;
+    spriteBank.long = {
+      hair: longHair,
+      ink: longInk,
+      skin: spriteBank.vest.skin,
+      eyes: spriteBank.vest.eyes
+    };
   }
   preloadCharacterSheets();
 
   function isArchReady(arch) {
     const set = spriteBank[arch];
     if (!set) return false;
-    for (const layer of LAYER_NAMES) {
+    const requiredLayers = arch === 'long' ? ['hair', 'ink', 'skin', 'eyes'] : LAYER_NAMES;
+    for (const layer of requiredLayers) {
       const img = set[layer];
       if (!img || !img.complete || img.naturalWidth === 0) return false;
     }
@@ -166,47 +180,6 @@
     workCtx.globalCompositeOperation = 'source-over';
   }
 
-  /** Draws shoulder-length back hair locks with tapered silhouettes for 'long' hairstyles. */
-  function drawFlowingLongLocks(ctx, hair, dirRow) {
-    const px = (cx, cy, x, y, w, h, col) => {
-      ctx.fillStyle = col;
-      ctx.fillRect(cx + x, cy + y, w, h);
-    };
-    const INK = '#1b1210';
-    for (let col = 0; col < 4; col++) {
-      const cx = col * CELL;
-      const bob = (col === 1 || col === 3) ? -1 : 0;
-      const y0 = dirRow * CELL + bob;
-      if (dirRow === 0) {
-        for (const sx of [29, 60]) {
-          px(cx, y0, sx, 38, 7, 18, INK);
-          px(cx, y0, sx + 1, 56, 5, 3, INK);
-          px(cx, y0, sx + 1, 39, 5, 17, hair.dark);
-          px(cx, y0, sx + 2, 40, 3, 14, hair.base);
-        }
-      } else if (dirRow === 1) {
-        px(cx, y0, 48, 37, 10, 20, INK);
-        px(cx, y0, 50, 57, 7, 3, INK);
-        px(cx, y0, 49, 38, 8, 19, hair.dark);
-        px(cx, y0, 50, 39, 6, 16, hair.base);
-      } else if (dirRow === 2) {
-        px(cx, y0, 38, 37, 10, 20, INK);
-        px(cx, y0, 39, 57, 7, 3, INK);
-        px(cx, y0, 39, 38, 8, 19, hair.dark);
-        px(cx, y0, 40, 39, 6, 16, hair.base);
-      } else if (dirRow === 3) {
-        px(cx, y0, 33, 35, 30, 17, INK);
-        px(cx, y0, 35, 52, 26, 4, INK);
-        px(cx, y0, 37, 56, 22, 3, INK);
-        px(cx, y0, 34, 36, 28, 16, hair.dark);
-        px(cx, y0, 36, 52, 24, 4, hair.dark);
-        px(cx, y0, 36, 37, 24, 15, hair.base);
-        px(cx, y0, 38, 52, 20, 2, hair.base);
-        px(cx, y0, 40, 39, 16, 6, hair.hi);
-      }
-    }
-  }
-
   // Uniform neck-seam split bounds and per-archetype alignment tables so every head matches its own eyes/hair/ink
   const BODY_SKIN_MIN_Y = 56;
   const HEAD_HAIR_MAX_Y = 52;
@@ -214,6 +187,7 @@
     jacket: { skinMaxY: 48, inkMaxY: 48 },
     hoodie: { skinMaxY: 47, inkMaxY: 47 },
     vest:   { skinMaxY: 48, inkMaxY: 46 },
+    long:   { skinMaxY: 48, inkMaxY: 59, hairMaxY: 60 },
     trench: { skinMaxY: 46, inkMaxY: 47 }
   };
   const BODY_INK_MIN_Y = {
@@ -237,10 +211,11 @@
     }
   }
 
-  function compositeCrossArchetype(octx, ob, hb, outfitKey, hairKey, colors, hairStyle) {
+  function compositeCrossArchetype(octx, ob, hb, outfitKey, hairKey, colors) {
     const headSpec = HEAD_SPLIT_SPEC[hairKey];
     const bodyInkMins = BODY_INK_MIN_Y[outfitKey];
     const dxRow0 = outfitKey !== hairKey ? CROSS_HEAD_ROW0_DX[hairKey] : null;
+    const hairMaxY = headSpec.hairMaxY || HEAD_HAIR_MAX_Y;
 
     // 1. Body skin (hands/forearms only, below neck seam) and body/collar ink
     renderTintedLayerToWork(ob.skin, colors.skin.base);
@@ -255,11 +230,6 @@
       octx.drawImage(ob.ink, 0, cy + bMin, SHEET_SIZE, CELL - bMin, 0, cy + bMin, SHEET_SIZE, CELL - bMin);
     }
 
-    // Back-view flowing locks sit over upper back coat/jacket but below rounded head crown
-    if (hairStyle === 'long') {
-      drawFlowingLongLocks(octx, colors.hair, 3);
-    }
-
     // 2. Cohesive Head from hair archetype (skin, eyes, hair, and native head ink aligned to torso center)
     renderTintedLayerToWork(hb.skin, colors.skin.base);
     drawCellSlices(octx, workCanvas, headSpec.skinMaxY + 1, dxRow0);
@@ -268,7 +238,7 @@
     drawCellSlices(octx, workCanvas, HEAD_HAIR_MAX_Y, dxRow0);
 
     renderTintedLayerToWork(hb.hair, colors.hair.base);
-    drawCellSlices(octx, workCanvas, HEAD_HAIR_MAX_Y, dxRow0);
+    drawCellSlices(octx, workCanvas, hairMaxY, dxRow0);
 
     drawCellSlices(octx, hb.ink, headSpec.inkMaxY + 1, dxRow0);
   }
@@ -302,13 +272,7 @@
 
     const ob = spriteBank[outfitKey];
     const hb = spriteBank[hairKey];
-    const nativeMatch = (hairKey === outfitKey && hairStyle !== 'long');
-
-    if (hairStyle === 'long') {
-      drawFlowingLongLocks(octx, hair, 0);
-      drawFlowingLongLocks(octx, hair, 1);
-      drawFlowingLongLocks(octx, hair, 2);
-    }
+    const nativeMatch = (hairKey === outfitKey);
 
     renderTintedLayerToWork(ob.pants, pants.base);
     octx.drawImage(workCanvas, 0, 0);
@@ -325,7 +289,7 @@
       octx.drawImage(workCanvas, 0, 0);
       octx.drawImage(ob.ink, 0, 0, SHEET_SIZE, SHEET_SIZE);
     } else {
-      compositeCrossArchetype(octx, ob, hb, outfitKey, hairKey, { skin, hair, eye }, hairStyle);
+      compositeCrossArchetype(octx, ob, hb, outfitKey, hairKey, { skin, hair, eye });
     }
 
     if (composedCache.size >= MAX_CACHE_SIZE) {

@@ -793,13 +793,13 @@
     // -------------------------------------------------------------------------
     selectHandCard(uid) {
       if (this.isMatchOver || !this.state) return;
-      const activeTeam = this.state.turnTeam;
-      if (this.gameMode === 'ai' && activeTeam !== 1) return;
-
       if (this.state.mulliganActive) {
         this.mulliganCard(uid);
         return;
       }
+
+      const activeTeam = this.state.turnTeam;
+      if (this.gameMode === 'ai' && activeTeam !== 1) return;
 
       const player = this.state.players[activeTeam];
       const card = player.hand.find(c => c.uid === uid);
@@ -853,7 +853,7 @@
       document.getElementById('gwent-ability-popup')?.classList.add('hidden');
     }
 
-    handleBoardCardClick(ownerTeam, card, rowKey) {
+    handleBoardCardClick(ownerTeam, card, rowKey, clickEvent = null) {
       if (!this.state) return;
       this.state.inspectedCard = card;
       this.renderInspector(card);
@@ -862,6 +862,21 @@
       const activeTeam = this.state.turnTeam;
       if (this.gameMode === 'ai' && activeTeam !== 1) return;
       if (this.state.players[activeTeam].passed) return;
+
+      // If a hand card is selected for deployment, clicking left/right side of a board card in a valid row places it on that side
+      if (ownerTeam === activeTeam && this.state.selectedHandUid && !this.state.playedCardThisTurn) {
+        const selectedHandCard = this.state.players[activeTeam].hand.find(c => c.uid === this.state.selectedHandUid);
+        if (selectedHandCard && (selectedHandCard.row === 'agile' || selectedHandCard.row === rowKey)) {
+          const rect = clickEvent?.currentTarget?.getBoundingClientRect?.();
+          const rowCards = this.state.players[activeTeam].rows[rowKey] || [];
+          const cardIdx = rowCards.findIndex(c => c.uid === card.uid);
+          if (cardIdx !== -1) {
+            const placeLeft = rect ? (clickEvent.clientX - rect.left) < (rect.width / 2) : false;
+            this.playCardToRow(activeTeam, this.state.selectedHandUid, rowKey, placeLeft ? cardIdx : cardIdx + 1);
+            return;
+          }
+        }
+      }
 
       const oppTeam = activeTeam === 1 ? 2 : 1;
 
@@ -1089,7 +1104,7 @@
       }, 680);
     }
 
-    playCardToRow(team, uid, targetRow) {
+    playCardToRow(team, uid, targetRow, insertIndex = null) {
       if (this.isMatchOver || !this.state || this.state.mulliganActive) return;
       if (team !== this.state.turnTeam) return;
 
@@ -1113,7 +1128,12 @@
       const alliesOnBoardBefore = this.getAllBoardCards(team).length;
 
       player.hand.splice(idx, 1);
-      player.rows[targetRow].push(card);
+      if (typeof insertIndex === 'number' && !Number.isNaN(insertIndex)) {
+        const clampedIdx = Math.max(0, Math.min(player.rows[targetRow].length, insertIndex));
+        player.rows[targetRow].splice(clampedIdx, 0, card);
+      } else {
+        player.rows[targetRow].push(card);
+      }
       this.state.playedCardThisTurn = true;
       this.state.selectedHandUid = null;
       this.state.selectedAttackerUid = null;
@@ -1128,9 +1148,91 @@
       this.resolveCardAbility(team, card, targetRow, prePlayMyScore, prePlayOppScore, alliesOnBoardBefore);
 
       this.render();
-      if (!(this.gameMode === 'ai' && team === 2) && !this.hasReadyAttackers(team)) {
+      if (!(this.gameMode === 'ai' && team === 2) && !this.state.pendingOptionalPlay && !this.hasReadyAttackers(team)) {
         this.advanceTurn();
       }
+    }
+
+    promptOptionalHandPlay({ team, targetRow, logType, sourceName, title, sound = 'howl', candidates = [] }) {
+      if (!this.state || !Array.isArray(candidates) || candidates.length === 0) return;
+      const player = this.state.players[team];
+      if (!player) return;
+
+      this.state.pendingOptionalPlay = true;
+      document.getElementById('gwent-optional-play-modal')?.remove();
+
+      const overlay = document.createElement('div');
+      overlay.id = 'gwent-optional-play-modal';
+      overlay.className = 'modal-overlay';
+      overlay.style.zIndex = '125';
+
+      const cardsHtml = candidates.map(c => {
+        const imgSrc = c.traditionalCardImg || c.cardImg || 'Cards/Mythos_Card_Back.png';
+        const rowLabel = ROW_LABELS[c.row] || c.row || 'Melee';
+        return `
+          <button type="button" class="ui-btn" data-opt-uid="${c.uid}" style="display:flex; flex-direction:column; align-items:center; gap:6px; padding:8px; width:118px; background:rgba(30,22,16,0.95); border:1.5px solid #b45309; border-radius:10px; color:#fef3c7;">
+            <img src="${imgSrc}" alt="${c.name}" style="width:86px; height:115px; object-fit:cover; border-radius:6px;">
+            <div style="font-size:12px; font-weight:700; line-height:1.2; text-align:center;">${c.name}</div>
+            <div style="font-size:11px; color:#fcd34d;">⚔️ ${c.power} • ${rowLabel}</div>
+          </button>
+        `;
+      }).join('');
+
+      overlay.innerHTML = `
+        <div style="max-width:520px; width:92%; background:linear-gradient(180deg,#1f1812,#120e0a); border:2px solid #d97706; border-radius:14px; padding:18px; box-shadow:0 18px 48px rgba(0,0,0,0.85); color:#fef3c7;">
+          <div style="font-family:'Cinzel',serif; font-size:17px; font-weight:800; color:#fde68a; margin-bottom:4px;">${title}</div>
+          <div style="font-size:13px; color:#d6cbb8; margin-bottom:14px;">${sourceName}: Choose a 1- or 2-star Goblin Army card to also play from your hand, or skip.</div>
+          <div style="display:flex; flex-wrap:wrap; justify-content:center; gap:10px; margin-bottom:14px;">${cardsHtml}</div>
+          <div style="display:flex; justify-content:flex-end;">
+            <button type="button" id="btn-optional-play-skip" class="ui-btn" style="padding:8px 16px;">Skip (Keep in Hand)</button>
+          </div>
+        </div>
+      `;
+
+      const cleanup = () => {
+        overlay.remove();
+        if (this.state) this.state.pendingOptionalPlay = false;
+      };
+
+      overlay.querySelectorAll('[data-opt-uid]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const chosenUid = btn.dataset.optUid;
+          cleanup();
+          const handIdx = player.hand.findIndex(c => c.uid === chosenUid);
+          if (handIdx !== -1) {
+            const [bonusCard] = player.hand.splice(handIdx, 1);
+            const bonusRow = bonusCard.row === 'agile'
+              ? (targetRow || 'ranged')
+              : (bonusCard.row || 'melee');
+            const bonusPreMyScore = this.getTotalScore(team);
+            const bonusPreOppScore = this.getTotalScore(team === 1 ? 2 : 1);
+            const bonusAlliesBefore = this.getAllBoardCards(team).length;
+            player.rows[bonusRow].push(bonusCard);
+            window.soundFX?.playCardFlipReveal?.(bonusCard.rarity === 'gold');
+            this.log(
+              `${title}! ${sourceName} also plays ${bonusCard.name} (${bonusCard.power}) to ${ROW_LABELS[bonusRow] || bonusRow}!`,
+              logType
+            );
+            this.resolveCardAbility(team, bonusCard, bonusRow, bonusPreMyScore, bonusPreOppScore, bonusAlliesBefore);
+          }
+          this.render();
+          if (!this.state.pendingOptionalPlay && !this.hasReadyAttackers(team)) {
+            this.advanceTurn();
+          }
+        });
+      });
+
+      overlay.querySelector('#btn-optional-play-skip')?.addEventListener('click', () => {
+        cleanup();
+        window.soundFX?.playClick?.();
+        this.log(`${title}: ${sourceName} holds the Goblin Army in reserve.`, logType);
+        this.render();
+        if (!this.hasReadyAttackers(team)) {
+          this.advanceTurn();
+        }
+      });
+
+      document.body.appendChild(overlay);
     }
 
     damageUnit(targetCard, amount, ownerTeam, rowKey) {
@@ -1391,7 +1493,7 @@
               c.shield = Boolean(GWENT_CARDS[c.id]?.shield);
               c.mansonBoostedThisTurn = false;
               c.attackedThisTurn = false;
-              if (c.id !== 'thorn_sapling') p.graveyard.push(c);
+              if (!c.isToken) p.graveyard.push(c);
             }
           }
           p.rows[rk] = survivors;
@@ -1763,8 +1865,26 @@
           const cardsEl = document.getElementById(`cards-${team}-${rk}`);
           if (cardsEl) {
             cardsEl.innerHTML = '';
-            this.state.players[team].rows[rk].forEach(c => {
+            const rowCards = this.state.players[team].rows[rk];
+            const showInsertSlots = Boolean(isValidDrop) && rowCards.length > 0;
+            cardsEl.classList.toggle('insert-spread', showInsertSlots);
+
+            const makeInsertSlot = (insertIdx) => {
+              const slot = document.createElement('div');
+              slot.className = 'gwent-insert-slot';
+              slot.title = `Place ${selectedCard.name} here`;
+              slot.textContent = '+';
+              slot.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.playCardToRow(team, this.state.selectedHandUid, rk, insertIdx);
+              });
+              return slot;
+            };
+
+            if (showInsertSlots) cardsEl.appendChild(makeInsertSlot(0));
+            rowCards.forEach((c, idx) => {
               cardsEl.appendChild(this.createCardElement(c, true, team, rk));
+              if (showInsertSlots) cardsEl.appendChild(makeInsertSlot(idx + 1));
             });
           }
         });
@@ -1793,7 +1913,7 @@
             hintEl.textContent = `⚔️ ${activeAttacker.name} ready (${atkDmg} Dmg): Click a glowing opposing card to attack, or click ${activeAttacker.name} again to cancel.`;
           }
         } else if (canPlaySelected) {
-          hintEl.textContent = `Selected ${selectedCard.name}: Click a highlighted ${ROW_LABELS[selectedCard.row]} row to deploy (or click card again to quick-play).`;
+          hintEl.textContent = `Selected ${selectedCard.name}: Click the left or right side of a board card (or a highlighted ${ROW_LABELS[selectedCard.row]} row) to deploy.`;
         } else if (this.state.playedCardThisTurn) {
           hintEl.textContent = `Card deployed! Click a glowing board card to attack, or click ⏭️ End Turn.`;
         } else if (!this.canTeamAttackThisTurn(this.state.turnTeam)) {
@@ -1927,7 +2047,7 @@
             delete el.dataset.longPressTriggered;
             return;
           }
-          this.handleBoardCardClick(ownerTeam, card, rowKey);
+          this.handleBoardCardClick(ownerTeam, card, rowKey, e);
         });
       }
       return el;
@@ -2142,10 +2262,16 @@
       // Row drop click handlers
       [1, 2].forEach(team => {
         ['melee', 'ranged'].forEach(rk => {
-          document.getElementById(`row-${team}-${rk}`)?.addEventListener('click', () => {
+          document.getElementById(`row-${team}-${rk}`)?.addEventListener('click', (e) => {
             if (!this.state || this.state.mulliganActive) return;
             if (team !== this.state.turnTeam || !this.state.selectedHandUid) return;
-            this.playCardToRow(team, this.state.selectedHandUid, rk);
+            const cardsEl = document.getElementById(`cards-${team}-${rk}`);
+            const firstCardEl = cardsEl?.querySelector('.gwent-card');
+            let insertIdx = null;
+            if (firstCardEl && e.clientX < firstCardEl.getBoundingClientRect().left) {
+              insertIdx = 0;
+            }
+            this.playCardToRow(team, this.state.selectedHandUid, rk, insertIdx);
           });
         });
       });

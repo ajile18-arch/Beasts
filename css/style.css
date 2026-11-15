@@ -10088,7 +10088,9 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   flex-direction: column;
   justify-content: space-between;
   gap: 4px;
-  background: linear-gradient(180deg, rgba(22, 26, 36, 0.85) 0%, rgba(28, 22, 16, 0.92) 50%, rgba(34, 24, 15, 0.9) 100%);
+  background:
+    linear-gradient(180deg, rgba(14, 16, 22, 0.26) 0%, rgba(18, 14, 10, 0.22) 50%, rgba(16, 12, 9, 0.28) 100%),
+    url('../Sprites/Board/mythos_board_bg.jpg') center / cover no-repeat;
   border: 2px solid #5c4328;
   border-radius: 12px;
   padding: 8px 10px;
@@ -10169,10 +10171,40 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   flex: 1;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   overflow-x: auto;
   padding: 2px 4px;
   min-height: 54px;
+  transition: gap 0.16s ease;
+}
+
+.gwent-row-cards.insert-spread {
+  gap: 6px;
+}
+
+.gwent-insert-slot {
+  flex: 0 0 22px;
+  height: 98px;
+  border-radius: 8px;
+  border: 1.5px dashed rgba(251, 191, 36, 0.45);
+  background: rgba(251, 191, 36, 0.08);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(253, 230, 138, 0.7);
+  font-size: 14px;
+  font-weight: 800;
+  transition: flex-basis 0.14s ease, background 0.14s ease, border-color 0.14s ease, box-shadow 0.14s ease, color 0.14s ease;
+}
+
+.gwent-insert-slot:hover {
+  flex-basis: 34px;
+  background: rgba(251, 191, 36, 0.28);
+  border-color: #fbbf24;
+  color: #fffbeb;
+  box-shadow: 0 0 14px rgba(251, 191, 36, 0.55);
 }
 
 .gwent-center-divider {
@@ -10254,7 +10286,7 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   box-shadow: 0 5px 14px rgba(0, 0, 0, 0.85), inset 0 0 6px rgba(180, 83, 9, 0.2);
 }
 
-/* Wolf Pack Faction Edge-to-Edge Border (Moonlit Timber, Carved Stone & Claw-Etched Rim) */
+/* Wolf Pack Faction Ornate Edge-to-Edge Border (Filigree Scrollwork & Moonlit Fang Trim) */
 .gwent-card.faction-wolf-pack {
   background: linear-gradient(155deg, #27332d 0%, #141a1d 55%, #1d2621 100%);
   outline: 2px solid #94a3b8;
@@ -10262,36 +10294,34 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
 }
 
 .gwent-card.faction-wolf-pack.rarity-bronze {
-  border: 3px solid #a1623b;
-  outline-color: #574132;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.88), inset 0 0 10px rgba(161, 98, 59, 0.35);
+  border: 3px solid #c27849;
+  outline-color: #6b4228;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.88), inset 0 0 0 1px #e7b589, inset 0 0 12px rgba(194, 120, 73, 0.42);
 }
 
 .gwent-card.faction-wolf-pack.rarity-gold {
-  border: 3px solid #e2b857;
-  outline-color: #7c5c20;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.9), 0 0 14px rgba(226, 184, 87, 0.42), inset 0 0 10px rgba(226, 184, 87, 0.3);
+  border: 3px solid #eab308;
+  outline-color: #855e14;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.92), 0 0 14px rgba(234, 179, 8, 0.48), inset 0 0 0 1px #fef08a, inset 0 0 12px rgba(234, 179, 8, 0.35);
 }
 
 .gwent-card.faction-wolf-pack.rarity-decorative-gold {
-  border: 3px double #f6e09e;
-  outline: 2px solid #b78628;
+  border: 3px double #fde68a;
+  outline: 2px solid #d97706;
   outline-offset: 0px;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.94), 0 0 18px rgba(246, 224, 158, 0.55), inset 0 0 12px rgba(246, 224, 158, 0.28);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.95), 0 0 20px rgba(251, 191, 36, 0.62), inset 0 0 0 1px #fffbeb, inset 0 0 14px rgba(253, 230, 138, 0.35);
 }
 
 .gwent-card.faction-wolf-pack::after {
-  content: '🐺';
+  content: '';
   position: absolute;
-  top: 2px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 9px;
-  line-height: 1;
-  opacity: 0.82;
+  inset: 0;
   pointer-events: none;
-  z-index: 4;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.95);
+  z-index: 3;
+  border-radius: inherit;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 140' preserveAspectRatio='none'%3E%3Crect x='2' y='2' width='96' height='136' rx='7' fill='none' stroke='%23fde68a' stroke-width='1.1' stroke-opacity='0.65'/%3E%3Cpath d='M3 18 Q3 3 18 3 M82 3 Q97 3 97 18 M3 122 Q3 137 18 137 M82 137 Q97 137 97 122' fill='none' stroke='%23fef08a' stroke-width='2.2' stroke-opacity='0.85'/%3E%3Cpath d='M6 12 C10 6 14 6 16 10 M94 12 C90 6 86 6 84 10 M6 128 C10 134 14 134 16 130 M94 128 C90 134 86 134 84 130' fill='none' stroke='%23cbd5e1' stroke-width='1.3' stroke-opacity='0.8'/%3E%3Cpath d='M42 2 L50 8 L58 2 M42 138 L50 132 L58 138' fill='none' stroke='%23fde68a' stroke-width='1.5' stroke-opacity='0.85'/%3E%3C/svg%3E");
 }
 
 .gwent-card:hover {
@@ -10590,11 +10620,23 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   --trad-title: #ecfeff;
 }
 
-/* Wolf Pack Traditional Modal Frame (Edge-to-Edge Moonlit Pine & Fang Trim) */
+/* Wolf Pack Ornate Traditional Modal Frame (Edge-to-Edge Filigree & Fang Trim) */
 .gwent-card-modal-dialog.traditional-card.faction-wolf-pack {
   background: linear-gradient(160deg, #16211e 0%, #0d1316 55%, #19201c 100%);
-  outline: 2px solid rgba(203, 213, 225, 0.45);
+  outline: 2px solid rgba(226, 232, 240, 0.55);
   outline-offset: 0px;
+}
+
+.gwent-card-modal-dialog.traditional-card.faction-wolf-pack::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 6;
+  border-radius: inherit;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 400' preserveAspectRatio='none'%3E%3Crect x='4' y='4' width='292' height='392' rx='14' fill='none' stroke='%23fde68a' stroke-width='1.5' stroke-opacity='0.6'/%3E%3Cpath d='M6 40 Q6 6 40 6 M260 6 Q294 6 294 40 M6 360 Q6 394 40 394 M260 394 Q294 394 294 360' fill='none' stroke='%23fef08a' stroke-width='3.5' stroke-opacity='0.9'/%3E%3Cpath d='M12 26 C22 10 34 10 38 22 M288 26 C278 10 266 10 262 22 M12 374 C22 390 34 390 38 378 M288 374 C278 390 266 390 262 378' fill='none' stroke='%23cbd5e1' stroke-width='2' stroke-opacity='0.85'/%3E%3Cpath d='M126 4 L150 18 L174 4 M126 396 L150 382 L174 396' fill='none' stroke='%23fde68a' stroke-width='2.4' stroke-opacity='0.9'/%3E%3C/svg%3E");
 }
 
 .gwent-card-modal-dialog.traditional-card.faction-wolf-pack.tier-bronze {

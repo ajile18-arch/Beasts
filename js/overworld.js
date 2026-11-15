@@ -2825,11 +2825,14 @@
               <div class="inv-slot-name">${item.name}</div>
               ${kindPillHtml}
             `;
-          } else if (item.type === 'mythos_card' && item.cardImg) {
+          } else if (item.type === 'mythos_card' && (item.traditionalCardImg || item.cardImg)) {
+            const backpackCardImg = item.traditionalCardImg
+              || window.MythosGwentCards?.CARDS?.[item.beastId]?.traditionalCardImg
+              || item.cardImg;
             slot.innerHTML = `
               <span class="inv-slot-qty">x${item.qty}</span>
               <div class="inv-card-art-thumb">
-                <img src="${item.cardImg}" alt="${item.name}">
+                <img src="${backpackCardImg}" alt="${item.name}">
               </div>
               <div class="inv-slot-name">${item.name}</div>
               ${kindPillHtml}
@@ -2875,10 +2878,13 @@
           }
           putBinderBtn?.classList.add('hidden');
           inspectBtn?.classList.add('hidden');
-        } else if (selectedItem.type === 'mythos_card' && selectedItem.cardImg) {
+        } else if (selectedItem.type === 'mythos_card' && (selectedItem.traditionalCardImg || selectedItem.cardImg)) {
+          const detailCardImg = selectedItem.traditionalCardImg
+            || window.MythosGwentCards?.CARDS?.[selectedItem.beastId]?.traditionalCardImg
+            || selectedItem.cardImg;
           artEl.innerHTML = `
             <div class="inv-card-art-thumb" style="width: 58px; height: 76px;">
-              <img src="${selectedItem.cardImg}" alt="${selectedItem.name}">
+              <img src="${detailCardImg}" alt="${selectedItem.name}">
             </div>
           `;
           if (actionsEl) actionsEl.classList.remove('hidden');
