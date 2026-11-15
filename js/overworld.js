@@ -49,10 +49,14 @@
       const CS = window.MythosCharacterSprites;
 
       this.worldSave = this.loadSaveData();
+      const rawApp = this.worldSave?.playerAppearance;
+      const cleanSavedApp = (rawApp && rawApp.playerAppearance) ? rawApp.playerAppearance : (rawApp || {});
       this.draftAppearance = {
         ...CS.DEFAULT_APPEARANCE,
-        ...(this.worldSave ? this.worldSave.playerAppearance : {})
+        ...cleanSavedApp
       };
+      this.wins = this.worldSave?.wins ?? 0;
+      this.losses = this.worldSave?.losses ?? 0;
 
       // Friend NPC is always named Rocky
       this.friendName = 'Rocky';
@@ -168,12 +172,13 @@
       this.inventory = this.wrapReactiveArray(rawInv.map(i => this.wrapReactiveItem(i)), 'inventory');
       this.selectedInventoryItemId = null;
 
-      // 9-Pocket Trading Card Binder
+      // Multi-Page 9-Pocket Trading Card Binder (4 pages x 9 sleeves = 36 slots)
       const rawBinder = Array.isArray(this.worldSave?.binderSlots)
         ? [...this.worldSave.binderSlots]
-        : Array(9).fill(null);
-      while (rawBinder.length < 9) rawBinder.push(null);
+        : Array(36).fill(null);
+      while (rawBinder.length < 36) rawBinder.push(null);
       this.binderSlots = this.wrapReactiveArray(rawBinder.map(s => s ? this.wrapReactiveItem(s) : null), 'binder');
+      this.binderPage = 0;
       this.consolidateBinderStacks();
       this.inspectingCard = null;
       this.inspectingSlotIndex = null;
@@ -182,42 +187,8 @@
       this.playingDeck = Array.isArray(this.worldSave?.playingDeck)
         ? [...this.worldSave.playingDeck]
         : [];
-
-      // Ensure progressed players receive Pegasus and Dreadnaught cards to test immediately
-      if (this.hasOpenedStarterPack && !this.inventory.some(i => i.beastId === 'pegasus') && !this.binderSlots?.some(s => s && s.beastId === 'pegasus')) {
-        const pegasusDef = this.getBaseSetCardCatalog().find(c => c.beastId === 'pegasus');
-        if (pegasusDef) {
-          this.inventory.push(this.wrapReactiveItem({
-            id: pegasusDef.id,
-            beastId: pegasusDef.beastId,
-            name: pegasusDef.name,
-            shortName: pegasusDef.shortName,
-            element: pegasusDef.element,
-            stars: pegasusDef.stars,
-            cardImg: pegasusDef.cardImg,
-            type: 'mythos_card',
-            qty: 1,
-            desc: pegasusDef.desc
-          }));
-        }
-      }
-
-      if (this.hasOpenedStarterPack && !this.inventory.some(i => i.beastId === 'dreadnaught') && !this.binderSlots?.some(s => s && s.beastId === 'dreadnaught')) {
-        const dreadDef = this.getBaseSetCardCatalog().find(c => c.beastId === 'dreadnaught');
-        if (dreadDef) {
-          this.inventory.push(this.wrapReactiveItem({
-            id: dreadDef.id,
-            beastId: dreadDef.beastId,
-            name: dreadDef.name,
-            shortName: dreadDef.shortName,
-            element: dreadDef.element,
-            stars: dreadDef.stars,
-            cardImg: dreadDef.cardImg,
-            type: 'mythos_card',
-            qty: 1,
-            desc: dreadDef.desc
-          }));
-        }
+      if (this.purgeLegacyCardsFromState()) {
+        this.saveWorldData?.(this.draftAppearance);
       }
 
       this.playerSprite = new CS.CharacterSpriteSheet(this.draftAppearance);
@@ -2394,116 +2365,59 @@
             stars: c.stars || 1,
             badgeLabel: `${rowIcons[c.row] || '🃏'} ${c.role || 'Unit'} • ${c.basePower} PWR${armorTxt}`,
             cardImg: c.cardImg,
+            traditionalCardImg: c.traditionalCardImg || null,
             desc: `<b>${c.name} (${c.role || 'Unit'} • ${c.basePower} Power${c.armor > 0 ? `, ${c.armor} Armor` : ''})</b> — ${abilityTxt}`
           };
         });
     }
 
-    getBaseSetCardCatalog() {
-      const legacy = [
-        {
-          id: 'card_phoenix',
-          beastId: 'phoenix',
-          name: 'Phoenix (Mythos Card)',
-          shortName: 'Phoenix',
-          element: 'Fire',
-          stars: 4,
-          badgeLabel: '🔥 FIRE ELEMENT • 120 HP',
-          cardImg: 'Cards/Phoenix_Card.png',
-          desc: '<b>Phoenix (Fire • 120 HP)</b> — Base Set Mythos Card. Moves: <b>Flaming Talons</b> (30 Dmg), <b>Fire Orb</b> (50% Reflect), &amp; <b>Trails of Fire</b> (10 Dmg Flame Hazard).'
-        },
-        {
-          id: 'card_earth_golem',
-          beastId: 'earth_golem',
-          name: 'Earth Golem (Mythos Card)',
-          shortName: 'Earth Golem',
-          element: 'Earth',
-          stars: 4,
-          badgeLabel: '🪨 EARTH ELEMENT • 200 HP',
-          cardImg: 'Cards/Earth_Golem_Card.png',
-          desc: '<b>Earth Golem (Earth • 200 HP)</b> — Base Set Mythos Card. Moves: <b>Crushing Grip</b> (20 Dmg + Immobilize), <b>Rock Barrier</b>, &amp; <b>Terraform</b>.'
-        },
-        {
-          id: 'card_hydra',
-          beastId: 'hydra',
-          name: 'Hydra (Mythos Card)',
-          shortName: 'Hydra',
-          element: 'Poison',
-          stars: 4,
-          badgeLabel: '🐍 POISON ELEMENT • 120 HP',
-          cardImg: 'Cards/Hydra_Card.png',
-          desc: '<b>Hydra (Poison • 120 HP)</b> — Base Set Mythos Card. Moves: <b>Venomous Bite</b> (20 Dmg + Poison), <b>Regrowth</b> (+10 HP/turn), &amp; <b>Swamp Regenerator</b>.'
-        },
-        {
-          id: 'card_terra_mother',
-          beastId: 'terra_mother',
-          name: 'Terra-Mother (Mythos Card)',
-          shortName: 'Terra-Mother',
-          element: 'Earth',
-          stars: 4,
-          badgeLabel: '🌿 EARTH ELEMENT • 100 HP',
-          cardImg: 'Cards/Terra_Mother_Card.png',
-          desc: '<b>Terra-Mother (Earth • 100 HP)</b> — Base Set Mythos Card. Moves: <b>Root Crush</b> (35 Dmg), <b>Ram</b> (25 Dmg + 2-tile knockback), &amp; <b>Thorn of Life</b>.'
-        },
-        {
-          id: 'card_werewolf',
-          beastId: 'werewolf',
-          name: 'Werewolf (Mythos Card)',
-          shortName: 'Werewolf',
-          element: 'Earth',
-          stars: 2,
-          badgeLabel: '🐺 EARTH ELEMENT • 100 HP',
-          cardImg: 'Cards/Werewolf_Card.png',
-          desc: '<b>Werewolf (Earth • 100 HP)</b> — Base Set Mythos Card. Moves: <b>Rip Apart</b> (20 Dmg), <b>Retreat</b> (+1 Move), &amp; <b>Howl</b> (+10 Team Attack Buff).'
-        },
-        {
-          id: 'card_verdant_guardian',
-          beastId: 'verdant_guardian',
-          name: 'Verdant Guardian (Mythos Card)',
-          shortName: 'Verdant Guardian',
-          element: 'Plant',
-          stars: 2,
-          badgeLabel: '🍃 PLANT ELEMENT • 160 HP',
-          cardImg: 'Cards/Verdant_Guardian_Card.png',
-          desc: '<b>Verdant Guardian (Plant • 160 HP)</b> — Base Set Mythos Card. Moves: <b>Branch Whip</b> (20 Dmg), <b>Thorn Bush</b> (10 Dmg AOE), &amp; <b>Sapling Strength</b> (2× Dmg at ≤1/4 HP).'
-        },
-        {
-          id: 'card_dwarf_warden',
-          beastId: 'dwarf_warden',
-          name: 'Dwarf Warden (Mythos Card)',
-          shortName: 'Dwarf Warden',
-          element: 'Earth',
-          stars: 4,
-          badgeLabel: '🪨 EARTH ELEMENT • 140 HP',
-          cardImg: 'Cards/Dwarf_Warden_Card.png',
-          desc: '<b>Dwarf Warden (Earth • 140 HP)</b> — Base Set Mythos Card. Moves: <b>Hammer Throw</b> (25 Dmg front 2 tiles), <b>Bullwark</b> (Negates incoming attack, 5t cd), &amp; <b>Endurance</b> (Halves damage after turn 10).'
-        },
-        {
-          id: 'card_pegasus',
-          beastId: 'pegasus',
-          name: 'Pegasus (Mythos Card)',
-          shortName: 'Pegasus',
-          element: 'Air',
-          stars: 3,
-          badgeLabel: '☁️ AIR ELEMENT • 120 HP',
-          cardImg: 'Cards/Pegasus_Card.png',
-          desc: '<b>Pegasus (Air • 120 HP)</b> — Base Set Mythos Card. Moves: <b>Trample</b> (30 Dmg), <b>Inspire</b> (gives up turn movement to give +2 moves to allies), &amp; <b>Soar</b> (flies over blocked tiles as long as landing on a free tile).'
-        },
-        {
-          id: 'card_dreadnaught',
-          beastId: 'dreadnaught',
-          name: 'Dreadnaught (Mythos Card)',
-          shortName: 'Dreadnaught',
-          element: 'Metal',
-          stars: 2,
-          badgeLabel: '⚙️ METAL ELEMENT • 160 HP',
-          cardImg: 'Cards/Dreadnaught_Card.png',
-          desc: '<b>Dreadnaught (Metal • 160 HP)</b> — Base Set Mythos Card. Moves: <b>Magma Fist</b> (25 Dmg + permanent Magma Pool), <b>Fortress</b> (intercepts damage for ally within 3x3 for 1t), &amp; <b>Burning Heart</b> (if alone, deals 35 Dmg and can Fortress self).'
+    isLegacyCard(cardOrId) {
+      const LEGACY_IDS = new Set([
+        'phoenix', 'earth_golem', 'werewolf', 'hydra',
+        'terra_mother', 'verdant_guardian', 'dwarf_warden',
+        'pegasus', 'dreadnaught'
+      ]);
+      if (!cardOrId) return false;
+      if (typeof cardOrId === 'string') {
+        const clean = cardOrId.replace(/^card_/, '').toLowerCase();
+        return LEGACY_IDS.has(clean);
+      }
+      if (cardOrId.type !== 'mythos_card' && !String(cardOrId.id || '').startsWith('card_')) {
+        return false;
+      }
+      const cleanId = String(cardOrId.beastId || cardOrId.id || '').replace(/^card_/, '').toLowerCase();
+      return LEGACY_IDS.has(cleanId) || String(cardOrId.cardImg || '').includes('Cards_Legacy/');
+    }
+
+    purgeLegacyCardsFromState() {
+      let changed = false;
+      if (Array.isArray(this.inventory)) {
+        const filtered = this.inventory.filter(item => !this.isLegacyCard(item));
+        if (filtered.length !== this.inventory.length) {
+          this.inventory = this.wrapReactiveArray(filtered, 'inventory');
+          changed = true;
         }
-      ];
-      const mythosCards = this.getMythosPackCatalog();
-      const seen = new Set(mythosCards.map(c => c.id));
-      return [...mythosCards, ...legacy.filter(c => !seen.has(c.id))];
+      }
+      if (Array.isArray(this.binderSlots)) {
+        for (let i = 0; i < this.binderSlots.length; i++) {
+          if (this.binderSlots[i] && this.isLegacyCard(this.binderSlots[i])) {
+            this.binderSlots[i] = null;
+            changed = true;
+          }
+        }
+      }
+      if (Array.isArray(this.playingDeck)) {
+        const filteredDeck = this.playingDeck.filter(id => !this.isLegacyCard(id));
+        if (filteredDeck.length !== this.playingDeck.length) {
+          this.playingDeck = filteredDeck;
+          changed = true;
+        }
+      }
+      return changed;
+    }
+
+    getBaseSetCardCatalog() {
+      return this.getMythosPackCatalog();
     }
 
     addInventoryItem(itemDef) {
@@ -3647,17 +3561,6 @@
       if (won) {
         this.gold = Math.round(((this.gold || 0) + 2.00) * 100) / 100;
         this.silasBattleResult = 'won';
-        if (!this.inventory.some(i => i.id === 'card_dwarf_warden')) {
-          this.inventory.push({
-            id: 'card_dwarf_warden',
-            beastId: 'dwarf_warden',
-            name: 'Dwarf Warden (Holo)',
-            qty: 1,
-            icon: '🛡️',
-            type: 'mythos_card',
-            desc: '<b>Dwarf Warden (Holo)</b> — Signature foil card gifted by Silas from his Workshop. Features unbreakable Shield Wall defense.'
-          });
-        }
       } else {
         this.silasBattleResult = 'lost';
       }
@@ -3669,17 +3572,6 @@
       if (won) {
         this.gold = Math.round(((this.gold || 0) + 2.00) * 100) / 100;
         this.novaBattleResult = 'won';
-        if (!this.inventory.some(i => i.id === 'card_pegasus')) {
-          this.inventory.push({
-            id: 'card_pegasus',
-            beastId: 'pegasus',
-            name: 'Pegasus (Holo)',
-            qty: 1,
-            icon: '🪽',
-            type: 'mythos_card',
-            desc: '<b>Pegasus (Holo)</b> — Signature celestial card gifted by Nova at the Stargazer Observatory. Can soar across any terrain hazard.'
-          });
-        }
       } else {
         this.novaBattleResult = 'lost';
       }
@@ -4342,13 +4234,30 @@
         deckBadgeEl.textContent = String((this.playingDeck || []).length);
       }
 
+      const totalSlots = Math.max(36, Array.isArray(this.binderSlots) ? this.binderSlots.length : 36);
+      const pageSize = 9;
+      const totalPages = Math.max(1, Math.ceil(totalSlots / pageSize));
+      const currentPage = Math.max(0, Math.min(totalPages - 1, this.binderPage || 0));
+      this.binderPage = currentPage;
+
       const slottedCount = this.getSlottedBinderCount();
       if (counterPill) {
-        counterPill.textContent = `${slottedCount} / 9 Sleeves Filled`;
+        counterPill.textContent = `${slottedCount} / ${totalSlots} Sleeves Filled`;
       }
       if (binderBadgeEl) {
         binderBadgeEl.textContent = String(slottedCount);
       }
+      const pageIndicatorEl = document.getElementById('binder-page-indicator');
+      if (pageIndicatorEl) {
+        pageIndicatorEl.textContent = `Page ${currentPage + 1} / ${totalPages}`;
+      }
+      const prevPageBtn = document.getElementById('btn-binder-prev-page');
+      const nextPageBtn = document.getElementById('btn-binder-next-page');
+      if (prevPageBtn) prevPageBtn.disabled = currentPage <= 0;
+      if (nextPageBtn) nextPageBtn.disabled = currentPage >= totalPages - 1;
+      document.querySelectorAll('#binder-page-pills .binder-page-pill').forEach(pill => {
+        pill.classList.toggle('active', Number(pill.dataset.page) === currentPage);
+      });
       if (!gridEl) return;
 
       const sortMode = this.binderSortBy || 'default';
@@ -4370,7 +4279,7 @@
         return { name, type, power, stars };
       };
 
-      let entries = Array.from({ length: 9 }, (_, i) => ({
+      let entries = Array.from({ length: totalSlots }, (_, i) => ({
         slotIndex: i,
         card: this.binderSlots[i]
       }));
@@ -4390,9 +4299,12 @@
         entries = [...filled, ...empty];
       }
 
+      const pageStart = currentPage * pageSize;
+      const pageEntries = entries.slice(pageStart, pageStart + pageSize);
+
       gridEl.innerHTML = '';
 
-      entries.forEach(({ slotIndex: i, card }) => {
+      pageEntries.forEach(({ slotIndex: i, card }) => {
         const slotEl = document.createElement('div');
 
         if (card) {
@@ -4523,11 +4435,11 @@
         s => s && (s.id === cardId || (item.beastId && s.beastId === item.beastId))
       );
       let destIndex = existingSlotIndex !== -1 ? existingSlotIndex : targetSlotIndex;
-      if (destIndex === null || destIndex === undefined || destIndex < 0 || destIndex >= 9) {
+      if (destIndex === null || destIndex === undefined || destIndex < 0 || destIndex >= this.binderSlots.length) {
         destIndex = this.binderSlots.findIndex(s => !s);
       }
       if (destIndex === -1) {
-        alert('All 9 binder sleeves are full! Remove a card to make room.');
+        alert(`All ${this.binderSlots.length} binder sleeves are full! Remove a card to make room.`);
         return;
       }
 
@@ -4955,16 +4867,38 @@
     rollFivePackCards() {
       const mythosPool = this.getMythosPackCatalog();
       const catalog = mythosPool.length > 0 ? mythosPool : this.getBaseSetCardCatalog();
-      // Shuffle a copy of the Mythos catalog and draw 5 cards for this Booster Pack
-      const pool = [...catalog];
-      for (let i = pool.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [pool[i], pool[j]] = [pool[j], pool[i]];
+      if (catalog.length === 0) return [];
+
+      const byStar = { 1: [], 2: [], 3: [], 4: [], 5: [] };
+      catalog.forEach(c => {
+        const s = Math.max(1, Math.min(5, Math.round(Number(c.stars) || 1)));
+        byStar[s].push(c);
+      });
+
+      const pickFromTier = (tier) => {
+        for (let t = tier; t >= 1; t--) {
+          if (byStar[t].length > 0) {
+            return { ...byStar[t][Math.floor(Math.random() * byStar[t].length)] };
+          }
+        }
+        return { ...catalog[Math.floor(Math.random() * catalog.length)] };
+      };
+
+      // Weighted tier odds per card slot: 55% 1★, 30% 2★, 11% 3★, 3% 4★, 1% 5★
+      const drawn = [];
+      for (let i = 0; i < 5; i++) {
+        const roll = Math.random() * 100;
+        let tier = 1;
+        if (roll >= 99) tier = 5;
+        else if (roll >= 96) tier = 4;
+        else if (roll >= 85) tier = 3;
+        else if (roll >= 55) tier = 2;
+        drawn.push(pickFromTier(tier));
       }
-      const drawn = pool.slice(0, 5).map(c => ({ ...c }));
+
       const activeEvent = this.getCurrentDayEvent();
       if (activeEvent?.id === 'leo_restock') {
-        // Monday: Leo's Booster Restock - +25% Holo & Rare Foil Surge!
+        // Monday: Leo's Booster Restock - Holo Foil Surge!
         drawn.forEach((c, idx) => {
           if (idx === 0 || Math.random() < 0.5) {
             c.isHolo = true;
@@ -4982,24 +4916,46 @@
       const reg = window.MythosGwentCards?.CARDS || {};
       const mythosPool = this.getMythosPackCatalog();
       const catalog = mythosPool.length > 0 ? mythosPool : this.getBaseSetCardCatalog();
-      // Build an expanded pool respecting each card's maxDeckCopies so all 18 cards fit a legal Playing Deck
-      const expanded = [];
-      catalog.forEach(card => {
-        const def = reg[card.beastId];
-        const maxCopies = def?.maxDeckCopies ?? (card.beastId === 'manson_wolf_father' ? 1 : 3);
-        for (let k = 0; k < maxCopies; k++) {
-          expanded.push({ ...card });
+      if (catalog.length === 0) return [];
+
+      const shuffle = (arr) => {
+        for (let i = arr.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [arr[i], arr[j]] = [arr[j], arr[i]];
         }
-      });
-      for (let i = expanded.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [expanded[i], expanded[j]] = [expanded[j], expanded[i]];
+        return arr;
+      };
+
+      const expandTier = (starsList) => {
+        const out = [];
+        catalog
+          .filter(c => starsList.includes(Math.round(Number(c.stars) || 1)))
+          .forEach(card => {
+            const def = reg[card.beastId];
+            const maxCopies = def?.maxDeckCopies ?? 3;
+            for (let k = 0; k < maxCopies; k++) {
+              out.push({ ...card });
+            }
+          });
+        return shuffle(out);
+      };
+
+      const pool1 = expandTier([1]);
+      const pool2 = expandTier([2]);
+      const pool3 = expandTier([3]);
+
+      // Starter Pack: 12x 1★ + 5x 2★ + 1x 3★ Gold (4★/5★ chase cards reserved for Booster Packs)
+      const drawn = [
+        ...pool1.slice(0, 12),
+        ...pool2.slice(0, 5),
+        ...pool3.slice(0, 1)
+      ];
+
+      const fallbackPool = expandTier([1, 2]);
+      while (drawn.length < 18 && fallbackPool.length > 0) {
+        drawn.push({ ...fallbackPool[drawn.length % fallbackPool.length] });
       }
-      const drawn = expanded.slice(0, 18);
-      while (drawn.length < 18 && catalog.length > 0) {
-        drawn.push({ ...catalog[drawn.length % catalog.length] });
-      }
-      return drawn;
+      return shuffle(drawn).slice(0, 18);
     }
 
     startBoosterPackOpening(packItemId = 'unopened_base_pack') {
@@ -5056,6 +5012,17 @@
       }
       if (subEl) {
         subEl.innerHTML = 'Click the sealed Booster Pack <b>3 times</b> to charge <b>The Seal of Mythos</b> and tear open the foil!';
+      }
+      const crimpLabel = modal.querySelector('.pack-crimp-label');
+      if (crimpLabel) {
+        crimpLabel.textContent = `★ MYTHOS TCG • ${this.packOpeningState.pulledCards.length} CARDS INSIDE ★`;
+      }
+      const foilBadge = modal.querySelector('.pack-foil-badge-overlay span');
+      if (foilBadge) {
+        foilBadge.textContent = isStarterPack ? '18-CARD STARTER PACK' : 'BASE SET BOOSTER';
+      }
+      if (collectBtn) {
+        collectBtn.textContent = `🎒 Collect All ${this.packOpeningState.pulledCards.length} Cards into Inventory`;
       }
       sealedZone.classList.remove('hidden');
       wrapper.className = 'sealed-booster-wrapper';
@@ -5181,6 +5148,10 @@
       slot.className = 'pack-card-slot single-pack-card rarity-mythic';
       slot.id = 'active-pack-card';
 
+      const pullImg = card.traditionalCardImg
+        || window.MythosGwentCards?.CARDS?.[card.beastId]?.traditionalCardImg
+        || card.cardImg;
+
       slot.innerHTML = `
         <div class="pack-card-inner">
           <!-- Face-Down Back using Cleaned Mythos_Card_Back.png -->
@@ -5191,7 +5162,7 @@
           <!-- Face-Up Revealed Beast Card -->
           <div class="pack-card-face pack-card-front">
             <span class="pack-card-rarity-banner mythic">${card.badgeLabel}</span>
-            <img src="${card.cardImg}" alt="${card.name}">
+            <img src="${pullImg}" alt="${card.name}">
             <div class="pack-card-holo-glint"></div>
           </div>
         </div>
@@ -5251,6 +5222,7 @@
           viewAllBtn.classList.remove('hidden');
         }
         if (collectBtn) {
+          collectBtn.textContent = `🎒 Collect All ${st.pulledCards.length} Cards into Inventory`;
           collectBtn.classList.remove('hidden');
         }
       }
@@ -5298,13 +5270,19 @@
 
       nextBtn?.classList.add('hidden');
       viewAllBtn?.classList.add('hidden');
-      collectBtn?.classList.remove('hidden');
+      if (collectBtn) {
+        collectBtn.textContent = `🎒 Collect All ${st.pulledCards.length} Cards into Inventory`;
+        collectBtn.classList.remove('hidden');
+      }
 
       if (!cardsRow) return;
       cardsRow.innerHTML = '';
       cardsRow.className = 'pack-cards-reveal-row summary-mode';
 
       st.pulledCards.forEach((card, idx) => {
+        const pullImg = card.traditionalCardImg
+          || window.MythosGwentCards?.CARDS?.[card.beastId]?.traditionalCardImg
+          || card.cardImg;
         const slot = document.createElement('div');
         slot.className = 'pack-card-slot flipped rarity-mythic';
         slot.style.animationDelay = `${idx * 0.12}s`;
@@ -5312,7 +5290,7 @@
           <div class="pack-card-inner">
             <div class="pack-card-face pack-card-front">
               <span class="pack-card-rarity-banner mythic">${card.badgeLabel}</span>
-              <img src="${card.cardImg}" alt="${card.name}">
+              <img src="${pullImg}" alt="${card.name}">
               <div class="pack-card-holo-glint"></div>
             </div>
           </div>
@@ -5403,7 +5381,9 @@
       this.friendDefeatedRewardPending = false;
       this.inventory = [];
       this.selectedInventoryItemId = null;
-      this.binderSlots = Array(9).fill(null);
+      this.binderSlots = Array(36).fill(null);
+      this.binderPage = 0;
+      this.playingDeck = [];
       this.phoneListingsBought = [];
       this.phoneListingsSold = [];
       this.scheduledMeetups = [];
@@ -6912,8 +6892,8 @@
       } else if (this.currentArea === 'restaurant_interior') {
         const pName = this.draftAppearance?.name || 'Asher';
         const chef = this.chefNpc;
-        const distToChef = chef ? Math.hypot(this.player.x - chef.x, this.player.y - (chef.y + 0.85)) : 999;
-        if (distToChef < 2.35) {
+        const distToChef = chef ? Math.hypot(this.player.x - chef.x, this.player.y - (chef.y + 1.05)) : 999;
+        if (distToChef < 1.15) {
           this.nearInteractable = chef;
           this.renderNpcChoicePrompt({
             npcId: 'chef_marco',
@@ -7981,7 +7961,8 @@
           y: Math.round((this.player?.y ?? 9.4) * 100) / 100,
           dir: this.player?.dir || 'down'
         },
-        wins: this.worldSave?.wins ?? 0,
+        wins: this.wins ?? (this.worldSave?.wins ?? 0),
+        losses: this.losses ?? (this.worldSave?.losses ?? 0),
         phoneUnreadShop: this.phoneUnreadShop ?? true,
         phoneChatHistories: this.phoneChatHistories || {},
         phoneListingsBought: this.phoneListingsBought || [],
@@ -8162,6 +8143,76 @@
           window.sounds?.stopIntroMusic?.();
           introModal?.classList.add('hidden');
           this.openCharacterCreator(true);
+        });
+      }
+
+      const quickDuelBtn = document.getElementById('btn-intro-quick-duel');
+      if (quickDuelBtn) {
+        quickDuelBtn.addEventListener('click', () => {
+          if (window.sounds?.playClick) window.sounds.playClick();
+          window.sounds?.stopIntroMusic?.();
+          introModal?.classList.add('hidden');
+          this.worldSave = this.loadSaveData() || this.worldSave;
+          if (this.worldSave) {
+            this.continueSavedWorld({ skipBgm: true });
+          }
+          this.active = false;
+          if (window.game?.enterMythosArena) {
+            window.game.enterMythosArena();
+          } else {
+            document.getElementById('btn-switch-view')?.click();
+          }
+        });
+      }
+
+      const mainMenuBox = document.getElementById('intro-main-menu-box');
+      const settingsPanel = document.getElementById('intro-settings-panel');
+      const introSettingsBtn = document.getElementById('btn-intro-settings');
+      const introSettingsBackBtn = document.getElementById('btn-intro-settings-back');
+      const introSoundBtn = document.getElementById('btn-intro-sound');
+      const introTimeSelect = document.getElementById('intro-time-select');
+
+      const syncIntroSettings = () => {
+        if (introSoundBtn) {
+          const isMuted = window.sounds && window.sounds.muted;
+          introSoundBtn.textContent = isMuted ? 'Sound: OFF' : 'Sound: ON';
+        }
+        if (introTimeSelect) {
+          introTimeSelect.value = this.settings?.timeOfDay || 'day';
+        }
+      };
+
+      if (introSettingsBtn) {
+        introSettingsBtn.addEventListener('click', () => {
+          if (window.sounds?.playClick) window.sounds.playClick();
+          syncIntroSettings();
+          mainMenuBox?.classList.add('hidden');
+          settingsPanel?.classList.remove('hidden');
+        });
+      }
+
+      if (introSettingsBackBtn) {
+        introSettingsBackBtn.addEventListener('click', () => {
+          if (window.sounds?.playClick) window.sounds.playClick();
+          settingsPanel?.classList.add('hidden');
+          mainMenuBox?.classList.remove('hidden');
+        });
+      }
+
+      if (introSoundBtn) {
+        introSoundBtn.addEventListener('click', () => {
+          document.getElementById('btn-sound')?.click();
+          syncIntroSettings();
+        });
+      }
+
+      if (introTimeSelect) {
+        introTimeSelect.addEventListener('change', (e) => {
+          const val = e.target.value;
+          if (this.settings) this.settings.timeOfDay = val;
+          const hudSelect = document.getElementById('ow-time-select');
+          if (hudSelect) hudSelect.value = val;
+          this.render();
         });
       }
 
@@ -8542,7 +8593,36 @@
         btn.addEventListener('click', () => {
           if (window.sounds?.playClick) window.sounds.playClick();
           this.binderSortBy = btn.dataset.sort || 'default';
+          this.binderPage = 0;
           this.renderBinderModal();
+        });
+      });
+
+      document.getElementById('btn-binder-prev-page')?.addEventListener('click', () => {
+        if ((this.binderPage || 0) > 0) {
+          if (window.sounds?.playClick) window.sounds.playClick();
+          this.binderPage -= 1;
+          this.renderBinderModal();
+        }
+      });
+
+      document.getElementById('btn-binder-next-page')?.addEventListener('click', () => {
+        const totalPages = Math.max(1, Math.ceil((this.binderSlots?.length || 36) / 9));
+        if ((this.binderPage || 0) < totalPages - 1) {
+          if (window.sounds?.playClick) window.sounds.playClick();
+          this.binderPage = (this.binderPage || 0) + 1;
+          this.renderBinderModal();
+        }
+      });
+
+      document.querySelectorAll('#binder-page-pills .binder-page-pill').forEach(pill => {
+        pill.addEventListener('click', () => {
+          const targetPage = Number(pill.dataset.page);
+          if (!Number.isNaN(targetPage)) {
+            if (window.sounds?.playClick) window.sounds.playClick();
+            this.binderPage = targetPage;
+            this.renderBinderModal();
+          }
         });
       });
 
@@ -8699,13 +8779,27 @@
       const continueCard = document.getElementById('continue-world-card');
       const continueMeta = document.getElementById('continue-world-meta');
       const thumbCanvas = document.getElementById('continue-avatar-canvas');
+      const continueBtn = document.getElementById('btn-continue-world');
+      const newWorldBtn = document.getElementById('btn-new-world');
 
       this.worldSave = this.loadSaveData() || this.worldSave;
 
       if (this.worldSave && continueCard) {
         continueCard.classList.remove('hidden');
-        const app = this.worldSave.playerAppearance || {};
+        if (continueBtn) {
+          continueBtn.disabled = false;
+          continueBtn.classList.remove('is-disabled');
+          continueBtn.classList.add('intro-rpg-primary');
+        }
+        newWorldBtn?.classList.remove('intro-rpg-primary');
+        const rawApp = this.worldSave.playerAppearance || {};
+        const app = {
+          ...window.MythosCharacterSprites.DEFAULT_APPEARANCE,
+          ...((rawApp && rawApp.playerAppearance) ? rawApp.playerAppearance : rawApp)
+        };
         const fName = 'Rocky';
+        const wins = this.worldSave.wins ?? 0;
+        const losses = this.worldSave.losses ?? 0;
         if (continueMeta) {
           const invCount = Array.isArray(this.worldSave.inventory)
             ? this.worldSave.inventory.reduce((acc, i) => acc + (i.qty || 1), 0)
@@ -8713,35 +8807,62 @@
           const goldStr = (this.worldSave.gold ?? 0).toFixed(2);
           continueMeta.innerHTML = `
             <div class="save-slot-title">${app.name || 'Asher'} — ${this.worldSave.worldName || 'Oakhaven'}</div>
-            <div class="save-slot-sub">Friend: ${fName} • Cash: $${goldStr} • Cards: ${invCount}</div>
+            <div class="save-slot-sub">Record: <b>${wins}W–${losses}L</b> • Cash: $${goldStr} • Cards: ${invCount}</div>
           `;
         }
         if (thumbCanvas) {
           const tctx = thumbCanvas.getContext('2d');
+          tctx.imageSmoothingEnabled = false;
           tctx.clearRect(0, 0, thumbCanvas.width, thumbCanvas.height);
           const tempSheet = new window.MythosCharacterSprites.CharacterSpriteSheet(app);
           tempSheet.draw(tctx, thumbCanvas.width / 2, thumbCanvas.height - 4, 'down', 0, 2);
         }
-      } else if (continueCard) {
-        continueCard.classList.add('hidden');
+      } else {
+        continueCard?.classList.add('hidden');
+        if (continueBtn) {
+          continueBtn.disabled = true;
+          continueBtn.classList.add('is-disabled');
+          continueBtn.classList.remove('intro-rpg-primary');
+        }
+        newWorldBtn?.classList.add('intro-rpg-primary');
       }
     }
 
-    continueSavedWorld() {
+    continueSavedWorld(options = {}) {
       this.worldSave = this.loadSaveData() || this.worldSave;
       if (!this.worldSave) {
         this.startOpeningCutscene(false);
         return;
       }
-      window.sounds?.playBgm?.('overworld');
+      if (!options?.skipBgm) {
+        window.sounds?.playBgm?.('overworld');
+      }
 
-      const app = this.worldSave.playerAppearance || {};
+      // Immediately reveal overworld containers and clear any lingering overlays
+      if (!options?.skipBgm) {
+        document.querySelector('.game-header')?.classList.remove('hidden');
+        document.getElementById('arena-view')?.classList.add('hidden');
+        document.getElementById('overworld-view')?.classList.remove('hidden');
+        document.getElementById('overworld-toolbar')?.classList.remove('hidden');
+      }
+      document.getElementById('intro-modal')?.classList.add('hidden');
+      document.getElementById('creator-modal')?.classList.add('hidden');
+      const sleepOverlay = document.getElementById('sleep-fade-overlay');
+      if (sleepOverlay) {
+        sleepOverlay.classList.add('hidden');
+        sleepOverlay.classList.remove('active');
+      }
+
+      const rawApp = this.worldSave.playerAppearance || {};
+      const app = (rawApp && rawApp.playerAppearance) ? rawApp.playerAppearance : rawApp;
       this.draftAppearance = {
-        ...window.MythosCharacterSprites.DEFAULT_APPEARANCE,
+        ...(window.MythosCharacterSprites?.DEFAULT_APPEARANCE || {}),
         ...app
       };
+      this.wins = this.worldSave.wins ?? 0;
+      this.losses = this.worldSave.losses ?? 0;
       this.friendName = 'Rocky';
-      this.playerSprite.setAppearance(this.draftAppearance);
+      this.playerSprite?.setAppearance?.(this.draftAppearance);
 
       this._gold = this.worldSave.gold ?? 0;
       this.hasMomBoosterMoney = this.worldSave.hasMomBoosterMoney ?? false;
@@ -8759,9 +8880,9 @@
       if (this.activeParkTourney && (!this.isMondayToday() || this.activeParkTourney.dayNumber !== this.dayNumber)) {
         this.activeParkTourney = null;
       }
-      this.syncParkNpcBubbles();
+      try { this.syncParkNpcBubbles(); } catch (e) { console.warn('syncParkNpcBubbles:', e); }
       this.friendDefeatedRewardPending = false;
-      this.initPhoneSystem();
+      try { this.initPhoneSystem(); } catch (e) { console.warn('initPhoneSystem:', e); }
 
       // Restore Inventory & Reactive Proxy
       const rawInv = Array.isArray(this.worldSave.inventory)
@@ -8770,13 +8891,24 @@
       this.inventory = this.wrapReactiveArray(rawInv.map(i => this.wrapReactiveItem(i)), 'inventory');
       this.selectedInventoryItemId = null;
 
-      // Restore 9-Pocket Card Binder & Reactive Proxy
+      // Restore Multi-Page 9-Pocket Card Binder & Reactive Proxy
       const rawBinder = Array.isArray(this.worldSave.binderSlots)
         ? [...this.worldSave.binderSlots]
-        : Array(9).fill(null);
-      while (rawBinder.length < 9) rawBinder.push(null);
+        : Array(36).fill(null);
+      while (rawBinder.length < 36) rawBinder.push(null);
       this.binderSlots = this.wrapReactiveArray(rawBinder.map(s => s ? this.wrapReactiveItem(s) : null), 'binder');
-      this.consolidateBinderStacks();
+      this.binderPage = 0;
+      try { this.consolidateBinderStacks(); } catch (e) { console.warn('consolidateBinderStacks:', e); }
+      this.playingDeck = Array.isArray(this.worldSave.playingDeck)
+        ? [...this.worldSave.playingDeck]
+        : [];
+      try {
+        if (this.purgeLegacyCardsFromState()) {
+          this.saveWorldData(this.draftAppearance);
+        }
+      } catch (e) {
+        console.warn('purgeLegacyCardsFromState:', e);
+      }
 
       // Restore Area & Story State
       this.currentArea = this.worldSave.currentArea || 'interior';
@@ -8857,13 +8989,26 @@
         this.npcs = [friend, mom];
       }
 
+      // Guard against NaN/invalid saved coordinates & ensure valid canvas size
+      if (!Number.isFinite(this.player.x)) this.player.x = 9.8;
+      if (!Number.isFinite(this.player.y)) this.player.y = 9.4;
+      if (this.canvas) {
+        if (!this.canvas.width) this.canvas.width = this.COLS * this.TILE;
+        if (!this.canvas.height) this.canvas.height = this.ROWS * this.TILE;
+      }
+      this.cameraX = 0;
+      this.cameraY = 0;
+
       this.active = true;
       this._initialized = true;
 
-      this.updateHUDSaveInfo();
-      this.renderInventoryModal();
-      this.renderBinderModal();
-      this.renderDialogueUI();
+      try { this.updateHUDSaveInfo(); } catch (e) { console.warn('updateHUDSaveInfo:', e); }
+      try { this.renderInventoryModal(); } catch (e) { console.warn('renderInventoryModal:', e); }
+      try { this.renderBinderModal(); } catch (e) { console.warn('renderBinderModal:', e); }
+      try { this.renderDialogueUI(); } catch (e) { console.warn('renderDialogueUI:', e); }
+      if (!options?.skipBgm) {
+        try { this.render(); } catch (e) { console.error('render on continue:', e); }
+      }
 
       this.showAutosaveIndicator('💾 Game Loaded');
     }
@@ -8904,7 +9049,12 @@
         window.sounds?.playIntroMusic?.();
       } else {
         if (this.worldSave) {
-          this.draftAppearance = { ...this.worldSave };
+          const rawApp = this.worldSave.playerAppearance || {};
+          const app = (rawApp && rawApp.playerAppearance) ? rawApp.playerAppearance : rawApp;
+          this.draftAppearance = {
+            ...window.MythosCharacterSprites.DEFAULT_APPEARANCE,
+            ...app
+          };
           this.playerSprite.setAppearance(this.draftAppearance);
         }
         this.active = true;
@@ -9019,6 +9169,8 @@
           this.playerSprite.setAppearance(this.draftAppearance);
 
           if (this.isCreatingNewWorld || !this.worldSave) {
+            this.wins = 0;
+            this.losses = 0;
             this.friendName = 'Rocky';
             this.npcs[0] = this.createFriendNpc(this.friendName);
             document.getElementById('creator-modal')?.classList.add('hidden');
@@ -9338,9 +9490,9 @@
             active: this.currentArea === 'restaurant_interior',
             npc: this.chefNpc,
             talkId: 'chef_marco',
-            tapRadius: 1.3,
-            reachRadius: 1.35,
-            yOffset: 0.85
+            tapRadius: 0.75,
+            reachRadius: 1.15,
+            yOffset: 1.05
           },
           {
             active: this.currentArea === 'exterior',
@@ -10623,8 +10775,8 @@
         this.player.walkTick = 0;
       }
 
-      // Companion Follow AI: Mike or AJ follows right behind you until you open your initial card pack and he leaves for his house!
-      const friend = this.npcs[0];
+      // Companion Follow AI: Rocky follows right behind you until you open your initial card pack and he leaves for his house!
+      const friend = this.npcs.find(n => n.id === 'best_friend' || n.id === 'friend') || this.npcs[0];
       if (friend && !this.hasOpenedStarterPack && !this.friendWaitingAtHouse && !friend.leavingForHouse && this.currentArea !== 'friend_interior' && (friend.following || this.currentArea === 'exterior' || this.currentArea === 'card_shop_interior')) {
         const fdx = this.player.x - friend.x;
         const fdy = this.player.y - friend.y;
@@ -10889,6 +11041,8 @@
           // Step inside Oakhaven Bistro (3 blocks west of Roundabout)
           if (window.sounds?.playMove) window.sounds.playMove();
           this.currentArea = 'restaurant_interior';
+          this.activeDialogueNpc = null;
+          this.nearInteractable = null;
           this.player.x = 9.8;
           this.player.y = 9.15;
           this.player.dir = 'up';
@@ -17029,6 +17183,13 @@
       ctx.fillStyle = '#22c55e';
       ctx.fillRect(regX + 10, regY - 6, 12, 6);
       this._pxBox(regX + 4, regY + 16, 24, 8, '#78350f', '#92400e', null, INK, 1.5);
+    }
+
+    renderBistroBarstoolsForeground() {
+      const ctx = this.ctx;
+      ctx.imageSmoothingEnabled = false;
+      const S = this.TILE;
+      const INK = '#26130e';
 
       // 4 Carved Walnut & Claret-Cushion Barstools lined up in front of the Bar Counter
       [4.05, 5.05, 6.05, 7.05].forEach((sx) => {
@@ -17126,8 +17287,8 @@
       const oakhavenWestTurnX = -0.35 * S;
       const oakhavenWestTurnW = 1.05 * S;
 
-      // Warm Ochre Packed-Dirt Path Surface (Upper, Lower, Connectors)
-      ctx.fillStyle = this.cobblePattern || '#b98a52';
+      // Cobblestone Town Road Network (Upper, Lower, Connectors matching South Connector Ave)
+      ctx.fillStyle = this.flagstonePattern || '#988878';
       ctx.fillRect(oakhavenWestTurnX + oakhavenWestTurnW, road1Y, oakhavenRoad1W - (oakhavenWestTurnX + oakhavenWestTurnW), road1H);
       ctx.fillRect(oakhavenTurnX, 0, oakhavenTurnW, road1Y + road1H);
       ctx.fillRect(westConnX + westConnW, road3Y, EXT_W - (westConnX + westConnW), road3H);
@@ -19966,6 +20127,11 @@
       } else if (area === 'card_shop_interior') {
         if (!this.shopkeeperNpc) this.shopkeeperNpc = this.createShopkeeperNpc();
         active.push(this.shopkeeperNpc);
+        const friend = this.npcs.find(n => n.id === 'best_friend' || n.id === 'friend');
+        if (friend && !this.hasOpenedStarterPack && !this.friendWaitingAtHouse) {
+          friend.following = true;
+          active.push(friend);
+        }
       } else if (area === 'pluto_interior') {
         if (!this.plutoNpc) this.plutoNpc = this.createPlutoNpc();
         this.plutoNpc.x = 6.2;
@@ -20052,30 +20218,33 @@
     }
 
     render() {
-      if (!this.ctx) return;
+      if (!this.ctx || !this.canvas) return;
       const ctx = this.ctx;
       const S = this.TILE;
 
       ctx.save();
-      ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+      try {
+        ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-      ctx.imageSmoothingEnabled = false;
-      if (this.shakeTicks > 0) {
-        const mag = (this.shakeTicks / 28) * 9;
-        const sx = (Math.random() - 0.5) * mag * 2;
-        const sy = (Math.random() - 0.5) * mag * 2;
-        ctx.translate(sx, sy);
-      }
+        ctx.imageSmoothingEnabled = false;
+        if (this.shakeTicks > 0) {
+          const mag = (this.shakeTicks / 28) * 9;
+          const sx = (Math.random() - 0.5) * mag * 2;
+          const sy = (Math.random() - 0.5) * mag * 2;
+          ctx.translate(sx, sy);
+        }
 
-      const isExt = this.currentArea === 'exterior';
-      const zoom = this.getAreaZoom();
-      const useCameraTransform = isExt || zoom !== 1 || Boolean(this.cameraX) || Boolean(this.cameraY);
+        const isExt = this.currentArea === 'exterior';
+        const zoom = this.getAreaZoom();
+        const camX = Number.isFinite(this.cameraX) ? this.cameraX : 0;
+        const camY = Number.isFinite(this.cameraY) ? this.cameraY : 0;
+        const useCameraTransform = isExt || zoom !== 1 || Boolean(camX) || Boolean(camY);
 
-      if (useCameraTransform) {
-        ctx.save();
-        ctx.scale(zoom, zoom);
-        ctx.translate(-Math.round(this.cameraX || 0), -Math.round(this.cameraY || 0));
-      }
+        if (useCameraTransform) {
+          ctx.save();
+          ctx.scale(zoom, zoom);
+          ctx.translate(-Math.round(camX), -Math.round(camY));
+        }
 
       if (this.currentArea === 'interior') {
         this.renderCutawayInterior();
@@ -20136,21 +20305,39 @@
         draw: () => this.drawEntity(e)
       }));
 
-      // Depth-sort exterior trees and shrubs with entities so characters walk behind canopies
+      // Depth-sort exterior trees/shrubs and interior counters/desks with entities
+      // so characters stand behind counters when north of them, and in front when south of them.
       const renderList = isExt && Array.isArray(this._extDepthProps)
         ? [...entityItems, ...this._extDepthProps]
-        : entityItems;
+        : [...entityItems];
+
+      if (this.currentArea === 'card_shop_interior') {
+        renderList.push({
+          sortY: this._snap(4.78 * S) + 54,
+          zBias: 0,
+          draw: () => this.renderShopCounterForeground()
+        });
+      } else if (this.currentArea === 'pluto_interior') {
+        renderList.push({
+          sortY: Math.round(5.35 * S + 46),
+          zBias: 0,
+          draw: () => this.renderPlutoDeskForeground()
+        });
+      } else if (this.currentArea === 'restaurant_interior') {
+        renderList.push({
+          sortY: this._snap(4.78 * S) + 54,
+          zBias: 0,
+          draw: () => this.renderBistroCounterForeground()
+        });
+        renderList.push({
+          sortY: this._snap(5.78 * S) + 30,
+          zBias: 0,
+          draw: () => this.renderBistroBarstoolsForeground()
+        });
+      }
 
       renderList.sort((a, b) => (a.sortY - b.sortY) || (a.zBias - b.zBias));
       renderList.forEach(item => item.draw());
-
-      if (this.currentArea === 'card_shop_interior') {
-        this.renderShopCounterForeground();
-      } else if (this.currentArea === 'pluto_interior') {
-        this.renderPlutoDeskForeground();
-      } else if (this.currentArea === 'restaurant_interior') {
-        this.renderBistroCounterForeground();
-      }
 
       if (this.settings.showGrid) {
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
@@ -20186,12 +20373,14 @@
         }
       }
 
-      if (useCameraTransform) {
+        if (useCameraTransform) {
+          ctx.restore();
+        }
+
+        this.drawShaderPass();
+      } finally {
         ctx.restore();
       }
-
-      this.drawShaderPass();
-      ctx.restore();
     }
 
     loop() {
@@ -20199,12 +20388,16 @@
       this.tick++;
       try {
         this.update();
+      } catch (err) {
+        console.error('Overworld update error:', err);
+      }
+      try {
         if (this.active) {
           this.render();
         }
         this.renderCreatorPreview();
       } catch (err) {
-        console.error('Overworld loop error:', err);
+        console.error('Overworld render error:', err);
       }
     }
   }

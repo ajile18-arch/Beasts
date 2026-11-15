@@ -3121,45 +3121,244 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
 }
 
 /* --------------------------------------------------------------------------
-   Mythos Intro Title Screen & World Save Slot
+   Mythos 32-Bit HD Fantasy Intro Title Screen & World Save Slot
    -------------------------------------------------------------------------- */
-.intro-modal-card {
-  background: linear-gradient(180deg, #322117 0%, #1d130d 100%);
-  border: 2px solid var(--border-gold);
-  border-radius: 18px;
-  padding: 36px 40px;
-  max-width: 480px;
-  width: 92%;
-  text-align: center;
+.modal-overlay.intro-title-screen {
+  background: #0c0806;
+  padding: 0;
+  overflow: hidden;
+  align-items: stretch;
+  justify-content: center;
+}
+
+.intro-title-backdrop {
+  position: absolute;
+  inset: 0;
+  background-image: url('../Sprites/Overworld/title_backdrop.jpg');
+  background-size: cover;
+  background-position: center 22%;
+  background-repeat: no-repeat;
+  image-rendering: auto;
+  z-index: 0;
+  animation: introPanSlow 28s ease-in-out infinite alternate;
+}
+
+@keyframes introPanSlow {
+  0% { transform: scale(1.0); }
+  100% { transform: scale(1.03); }
+}
+
+.intro-title-vignette {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 50% 42%, transparent 45%, rgba(10, 6, 4, 0.55) 100%),
+    linear-gradient(180deg, rgba(12, 8, 6, 0.10) 0%, rgba(12, 8, 6, 0.05) 55%, rgba(12, 8, 6, 0.42) 100%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.intro-title-stage {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 1200px;
+  height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 14px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.95), 0 0 40px rgba(212, 162, 74, 0.35), inset 0 1px 0 rgba(255, 224, 150, 0.16);
-  animation: modalPop 0.35s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+  justify-content: flex-end;
+  padding: 24px 16px clamp(26px, 5.5vh, 56px);
+  box-sizing: border-box;
 }
 
-.intro-logo-badge {
-  font-size: 46px;
-  line-height: 1;
-  filter: drop-shadow(0 0 12px rgba(212, 175, 55, 0.6));
+.intro-crest-spacer {
+  flex: 1 1 auto;
+  min-height: 200px;
 }
 
-.intro-main-title {
+.intro-rpg-menu-wrap {
+  width: min(372px, 92vw);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  animation: modalPop 0.38s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+}
+
+.intro-save-banner {
+  background: linear-gradient(180deg, rgba(36, 20, 12, 0.92) 0%, rgba(20, 11, 6, 0.95) 100%);
+  border: 2px solid #d4a24a;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 224, 150, 0.25);
+  padding: 8px 12px;
+}
+
+.intro-rpg-menu-box {
+  width: 100%;
+  background: linear-gradient(180deg, #2b180e 0%, #1a0e08 100%);
+  border: 3px solid #d4a24a;
+  outline: 2px solid #180c06;
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  box-shadow:
+    0 18px 46px rgba(0, 0, 0, 0.88),
+    0 0 28px rgba(212, 162, 74, 0.28),
+    inset 0 0 0 2px rgba(92, 54, 28, 0.85),
+    inset 0 2px 0 rgba(255, 232, 175, 0.22);
+  position: relative;
+}
+
+.intro-rpg-menu-box::before,
+.intro-rpg-menu-box::after {
+  content: '✦';
+  position: absolute;
+  top: 4px;
+  font-size: 11px;
+  color: #fde68a;
+  text-shadow: 0 1px 2px #000;
+  pointer-events: none;
+}
+
+.intro-rpg-menu-box::before { left: 7px; }
+.intro-rpg-menu-box::after { right: 7px; }
+
+.intro-rpg-btn {
+  width: 100%;
+  min-height: 44px;
+  padding: 9px 14px;
+  border-radius: 6px;
+  border: 2px solid #8c622b;
+  background: linear-gradient(180deg, #4b2d1a 0%, #311c0f 100%);
+  color: #f8ebd2;
   font-family: var(--font-title);
-  font-size: 42px;
-  font-weight: 900;
-  letter-spacing: 5px;
-  color: var(--text-gold);
-  margin: 0;
-  text-shadow: 0 0 18px rgba(212, 175, 55, 0.55);
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 1.4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-shadow: 0 2px 2px rgba(0, 0, 0, 0.9);
+  box-shadow:
+    0 3px 0 #140a05,
+    inset 0 1px 0 rgba(255, 224, 158, 0.22);
+  transition: transform 0.12s ease, filter 0.12s ease, border-color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
 }
 
-.intro-subtitle {
+.intro-rpg-btn:hover:not(:disabled),
+.intro-rpg-btn:focus-visible:not(:disabled),
+.intro-rpg-btn.intro-rpg-primary:not(:disabled) {
+  background: linear-gradient(180deg, #9a5b1e 0%, #683810 100%);
+  border-color: #fbbf24;
+  color: #fffbeb;
+  box-shadow:
+    0 3px 0 #261205,
+    0 0 16px rgba(251, 191, 36, 0.42),
+    inset 0 1px 0 rgba(255, 245, 200, 0.45);
+}
+
+.intro-rpg-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(1.08);
+}
+
+.intro-rpg-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.intro-rpg-btn:disabled,
+.intro-rpg-btn.is-disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  filter: grayscale(0.45);
+}
+
+.rpg-wing-left,
+.rpg-wing-right {
+  width: 14px;
+  height: 12px;
+  display: inline-block;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.rpg-wing-left::before {
+  content: '▶';
+  color: #fde047;
+  font-size: 11px;
+  filter: drop-shadow(0 0 4px rgba(250, 204, 21, 0.8));
+}
+
+.rpg-wing-right::before {
+  content: '◀';
+  color: #fde047;
+  font-size: 11px;
+  filter: drop-shadow(0 0 4px rgba(250, 204, 21, 0.8));
+}
+
+.intro-rpg-btn:hover:not(:disabled) .rpg-wing-left,
+.intro-rpg-btn:hover:not(:disabled) .rpg-wing-right,
+.intro-rpg-btn.intro-rpg-primary:not(:disabled) .rpg-wing-left,
+.intro-rpg-btn.intro-rpg-primary:not(:disabled) .rpg-wing-right {
+  opacity: 1;
+}
+
+.intro-settings-heading {
+  font-family: var(--font-title);
   font-size: 13px;
-  color: var(--text-muted);
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  color: #fde68a;
+  text-align: center;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(212, 162, 74, 0.35);
+}
+
+.intro-setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #f3e5c8;
+  padding: 4px 2px;
+}
+
+.intro-setting-toggle {
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+.intro-version-badge {
+  position: absolute;
+  right: 14px;
+  bottom: 10px;
+  z-index: 3;
+  font-family: var(--font-title);
+  font-size: 12px;
+  font-weight: 700;
   letter-spacing: 1px;
-  margin-bottom: 6px;
+  color: #fef3c7;
+  text-shadow: 0 2px 3px #000, 0 0 8px rgba(0, 0, 0, 0.9);
+  pointer-events: none;
+}
+
+@media (max-width: 680px) {
+  .intro-title-backdrop {
+    background-position: center 14%;
+  }
+  .intro-crest-spacer {
+    min-height: 150px;
+  }
+  .intro-rpg-btn {
+    min-height: 40px;
+    font-size: 12.5px;
+  }
 }
 
 .save-slot-card {
@@ -3190,22 +3389,6 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
 .save-slot-sub {
   font-size: 11px;
   color: var(--text-muted);
-}
-
-.intro-actions {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-top: 4px;
-}
-
-.intro-new-btn {
-  width: 100%;
-  padding: 12px 20px;
-  font-size: 14px;
-  font-weight: 700;
-  justify-content: center;
 }
 
 /* --------------------------------------------------------------------------
@@ -5129,40 +5312,107 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   opacity: 0.82;
 }
 
+/* Worn Oak Desk Backdrop for Old Card Binder (no lamp or pencil) */
+#binder-modal.modal-overlay {
+  background:
+    radial-gradient(ellipse at 50% 45%, rgba(120, 74, 36, 0.24) 0%, rgba(18, 10, 5, 0.88) 72%, rgba(8, 4, 2, 0.96) 100%),
+    repeating-linear-gradient(
+      90deg,
+      #342012 0px,
+      #3a2414 28px,
+      #2d1b0f 30px,
+      #3f2716 62px,
+      #2a180d 64px,
+      #362113 96px
+    );
+  backdrop-filter: blur(4px);
+}
+
 .binder-modal-dialog {
-  background: linear-gradient(145deg, #182032 0%, #0d121c 100%);
-  border: 3px solid var(--border-gold);
-  border-radius: 20px;
-  max-width: 920px;
-  width: 95%;
+  background:
+    radial-gradient(circle at 18% 20%, rgba(110, 72, 42, 0.22) 0%, transparent 45%),
+    radial-gradient(circle at 82% 85%, rgba(15, 36, 38, 0.45) 0%, transparent 50%),
+    linear-gradient(155deg, #213739 0%, #162729 42%, #241912 84%, #17100b 100%);
+  border: 4px solid #4a3525;
+  outline: 2px dashed rgba(214, 179, 124, 0.22);
+  outline-offset: -9px;
+  border-radius: 16px;
+  max-width: 1120px;
+  width: 96%;
   max-height: 92vh;
+  padding: 12px 18px 14px 10px;
   display: flex;
   position: relative;
-  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.96), 0 0 45px rgba(212, 175, 55, 0.35);
+  box-shadow:
+    0 28px 75px rgba(0, 0, 0, 0.95),
+    inset 0 0 28px rgba(0, 0, 0, 0.72),
+    inset 0 1px 0 rgba(255, 226, 178, 0.12);
   animation: modalPop 0.28s ease-out;
   overflow: hidden;
 }
 
-/* 3-Ring Binder Left Metallic Spine */
+/* Worn Brass Corner Plates & Masking Tape Patch */
+.binder-brass-corner {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  pointer-events: none;
+  z-index: 8;
+  background: linear-gradient(135deg, #d9a74a 0%, #8a6022 55%, #4a3110 100%);
+  border: 1.5px solid #2b1a08;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.7), inset 0 1px 1px rgba(255, 240, 195, 0.5);
+}
+.binder-brass-corner.top-left { top: 0; left: 0; border-radius: 12px 0 10px 0; }
+.binder-brass-corner.bottom-left { bottom: 0; left: 0; border-radius: 0 10px 0 12px; }
+.binder-brass-corner.top-right { top: 0; right: 0; border-radius: 0 12px 0 10px; }
+.binder-brass-corner.bottom-right { bottom: 0; right: 0; border-radius: 10px 0 12px 0; }
+
+.binder-tape-patch {
+  position: absolute;
+  top: 10px;
+  left: -10px;
+  width: 58px;
+  height: 18px;
+  background: linear-gradient(180deg, rgba(226, 208, 165, 0.78), rgba(194, 173, 126, 0.72));
+  border-top: 1px dashed rgba(120, 96, 56, 0.55);
+  border-bottom: 1px dashed rgba(120, 96, 56, 0.55);
+  transform: rotate(-32deg);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+  z-index: 9;
+}
+
+/* Left Section: Tarnished 3-Ring Spine + Vertical Divider Sort Tabs */
+.binder-left-section {
+  display: flex;
+  flex-shrink: 0;
+  align-items: stretch;
+  position: relative;
+  z-index: 3;
+}
+
+/* 3-Ring Binder Left Tarnished Metallic Spine */
 .binder-rings-spine {
-  width: 38px;
-  background: linear-gradient(90deg, #1e293b 0%, #334155 45%, #0f172a 100%);
-  border-right: 2px solid rgba(212, 175, 55, 0.35);
+  width: 34px;
+  background: linear-gradient(90deg, #1b120c 0%, #3a2719 52%, #19100a 100%);
+  border-right: 2px solid rgba(92, 65, 42, 0.75);
+  border-radius: 8px 0 0 8px;
   display: flex;
   flex-direction: column;
   justify-content: space-around;
   align-items: center;
-  padding: 40px 0;
+  padding: 46px 0;
   flex-shrink: 0;
+  box-shadow: inset -4px 0 10px rgba(0, 0, 0, 0.65);
 }
 
 .binder-ring {
   width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 35% 35%, #ffffff 0%, #cbd5e1 40%, #64748b 80%, #334155 100%);
-  border: 2px solid #1e293b;
-  box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.8), 0 3px 6px rgba(0, 0, 0, 0.6);
+  height: 22px;
+  border-radius: 9px 12px 12px 9px;
+  background: linear-gradient(180deg, #f3efe6 0%, #b5ada0 38%, #6d655b 78%, #3c3630 100%);
+  border: 2px solid #1e1915;
+  box-shadow: inset 0 2px 3px rgba(255, 255, 255, 0.75), 0 3px 6px rgba(0, 0, 0, 0.75);
   position: relative;
 }
 
@@ -5170,42 +5420,60 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   content: '';
   position: absolute;
   top: 50%;
-  left: -4px;
-  right: -4px;
+  left: -3px;
+  right: -5px;
   height: 2px;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(20, 14, 10, 0.75);
   transform: translateY(-50%);
 }
 
+/* Aged Parchment Card Page with Layered Multi-Page Edges */
 .binder-content-sheet {
   flex: 1;
-  padding: 20px 26px;
+  min-width: 0;
+  padding: 16px 22px 14px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
   overflow-y: auto;
-  background: radial-gradient(ellipse at 50% 10%, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.95) 100%);
+  position: relative;
+  border-radius: 4px 10px 10px 4px;
+  border: 2px solid #b59d78;
+  background:
+    radial-gradient(ellipse at 12% 10%, rgba(255, 249, 232, 0.55) 0%, transparent 50%),
+    radial-gradient(ellipse at 92% 94%, rgba(186, 152, 102, 0.35) 0%, transparent 48%),
+    linear-gradient(165deg, #f2e5c6 0%, #e7d4ab 54%, #dcc393 100%);
+  box-shadow:
+    inset 14px 0 22px -12px rgba(72, 46, 22, 0.35),
+    /* Stacked extra binder pages fanning out on right & bottom */
+    4px 3px 0 0 #d4be96,
+    5px 4px 0 0 #8d7350,
+    9px 6px 0 0 #cbb288,
+    10px 7px 0 0 #7a6140,
+    14px 10px 0 0 #bfa57a,
+    15px 11px 0 0 #5b462b,
+    18px 16px 26px rgba(0, 0, 0, 0.65);
 }
 
 .binder-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1.5px solid rgba(212, 175, 55, 0.3);
-  padding-bottom: 12px;
-  gap: 12px;
+  border-bottom: 2px solid rgba(112, 78, 42, 0.32);
+  padding-bottom: 10px;
+  gap: 10px;
   flex-wrap: wrap;
 }
 
 .binder-title-group {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .binder-icon-badge {
-  font-size: 32px;
-  filter: drop-shadow(0 0 10px rgba(59, 130, 246, 0.6));
+  font-size: 28px;
+  filter: drop-shadow(0 2px 4px rgba(80, 48, 16, 0.35));
 }
 
 .binder-title {
@@ -5213,30 +5481,32 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   font-size: 20px;
   font-weight: 900;
   letter-spacing: 2px;
-  color: var(--text-gold);
+  color: #3f2713;
   margin: 0;
-  text-shadow: 0 0 14px rgba(212, 175, 55, 0.45);
+  text-shadow: 0 1px 0 rgba(255, 248, 228, 0.85);
 }
 
 .binder-sub {
-  font-size: 12px;
-  color: var(--text-muted);
+  font-size: 11.5px;
+  color: #6b4c2e;
+  font-weight: 600;
   margin: 2px 0 0;
 }
 
 .binder-header-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .binder-counter-pill {
-  background: rgba(59, 130, 246, 0.18);
-  border: 1px solid rgba(96, 165, 250, 0.55);
-  color: #93c5fd;
+  background: rgba(84, 54, 26, 0.14);
+  border: 1.5px solid rgba(120, 82, 42, 0.45);
+  color: #4a2e16;
   font-weight: 800;
-  font-size: 13px;
-  padding: 5px 12px;
+  font-size: 12px;
+  padding: 4px 11px;
   border-radius: 20px;
   white-space: nowrap;
 }
@@ -5245,8 +5515,8 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
 .binder-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-  padding: 6px 2px;
+  gap: 14px;
+  padding: 4px 2px;
 }
 
 @media (max-width: 680px) {
@@ -5255,19 +5525,19 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   }
 }
 
-/* Individual Card Sleeve Pocket */
+/* Individual Clear Plastic Card Sleeve Pocket over Aged Parchment */
 .binder-slot {
-  background: rgba(15, 23, 42, 0.65);
-  border: 2px solid rgba(212, 175, 55, 0.22);
-  border-radius: 12px;
-  height: 195px;
+  background: rgba(255, 252, 242, 0.32);
+  border: 2px solid rgba(145, 114, 72, 0.45);
+  border-radius: 10px;
+  height: 192px;
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: 8px;
-  box-shadow: inset 0 0 16px rgba(0, 0, 0, 0.5), 0 4px 12px rgba(0, 0, 0, 0.45);
+  box-shadow: inset 0 0 14px rgba(105, 76, 40, 0.16), 0 3px 8px rgba(68, 46, 22, 0.22);
   transition: all 0.22s cubic-bezier(0.18, 0.89, 0.32, 1.28);
   cursor: pointer;
   overflow: hidden;
@@ -5296,24 +5566,24 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
 
 .binder-slot.empty {
   border-style: dashed;
-  border-color: rgba(255, 255, 255, 0.18);
-  background: rgba(10, 15, 26, 0.45);
+  border-color: rgba(122, 92, 56, 0.42);
+  background: rgba(196, 172, 132, 0.24);
 }
 
 .binder-slot.empty:hover {
-  background: rgba(59, 130, 246, 0.12);
-  border-color: #60a5fa;
+  background: rgba(180, 130, 56, 0.18);
+  border-color: #9a6521;
   transform: translateY(-2px);
 }
 
 .binder-empty-btn {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: #94a3b8;
+  background: rgba(84, 56, 28, 0.1);
+  border: 1px solid rgba(114, 80, 44, 0.35);
+  color: #5c3d20;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 800;
   padding: 8px 14px;
-  border-radius: 20px;
+  border-radius: 14px;
   cursor: pointer;
   display: flex;
   flex-direction: column;
@@ -5323,20 +5593,20 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
 }
 
 .binder-empty-btn:hover {
-  background: rgba(59, 130, 246, 0.28);
-  border-color: #93c5fd;
-  color: #ffffff;
+  background: rgba(180, 114, 34, 0.22);
+  border-color: #8a5614;
+  color: #2f1b0a;
   transform: scale(1.05);
 }
 
 .binder-slot.slotted {
-  background: linear-gradient(180deg, rgba(30, 41, 59, 0.6) 0%, rgba(15, 23, 42, 0.9) 100%);
-  border-color: rgba(212, 175, 55, 0.45);
+  background: linear-gradient(180deg, rgba(255, 250, 236, 0.48) 0%, rgba(214, 190, 148, 0.56) 100%);
+  border-color: rgba(140, 102, 52, 0.65);
 }
 
 .binder-slot.slotted:hover {
-  border-color: var(--border-gold);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7), 0 0 20px rgba(212, 175, 55, 0.4);
+  border-color: #b45309;
+  box-shadow: 0 8px 22px rgba(45, 26, 10, 0.45), 0 0 16px rgba(217, 119, 6, 0.35);
   transform: translateY(-4px) scale(1.02);
 }
 
@@ -5345,8 +5615,8 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   height: 134px;
   border-radius: 8px;
   overflow: hidden;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6);
-  border: 1.5px solid rgba(250, 204, 21, 0.4);
+  box-shadow: 0 6px 14px rgba(32, 18, 8, 0.55);
+  border: 1.5px solid rgba(161, 98, 7, 0.65);
   position: relative;
   transition: all 0.2s ease;
 }
@@ -5374,53 +5644,62 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   pointer-events: none;
 }
 
+/* Vertical Left-Side Divider Sort Tabs */
 .binder-sort-bar {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 10px;
-  padding: 6px 10px;
-  background: rgba(15, 23, 42, 0.65);
-  border: 1px solid rgba(212, 175, 55, 0.28);
-  border-radius: 10px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: stretch;
+  gap: 8px;
+  width: 96px;
+  padding: 18px 0 18px 4px;
+  margin-right: -2px;
+  z-index: 4;
 }
 
 .binder-sort-label {
-  font-size: 11px;
-  font-weight: 800;
-  color: #fde68a;
+  font-size: 10px;
+  font-weight: 900;
+  color: #d6b98c;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  margin-right: 4px;
+  letter-spacing: 0.1em;
+  text-align: center;
+  padding: 2px 4px 4px;
+  border-bottom: 1px solid rgba(214, 185, 140, 0.28);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.75);
 }
 
 .binder-sort-btn {
-  padding: 4px 10px;
+  padding: 10px 8px;
   font-size: 11px;
-  font-weight: 700;
-  border-radius: 999px;
-  border: 1px solid rgba(148, 163, 184, 0.35);
-  background: rgba(30, 41, 59, 0.85);
-  color: #e2e8f0;
+  font-weight: 800;
+  text-align: left;
+  border-radius: 8px 0 0 8px;
+  border: 1.5px solid #6b4f31;
+  border-right: none;
+  background: linear-gradient(180deg, #cbb38a 0%, #ab9064 100%);
+  color: #36210e;
   cursor: pointer;
-  transition: all 0.15s ease;
+  box-shadow: -3px 3px 6px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 246, 224, 0.45);
+  transition: transform 0.15s ease, background 0.15s ease, color 0.15s ease;
 }
 
 .binder-sort-btn:hover {
-  border-color: rgba(250, 204, 21, 0.65);
-  color: #fef08a;
+  transform: translateX(-3px);
+  background: linear-gradient(180deg, #dfc89f 0%, #c1a474 100%);
+  color: #1f1106;
 }
 
 .binder-sort-btn.active {
-  background: linear-gradient(135deg, #b45309, #d97706);
-  border-color: #fde047;
-  color: #fffbeb;
-  box-shadow: 0 0 10px rgba(250, 204, 21, 0.35);
+  background: linear-gradient(180deg, #f5e8cb 0%, #e5cfa3 100%);
+  border-color: #b59d78;
+  color: #3b2009;
+  transform: translateX(-2px);
+  box-shadow: -4px 4px 10px rgba(0, 0, 0, 0.5), inset 3px 0 0 #b45309;
 }
 
 .binder-card-info-row {
-  margin-top: 8px;
+  margin-top: 6px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -5431,11 +5710,125 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
 .binder-card-name {
   font-size: 12px;
   font-weight: 800;
-  color: #f8fafc;
+  color: #2f1b0a;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 90%;
+  max-width: 92%;
+}
+
+/* Binder Footer & Multi-Page Controls */
+.binder-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  border-top: 2px solid rgba(112, 78, 42, 0.28);
+  padding-top: 10px;
+  margin-top: 2px;
+}
+
+.binder-hint {
+  font-size: 11.5px;
+  color: #5a3c20;
+  font-weight: 600;
+}
+
+.binder-page-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(94, 62, 30, 0.12);
+  border: 1.5px solid rgba(120, 82, 42, 0.35);
+  border-radius: 999px;
+  padding: 4px 10px;
+}
+
+.binder-page-btn {
+  background: linear-gradient(180deg, #e7d1a7 0%, #caa972 100%);
+  border: 1.5px solid #7c582d;
+  color: #3a220c;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.binder-page-btn:hover:not(:disabled) {
+  background: linear-gradient(180deg, #f5e4bf 0%, #dab980 100%);
+  transform: translateY(-1px);
+}
+
+.binder-page-btn:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+.binder-page-pills {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.binder-page-pill {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(112, 78, 42, 0.45);
+  background: rgba(255, 248, 232, 0.65);
+  color: #4a2e14;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.binder-page-pill:hover {
+  border-color: #b45309;
+  background: #fef3c7;
+}
+
+.binder-page-pill.active {
+  background: linear-gradient(135deg, #b45309, #d97706);
+  border-color: #78350f;
+  color: #fffbeb;
+  box-shadow: 0 2px 6px rgba(120, 53, 15, 0.4);
+}
+
+.binder-page-indicator {
+  font-size: 11px;
+  font-weight: 800;
+  color: #4a2e14;
+  padding: 0 4px;
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .binder-modal-dialog {
+    flex-direction: column;
+    padding: 10px;
+  }
+  .binder-left-section {
+    flex-direction: column;
+  }
+  .binder-rings-spine {
+    display: none;
+  }
+  .binder-sort-bar {
+    flex-direction: row;
+    flex-wrap: wrap;
+    width: auto;
+    padding: 4px 0 8px;
+    margin-right: 0;
+  }
+  .binder-sort-btn {
+    border-radius: 8px;
+    border-right: 1.5px solid #6b4f31;
+    padding: 5px 9px;
+  }
 }
 
 .binder-card-element-pill {
@@ -5446,12 +5839,12 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   letter-spacing: 0.5px;
 }
 
-.binder-card-element-pill.fire { background: rgba(239, 68, 68, 0.25); color: #fca5a5; border: 1px solid #ef4444; }
-.binder-card-element-pill.earth { background: rgba(234, 179, 8, 0.25); color: #fde047; border: 1px solid #eab308; }
-.binder-card-element-pill.poison { background: rgba(168, 85, 247, 0.25); color: #d8b4fe; border: 1px solid #a855f7; }
-.binder-card-element-pill.plant { background: rgba(34, 197, 94, 0.25); color: #86efac; border: 1px solid #22c55e; }
-.binder-card-element-pill.air { background: rgba(56, 189, 248, 0.25); color: #bae6fd; border: 1px solid #38bdf8; }
-.binder-card-element-pill.metal { background: rgba(148, 163, 184, 0.28); color: #f1f5f9; border: 1px solid #cbd5e1; }
+.binder-card-element-pill.fire { background: rgba(185, 28, 28, 0.16); color: #991b1b; border: 1px solid rgba(185, 28, 28, 0.55); }
+.binder-card-element-pill.earth { background: rgba(161, 98, 7, 0.18); color: #713f12; border: 1px solid rgba(161, 98, 7, 0.55); }
+.binder-card-element-pill.poison { background: rgba(126, 34, 206, 0.16); color: #581c87; border: 1px solid rgba(126, 34, 206, 0.55); }
+.binder-card-element-pill.plant { background: rgba(21, 128, 61, 0.16); color: #14532d; border: 1px solid rgba(21, 128, 61, 0.55); }
+.binder-card-element-pill.air { background: rgba(3, 105, 161, 0.16); color: #0c4a6e; border: 1px solid rgba(3, 105, 161, 0.55); }
+.binder-card-element-pill.metal { background: rgba(71, 85, 105, 0.18); color: #1e293b; border: 1px solid rgba(71, 85, 105, 0.55); }
 
 /* Quick Hover Action Buttons on Binder Slot */
 .binder-slot-hover-bar {
@@ -8209,16 +8602,31 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
 }
 
 .phone-icon-box {
-  width: 58px;
-  height: 58px;
-  border-radius: 18px;
+  width: 64px;
+  height: 64px;
+  border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 26px;
   position: relative;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.35);
-  transition: transform 0.18s ease;
+  padding: 0;
+  background: #140c08;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(212, 162, 74, 0.45);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.phone-app-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 14px;
+  display: block;
+  image-rendering: auto;
+}
+
+.phone-app-icon-item:hover .phone-icon-box {
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.65), 0 0 14px rgba(251, 191, 36, 0.45);
 }
 
 .phone-app-icon-item:active .phone-icon-box {
@@ -9826,9 +10234,9 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
 
 .gwent-card.rarity-decorative-gold {
   border: 3px double #fde68a;
-  outline: 1.5px solid #d97706;
-  outline-offset: -5px;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.92), 0 0 18px rgba(251, 191, 36, 0.65), inset 0 0 12px rgba(253, 230, 138, 0.35);
+  outline: 2px solid #d97706;
+  outline-offset: 0px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.92), 0 0 18px rgba(251, 191, 36, 0.65), inset 0 0 8px rgba(253, 230, 138, 0.25);
 }
 
 .gwent-card.rarity-gold {
@@ -9844,6 +10252,46 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
 .gwent-card.rarity-bronze {
   border: 1px solid #b45309;
   box-shadow: 0 5px 14px rgba(0, 0, 0, 0.85), inset 0 0 6px rgba(180, 83, 9, 0.2);
+}
+
+/* Wolf Pack Faction Edge-to-Edge Border (Moonlit Timber, Carved Stone & Claw-Etched Rim) */
+.gwent-card.faction-wolf-pack {
+  background: linear-gradient(155deg, #27332d 0%, #141a1d 55%, #1d2621 100%);
+  outline: 2px solid #94a3b8;
+  outline-offset: 0px;
+}
+
+.gwent-card.faction-wolf-pack.rarity-bronze {
+  border: 3px solid #a1623b;
+  outline-color: #574132;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.88), inset 0 0 10px rgba(161, 98, 59, 0.35);
+}
+
+.gwent-card.faction-wolf-pack.rarity-gold {
+  border: 3px solid #e2b857;
+  outline-color: #7c5c20;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.9), 0 0 14px rgba(226, 184, 87, 0.42), inset 0 0 10px rgba(226, 184, 87, 0.3);
+}
+
+.gwent-card.faction-wolf-pack.rarity-decorative-gold {
+  border: 3px double #f6e09e;
+  outline: 2px solid #b78628;
+  outline-offset: 0px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.94), 0 0 18px rgba(246, 224, 158, 0.55), inset 0 0 12px rgba(246, 224, 158, 0.28);
+}
+
+.gwent-card.faction-wolf-pack::after {
+  content: '🐺';
+  position: absolute;
+  top: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 9px;
+  line-height: 1;
+  opacity: 0.82;
+  pointer-events: none;
+  z-index: 4;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.95);
 }
 
 .gwent-card:hover {
@@ -10140,6 +10588,35 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   --trad-accent: #a5f3fc;
   --trad-accent-soft: rgba(103, 232, 249, 0.5);
   --trad-title: #ecfeff;
+}
+
+/* Wolf Pack Traditional Modal Frame (Edge-to-Edge Moonlit Pine & Fang Trim) */
+.gwent-card-modal-dialog.traditional-card.faction-wolf-pack {
+  background: linear-gradient(160deg, #16211e 0%, #0d1316 55%, #19201c 100%);
+  outline: 2px solid rgba(203, 213, 225, 0.45);
+  outline-offset: 0px;
+}
+
+.gwent-card-modal-dialog.traditional-card.faction-wolf-pack.tier-bronze {
+  border-color: #b8734b;
+  --trad-accent: #d99b66;
+  --trad-accent-soft: rgba(184, 115, 75, 0.5);
+  --trad-title: #f5dcc4;
+}
+
+.gwent-card-modal-dialog.traditional-card.faction-wolf-pack.tier-gold {
+  border-color: #e2b857;
+  --trad-accent: #fbbf24;
+  --trad-accent-soft: rgba(226, 184, 87, 0.5);
+  --trad-title: #fef3c7;
+}
+
+.gwent-card-modal-dialog.traditional-card.faction-wolf-pack.tier-diamond {
+  border-color: #f6e09e;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.94), 0 0 34px rgba(246, 224, 158, 0.42);
+  --trad-accent: #fde68a;
+  --trad-accent-soft: rgba(246, 224, 158, 0.55);
+  --trad-title: #fffbeb;
 }
 
 .trad-card-bg-img {

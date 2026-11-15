@@ -6,8 +6,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>Mythos - Open World & Tabletop Card Game</title>
-  <link rel="stylesheet" href="css/style.css?v=2.51">
-  <link rel="stylesheet" href="css/mobile.css?v=2.51" media="(max-width: 820px), (hover: none) and (pointer: coarse)">
+  <link rel="stylesheet" href="css/style.css?v=2.57">
+  <link rel="stylesheet" href="css/mobile.css?v=2.57" media="(max-width: 820px), (hover: none) and (pointer: coarse)">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=MedievalSharp&family=Metamorphous&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
@@ -18,7 +18,7 @@
     <header class="game-header">
       <div class="logo-area">
         <h1 class="game-title">MYTHOS</h1>
-        <span class="version-tag" id="game-version">v2.51</span>
+        <span class="version-tag" id="game-version">v2.57</span>
         <span class="header-day-tag" id="header-mobile-day">📅 Monday • Day 1</span>
         <span class="subtitle" id="header-subtitle"></span>
       </div>
@@ -551,29 +551,74 @@
       </div>
     </div>
 
-    <!-- Intro / Title Screen Overlay -->
-    <div class="modal-overlay" id="intro-modal">
-      <div class="intro-modal-card">
-        <div class="intro-logo-badge">🃏⚔️</div>
-        <h1 class="intro-main-title">MYTHOS</h1>
-        <p class="intro-subtitle">Open-World Card Trading & Tabletop Tactics</p>
+    <!-- Intro / Title Screen Overlay (32-bit HD Fantasy Title Screen) -->
+    <div class="modal-overlay intro-title-screen" id="intro-modal">
+      <div class="intro-title-backdrop" aria-hidden="true"></div>
+      <div class="intro-title-vignette" aria-hidden="true"></div>
 
-        <!-- Saved World Card (Hidden if no save exists yet) -->
-        <div class="save-slot-card hidden" id="continue-world-card">
-          <div class="save-slot-left">
-            <canvas id="continue-avatar-canvas" width="56" height="68"></canvas>
-            <div id="continue-world-meta">
-              <div class="save-slot-title">Asher — Oakhaven</div>
-              <div class="save-slot-sub">Saved World</div>
+      <div class="intro-title-stage">
+        <!-- Spacer keeping the top-center winged MYTHOS crest in title_backdrop.jpg unobstructed -->
+        <div class="intro-crest-spacer" aria-hidden="true"></div>
+
+        <div class="intro-rpg-menu-wrap">
+          <!-- Saved World Badge (shown when a save exists) -->
+          <div class="save-slot-card intro-save-banner hidden" id="continue-world-card">
+            <div class="save-slot-left">
+              <canvas id="continue-avatar-canvas" width="56" height="68"></canvas>
+              <div id="continue-world-meta">
+                <div class="save-slot-title">Asher — Oakhaven</div>
+                <div class="save-slot-sub">Saved World</div>
+              </div>
             </div>
           </div>
-          <button class="ui-btn primary-btn" id="btn-continue-world">▶ Continue World</button>
-        </div>
 
-        <div class="intro-actions">
-          <button class="ui-btn primary-btn intro-new-btn" id="btn-new-world">✨ New World & Character Creator</button>
+          <!-- Primary RPG Wood & Gold Menu Box -->
+          <div class="intro-rpg-menu-box" id="intro-main-menu-box">
+            <button type="button" class="intro-rpg-btn intro-rpg-primary" id="btn-continue-world">
+              <span class="rpg-wing-left" aria-hidden="true"></span>
+              <span class="rpg-btn-label">CONTINUE ADVENTURE</span>
+              <span class="rpg-wing-right" aria-hidden="true"></span>
+            </button>
+            <button type="button" class="intro-rpg-btn" id="btn-new-world">
+              <span class="rpg-wing-left" aria-hidden="true"></span>
+              <span class="rpg-btn-label">NEW GAME</span>
+              <span class="rpg-wing-right" aria-hidden="true"></span>
+            </button>
+            <button type="button" class="intro-rpg-btn" id="btn-intro-quick-duel">
+              <span class="rpg-wing-left" aria-hidden="true"></span>
+              <span class="rpg-btn-label">QUICK DUEL</span>
+              <span class="rpg-wing-right" aria-hidden="true"></span>
+            </button>
+            <button type="button" class="intro-rpg-btn" id="btn-intro-settings">
+              <span class="rpg-wing-left" aria-hidden="true"></span>
+              <span class="rpg-btn-label">SETTINGS</span>
+              <span class="rpg-wing-right" aria-hidden="true"></span>
+            </button>
+          </div>
+
+          <!-- Inline RPG Settings Panel -->
+          <div class="intro-rpg-menu-box intro-settings-box hidden" id="intro-settings-panel">
+            <div class="intro-settings-heading">⚙ WORLD &amp; AUDIO SETTINGS</div>
+            <div class="intro-setting-row">
+              <span>🔊 Audio &amp; Music</span>
+              <button type="button" class="ui-btn secondary intro-setting-toggle" id="btn-intro-sound">Sound: ON</button>
+            </div>
+            <div class="intro-setting-row">
+              <span>🌤️ Time of Day</span>
+              <select id="intro-time-select" class="ow-select">
+                <option value="day">☀️ Summer Day</option>
+                <option value="sunset">🌅 Golden Sunset</option>
+                <option value="night">🌙 Starlight Night</option>
+              </select>
+            </div>
+            <button type="button" class="intro-rpg-btn" id="btn-intro-settings-back">
+              <span class="rpg-btn-label">← BACK TO TITLE</span>
+            </button>
+          </div>
         </div>
       </div>
+
+      <div class="intro-version-badge" id="intro-version-tag">v2.57</div>
     </div>
 
     <!-- Stardew Valley / Pokémon Style Character Creator Modal -->
@@ -824,14 +869,32 @@
       </div>
     </div>
 
-    <!-- Mythos Collector Card Binder Modal (9-Pocket Protective Sleeves) -->
+    <!-- Mythos Collector Card Binder Modal (Multi-Page 9-Pocket Protective Sleeves) -->
     <div class="modal-overlay hidden" id="binder-modal">
       <div class="binder-modal-dialog">
-        <!-- Binder Spine Rings & Leather Cover Shell -->
-        <div class="binder-rings-spine" aria-hidden="true">
-          <span class="binder-ring"></span>
-          <span class="binder-ring"></span>
-          <span class="binder-ring"></span>
+        <!-- Beat-Up Leather Cover Corners & Tape Accents -->
+        <span class="binder-brass-corner top-left" aria-hidden="true"></span>
+        <span class="binder-brass-corner bottom-left" aria-hidden="true"></span>
+        <span class="binder-brass-corner top-right" aria-hidden="true"></span>
+        <span class="binder-brass-corner bottom-right" aria-hidden="true"></span>
+        <span class="binder-tape-patch" aria-hidden="true"></span>
+
+        <!-- Left Section: Tarnished 3-Ring Spine + Vertical Divider Sort Tabs -->
+        <div class="binder-left-section">
+          <div class="binder-rings-spine" aria-hidden="true">
+            <span class="binder-ring"></span>
+            <span class="binder-ring"></span>
+            <span class="binder-ring"></span>
+          </div>
+
+          <div class="binder-sort-bar" id="binder-sort-bar" aria-label="Sort Binder Cards">
+            <span class="binder-sort-label">SORT</span>
+            <button type="button" class="binder-sort-btn active" data-sort="default" title="Sort by Slot Order">Slot Order</button>
+            <button type="button" class="binder-sort-btn" data-sort="alpha" title="Sort Alphabetically">🔤 A–Z</button>
+            <button type="button" class="binder-sort-btn" data-sort="type" title="Sort by Element/Type">🏷️ Type</button>
+            <button type="button" class="binder-sort-btn" data-sort="power" title="Sort by Attack Power">⚔️ Power</button>
+            <button type="button" class="binder-sort-btn" data-sort="stars" title="Sort by Star Rating">⭐ Stars</button>
+          </div>
         </div>
 
         <div class="binder-content-sheet">
@@ -840,35 +903,36 @@
               <span class="binder-icon-badge">📖</span>
               <div>
                 <h2 class="binder-title" id="binder-main-title">OLD CARD BINDER</h2>
-                <p class="binder-sub" id="binder-sub-title">A well-loved 9-pocket trading card binder received from your friend • Click any card to inspect moves, types, and abilities</p>
+                <p class="binder-sub" id="binder-sub-title">A well-loved 4-page collector binder • Click any card to inspect moves, types, and abilities</p>
               </div>
             </div>
             <div class="binder-header-actions">
-              <span class="binder-counter-pill" id="binder-counter-pill">3 / 9 Sleeves Filled</span>
+              <span class="binder-counter-pill" id="binder-counter-pill">3 / 36 Sleeves Filled</span>
               <button type="button" class="ui-btn primary-btn" id="btn-binder-to-deck" style="padding: 4px 10px; font-size: 11px; background: linear-gradient(135deg, #78350f, #b45309); border-color: #fbbf24;">🃏 Playing Deck</button>
               <button type="button" class="ui-btn secondary" id="btn-binder-to-inv" style="padding: 4px 10px; font-size: 11px;">🎒 Backpack</button>
               <button type="button" class="drawer-close-btn" id="btn-close-binder" title="Close Binder">✕</button>
             </div>
           </div>
 
-          <!-- Binder Sort Controls -->
-          <div class="binder-sort-bar" id="binder-sort-bar">
-            <span class="binder-sort-label">Sort By:</span>
-            <button type="button" class="binder-sort-btn active" data-sort="default">Slot Order</button>
-            <button type="button" class="binder-sort-btn" data-sort="alpha">🔤 A–Z</button>
-            <button type="button" class="binder-sort-btn" data-sort="type">🏷️ Type</button>
-            <button type="button" class="binder-sort-btn" data-sort="power">⚔️ Attack Power</button>
-            <button type="button" class="binder-sort-btn" data-sort="stars">⭐ Star Rating</button>
-          </div>
-
           <!-- 9-Pocket Card Sleeves Grid (3x3 Collector Sheet) -->
           <div class="binder-grid" id="binder-slots-grid">
-            <!-- Dynamically populated with 9 sleeve slots -->
+            <!-- Dynamically populated with 9 sleeve slots per page -->
           </div>
 
           <div class="binder-footer">
             <div class="binder-hint">
-              💡 <b>Tip:</b> Click any inserted card to enter <b>Creature Inspect Mode</b> with high-res standalone art, moves, and abilities.
+              💡 <b>Tip:</b> Click any inserted card to enter <b>Creature Inspect Mode</b>.
+            </div>
+            <div class="binder-page-nav" id="binder-page-nav">
+              <button type="button" class="binder-page-btn" id="btn-binder-prev-page" title="Previous Page">◀ Prev</button>
+              <div class="binder-page-pills" id="binder-page-pills">
+                <button type="button" class="binder-page-pill active" data-page="0">1</button>
+                <button type="button" class="binder-page-pill" data-page="1">2</button>
+                <button type="button" class="binder-page-pill" data-page="2">3</button>
+                <button type="button" class="binder-page-pill" data-page="3">4</button>
+              </div>
+              <span class="binder-page-indicator" id="binder-page-indicator">Page 1 / 4</span>
+              <button type="button" class="binder-page-btn" id="btn-binder-next-page" title="Next Page">Next ▶</button>
             </div>
             <button type="button" class="ui-btn primary-btn" id="btn-binder-done">Done</button>
           </div>
@@ -1258,7 +1322,7 @@
               <!-- App 1: Contacts & Chat -->
               <div class="phone-app-icon-item" data-app="contacts" id="app-btn-contacts">
                 <div class="phone-icon-box bg-contacts">
-                  💬
+                  <img src="Sprites/Overworld/phone_icon_contacts.jpg?v=2.57" class="phone-app-img" alt="Contacts">
                   <span class="phone-app-unread-dot hidden" id="dot-contacts"></span>
                 </div>
                 <span class="phone-app-name">Contacts</span>
@@ -1267,7 +1331,7 @@
               <!-- App 2: Mythos Marketplace (Card Listings) -->
               <div class="phone-app-icon-item" data-app="market" id="app-btn-market">
                 <div class="phone-icon-box bg-market">
-                  🤝
+                  <img src="Sprites/Overworld/phone_icon_market.jpg?v=2.57" class="phone-app-img" alt="Card Exchange">
                   <span class="phone-app-unread-dot hidden" id="dot-market"></span>
                 </div>
                 <span class="phone-app-name">Card Exchange</span>
@@ -1276,7 +1340,7 @@
               <!-- App 3: Leo's Card Shop Live Feed & Alerts -->
               <div class="phone-app-icon-item" data-app="shopfeed" id="app-btn-shopfeed">
                 <div class="phone-icon-box bg-shop">
-                  🃏
+                  <img src="Sprites/Overworld/phone_icon_shop.jpg?v=2.57" class="phone-app-img" alt="Leo's Alerts">
                   <span class="phone-app-unread-dot" id="dot-shopfeed"></span>
                 </div>
                 <span class="phone-app-name">Leo's Alerts</span>
@@ -1285,7 +1349,7 @@
               <!-- App 4: Tournaments & Brackets -->
               <div class="phone-app-icon-item" data-app="tournaments" id="app-btn-tournaments">
                 <div class="phone-icon-box bg-tournaments">
-                  🏆
+                  <img src="Sprites/Overworld/phone_icon_tournaments.jpg?v=2.57" class="phone-app-img" alt="Tournaments">
                   <span class="phone-app-unread-dot hidden" id="dot-tournaments"></span>
                 </div>
                 <span class="phone-app-name">Tournaments</span>
@@ -1392,9 +1456,6 @@
           <button type="button" class="phone-nav-tab-btn phone-return-world-tab" id="btn-phone-return-world" title="Exit Phone and Return to World">🗺️ Return to World</button>
         </div>
       </div>
-
-      <!-- Close Phone Button (Floating outside frame) -->
-      <button class="phone-close-hardware-btn" id="btn-close-phone" title="Put away phone (Key: P or Esc)">✕</button>
     </div>
   </div>
 
@@ -1442,10 +1503,10 @@
     </div>
   </div>
 
-  <script src="js/audio.js?v=2.51"></script>
-  <script src="js/character_sprites.js?v=2.51"></script>
-  <script src="js/overworld.js?v=2.51"></script>
-  <script src="js/gwent_cards.js?v=2.51"></script>
-  <script src="js/game.js?v=2.51"></script>
+  <script src="js/audio.js?v=2.57"></script>
+  <script src="js/character_sprites.js?v=2.57"></script>
+  <script src="js/overworld.js?v=2.57"></script>
+  <script src="js/gwent_cards.js?v=2.57"></script>
+  <script src="js/game.js?v=2.57"></script>
 </body>
 </html>

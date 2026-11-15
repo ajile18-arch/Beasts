@@ -349,7 +349,7 @@
   // ---------------------------------------------------------------------------
   class BeastsGame {
     constructor() {
-      this.VERSION = '2.51';
+      this.VERSION = '2.57';
       this.gameMode = 'ai'; // 'ai' | '2p'
       this.currentView = 'overworld';
       this.currentChallenger = null;
@@ -481,18 +481,24 @@
     // Deck & Match Initialization
     // -------------------------------------------------------------------------
     buildDeck(guaranteedIds = [], customDeckIds = null) {
+      const targetSize = 18;
       let pool;
       if (Array.isArray(customDeckIds) && customDeckIds.length > 0) {
         pool = customDeckIds.filter(id => GWENT_CARDS[id]);
-        if (pool.length < 12) {
+        if (pool.length < targetSize) {
           const hasManson = pool.includes('manson_wolf_father');
           const filler = STANDARD_DECK_RECIPE.filter(id => !(hasManson && id === 'manson_wolf_father'));
           for (let i = filler.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [filler[i], filler[j]] = [filler[j], filler[i]];
           }
-          pool = [...pool, ...filler].slice(0, 12);
+          let idx = 0;
+          while (pool.length < targetSize && filler.length > 0) {
+            pool.push(filler[idx % filler.length]);
+            idx++;
+          }
         }
+        pool = pool.slice(0, targetSize);
         for (let i = pool.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));
           [pool[i], pool[j]] = [pool[j], pool[i]];
@@ -506,6 +512,9 @@
         const j = Math.floor(Math.random() * (i + 1));
         [pool[i], pool[j]] = [pool[j], pool[i]];
       }
+      while (pool.length < targetSize && STANDARD_DECK_RECIPE.length > 0) {
+        pool.push(STANDARD_DECK_RECIPE[pool.length % STANDARD_DECK_RECIPE.length]);
+      }
 
       // Move guaranteed signature cards to the front so they are drawn into Round 1 hand
       const uniqueGuaranteed = Array.from(new Set(guaranteedIds)).filter(id => GWENT_CARDS[id]);
@@ -515,7 +524,7 @@
         if (idx !== -1) pool.splice(idx, 1);
         ordered.push(gid);
       });
-      const finalIds = [...ordered, ...pool].slice(0, Math.max(12, STANDARD_DECK_RECIPE.length));
+      const finalIds = [...ordered, ...pool].slice(0, targetSize);
 
       return finalIds.map((id, idx) => this.createCardInstance(id, `${id}_${Math.random().toString(36).slice(2, 7)}_${idx}`));
     }
@@ -1614,9 +1623,18 @@
       const activeEvent = this.overworld?.getCurrentDayEvent?.();
       if (isPlayerVictory && activeEvent?.id === 'league_night' && this.overworld && msgEl) {
         this.overworld.gold = Math.round(((this.overworld.gold || 0) + 1.50) * 100) / 100;
-        this.overworld.saveWorldData?.(this.overworld.draftAppearance);
         this.overworld.updateHUDSaveInfo?.();
         msgEl.innerHTML += `<div style="margin-top: 10px; color: #93c5fd;">🏆 Friday Night Mythos League Bounty: +$1.50!</div>`;
+      }
+
+      if (this.gameMode === 'ai' && this.overworld) {
+        if (isPlayerVictory) {
+          this.overworld.wins = (this.overworld.wins || 0) + 1;
+        } else {
+          this.overworld.losses = (this.overworld.losses || 0) + 1;
+        }
+        this.overworld.saveWorldData?.(this.overworld.draftAppearance);
+        this.overworld.refreshIntroScreen?.();
       }
 
       this.elWinnerModal?.classList.remove('hidden');
@@ -1848,7 +1866,8 @@
       if (card.shield) {
         extraClasses += ' has-shield';
       }
-      el.className = `gwent-card rarity-${card.border || card.rarity} ${onBoard ? 'board-card' : ''}${extraClasses}`;
+      const factionClass = card.role === 'Wolf Pack' ? ' faction-wolf-pack' : '';
+      el.className = `gwent-card rarity-${card.border || card.rarity}${factionClass} ${onBoard ? 'board-card' : ''}${extraClasses}`;
       el.dataset.uid = card.uid;
 
       const powerClass = card.power > card.basePower ? 'boosted' : (card.power < card.basePower ? 'damaged' : '');
@@ -1924,8 +1943,11 @@
       const tierClass = stars >= 4
         ? 'tier-diamond'
         : (stars === 3 ? 'tier-gold' : (stars === 2 ? 'tier-silver' : 'tier-bronze'));
-      dialog.classList.remove('tier-bronze', 'tier-silver', 'tier-gold', 'tier-diamond', 'has-traditional-img');
+      dialog.classList.remove('tier-bronze', 'tier-silver', 'tier-gold', 'tier-diamond', 'has-traditional-img', 'faction-wolf-pack');
       dialog.classList.add('traditional-card', tierClass);
+      if (card.role === 'Wolf Pack') {
+        dialog.classList.add('faction-wolf-pack');
+      }
 
       const pwrVal = card.power ?? card.basePower;
       const armorVal = card.armor || 0;
