@@ -491,7 +491,7 @@
         while (result.length < targetSize && allIds.length > 0 && guard < 500) {
           guard++;
           const pick = allIds[Math.floor(Math.random() * allIds.length)];
-          const limit = GWENT_CARDS[pick]?.maxDeckCopies ?? 3;
+          const limit = CardReg.getMaxDeckCopies ? CardReg.getMaxDeckCopies(pick) : ((Number(GWENT_CARDS[pick]?.stars) || 1) >= 4 ? 1 : (GWENT_CARDS[pick]?.maxDeckCopies ?? 3));
           if ((counts[pick] || 0) < limit) {
             result.push(pick);
             counts[pick] = (counts[pick] || 0) + 1;
@@ -501,7 +501,16 @@
       };
 
       if (Array.isArray(customDeckIds) && customDeckIds.length > 0) {
-        let pool = customDeckIds.filter(id => GWENT_CARDS[id]);
+        const customCounts = {};
+        let pool = [];
+        customDeckIds.forEach(id => {
+          if (!GWENT_CARDS[id]) return;
+          const limit = CardReg.getMaxDeckCopies ? CardReg.getMaxDeckCopies(id) : ((Number(GWENT_CARDS[id]?.stars) || 1) >= 4 ? 1 : (GWENT_CARDS[id]?.maxDeckCopies ?? 3));
+          if ((customCounts[id] || 0) < limit) {
+            pool.push(id);
+            customCounts[id] = (customCounts[id] || 0) + 1;
+          }
+        });
         if (pool.length < targetSize) {
           pool = fillRandomToTarget(pool);
         }

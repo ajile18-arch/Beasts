@@ -1022,6 +1022,12 @@
     getDeckRecipe(deckId = 'standard') {
       return [...(DECK_RECIPES[deckId] || DECK_RECIPES.standard)];
     },
+    getMaxDeckCopies(cardOrId) {
+      const def = typeof cardOrId === 'string' ? CARDS[cardOrId] : cardOrId;
+      if (!def) return 3;
+      const starLimit = (Number(def.stars) || 1) >= 4 ? 1 : 3;
+      return typeof def.maxDeckCopies === 'number' ? Math.min(def.maxDeckCopies, starLimit) : starLimit;
+    },
     executeEffects,
     estimateCardValue
   };

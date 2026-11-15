@@ -4520,7 +4520,9 @@
       }
 
       const inDeckCount = (this.playingDeck || []).filter(id => id === cardId).length;
-      const maxPerDeck = cardDef?.maxDeckCopies ?? (cardId === 'manson_wolf_father' ? 1 : 3);
+      const maxPerDeck = window.MythosGwentCards?.getMaxDeckCopies
+        ? window.MythosGwentCards.getMaxDeckCopies(cardDef)
+        : ((Number(cardDef?.stars) || 1) >= 4 ? 1 : (cardDef?.maxDeckCopies ?? 3));
       if (inDeckCount >= maxPerDeck) {
         if (window.sounds?.playClick) window.sounds.playClick();
         return { ok: false, message: `⚠️ Limit reached: ${cardDef.name} is limited to ${maxPerDeck} copy/copies per deck.` };
@@ -4671,7 +4673,9 @@
           const c = reg[cid];
           if (!c) return;
           const inDeck = (this.playingDeck || []).filter(id => id === cid).length;
-          const maxPerDeck = c?.maxDeckCopies ?? (cid === 'manson_wolf_father' ? 1 : 3);
+          const maxPerDeck = window.MythosGwentCards?.getMaxDeckCopies
+            ? window.MythosGwentCards.getMaxDeckCopies(c)
+            : ((Number(c?.stars) || 1) >= 4 ? 1 : (c?.maxDeckCopies ?? 3));
           const row = document.createElement('div');
           row.className = 'playing-deck-row';
           row.innerHTML = `
@@ -4938,7 +4942,9 @@
           .filter(c => starsList.includes(Math.round(Number(c.stars) || 1)))
           .forEach(card => {
             const def = reg[card.beastId];
-            const maxCopies = def?.maxDeckCopies ?? 3;
+            const maxCopies = window.MythosGwentCards?.getMaxDeckCopies
+              ? window.MythosGwentCards.getMaxDeckCopies(def)
+              : ((Number(def?.stars) || 1) >= 4 ? 1 : (def?.maxDeckCopies ?? 3));
             for (let k = 0; k < maxCopies; k++) {
               out.push({ ...card });
             }
