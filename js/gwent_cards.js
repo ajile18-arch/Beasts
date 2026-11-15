@@ -590,6 +590,73 @@
         const hasEnemies = game.getAllBoardCards(oppTeam).length > 0;
         return 2 + 0.5 + (hasEnemies ? 2 : 0);
       }
+    },
+
+    krythos_the_basilisk: {
+      id: 'krythos_the_basilisk',
+      name: 'Krythos the Basilisk',
+      role: 'Lizard',
+      element: 'poison',
+      stars: 5,
+      rarity: 'gold',
+      border: 'decorative-gold',
+      maxDeckCopies: 1,
+      row: 'melee',
+      basePower: 4,
+      armor: 4,
+      cardImg: 'Cards/Krythos_the_Basilisk_Card.jpg',
+      traditionalCardImg: 'Cards/Krythos_the_Basilisk_Traditional.jpg',
+      abilityTitle: 'Corrosive Gaze',
+      abilityDesc: 'When played, strips all Armor from every enemy unit in a chosen enemy row.',
+      passiveTitle: 'Deck Limit: 1',
+      passiveDesc: 'Limited to 1 copy per playing deck.',
+      effects: [],
+      onPlay(ctx) {
+        const { game, team, oppTeam, card, logType } = ctx;
+        const oppRows = game.state?.players?.[oppTeam]?.rows;
+        if (!oppRows) return;
+        const rowArmor = (rk) => (oppRows[rk] || []).reduce((sum, c) => sum + (c.armor || 0), 0);
+        const totalArmor = rowArmor('melee') + rowArmor('ranged');
+        if (totalArmor === 0) {
+          game.log(`🦎 ${card.name}'s Corrosive Gaze found no enemy Armor to strip.`, logType);
+          return;
+        }
+        const stripRow = (rk) => {
+          const list = oppRows[rk] || [];
+          let stripped = 0;
+          list.forEach(c => {
+            if (c.armor > 0) {
+              stripped += c.armor;
+              c.armor = 0;
+            }
+          });
+          if (stripped > 0) {
+            window.soundFX?.playShieldBreak?.();
+            game.log(`🦎 ${card.name}'s Corrosive Gaze stripped ${stripped} Armor from the enemy ${rk === 'melee' ? 'Melee' : 'Ranged'} row!`, logType);
+          }
+        };
+        if (game.gameMode === 'ai' && team === 2) {
+          stripRow(rowArmor('melee') >= rowArmor('ranged') ? 'melee' : 'ranged');
+        } else {
+          game.promptEnemyRowChoice({
+            team,
+            oppTeam,
+            logType,
+            sourceName: card.name,
+            title: '🦎 Corrosive Gaze — Strip Enemy Row Armor',
+            subtitle: `Choose an enemy row for <strong>${card.name}</strong> to strip all Armor from:`,
+            onSelect: (rk) => stripRow(rk)
+          });
+        }
+      },
+      estimateAiValue(rowKey, ctx) {
+        const { game, oppTeam } = ctx;
+        const oppRows = game.state?.players?.[oppTeam]?.rows;
+        if (!oppRows) return 6;
+        const mArmor = (oppRows.melee || []).reduce((s, c) => s + (c.armor || 0), 0);
+        const rArmor = (oppRows.ranged || []).reduce((s, c) => s + (c.armor || 0), 0);
+        return 4 + 2 + Math.max(mArmor, rArmor);
+      }
     }
   };
 
@@ -615,7 +682,8 @@
       'merfolk', 'merfolk', 'merfolk',
       'sea_dragon',
       'pyromanda',
-      'frost_skink', 'frost_skink'
+      'frost_skink', 'frost_skink',
+      'krythos_the_basilisk'
     ]
   };
 

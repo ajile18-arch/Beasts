@@ -1324,6 +1324,74 @@
       document.body.appendChild(overlay);
     }
 
+    promptEnemyRowChoice({ team, oppTeam, logType, sourceName, title, subtitle, onSelect }) {
+      const oppRows = this.state?.players?.[oppTeam]?.rows;
+      if (!this.state || !oppRows) return;
+
+      this.state.pendingOptionalPlay = true;
+      document.getElementById('gwent-optional-play-modal')?.remove();
+
+      const overlay = document.createElement('div');
+      overlay.id = 'gwent-optional-play-modal';
+      overlay.style.cssText = 'position:fixed; inset:0; z-index:9999; background:rgba(8,10,16,0.78); display:flex; align-items:center; justify-content:center; padding:16px;';
+
+      const rowSummary = (rk, label) => {
+        const list = oppRows[rk] || [];
+        const armorSum = list.reduce((s, c) => s + (c.armor || 0), 0);
+        return `
+          <button type="button" class="ui-btn" data-target-row="${rk}" style="flex:1; min-width:170px; padding:12px 14px; background:rgba(20,36,24,0.95); border:1.5px solid #4ade80; border-radius:10px; color:#dcfce7; display:flex; flex-direction:column; align-items:center; gap:4px;">
+            <span style="font-size:14px; font-weight:800;">${label}</span>
+            <span style="font-size:12px; color:#bbf7d0;">${list.length} unit(s) • 🛡️ ${armorSum} total Armor</span>
+          </button>
+        `;
+      };
+
+      overlay.innerHTML = `
+        <div style="max-width:460px; width:100%; background:#0f1f14; border:2px solid #4ade80; border-radius:14px; padding:18px; box-shadow:0 18px 48px rgba(0,0,0,0.7); color:#dcfce7;">
+          <div style="font-size:16px; font-weight:800; color:#86efac; margin-bottom:6px;">${title}</div>
+          <div style="font-size:13px; color:#bbf7d0; margin-bottom:14px;">${subtitle}</div>
+          <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px;">
+            ${rowSummary('melee', '⚔️ Enemy Melee Row')}
+            ${rowSummary('ranged', '🏹 Enemy Ranged Row')}
+          </div>
+          <div style="display:flex; justify-content:flex-end;">
+            <button type="button" id="btn-enemy-row-skip" class="ui-btn" style="padding:7px 14px; background:rgba(71,85,105,0.45); border:1px solid #94a3b8; border-radius:8px; color:#e2e8f0; font-size:12px; font-weight:700;">Skip</button>
+          </div>
+        </div>
+      `;
+
+      const cleanup = () => {
+        if (this.state) this.state.pendingOptionalPlay = false;
+        overlay.remove();
+      };
+
+      overlay.querySelectorAll('[data-target-row]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const rk = btn.getAttribute('data-target-row');
+          cleanup();
+          if (rk && typeof onSelect === 'function') {
+            onSelect(rk);
+          }
+          this.render();
+          if (!this.state.pendingOptionalPlay && !this.hasReadyAttackers(team)) {
+            this.advanceTurn();
+          }
+        });
+      });
+
+      overlay.querySelector('#btn-enemy-row-skip')?.addEventListener('click', () => {
+        cleanup();
+        window.soundFX?.playClick?.();
+        this.log(`🦎 ${sourceName} held Corrosive Gaze in reserve.`, logType);
+        this.render();
+        if (!this.state.pendingOptionalPlay && !this.hasReadyAttackers(team)) {
+          this.advanceTurn();
+        }
+      });
+
+      document.body.appendChild(overlay);
+    }
+
     damageUnit(targetCard, amount, ownerTeam, rowKey) {
       const battlefield = document.getElementById('gwent-battlefield');
       const tgtEl = battlefield?.querySelector(`.gwent-card[data-uid="${targetCard.uid}"]`);
