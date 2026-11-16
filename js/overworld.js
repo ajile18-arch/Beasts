@@ -9781,6 +9781,22 @@
         mobBinderBtn.addEventListener('click', () => this.toggleBinderModal());
       }
 
+      // Mobile Top Header Icon buttons
+      const hdrMobInvBtn = document.getElementById('btn-hdr-mob-inventory');
+      if (hdrMobInvBtn) {
+        hdrMobInvBtn.addEventListener('click', () => this.toggleInventoryModal());
+      }
+
+      const hdrMobBinderBtn = document.getElementById('btn-hdr-mob-binder');
+      if (hdrMobBinderBtn) {
+        hdrMobBinderBtn.addEventListener('click', () => this.toggleBinderModal());
+      }
+
+      const hdrMobDeckBtn = document.getElementById('btn-hdr-mob-deck');
+      if (hdrMobDeckBtn) {
+        hdrMobDeckBtn.addEventListener('click', () => this.togglePlayingDeckModal(true));
+      }
+
       const mobCreatorBtn = document.getElementById('btn-mob-creator');
       if (mobCreatorBtn) {
         mobCreatorBtn.addEventListener('click', () => this.openCharacterCreator(false));
@@ -9993,7 +10009,12 @@
       if (calDayNum) calDayNum.textContent = String(this.dayNumber || 1);
       const headerMobileDay = document.getElementById('header-mobile-day');
       if (headerMobileDay) {
-        headerMobileDay.textContent = `📅 ${this.getCurrentDayName()} • Day ${this.dayNumber || 1}`;
+        const shortDay = (this.getCurrentDayName() || 'Mon').slice(0, 3);
+        headerMobileDay.textContent = `📅 ${shortDay} D${this.dayNumber || 1}`;
+      }
+      const headerMobileMoney = document.getElementById('header-mobile-money');
+      if (headerMobileMoney) {
+        headerMobileMoney.textContent = this.formatMoney(this.gold || 0);
       }
       if (badgeEl) {
         badgeEl.textContent = String(this.getTotalInventoryCount());
@@ -10109,6 +10130,24 @@
       if (mobBinderBtn) {
         mobBinderBtn.classList.toggle('locked', !this.hasOldCardBinder);
         mobBinderBtn.title = this.hasOldCardBinder ? 'Open Old Card Binder' : 'Old Card Binder (Locked)';
+      }
+
+      const hdrMobInvBadge = document.getElementById('hdr-mob-inv-badge');
+      const hdrMobBinderBadge = document.getElementById('hdr-mob-binder-badge');
+      const hdrMobBinderBtn = document.getElementById('btn-hdr-mob-binder');
+      const hdrMobDeckBadge = document.getElementById('hdr-mob-deck-badge');
+      if (hdrMobInvBadge) {
+        hdrMobInvBadge.textContent = String(this.getTotalInventoryCount());
+      }
+      if (hdrMobBinderBadge) {
+        hdrMobBinderBadge.textContent = this.hasOldCardBinder ? String(this.getSlottedBinderCount()) : '🔒';
+      }
+      if (hdrMobBinderBtn) {
+        hdrMobBinderBtn.classList.toggle('locked', !this.hasOldCardBinder);
+        hdrMobBinderBtn.title = this.hasOldCardBinder ? 'Open Old Card Binder' : 'Old Card Binder (Locked)';
+      }
+      if (hdrMobDeckBadge) {
+        hdrMobDeckBadge.textContent = String((this.playingDeck || []).length);
       }
 
       // Sync Phone Alerts & Unread Dot
