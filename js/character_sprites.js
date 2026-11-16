@@ -111,8 +111,16 @@
     pendingRedrawTimer = setTimeout(() => {
       pendingRedrawTimer = null;
       composedCache.clear();
-      if (window.mythosOverworld && typeof window.mythosOverworld.renderCreatorPreview === 'function') {
-        window.mythosOverworld.renderCreatorPreview();
+      if (window.mythosOverworld) {
+        if (typeof window.mythosOverworld.renderCreatorPreview === 'function') {
+          window.mythosOverworld.renderCreatorPreview();
+        }
+        if (typeof window.mythosOverworld.refreshIntroScreen === 'function') {
+          const introModal = document.getElementById('intro-modal');
+          if (introModal && !introModal.classList.contains('hidden')) {
+            window.mythosOverworld.refreshIntroScreen();
+          }
+        }
       }
     }, 30);
   }

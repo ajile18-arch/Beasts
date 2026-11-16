@@ -281,6 +281,32 @@ select {
     letter-spacing: 0.6px !important;
   }
 
+  .gwent-board-rounds {
+    gap: 5px !important;
+  }
+
+  .gwent-board-round-side {
+    padding: 2px 7px !important;
+    gap: 5px !important;
+  }
+
+  .board-round-name {
+    display: none !important;
+  }
+
+  .board-round-crest {
+    font-size: 10px !important;
+  }
+
+  .board-round-pip {
+    width: 8px !important;
+    height: 8px !important;
+  }
+
+  .board-round-count {
+    font-size: 10px !important;
+  }
+
   .gwent-card.board-card {
     width: clamp(56px, 15vw, 72px) !important;
     height: clamp(78px, 11.5dvh, 102px) !important;

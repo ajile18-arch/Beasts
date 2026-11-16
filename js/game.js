@@ -349,7 +349,7 @@
   // ---------------------------------------------------------------------------
   class BeastsGame {
     constructor() {
-      this.VERSION = '2.57';
+      this.VERSION = '2.62';
       this.gameMode = 'ai'; // 'ai' | '2p'
       this.currentView = 'overworld';
       this.currentChallenger = null;
@@ -388,6 +388,8 @@
       if (returnOverworldBtn) returnOverworldBtn.innerHTML = '🌲 Return to Overworld';
 
       document.querySelector('.game-header')?.classList.add('hidden');
+      document.getElementById('header-menu-dropdown')?.classList.add('hidden');
+      document.getElementById('btn-header-menu')?.setAttribute('aria-expanded', 'false');
       document.getElementById('overworld-view')?.classList.add('hidden');
       document.getElementById('overworld-toolbar')?.classList.add('hidden');
       document.getElementById('arena-view')?.classList.remove('hidden');
@@ -574,6 +576,7 @@
 
     startNewGwentMatch(p1Guaranteed = [], p2Guaranteed = []) {
       if (this.aiTimeout) clearTimeout(this.aiTimeout);
+      this.overworld?.applyEquippedBoardTheme?.();
       this.isMatchOver = false;
       this.elWinnerModal?.classList.add('hidden');
       document.getElementById('gwent-round-overlay')?.classList.add('hidden');
@@ -610,6 +613,7 @@
           1: {
             name: playerName,
             gems: 2,
+            roundWins: 0,
             passed: false,
             turnsThisRound: 0,
             deck: p1Deck,
@@ -621,6 +625,7 @@
           2: {
             name: oppName,
             gems: 2,
+            roundWins: 0,
             passed: false,
             turnsThisRound: 0,
             deck: p2Deck,
@@ -837,12 +842,6 @@
         this.state.selectedHandUid = null;
         this.showAbilityPopup(card);
         this.render();
-        return;
-      }
-
-      // Double-click same non-agile card to auto-deploy to its row
-      if (this.state.selectedHandUid === uid && card.row !== 'agile') {
-        this.playCardToRow(activeTeam, uid, card.row);
         return;
       }
 
@@ -1069,24 +1068,23 @@
       }
     }
 
-    playAttackLineAnimation(attackerUid, targetUid, dmg, element = 'fire') {
+    getBattlefieldCardMetrics(uid) {
       const battlefield = document.getElementById('gwent-battlefield');
-      if (!battlefield) return;
-
-      const atkEl = battlefield.querySelector(`.gwent-card[data-uid="${attackerUid}"]`);
-      const tgtEl = battlefield.querySelector(`.gwent-card[data-uid="${targetUid}"]`);
-      if (!atkEl || !tgtEl) return;
-
+      const cardEl = battlefield?.querySelector(`.gwent-card[data-uid="${uid}"]`);
+      if (!battlefield || !cardEl) return null;
       const bfRect = battlefield.getBoundingClientRect();
-      const aRect = atkEl.getBoundingClientRect();
-      const tRect = tgtEl.getBoundingClientRect();
+      const rect = cardEl.getBoundingClientRect();
+      return {
+        battlefield,
+        x: (rect.left + rect.width / 2) - bfRect.left,
+        y: (rect.top + rect.height / 2) - bfRect.top,
+        width: rect.width,
+        height: rect.height
+      };
+    }
 
-      const x1 = (aRect.left + aRect.width / 2) - bfRect.left;
-      const y1 = (aRect.top + aRect.height / 2) - bfRect.top;
-      const x2 = (tRect.left + tRect.width / 2) - bfRect.left;
-      const y2 = (tRect.top + tRect.height / 2) - bfRect.top;
+    spawnAttackBeam(battlefield, x1, y1, x2, y2, element = 'fire', durationMs = 680) {
       const len = Math.max(10, Math.hypot(x2 - x1, y2 - y1));
-
       const colors = {
         fire: '#fb923c',
         earth: '#fbbf24',
@@ -1115,18 +1113,83 @@
 
       svg.appendChild(line);
       battlefield.appendChild(svg);
+      setTimeout(() => svg.remove(), durationMs);
+    }
+
+    playAttackLineAnimation(attackerUid, targetUid, dmg, element = 'fire') {
+      const src = this.getBattlefieldCardMetrics(attackerUid);
+      const tgt = this.getBattlefieldCardMetrics(targetUid);
+      if (!src || !tgt) return;
+
+      this.spawnAttackBeam(src.battlefield, src.x, src.y, tgt.x, tgt.y, element, 680);
 
       const dmgPop = document.createElement('div');
       dmgPop.className = 'gwent-dmg-pop';
       dmgPop.textContent = `-${dmg}`;
-      dmgPop.style.left = `${x2}px`;
-      dmgPop.style.top = `${y2}px`;
-      battlefield.appendChild(dmgPop);
+      dmgPop.style.left = `${tgt.x}px`;
+      dmgPop.style.top = `${tgt.y}px`;
+      src.battlefield.appendChild(dmgPop);
 
       setTimeout(() => {
-        svg.remove();
         dmgPop.remove();
       }, 680);
+    }
+
+    playAbilitySourceFlare(sourceMetrics, label = '🔥 Ember Volley', durationMs = 820) {
+      if (!sourceMetrics?.battlefield) return;
+      const { battlefield, x, y, width, height } = sourceMetrics;
+
+      const halo = document.createElement('div');
+      halo.className = 'gwent-ability-source-halo';
+      halo.style.left = `${x}px`;
+      halo.style.top = `${y}px`;
+      halo.style.width = `${width + 8}px`;
+      halo.style.height = `${height + 8}px`;
+      battlefield.appendChild(halo);
+
+      const tag = document.createElement('div');
+      tag.className = 'gwent-ability-source-tag';
+      tag.textContent = label;
+      tag.style.left = `${x}px`;
+      tag.style.top = `${Math.max(8, y - height / 2 - 6)}px`;
+      battlefield.appendChild(tag);
+
+      setTimeout(() => {
+        halo.remove();
+        tag.remove();
+      }, durationMs);
+    }
+
+    playEmberProjectileAnimation(sourceMetrics, targetMetrics, element = 'fire', delayMs = 0) {
+      if (!sourceMetrics?.battlefield || !targetMetrics) return;
+      const { battlefield, x: x1, y: y1 } = sourceMetrics;
+      const { x: x2, y: y2 } = targetMetrics;
+
+      setTimeout(() => {
+        if (!battlefield.isConnected) return;
+        this.spawnAttackBeam(battlefield, x1, y1, x2, y2, element, 560);
+
+        const orb = document.createElement('div');
+        orb.className = 'gwent-ember-orb';
+        orb.style.left = `${x1}px`;
+        orb.style.top = `${y1}px`;
+        orb.style.setProperty('--dx', `${x2 - x1}px`);
+        orb.style.setProperty('--dy', `${y2 - y1}px`);
+        battlefield.appendChild(orb);
+
+        window.soundFX?.playFire?.();
+
+        setTimeout(() => {
+          orb.remove();
+          if (!battlefield.isConnected) return;
+          const impact = document.createElement('div');
+          impact.className = 'gwent-ember-impact';
+          impact.style.left = `${x2}px`;
+          impact.style.top = `${y2}px`;
+          battlefield.appendChild(impact);
+          setTimeout(() => impact.remove(), 360);
+        }, 240);
+      }, delayMs);
     }
 
     playCardToRow(team, uid, targetRow, insertIndex = null) {
@@ -1629,6 +1692,9 @@
           if (!spec || card.power <= 0) return;
           const count = spec.count || 3;
           const dmg = spec.damage || 1;
+          const sourceMetrics = this.getBattlefieldCardMetrics(card.uid);
+          let cardTriggered = false;
+
           for (let i = 0; i < count; i++) {
             const oppRows = this.state?.players?.[oppTeam]?.rows;
             if (!oppRows) break;
@@ -1642,8 +1708,16 @@
             });
             if (candidates.length === 0) break;
             const pick = candidates[Math.floor(Math.random() * candidates.length)];
+            const targetMetrics = this.getBattlefieldCardMetrics(pick.card.uid);
+            if (sourceMetrics && targetMetrics) {
+              if (!cardTriggered) {
+                this.playAbilitySourceFlare(sourceMetrics, `🔥 ${card.abilityTitle || 'Ember Volley'}`);
+              }
+              this.playEmberProjectileAnimation(sourceMetrics, targetMetrics, card.element || 'fire', i * 150);
+            }
             this.log(`🔥 ${card.name}'s ${card.abilityTitle || 'Ember Volley'} strikes ${pick.card.name} for ${dmg} damage!`, logType);
             this.damageUnit(pick.card, dmg, oppTeam, pick.rowKey);
+            cardTriggered = true;
             triggered = true;
           }
         });
@@ -1663,11 +1737,13 @@
       let bannerTitle = '';
       if (s1 > s2) {
         p2.gems = Math.max(0, p2.gems - 1);
+        p1.roundWins = (p1.roundWins || 0) + 1;
         bannerTitle = `☀️ ${p1.name.toUpperCase()} WINS ROUND ${this.state.round}!`;
         window.soundFX?.playHeal?.();
         this.log(`🏆 ${p1.name} won Round ${this.state.round} (${s1} vs ${s2})! ${p2.name} loses a Life Gem.`, 'system');
       } else if (s2 > s1) {
         p1.gems = Math.max(0, p1.gems - 1);
+        p2.roundWins = (p2.roundWins || 0) + 1;
         bannerTitle = `🌙 ${p2.name.toUpperCase()} WINS ROUND ${this.state.round}`;
         window.soundFX?.playDefeat?.();
         this.log(`💀 ${p2.name} won Round ${this.state.round} (${s2} vs ${s1}). ${p1.name} loses a Life Gem.`, 'system');
@@ -1926,11 +2002,20 @@
         msgEl.innerHTML = `You defeated <b>Maya</b> in Mythos!<br><div style="margin-top: 12px; color: #86efac;">🌿 Maya: "Breathtaking card synergy!"</div>`;
         this.overworld?.handleMayaBattleResult?.(true);
       } else if (isPlayerVictory && this.currentChallenger?.id === 'silas' && msgEl) {
-        msgEl.innerHTML = `You defeated <b>Silas</b> in Mythos!<br><div style="margin-top: 12px; color: #fde68a;">⚙️ Earned +$2.00 & Dwarf Warden Foil Card!</div>`;
+        msgEl.innerHTML = `You defeated <b>Silas</b> in Mythos!<br><div style="margin-top: 12px; color: #fde68a;">🪵 Silas: "Fine craftsmanship in your maneuvering!"</div>`;
         this.overworld?.handleSilasBattleResult?.(true);
       } else if (isPlayerVictory && this.currentChallenger?.id === 'nova' && msgEl) {
         msgEl.innerHTML = `You defeated <b>Nova</b> in Mythos!<br><div style="margin-top: 12px; color: #e9d5ff;">✨ Earned +$2.00 & Pegasus Foil Card!</div>`;
         this.overworld?.handleNovaBattleResult?.(true);
+      } else if (this.currentChallenger?.id === 'berto' && msgEl) {
+        document.getElementById('btn-rematch')?.classList.add('hidden');
+        if (isPlayerVictory) {
+          msgEl.innerHTML = `You defeated <b>Berto</b> in Mythos!<br><div style="margin-top: 12px; color: #fde68a;">🃏 Berto: "Alright, alright—you backed it up! Return to the Bistro to claim 1 of 3 cards before I blow this joint!"</div>`;
+          this.overworld?.handleBertoBattleResult?.(true);
+        } else {
+          msgEl.innerHTML = `<b>Berto</b> won the Mythos match.<br><div style="margin-top: 12px; color: #fca5a5;">😏 Berto: "Told you! Still undefeated on Tuesdays—don't bother asking for a rematch today!"</div>`;
+          this.overworld?.handleBertoBattleResult?.(false);
+        }
       } else if (this.currentChallenger?.tournamentContext?.type === 'park_monday_rr' && msgEl) {
         document.getElementById('btn-rematch')?.classList.add('hidden');
         const returnOverworldBtn = document.getElementById('btn-return-overworld');
@@ -2025,6 +2110,7 @@
 
       this.renderGems('gwent-p1-gems', p1.gems);
       this.renderGems('gwent-p2-gems', p2.gems);
+      this.renderBoardRounds(p1, p2);
 
       document.getElementById('gwent-round-pill').textContent = `ROUND ${this.state.round} • BEST OF 3`;
       document.getElementById('gwent-center-badge').textContent = `MYTHOS • ROUND ${this.state.round}`;
@@ -2189,6 +2275,62 @@
         span.className = `gem ${i < count ? 'intact' : 'broken'}`;
         span.textContent = '💎';
         el.appendChild(span);
+      }
+    }
+
+    renderBoardRounds(p1, p2) {
+      const p1Wins = typeof p1?.roundWins === 'number' ? p1.roundWins : Math.max(0, 2 - (p2?.gems ?? 2));
+      const p2Wins = typeof p2?.roundWins === 'number' ? p2.roundWins : Math.max(0, 2 - (p1?.gems ?? 2));
+      const showTurnHighlight = Boolean(this.state) && !this.state.mulliganActive && !this.isMatchOver;
+      const isP1Turn = showTurnHighlight && this.state.turnTeam === 1;
+      const isP2Turn = showTurnHighlight && this.state.turnTeam === 2;
+
+      const p1NameEl = document.getElementById('board-p1-name');
+      const p2NameEl = document.getElementById('board-p2-name');
+      const p1Display = p1?.name === 'You' ? 'YOU' : (p1?.name || 'YOU');
+      const p2Display = p2?.name || 'OPP';
+      if (p1NameEl) {
+        p1NameEl.textContent = p1Display;
+        p1NameEl.classList.toggle('active-turn', isP1Turn);
+      }
+      if (p2NameEl) {
+        p2NameEl.textContent = p2Display;
+        p2NameEl.classList.toggle('active-turn', isP2Turn);
+      }
+
+      const p1WinsEl = document.getElementById('board-p1-wins');
+      const p2WinsEl = document.getElementById('board-p2-wins');
+      if (p1WinsEl) p1WinsEl.textContent = String(p1Wins);
+      if (p2WinsEl) p2WinsEl.textContent = String(p2Wins);
+
+      const p1Side = document.getElementById('board-rounds-p1');
+      const p2Side = document.getElementById('board-rounds-p2');
+      if (p1Side) {
+        p1Side.classList.toggle('has-win', p1Wins > 0);
+        p1Side.classList.toggle('active-turn', isP1Turn);
+        p1Side.classList.toggle('waiting-turn', showTurnHighlight && !isP1Turn);
+        p1Side.classList.toggle('is-passed', Boolean(p1?.passed));
+        p1Side.title = `${p1?.name || 'You'}${isP1Turn ? ' — Current Turn' : (p1?.passed ? ' — Passed' : '')}: ${p1Wins}/2 rounds won`;
+      }
+      if (p2Side) {
+        p2Side.classList.toggle('has-win', p2Wins > 0);
+        p2Side.classList.toggle('active-turn', isP2Turn);
+        p2Side.classList.toggle('waiting-turn', showTurnHighlight && !isP2Turn);
+        p2Side.classList.toggle('is-passed', Boolean(p2?.passed));
+        p2Side.title = `${p2?.name || 'Opponent'}${isP2Turn ? ' — Current Turn' : (p2?.passed ? ' — Passed' : '')}: ${p2Wins}/2 rounds won`;
+      }
+
+      const p1Pips = document.getElementById('board-p1-pips');
+      if (p1Pips) {
+        const pips = p1Pips.querySelectorAll('.board-round-pip');
+        pips.forEach((pip, idx) => pip.classList.toggle('won', idx < p1Wins));
+      }
+
+      const p2Pips = document.getElementById('board-p2-pips');
+      if (p2Pips) {
+        const pips = p2Pips.querySelectorAll('.board-round-pip');
+        // Light up from the inner pip outward toward the moon crest
+        pips.forEach((pip, idx) => pip.classList.toggle('won', idx >= (pips.length - p2Wins)));
       }
     }
 

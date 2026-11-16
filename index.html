@@ -6,8 +6,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>Mythos - Open World & Tabletop Card Game</title>
-  <link rel="stylesheet" href="css/style.css?v=2.57">
-  <link rel="stylesheet" href="css/mobile.css?v=2.57" media="(max-width: 820px), (hover: none) and (pointer: coarse)">
+  <link rel="stylesheet" href="css/style.css?v=2.62">
+  <link rel="stylesheet" href="css/mobile.css?v=2.62" media="(max-width: 820px), (hover: none) and (pointer: coarse)">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=MedievalSharp&family=Metamorphous&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
@@ -18,35 +18,46 @@
     <header class="game-header">
       <div class="logo-area">
         <h1 class="game-title">MYTHOS</h1>
-        <span class="version-tag" id="game-version">v2.57</span>
+        <span class="version-tag" id="game-version">v2.62</span>
         <span class="header-day-tag" id="header-mobile-day">📅 Monday • Day 1</span>
         <span class="subtitle" id="header-subtitle"></span>
       </div>
 
-      <!-- Overworld Style & Lighting Quick-Tweak Bar (Visible in Overworld) -->
-      <div class="overworld-toolbar" id="overworld-toolbar">
-        <span class="ow-location-pill" id="ow-location-pill">🏠 Living Room (Day 2 of Summer)</span>
-        <button id="btn-open-calendar" class="ui-btn primary-btn calendar-toolbar-btn" style="padding: 4px 10px; font-size: 12px; background: linear-gradient(135deg, #059669, #10b981); border-color: #34d399;" title="Town Weekly Calendar & Daily Events (Key: C)">📅 <span id="calendar-btn-day-label">Monday</span> • Day <span id="calendar-btn-day-num">1</span></button>
-        <button id="btn-open-phone" class="ui-btn primary-btn phone-toolbar-btn" style="padding: 4px 10px; font-size: 12px; background: linear-gradient(135deg, #4f46e5, #6366f1); border-color: #818cf8;" title="Mythos Mobile Smartphone (Key: P)">📱 Phone <span id="phone-alert-badge" class="phone-badge-pill hidden">!</span></button>
-        <button id="btn-open-inventory" class="ui-btn primary-btn backpack-toolbar-btn" title="Open Adventurer Backpack & Inventory (Key: I)"><img src="Sprites/Overworld/backpack_icon.png" class="hud-backpack-img" alt=""> Backpack <span id="inv-badge-count" class="inv-badge-pill">0</span></button>
-        <button id="btn-open-binder" class="ui-btn primary-btn binder-toolbar-btn locked" style="padding: 4px 10px; font-size: 12px; background: linear-gradient(135deg, #1e3a8a, #2563eb); border-color: #60a5fa;" title="Old Card Binder (Locked — Defeat Friend to Unlock)">📖 Old Card Binder <span id="binder-badge-count" class="inv-badge-pill">0</span></button>
-        <button id="btn-open-playing-deck" class="ui-btn primary-btn deck-toolbar-btn" style="padding: 4px 10px; font-size: 12px; background: linear-gradient(135deg, #78350f, #b45309); border-color: #fbbf24;" title="Build the Playing Deck you take into Mythos battles">🃏 Playing Deck <span id="deck-badge-count" class="inv-badge-pill">0</span></button>
-        <button id="btn-open-creator" class="ui-btn secondary" style="padding: 4px 10px; font-size: 12px;" title="Customize Character or World Save">👤 Character</button>
-        <select id="ow-time-select" class="ow-select" title="Time of Day Shader">
-          <option value="day" selected>☀️ Summer Day</option>
-          <option value="sunset">🌅 Golden Hour</option>
-          <option value="night">🌙 Cozy Night</option>
-        </select>
-      </div>
+      <span class="ow-location-pill" id="ow-location-pill">🏠 Living Room (Day 2 of Summer)</span>
 
-      <div class="header-controls">
-        <button id="btn-switch-view" class="ui-btn primary-btn" title="Switch between Open World and Mythos Tabletop Arena">🃏 Quick Duel</button>
-        <div class="round-counter arena-only-ctrl hidden" id="arena-round-counter">Rnd <span id="round-num">1</span></div>
-        <button id="btn-toggle-card" class="ui-btn mobile-only-btn arena-only-ctrl hidden" title="View Active Beast">🃏 <span class="btn-lbl">Card</span></button>
-        <button id="btn-toggle-log" class="ui-btn mobile-only-btn arena-only-ctrl hidden" title="View Tactical Log & Roster">📜 <span class="btn-lbl">Log</span></button>
-        <button id="btn-mode" class="ui-btn secondary arena-only-ctrl hidden" title="Switch between Solo AI and 2P Hotseat"><span id="mode-label">Solo vs AI</span></button>
-        <button id="btn-sound" class="ui-btn icon-btn" title="Toggle Sound">🔊</button>
-        <button id="btn-reset" class="ui-btn secondary arena-only-ctrl hidden" title="Restart Match">↺</button>
+      <!-- Unified Header Menu Button & Dropdown -->
+      <div class="header-menu-wrapper" id="header-menu-wrapper">
+        <button type="button" id="btn-header-menu" class="ui-btn primary-btn header-menu-btn" aria-haspopup="true" aria-expanded="false" title="Open Game Menu">
+          ☰ Menu <span id="header-menu-alert" class="phone-badge-pill hidden">!</span>
+        </button>
+
+        <div class="header-menu-dropdown hidden" id="header-menu-dropdown" role="menu">
+          <!-- Overworld Menu Items (Visible in Overworld) -->
+          <div class="overworld-toolbar header-menu-section" id="overworld-toolbar">
+            <button id="btn-open-calendar" class="ui-btn primary-btn calendar-toolbar-btn" style="padding: 4px 10px; font-size: 12px; background: linear-gradient(135deg, #059669, #10b981); border-color: #34d399;" title="Town Weekly Calendar & Daily Events (Key: C)">📅 <span id="calendar-btn-day-label">Monday</span> • Day <span id="calendar-btn-day-num">1</span></button>
+            <button id="btn-open-phone" class="ui-btn primary-btn phone-toolbar-btn" style="padding: 4px 10px; font-size: 12px; background: linear-gradient(135deg, #4f46e5, #6366f1); border-color: #818cf8;" title="Mythos Mobile Smartphone (Key: P)">📱 Phone <span id="phone-alert-badge" class="phone-badge-pill hidden">!</span></button>
+            <button id="btn-open-inventory" class="ui-btn primary-btn backpack-toolbar-btn" title="Open Adventurer Backpack & Inventory (Key: I)"><img src="Sprites/Overworld/backpack_icon.png" class="hud-backpack-img" alt=""> Backpack <span id="inv-badge-count" class="inv-badge-pill">0</span></button>
+            <button id="btn-open-binder" class="ui-btn primary-btn binder-toolbar-btn locked" style="padding: 4px 10px; font-size: 12px; background: linear-gradient(135deg, #1e3a8a, #2563eb); border-color: #60a5fa;" title="Old Card Binder (Locked — Defeat Friend to Unlock)">📖 Old Card Binder <span id="binder-badge-count" class="inv-badge-pill">0</span></button>
+            <button id="btn-open-playing-deck" class="ui-btn primary-btn deck-toolbar-btn" style="padding: 4px 10px; font-size: 12px; background: linear-gradient(135deg, #78350f, #b45309); border-color: #fbbf24;" title="Build the Playing Deck you take into Mythos battles">🃏 Playing Deck <span id="deck-badge-count" class="inv-badge-pill">0</span></button>
+            <button id="btn-open-creator" class="ui-btn secondary" style="padding: 4px 10px; font-size: 12px;" title="Customize Character or World Save">👤 Character</button>
+            <select id="ow-time-select" class="ow-select" title="Time of Day Shader">
+              <option value="day" selected>☀️ Summer Day</option>
+              <option value="sunset">🌅 Golden Hour</option>
+              <option value="night">🌙 Cozy Night</option>
+            </select>
+          </div>
+
+          <!-- Match & Audio Controls -->
+          <div class="header-controls header-menu-section">
+            <button id="btn-switch-view" class="ui-btn primary-btn" title="Switch between Open World and Mythos Tabletop Arena">🃏 Quick Duel</button>
+            <div class="round-counter arena-only-ctrl hidden" id="arena-round-counter">Rnd <span id="round-num">1</span></div>
+            <button id="btn-toggle-card" class="ui-btn mobile-only-btn arena-only-ctrl hidden" title="View Active Beast">🃏 <span class="btn-lbl">Card</span></button>
+            <button id="btn-toggle-log" class="ui-btn mobile-only-btn arena-only-ctrl hidden" title="View Tactical Log & Roster">📜 <span class="btn-lbl">Log</span></button>
+            <button id="btn-mode" class="ui-btn secondary arena-only-ctrl hidden" title="Switch between Solo AI and 2P Hotseat"><span id="mode-label">Solo vs AI</span></button>
+            <button id="btn-sound" class="ui-btn icon-btn" title="Toggle Sound">🔊</button>
+            <button id="btn-reset" class="ui-btn secondary arena-only-ctrl hidden" title="Restart Match">↺</button>
+          </div>
+        </div>
       </div>
     </header>
 
@@ -292,10 +303,30 @@
             </div>
           </div>
 
-          <!-- Center Divider & Round Overlay Toast -->
+          <!-- Center Divider, On-Board Round Wins Graphic & Round Badge -->
           <div class="gwent-center-divider">
             <div class="gwent-divider-line"></div>
-            <div class="gwent-center-badge" id="gwent-center-badge">MYTHOS • ROUND 1</div>
+            <div class="gwent-board-rounds" id="gwent-board-rounds" aria-label="Round Wins Scoreboard">
+              <div class="gwent-board-round-side opp" id="board-rounds-p2" title="Opponent Rounds Won">
+                <span class="board-round-crest" aria-hidden="true">🌙</span>
+                <span class="board-round-name" id="board-p2-name">OPP</span>
+                <div class="board-round-pips" id="board-p2-pips">
+                  <span class="board-round-pip" aria-hidden="true"></span>
+                  <span class="board-round-pip" aria-hidden="true"></span>
+                </div>
+                <span class="board-round-count" id="board-p2-wins">0</span>
+              </div>
+              <div class="gwent-center-badge" id="gwent-center-badge">MYTHOS • ROUND 1</div>
+              <div class="gwent-board-round-side player" id="board-rounds-p1" title="Your Rounds Won">
+                <span class="board-round-count" id="board-p1-wins">0</span>
+                <div class="board-round-pips" id="board-p1-pips">
+                  <span class="board-round-pip" aria-hidden="true"></span>
+                  <span class="board-round-pip" aria-hidden="true"></span>
+                </div>
+                <span class="board-round-name" id="board-p1-name">YOU</span>
+                <span class="board-round-crest" aria-hidden="true">☀️</span>
+              </div>
+            </div>
             <div class="gwent-divider-line"></div>
           </div>
 
@@ -618,7 +649,7 @@
         </div>
       </div>
 
-      <div class="intro-version-badge" id="intro-version-tag">v2.57</div>
+      <div class="intro-version-badge" id="intro-version-tag">v2.62</div>
     </div>
 
     <!-- Stardew Valley / Pokémon Style Character Creator Modal -->
@@ -714,7 +745,13 @@
 
     <!-- Player Inventory & Backpack Modal -->
     <div class="modal-overlay hidden" id="inventory-modal">
+      <canvas id="inventory-backdrop-canvas" class="inventory-backdrop-canvas" aria-hidden="true"></canvas>
       <div class="inventory-modal-dialog">
+        <canvas id="inventory-satchel-canvas" class="inventory-satchel-canvas" aria-hidden="true"></canvas>
+        <span class="inv-brass-corner top-left" aria-hidden="true"></span>
+        <span class="inv-brass-corner top-right" aria-hidden="true"></span>
+        <span class="inv-brass-corner bottom-left" aria-hidden="true"></span>
+        <span class="inv-brass-corner bottom-right" aria-hidden="true"></span>
         <div class="inventory-header">
           <div class="inventory-title-group">
             <span class="inventory-icon-badge"><img src="Sprites/Overworld/backpack_icon.png" class="inventory-backpack-emblem" alt="Backpack"></span>
@@ -943,19 +980,25 @@
     <!-- Binder Card Inserter Picker Modal (Choose a card from Inventory) -->
     <div class="modal-overlay hidden" id="binder-picker-modal">
       <div class="binder-picker-dialog">
-        <div class="binder-picker-header">
-          <div class="binder-picker-title">
-            <span>📥 INSERT CARD INTO OLD CARD BINDER</span>
-            <span class="binder-picker-target" id="binder-picker-target-label">Sleeve #1</span>
+        <div class="binder-brass-corner top-left"></div>
+        <div class="binder-brass-corner top-right"></div>
+        <div class="binder-brass-corner bottom-left"></div>
+        <div class="binder-brass-corner bottom-right"></div>
+        <div class="binder-picker-sheet">
+          <div class="binder-picker-header">
+            <div class="binder-picker-title">
+              <span>📥 INSERT CARD INTO OLD CARD BINDER</span>
+              <span class="binder-picker-target" id="binder-picker-target-label">Sleeve #1</span>
+            </div>
+            <button type="button" class="drawer-close-btn" id="btn-close-binder-picker">✕</button>
           </div>
-          <button type="button" class="drawer-close-btn" id="btn-close-binder-picker">✕</button>
-        </div>
-        <p class="binder-picker-sub">Select an unslotted Mythos card from your backpack to slip into this clear protective pocket:</p>
-        <div class="binder-picker-grid" id="binder-picker-cards-grid">
-          <!-- Dynamically populated with available inventory cards -->
-        </div>
-        <div class="binder-picker-footer">
-          <button type="button" class="ui-btn secondary" id="btn-cancel-binder-picker">Cancel</button>
+          <p class="binder-picker-sub">Select an unslotted Mythos card from your backpack to slip into this clear protective pocket:</p>
+          <div class="binder-picker-grid" id="binder-picker-cards-grid">
+            <!-- Dynamically populated with available inventory cards -->
+          </div>
+          <div class="binder-picker-footer">
+            <button type="button" class="ui-btn secondary" id="btn-cancel-binder-picker">Cancel</button>
+          </div>
         </div>
       </div>
     </div>
@@ -996,7 +1039,10 @@
 
         <div class="playing-deck-footer">
           <span class="playing-deck-status" id="playing-deck-status"></span>
-          <button type="button" class="ui-btn primary-btn" id="btn-playing-deck-done">✓ Done</button>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <button type="button" class="ui-btn secondary hidden" id="btn-deck-board-theme" style="padding: 5px 10px; font-size: 11px;">🪵 Board: Classic Mythos</button>
+            <button type="button" class="ui-btn primary-btn" id="btn-playing-deck-done">✓ Done</button>
+          </div>
         </div>
       </div>
     </div>
@@ -1477,6 +1523,10 @@
         <!-- Populated dynamically by renderParkTournamentModal() -->
       </div>
 
+      <div id="park-tourney-podium" class="tourney-podium-stage">
+        <!-- Populated dynamically with the Last Tournament Podium Picture -->
+      </div>
+
       <div class="tourney-layout-grid">
         <div class="tourney-panel">
           <div class="tourney-panel-title">📊 Round Robin Standings</div>
@@ -1503,10 +1553,10 @@
     </div>
   </div>
 
-  <script src="js/audio.js?v=2.57"></script>
-  <script src="js/character_sprites.js?v=2.57"></script>
-  <script src="js/overworld.js?v=2.57"></script>
-  <script src="js/gwent_cards.js?v=2.57"></script>
-  <script src="js/game.js?v=2.57"></script>
+  <script src="js/audio.js?v=2.62"></script>
+  <script src="js/character_sprites.js?v=2.62"></script>
+  <script src="js/overworld.js?v=2.62"></script>
+  <script src="js/gwent_cards.js?v=2.62"></script>
+  <script src="js/game.js?v=2.62"></script>
 </body>
 </html>
