@@ -349,7 +349,7 @@
   // ---------------------------------------------------------------------------
   class BeastsGame {
     constructor() {
-      this.VERSION = '2.64';
+      this.VERSION = '2.69';
       this.gameMode = 'ai'; // 'ai' | '2p'
       this.currentView = 'overworld';
       this.currentChallenger = null;
@@ -2033,8 +2033,13 @@
           msgEl.innerHTML += `<br><div style="margin-top: 10px; color: #fde68a;">🏆 Tournament Complete! Rank: #${summary.playerRank}</div>`;
         }
       } else if (isPlayerVictory && this.currentChallenger && msgEl) {
-        msgEl.innerHTML = `You defeated <b>${this.currentChallenger.name}</b> in Mythos!<br><div style="margin-top: 12px; color: #93c5fd;">🎁 Old Card Binder unlocked in Overworld!</div>`;
-        this.overworld?.grantOldCardBinder?.(this.currentChallenger);
+        const unlockedBinderNow = !this.overworld?.hasOldCardBinder;
+        if (unlockedBinderNow) {
+          this.overworld?.grantOldCardBinder?.(this.currentChallenger, { showCelebration: true });
+        }
+        msgEl.innerHTML = unlockedBinderNow
+          ? `You defeated <b>${this.currentChallenger.name}</b> in Mythos!<br><div style="margin-top: 12px; color: #93c5fd;">🎁 Old Card Binder unlocked in Overworld!</div>`
+          : `You defeated <b>${this.currentChallenger.name}</b> in Mythos!`;
       } else if (msgEl) {
         msgEl.textContent = isPlayerVictory
           ? `You outscored ${p2.name} across ${this.state.round} rounds!`

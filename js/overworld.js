@@ -3413,20 +3413,19 @@
     }
 
     // -------------------------------------------------------------------------
-    // Player Backpack & Inventory Modal
+    // Player Backpack & Inventory Modal (Unified into Option B Binder Modal)
     // -------------------------------------------------------------------------
     toggleInventoryModal(forceOpen) {
-      const modal = document.getElementById('inventory-modal');
-      if (!modal) return;
-      const shouldOpen = forceOpen !== undefined ? forceOpen : modal.classList.contains('hidden');
-      if (window.sounds?.playClick) window.sounds.playClick();
-      if (shouldOpen) {
-        modal.classList.remove('hidden');
-        this.renderInventoryModal();
-        requestAnimationFrame(() => this.renderBackpackSatchelBackground());
-      } else {
-        modal.classList.add('hidden');
+      const binderModal = document.getElementById('binder-modal');
+      const legacyInvModal = document.getElementById('inventory-modal');
+      if (forceOpen === false) {
+        legacyInvModal?.classList.add('hidden');
+        binderModal?.classList.add('hidden');
+        return;
       }
+      legacyInvModal?.classList.add('hidden');
+      const hasUnopenedPack = (this.inventory || []).some(i => i.type === 'booster_pack' && (i.qty || 0) > 0);
+      this.toggleBinderModal(forceOpen, hasUnopenedPack ? 'bag' : null);
     }
 
     /** Draw hand-crafted Craftsman & Corner Market style tabletop + satchel canvas background. */
@@ -4169,6 +4168,25 @@
               return;
             }
             if (window.sounds?.playClick) window.sounds.playClick();
+            const detailPanel = document.getElementById('inventory-detail-panel');
+            const detailHidden = detailPanel ? window.getComputedStyle(detailPanel).display === 'none' : false;
+            if (detailHidden) {
+              if (item.type === 'booster_pack') {
+                this.startBoosterPackOpening(item.id);
+                return;
+              }
+              if (item.id === 'old_card_binder') {
+                this.toggleInventoryModal(false);
+                this.toggleBinderModal(true);
+                return;
+              }
+              if (item.type === 'board_theme') {
+                const themeId = item.themeId || 'tavern_feast';
+                const isEquipped = (this.equippedBoardTheme || 'classic') === themeId;
+                this.setEquippedBoardTheme(isEquipped ? 'classic' : themeId, true);
+                return;
+              }
+            }
             this.selectedInventoryItemId = item.id;
             this.renderInventoryModal();
           });
@@ -4919,11 +4937,11 @@
     }
 
     // -------------------------------------------------------------------------
-    // OLD CARD BINDER (9 Protective Card Pocket Sleeves - Awarded Upon Friend Defeat)
+    // OLD CARD BINDER (Protective Card Pocket Sleeves - Gifted by Friend at Leo's)
     // -------------------------------------------------------------------------
-    grantOldCardBinder(challenger) {
+    grantOldCardBinder(challenger, { showCelebration = false } = {}) {
       this.hasOldCardBinder = true;
-      this.friendDefeatedRewardPending = true;
+      this.friendDefeatedRewardPending = Boolean(showCelebration);
 
       // Add "Old Card Binder" to inventory backpack if not already present
       if (!this.inventory.some(i => i.id === 'old_card_binder')) {
@@ -4933,7 +4951,7 @@
           qty: 1,
           icon: '📖',
           type: 'binder_item',
-          desc: '<b>Old Card Binder</b> — A well-loved 9-pocket collector card binder awarded to you by your friend after you defeated him in battle. Holds 9 cards in clear protective sleeves and unlocks <b>Creature Inspect Mode</b> to analyze moves, types, and abilities!'
+          desc: '<b>Old Card Binder</b> — A well-loved collector card binder given to you by your friend after you bought him his starter pack at Leo\'s Card Shop. Holds cards in clear protective sleeves and unlocks <b>Creature Inspect Mode</b> to analyze moves, types, and abilities!'
         });
       }
 
@@ -5800,17 +5818,19 @@
       }
     }
 
-    toggleBinderModal(forceOpen) {
-      if (!this.hasOldCardBinder) {
-        if (window.sounds?.playClick) window.sounds.playClick();
-        alert(`🔒 The Old Card Binder is locked!\n\nBattle and defeat ${this.friendName || 'your friend'} in Mythos at his house to win his "Old Card Binder"!`);
-        return;
-      }
+    toggleBinderModal(forceOpen, preferredTab = null) {
+      this.hasOldCardBinder = true;
       const modal = document.getElementById('binder-modal');
       if (!modal) return;
       const shouldOpen = forceOpen !== undefined ? forceOpen : modal.classList.contains('hidden');
       if (window.sounds?.playClick) window.sounds.playClick();
       if (shouldOpen) {
+        if (preferredTab === 'sleeves' || preferredTab === 'bag') {
+          this.binderDrawerTab = preferredTab;
+        } else if (!this.binderDrawerTab) {
+          const hasPack = (this.inventory || []).some(i => i.type === 'booster_pack' && (i.qty || 0) > 0);
+          this.binderDrawerTab = (hasPack && this.getSlottedBinderCount() === 0) ? 'bag' : 'sleeves';
+        }
         this.renderBinderModal();
         modal.classList.remove('hidden');
       } else {
@@ -5855,16 +5875,100 @@
         || '';
     }
 
+    getPlayingDeckStats() {
+      const reg = window.MythosGwentCards?.CARDS || {};
+      const deck = Array.isArray(this.playingDeck) ? this.playingDeck : [];
+      const cardCount = deck.length;
+      const totalStars = deck.reduce((sum, cid) => {
+        const def = reg[cid];
+        return sum + (Number(def?.stars) || 1);
+      }, 0);
+      return {
+        cardCount,
+        minCards: 18,
+        maxCards: 24,
+        totalStars,
+        maxStars: 45
+      };
+    }
+
+    attachTradCardLongPress(el, cardDef, fallbackCard = null) {
+      if (!el) return;
+      el.title = 'Hold click (or right-click) to inspect card closer';
+      let holdTimer = null;
+      const openCloser = () => {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        if (cardDef && window.game?.openCardModal) {
+          window.game.openCardModal(cardDef);
+        } else if (fallbackCard) {
+          this.openCreatureInspect(fallbackCard, null);
+        }
+      };
+      const cancelHold = () => {
+        if (holdTimer) {
+          clearTimeout(holdTimer);
+          holdTimer = null;
+        }
+      };
+      el.addEventListener('pointerdown', (e) => {
+        if (e.button !== 0 && e.pointerType === 'mouse') return;
+        cancelHold();
+        holdTimer = setTimeout(() => {
+          holdTimer = null;
+          openCloser();
+        }, 320);
+      });
+      el.addEventListener('pointerup', cancelHold);
+      el.addEventListener('pointerleave', cancelHold);
+      el.addEventListener('pointercancel', cancelHold);
+      el.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        openCloser();
+      });
+    }
+
     renderBinderModal() {
       if (this.consolidateBinderStacks()) {
         this.saveWorldData(this.draftAppearance);
       }
       const gridEl = document.getElementById('binder-slots-grid');
+      const bagGridEl = document.getElementById('binder-bag-grid');
+      const deckTrayEl = document.getElementById('binder-deck-tray-grid');
       const counterPill = document.getElementById('binder-counter-pill');
       const binderBadgeEl = document.getElementById('binder-badge-count');
       const deckBadgeEl = document.getElementById('deck-badge-count');
+      const deckLimitPill = document.getElementById('binder-deck-limit-pill');
+      const starLimitPill = document.getElementById('binder-star-limit-pill');
+      const starMeterFill = document.getElementById('binder-star-meter-fill');
+      const tabSleevesBtn = document.getElementById('btn-binder-tab-sleeves');
+      const tabBagBtn = document.getElementById('btn-binder-tab-bag');
+      const tabSleevesCount = document.getElementById('binder-tab-sleeves-count');
+      const tabBagCount = document.getElementById('binder-tab-bag-count');
+      const modePill = document.getElementById('binder-drawer-mode-pill');
+      const sortBarEl = document.getElementById('binder-sort-bar');
+      const pageNavEl = document.getElementById('binder-page-nav');
+      const hintEl = document.getElementById('binder-hint-text');
+
+      const reg = window.MythosGwentCards?.CARDS || {};
+      const stats = this.getPlayingDeckStats();
+
+      if (deckLimitPill) {
+        const belowMin = stats.cardCount < stats.minCards;
+        deckLimitPill.innerHTML = `🃏 ${stats.cardCount} / ${stats.maxCards} <span style="opacity:0.86;">(${belowMin ? `⚠️ Min ${stats.minCards}` : `Min ${stats.minCards}`})</span>`;
+        deckLimitPill.classList.toggle('warn', belowMin || stats.cardCount > stats.maxCards);
+      }
+      if (starLimitPill) {
+        starLimitPill.textContent = `⭐ ${stats.totalStars} / ${stats.maxStars}★`;
+        starLimitPill.classList.toggle('warn', stats.totalStars >= stats.maxStars);
+      }
+      if (starMeterFill) {
+        const pct = Math.min(100, (stats.totalStars / stats.maxStars) * 100);
+        starMeterFill.style.width = `${pct}%`;
+        starMeterFill.classList.toggle('near-cap', stats.totalStars >= stats.maxStars - 3);
+      }
+
       if (deckBadgeEl) {
-        deckBadgeEl.textContent = String((this.playingDeck || []).length);
+        deckBadgeEl.textContent = String(stats.cardCount);
       }
 
       const totalSlots = Math.max(36, Array.isArray(this.binderSlots) ? this.binderSlots.length : 36);
@@ -5874,12 +5978,84 @@
       this.binderPage = currentPage;
 
       const slottedCount = this.getSlottedBinderCount();
+      const bagItems = (this.inventory || []).filter(i => i && (i.qty || 0) > 0 && i.id !== 'old_card_binder');
+      const bagTotalCount = bagItems.reduce((s, i) => s + (i.qty || 1), 0);
+
       if (counterPill) {
         counterPill.textContent = `${slottedCount} / ${totalSlots} Sleeves Filled`;
       }
       if (binderBadgeEl) {
-        binderBadgeEl.textContent = String(slottedCount);
+        binderBadgeEl.textContent = String(stats.cardCount + slottedCount + bagTotalCount);
       }
+      if (tabSleevesCount) tabSleevesCount.textContent = String(slottedCount);
+      if (tabBagCount) tabBagCount.textContent = String(bagTotalCount);
+
+      const activeTab = this.binderDrawerTab === 'bag' ? 'bag' : 'sleeves';
+      tabSleevesBtn?.classList.toggle('active', activeTab === 'sleeves');
+      tabBagBtn?.classList.toggle('active', activeTab === 'bag');
+      gridEl?.classList.toggle('hidden', activeTab !== 'sleeves');
+      bagGridEl?.classList.toggle('hidden', activeTab !== 'bag');
+      sortBarEl?.classList.toggle('hidden', activeTab !== 'sleeves');
+      pageNavEl?.classList.toggle('hidden', activeTab !== 'sleeves');
+      if (modePill) {
+        modePill.textContent = activeTab === 'sleeves' ? '🔒 Protected from Sale' : '💰 Ready to Sell / Trade';
+      }
+
+      // 1. Render Top Playing Deck Tray
+      if (deckTrayEl) {
+        deckTrayEl.innerHTML = '';
+        if (!this.playingDeck || this.playingDeck.length === 0) {
+          deckTrayEl.innerHTML = `
+            <div style="grid-column: 1 / -1; padding: 14px; text-align: center; color: #f3e8d2; font-size: 12px;">
+              Your Playing Deck Tray is empty (<b>Min ${stats.minCards} – Max ${stats.maxCards} cards</b>, <b>Max ${stats.maxStars}★</b>). Tap <b>+🃏 Deck</b> on cards below or click <b>✨ Fill Deck</b>!
+            </div>
+          `;
+        } else {
+          const grouped = [];
+          const groupMap = {};
+          this.playingDeck.forEach((cid, idx) => {
+            if (!groupMap[cid]) {
+              groupMap[cid] = { cid, count: 0, lastIndex: idx };
+              grouped.push(groupMap[cid]);
+            }
+            groupMap[cid].count += 1;
+            groupMap[cid].lastIndex = idx;
+          });
+
+          grouped.forEach(entry => {
+            const c = reg[entry.cid];
+            if (!c) return;
+            const tradImg = this.getCardTraditionalImg(c);
+            const stars = Number(c.stars) || 1;
+            const slot = document.createElement('div');
+            slot.className = 'binder-trad-slot';
+            slot.innerHTML = `
+              <div class="binder-trad-art-wrap">
+                <img src="${tradImg}" alt="${c.name}" class="binder-trad-art-img">
+                <span class="binder-trad-star-badge">${stars}★</span>
+                ${entry.count > 1 ? `<span class="binder-trad-qty-badge">x${entry.count}</span>` : ''}
+              </div>
+              <div class="binder-trad-name" title="${c.name}">${c.name}</div>
+              <div class="binder-trad-actions">
+                <button type="button" class="binder-xfer-btn to-binder" title="Return 1 copy to Binder Sleeves">📖 Binder</button>
+                <button type="button" class="binder-xfer-btn to-bag" title="Pull 1 copy to Sell/Trade Bag">🎒 Sell</button>
+              </div>
+            `;
+            this.attachTradCardLongPress(slot.querySelector('.binder-trad-art-wrap'), c);
+            slot.querySelector('.to-binder')?.addEventListener('click', (ev) => {
+              ev.stopPropagation();
+              this.removeCardFromPlayingDeck(entry.lastIndex, 'binder');
+            });
+            slot.querySelector('.to-bag')?.addEventListener('click', (ev) => {
+              ev.stopPropagation();
+              this.removeCardFromPlayingDeck(entry.lastIndex, 'inventory');
+            });
+            deckTrayEl.appendChild(slot);
+          });
+        }
+      }
+
+      // 2. Render Bottom Drawer Tab 1: Binder Sleeves
       const pageIndicatorEl = document.getElementById('binder-page-indicator');
       if (pageIndicatorEl) {
         pageIndicatorEl.textContent = `Page ${currentPage + 1} / ${totalPages}`;
@@ -5891,7 +6067,6 @@
       document.querySelectorAll('#binder-page-pills .binder-page-pill').forEach(pill => {
         pill.classList.toggle('active', Number(pill.dataset.page) === currentPage);
       });
-      if (!gridEl) return;
 
       const sortMode = this.binderSortBy || 'default';
       document.querySelectorAll('#binder-sort-bar .binder-sort-btn').forEach(btn => {
@@ -5900,7 +6075,7 @@
 
       const getSortMeta = (card) => {
         const cleanId = String(card.beastId || card.id || '').toLowerCase().replace('card_', '').trim();
-        const gwentDef = window.MythosGwentCards?.CARDS?.[cleanId];
+        const gwentDef = reg[cleanId];
         const creatureDef = gwentDef ? null : this.getCreatureData?.(cleanId);
         const name = (card.shortName || card.name || '').toLowerCase();
         const type = String(gwentDef?.role || card.element || creatureDef?.element || 'zz').toLowerCase();
@@ -5912,101 +6087,180 @@
         return { name, type, power, stars };
       };
 
-      let entries = Array.from({ length: totalSlots }, (_, i) => ({
-        slotIndex: i,
-        card: this.binderSlots[i]
-      }));
+      if (gridEl) {
+        let entries = Array.from({ length: totalSlots }, (_, i) => ({
+          slotIndex: i,
+          card: this.binderSlots[i]
+        }));
 
-      if (sortMode !== 'default') {
-        const filled = entries.filter(e => Boolean(e.card));
-        const empty = entries.filter(e => !e.card);
-        filled.sort((a, b) => {
-          const ma = getSortMeta(a.card);
-          const mb = getSortMeta(b.card);
-          if (sortMode === 'alpha') return ma.name.localeCompare(mb.name);
-          if (sortMode === 'type') return ma.type.localeCompare(mb.type) || ma.name.localeCompare(mb.name);
-          if (sortMode === 'power') return (mb.power - ma.power) || ma.name.localeCompare(mb.name);
-          if (sortMode === 'stars') return (mb.stars - ma.stars) || ma.name.localeCompare(mb.name);
-          return a.slotIndex - b.slotIndex;
-        });
-        entries = [...filled, ...empty];
-      }
-
-      const pageStart = currentPage * pageSize;
-      const pageEntries = entries.slice(pageStart, pageStart + pageSize);
-
-      gridEl.innerHTML = '';
-
-      pageEntries.forEach(({ slotIndex: i, card }) => {
-        const slotEl = document.createElement('div');
-
-        if (card) {
-          const qty = card.qty || 1;
-          const binderCardImg = this.getCardTraditionalImg(card);
-          slotEl.className = 'binder-slot slotted';
-          slotEl.innerHTML = `
-            <div class="binder-card-thumb-wrap" style="position:relative;">
-              <img src="${binderCardImg}" alt="${card.name}" class="binder-card-thumb-img">
-              ${qty > 1 ? `<span class="binder-qty-badge">x${qty}</span>` : ''}
-            </div>
-            <div class="binder-card-info-row">
-              <span class="binder-card-name">${card.shortName || card.name}${qty > 1 ? ` <b style="color:#fde68a;">(x${qty})</b>` : ''}</span>
-              <span class="binder-card-element-pill ${card.element?.toLowerCase() || 'fire'}">${card.element || 'Beast'}</span>
-            </div>
-            <div class="binder-slot-hover-bar">
-              <button type="button" class="binder-slot-btn add-deck" title="Quick add to Playing Deck">🃏 + Deck</button>
-              <button type="button" class="binder-slot-btn inspect">🔍 Inspect</button>
-              <button type="button" class="binder-slot-btn remove">📤 To Inventory</button>
-            </div>
-          `;
-
-          // Clicking anywhere on the card or the inspect button opens Creature Inspect Mode!
-          slotEl.addEventListener('click', (ev) => {
-            if (ev.target.closest('.binder-slot-btn.remove') || ev.target.closest('.binder-slot-btn.add-deck')) return;
-            if (window.sounds?.playClick) window.sounds.playClick();
-            this.openCreatureInspect(card, i);
+        if (sortMode !== 'default') {
+          const filled = entries.filter(e => Boolean(e.card));
+          const empty = entries.filter(e => !e.card);
+          filled.sort((a, b) => {
+            const ma = getSortMeta(a.card);
+            const mb = getSortMeta(b.card);
+            if (sortMode === 'alpha') return ma.name.localeCompare(mb.name);
+            if (sortMode === 'type') return ma.type.localeCompare(mb.type) || ma.name.localeCompare(mb.name);
+            if (sortMode === 'power') return (mb.power - ma.power) || ma.name.localeCompare(mb.name);
+            if (sortMode === 'stars') return (mb.stars - ma.stars) || ma.name.localeCompare(mb.name);
+            return a.slotIndex - b.slotIndex;
           });
-
-          const addDeckBtn = slotEl.querySelector('.binder-slot-btn.add-deck');
-          if (addDeckBtn) {
-            addDeckBtn.addEventListener('click', (ev) => {
-              ev.stopPropagation();
-              const cardId = card.beastId || (card.id?.startsWith('card_') ? card.id.replace('card_', '') : null);
-              if (cardId) {
-                const res = this.addCardToPlayingDeck(cardId, 'binder', i);
-                const hintEl = document.querySelector('#binder-modal .binder-hint');
-                if (hintEl && res?.message) {
-                  hintEl.innerHTML = res.message;
-                }
-              }
-            });
-          }
-
-          const removeBtn = slotEl.querySelector('.binder-slot-btn.remove');
-          if (removeBtn) {
-            removeBtn.addEventListener('click', (ev) => {
-              ev.stopPropagation();
-              this.removeCardFromBinder(i);
-            });
-          }
-        } else {
-          slotEl.className = 'binder-slot empty';
-          slotEl.innerHTML = `
-            <div class="binder-empty-btn">
-              <span style="font-size: 20px;">➕</span>
-              <span>Insert Card</span>
-            </div>
-            <span style="font-size: 10px; color: var(--text-muted); margin-top: 4px;">Sleeve #${i + 1}</span>
-          `;
-
-          slotEl.addEventListener('click', () => {
-            if (window.sounds?.playClick) window.sounds.playClick();
-            this.openBinderCardPicker(i);
-          });
+          entries = [...filled, ...empty];
         }
 
-        gridEl.appendChild(slotEl);
-      });
+        const pageStart = currentPage * pageSize;
+        const pageEntries = entries.slice(pageStart, pageStart + pageSize);
+        gridEl.innerHTML = '';
+
+        pageEntries.forEach(({ slotIndex: i, card }) => {
+          const slotEl = document.createElement('div');
+          if (card) {
+            const qty = card.qty || 1;
+            const cleanId = String(card.beastId || card.id || '').replace(/^card_/, '');
+            const gwentDef = reg[cleanId];
+            const stars = Number(gwentDef?.stars ?? card.stars) || 1;
+            const binderCardImg = this.getCardTraditionalImg(card);
+            const displayName = (card.shortName || card.name || '').replace(/\s*\(Mythos Card\)$/i, '');
+
+            slotEl.className = 'binder-trad-slot';
+            slotEl.innerHTML = `
+              <div class="binder-trad-art-wrap">
+                <img src="${binderCardImg}" alt="${displayName}" class="binder-trad-art-img">
+                <span class="binder-trad-star-badge">${stars}★</span>
+                ${qty > 1 ? `<span class="binder-trad-qty-badge">x${qty}</span>` : ''}
+              </div>
+              <div class="binder-trad-name" title="${displayName}">${displayName}</div>
+              <div class="binder-trad-actions">
+                <button type="button" class="binder-xfer-btn to-deck" title="Move 1 copy to Playing Deck (+${stars}★)">+🃏 Deck</button>
+                <button type="button" class="binder-xfer-btn to-bag" title="Pull 1 copy to Sell/Trade Bag">🎒 Sell</button>
+              </div>
+            `;
+
+            this.attachTradCardLongPress(slotEl.querySelector('.binder-trad-art-wrap'), gwentDef, card);
+
+            slotEl.querySelector('.to-deck')?.addEventListener('click', (ev) => {
+              ev.stopPropagation();
+              if (cleanId) {
+                const res = this.addCardToPlayingDeck(cleanId, 'binder', i);
+                if (hintEl && res?.message) hintEl.innerHTML = res.message;
+              }
+            });
+
+            slotEl.querySelector('.to-bag')?.addEventListener('click', (ev) => {
+              ev.stopPropagation();
+              this.removeCardFromBinder(i);
+              if (hintEl) {
+                hintEl.innerHTML = `🎒 Moved <b>${displayName}</b> to your <b>Sell/Trade Bag</b> — ready to sell at Leo's Shop or on your Phone!`;
+              }
+            });
+          } else {
+            slotEl.className = 'binder-trad-slot';
+            slotEl.style.justifyContent = 'center';
+            slotEl.style.minHeight = '148px';
+            slotEl.style.opacity = '0.72';
+            slotEl.innerHTML = `
+              <div class="binder-empty-btn" style="color:#fde68a; border-color:rgba(251,191,36,0.4);">
+                <span style="font-size: 18px;">➕</span>
+                <span>Sleeve #${i + 1}</span>
+              </div>
+            `;
+            slotEl.addEventListener('click', () => {
+              if (window.sounds?.playClick) window.sounds.playClick();
+              this.openBinderCardPicker(i);
+            });
+          }
+          gridEl.appendChild(slotEl);
+        });
+      }
+
+      // 3. Render Bottom Drawer Tab 2: Sell/Trade Bag (Loose Inventory Cards, Unopened Packs & Board Themes)
+      if (bagGridEl) {
+        bagGridEl.innerHTML = '';
+        if (bagItems.length === 0) {
+          bagGridEl.innerHTML = `
+            <div style="grid-column: 1 / -1; padding: 18px; text-align: center; color: #f3e8d2; font-size: 12px;">
+              Your <b>🎒 Sell/Trade Bag</b> has no loose cards or packs right now.<br>
+              <span style="opacity:0.85;">Pull cards here using <b>🎒 Sell</b> from your Playing Deck or Binder Sleeves whenever you want to sell them at Leo's Card Shop or list them on your Phone!</span>
+            </div>
+          `;
+        } else {
+          bagItems.forEach(item => {
+            const slotEl = document.createElement('div');
+            slotEl.className = 'binder-trad-slot';
+            const displayName = (item.shortName || item.name || '').replace(/\s*\(Mythos Card\)$/i, '');
+
+            if (item.type === 'booster_pack') {
+              slotEl.innerHTML = `
+                <div class="binder-trad-art-wrap">
+                  <img src="${item.cardImg || 'Cards/Mythos_Card_Back.png'}" alt="${displayName}" class="binder-trad-art-img">
+                  <span class="binder-trad-qty-badge">x${item.qty || 1}</span>
+                </div>
+                <div class="binder-trad-name" title="${displayName}">${displayName}</div>
+                <div class="binder-trad-actions">
+                  <button type="button" class="binder-xfer-btn to-deck" style="flex:1;">✨ Open Pack</button>
+                </div>
+              `;
+              slotEl.querySelector('.to-deck')?.addEventListener('click', (ev) => {
+                ev.stopPropagation();
+                this.toggleBinderModal(false);
+                this.startBoosterPackOpening(item.id);
+              });
+            } else if (item.type === 'board_theme') {
+              const themeId = item.themeId || 'tavern_feast';
+              const isEquipped = (this.equippedBoardTheme || 'classic') === themeId;
+              slotEl.innerHTML = `
+                <div class="binder-trad-art-wrap">
+                  <img src="${item.cardImg || 'Sprites/Board/tavern_feast_board_bg.jpg'}" alt="${displayName}" class="binder-trad-art-img">
+                </div>
+                <div class="binder-trad-name" title="${displayName}">${displayName}</div>
+                <div class="binder-trad-actions">
+                  <button type="button" class="binder-xfer-btn ${isEquipped ? 'to-bag' : 'to-deck'}" style="flex:1;">
+                    ${isEquipped ? '✅ Equipped' : '🍖 Equip Board'}
+                  </button>
+                </div>
+              `;
+              slotEl.querySelector('button')?.addEventListener('click', (ev) => {
+                ev.stopPropagation();
+                this.setEquippedBoardTheme(isEquipped ? 'classic' : themeId, true);
+                this.renderBinderModal();
+              });
+            } else {
+              const cleanId = String(item.beastId || item.id || '').replace(/^card_/, '');
+              const gwentDef = reg[cleanId];
+              const stars = Number(gwentDef?.stars ?? item.stars) || 1;
+              const tradImg = this.getCardTraditionalImg(item);
+              slotEl.innerHTML = `
+                <div class="binder-trad-art-wrap">
+                  <img src="${tradImg}" alt="${displayName}" class="binder-trad-art-img">
+                  <span class="binder-trad-star-badge">${stars}★</span>
+                  ${(item.qty || 1) > 1 ? `<span class="binder-trad-qty-badge">x${item.qty}</span>` : ''}
+                </div>
+                <div class="binder-trad-name" title="${displayName}">${displayName}</div>
+                <div class="binder-trad-actions">
+                  <button type="button" class="binder-xfer-btn to-deck" title="Move 1 copy to Playing Deck (+${stars}★)">+🃏 Deck</button>
+                  <button type="button" class="binder-xfer-btn to-binder" title="Put 1 copy into Binder Sleeves">📖 Binder</button>
+                </div>
+              `;
+              this.attachTradCardLongPress(slotEl.querySelector('.binder-trad-art-wrap'), gwentDef, item);
+              slotEl.querySelector('.to-deck')?.addEventListener('click', (ev) => {
+                ev.stopPropagation();
+                if (cleanId) {
+                  const res = this.addCardToPlayingDeck(cleanId, 'inventory');
+                  if (hintEl && res?.message) hintEl.innerHTML = res.message;
+                }
+              });
+              slotEl.querySelector('.to-binder')?.addEventListener('click', (ev) => {
+                ev.stopPropagation();
+                if (this.insertCardIntoBinder(item.id)) {
+                  if (hintEl) hintEl.innerHTML = `📖 Slipped <b>${displayName}</b> into your protected <b>Binder Sleeves</b>.`;
+                  this.renderBinderModal();
+                }
+              });
+            }
+            bagGridEl.appendChild(slotEl);
+          });
+        }
+      }
     }
 
     // Binder Card Picker Modal (Select card from backpack to insert into sleeve)
@@ -6206,12 +6460,17 @@
       return consumeFromInventory() || consumeFromBinder();
     }
 
-    returnCardFromPlayingDeckToCollection(cardId) {
+    returnCardFromPlayingDeckToCollection(cardId, preferredDest = 'binder') {
       const cleanId = String(cardId || '').replace(/^card_/, '');
       const cardDef = window.MythosGwentCards?.CARDS?.[cleanId];
       if (!cardDef || cardDef.isToken) return;
 
       const record = this.buildMythosCardRecord(cleanId);
+      if (preferredDest === 'inventory' || preferredDest === 'bag') {
+        this.addInventoryItem(record);
+        return 'inventory';
+      }
+
       if (this.hasOldCardBinder && Array.isArray(this.binderSlots)) {
         const existingIdx = this.binderSlots.findIndex(
           s => s && (s.id === record.id || s.beastId === cleanId)
@@ -6254,11 +6513,23 @@
         return { ok: false, message: '⚠️ Only Mythos battle cards can be added to the Playing Deck.' };
       }
 
+      const stats = this.getPlayingDeckStats();
+      if (stats.cardCount >= stats.maxCards) {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        return { ok: false, message: `⚠️ Deck Limit Reached: Maximum ${stats.maxCards} cards allowed in your Playing Deck.` };
+      }
+
+      const cardStars = Number(cardDef?.stars) || 1;
+      if (stats.totalStars + cardStars > stats.maxStars) {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        return { ok: false, message: `⚠️ Star Cap Exceeded: Adding <b>${cardDef.name} (${cardStars}★)</b> would put your deck at <b>${stats.totalStars + cardStars}/${stats.maxStars}★</b>.` };
+      }
+
       const availableCount = (this.getOwnedMythosCardPool()[cardId] || 0);
       const inDeckCount = (this.playingDeck || []).filter(id => id === cardId).length;
       if (availableCount <= 0) {
         if (window.sounds?.playClick) window.sounds.playClick();
-        return { ok: false, message: `⚠️ You have no spare copies of ${cardDef.name} left in your Binder or Backpack.` };
+        return { ok: false, message: `⚠️ You have no spare copies of ${cardDef.name} left in your Binder or Sell/Trade Bag.` };
       }
 
       const maxPerDeck = window.MythosGwentCards?.getMaxDeckCopies
@@ -6285,13 +6556,14 @@
       this.renderPlayingDeckModal();
       this.renderBinderModal();
       this.renderInventoryModal();
-      return { ok: true, message: `✅ Moved <b>${cardDef.name}</b> to your Playing Deck (${this.playingDeck.length} cards).` };
+      const newStats = this.getPlayingDeckStats();
+      return { ok: true, message: `✅ Moved <b>${cardDef.name} (${cardStars}★)</b> to your Playing Deck (<b>${newStats.cardCount}/${newStats.maxCards} cards</b> • <b>${newStats.totalStars}/${newStats.maxStars}★</b>).` };
     }
 
-    removeCardFromPlayingDeck(index) {
+    removeCardFromPlayingDeck(index, destination = 'binder') {
       if (index < 0 || index >= (this.playingDeck || []).length) return;
       const [removedId] = this.playingDeck.splice(index, 1);
-      const dest = this.returnCardFromPlayingDeckToCollection(removedId);
+      const dest = this.returnCardFromPlayingDeckToCollection(removedId, destination);
       if (window.sounds?.playClick) window.sounds.playClick();
       this.saveWorldData(this.draftAppearance);
       this.updateHUDSaveInfo();
@@ -6300,53 +6572,68 @@
       this.renderInventoryModal();
       const cardDef = window.MythosGwentCards?.CARDS?.[removedId];
       const statusEl = document.getElementById('playing-deck-status');
-      if (statusEl && cardDef) {
-        statusEl.textContent = `Returned ${cardDef.name} from Playing Deck to your ${dest === 'binder' ? 'Old Card Binder' : 'Backpack'}.`;
-      }
+      const hintEl = document.getElementById('binder-hint-text');
+      const msg = cardDef
+        ? `Returned <b>${cardDef.name}</b> from Playing Deck to your <b>${dest === 'binder' ? '📖 Binder Sleeves' : '🎒 Sell/Trade Bag'}</b>.`
+        : '';
+      if (statusEl && msg) statusEl.innerHTML = msg;
+      if (hintEl && msg) hintEl.innerHTML = msg;
     }
 
     clearPlayingDeck() {
       const removed = [...(this.playingDeck || [])];
       this.playingDeck = [];
-      removed.forEach(cid => this.returnCardFromPlayingDeckToCollection(cid));
+      removed.forEach(cid => this.returnCardFromPlayingDeckToCollection(cid, 'binder'));
       if (window.sounds?.playClick) window.sounds.playClick();
       this.saveWorldData(this.draftAppearance);
       this.updateHUDSaveInfo();
       this.renderPlayingDeckModal();
       this.renderBinderModal();
       this.renderInventoryModal();
+      const msg = '🧹 Playing Deck cleared — cards returned to your Binder (battles use the Standard Deck while empty).';
       const statusEl = document.getElementById('playing-deck-status');
-      if (statusEl) statusEl.textContent = 'Playing Deck cleared — cards returned to your collection (battles use the Standard Deck while empty).';
+      const hintEl = document.getElementById('binder-hint-text');
+      if (statusEl) statusEl.innerHTML = msg;
+      if (hintEl) hintEl.innerHTML = msg;
     }
 
     autoFillPlayingDeck() {
       const current = [...(this.playingDeck || [])];
       this.playingDeck = [];
-      current.forEach(cid => this.returnCardFromPlayingDeckToCollection(cid));
+      current.forEach(cid => this.returnCardFromPlayingDeckToCollection(cid, 'binder'));
 
       const std = window.MythosGwentCards?.getDeckRecipe?.('standard') || [];
       const reg = window.MythosGwentCards?.CARDS || {};
       const pool = this.getOwnedMythosCardPool();
       const deckCounts = {};
+      let currentStars = 0;
+      const maxCards = 24;
+      const maxStars = 45;
 
       const tryAddOwned = (cid) => {
+        if (this.playingDeck.length >= maxCards) return false;
         const def = reg[cid];
         if (!def || def.isToken || (pool[cid] || 0) <= 0) return false;
+        const cStars = Number(def?.stars) || 1;
+        if (currentStars + cStars > maxStars) return false;
         const maxPerDeck = window.MythosGwentCards?.getMaxDeckCopies
           ? window.MythosGwentCards.getMaxDeckCopies(def)
-          : ((Number(def?.stars) || 1) >= 4 ? 1 : (def?.maxDeckCopies ?? 3));
+          : (cStars >= 4 ? 1 : (def?.maxDeckCopies ?? 3));
         if ((deckCounts[cid] || 0) >= maxPerDeck) return false;
         if (!this.consumeCardForPlayingDeck(cid, 'any')) return false;
         pool[cid] -= 1;
         deckCounts[cid] = (deckCounts[cid] || 0) + 1;
+        currentStars += cStars;
         this.playingDeck.push(cid);
         return true;
       };
 
-      std.forEach(cid => tryAddOwned(cid));
+      std.forEach(cid => {
+        if (this.playingDeck.length < 18) tryAddOwned(cid);
+      });
       if (this.playingDeck.length < 18) {
         Object.keys(pool)
-          .sort((a, b) => (Number(reg[b]?.stars) || 1) - (Number(reg[a]?.stars) || 1))
+          .sort((a, b) => (Number(reg[a]?.stars) || 1) - (Number(reg[b]?.stars) || 1))
           .forEach(cid => {
             while (this.playingDeck.length < 18 && tryAddOwned(cid)) {}
           });
@@ -6358,25 +6645,20 @@
       this.renderPlayingDeckModal();
       this.renderBinderModal();
       this.renderInventoryModal();
+      const stats = this.getPlayingDeckStats();
+      const msg = stats.cardCount > 0
+        ? `✨ Filled Playing Deck with <b>${stats.cardCount}/${stats.maxCards} cards</b> (<b>${stats.totalStars}/${stats.maxStars}★</b>).`
+        : '⚠️ No owned Mythos cards found in your Binder or Sell/Trade Bag yet.';
       const statusEl = document.getElementById('playing-deck-status');
-      if (statusEl) {
-        statusEl.textContent = this.playingDeck.length > 0
-          ? `Built Playing Deck with ${this.playingDeck.length} owned cards.`
-          : 'No owned Mythos cards found in your Binder or Backpack yet.';
-      }
+      const hintEl = document.getElementById('binder-hint-text');
+      if (statusEl) statusEl.innerHTML = msg;
+      if (hintEl) hintEl.innerHTML = msg;
     }
 
     togglePlayingDeckModal(forceOpen) {
-      const modal = document.getElementById('playing-deck-modal');
-      if (!modal) return;
-      const shouldOpen = forceOpen !== undefined ? forceOpen : modal.classList.contains('hidden');
-      if (window.sounds?.playClick) window.sounds.playClick();
-      if (shouldOpen) {
-        this.renderPlayingDeckModal();
-        modal.classList.remove('hidden');
-      } else {
-        modal.classList.add('hidden');
-      }
+      const legacyDeckModal = document.getElementById('playing-deck-modal');
+      legacyDeckModal?.classList.add('hidden');
+      this.toggleBinderModal(forceOpen);
     }
 
     renderPlayingDeckModal() {
@@ -7372,10 +7654,10 @@
         this.shopkeeperNpc.bubble = '🎉';
       }
       if (this.npcs[0]) {
-        this.npcs[0].bubble = '🤩';
+        this.npcs[0].bubble = '🎁';
       }
 
-      this.saveWorldData(this.draftAppearance);
+      this.grantOldCardBinder({ name: this.friendName || 'Rocky' }, { showCelebration: false });
       this.renderDialogueUI();
     }
 
@@ -7556,9 +7838,9 @@
       } else if (this.storyState === 'shop_bought_packs') {
         bar.classList.remove('hidden');
         bar.classList.remove('tv-broadcast');
-        speakerEl.textContent = `🃏 SHOPKEEPER LEO & ${friendName.toUpperCase()} (PACKS ACQUIRED!!)`;
+        speakerEl.textContent = `🃏 SHOPKEEPER LEO & ${friendName.toUpperCase()} (PACKS & BINDER ACQUIRED!!)`;
         speakerEl.className = 'ow-speaker-tag tv';
-        textEl.innerHTML = `<b>Shopkeeper Leo:</b> "Two <b>1st-Edition MYTHOS Base Set Booster Packs</b> coming right up! One for you, ${playerName}, and one for ${friendName}! Go ahead and rip your pack open right here in <b>Leo's Card Shop</b>!"<br><b>🎒 Inventory Updated:</b> <b>1× Unopened Mythos Base Card Pack</b> added to your Backpack!`;
+        textEl.innerHTML = `<b>Shopkeeper Leo:</b> "Two <b>1st-Edition MYTHOS Base Set Starter Packs</b> coming right up! One for you, ${playerName}, and one for ${friendName}!"<br><b>${friendName}:</b> "Thanks for buying me my pack, ${playerName}!! Here — take my <b>Old Card Binder</b> so you can store and protect your rare pulls right away!"<br><b>🎒 Inventory Updated:</b> <b>1× Unopened Mythos Starter Pack</b> &amp; <b>📖 Old Card Binder</b> added!`;
 
         choicesEl.innerHTML = '';
         const openNowBtn = document.createElement('button');
@@ -8098,59 +8380,47 @@
 
         if (distToFriend < 1.2 || distToTable < 1.32) {
           this.nearInteractable = { id: 'friend_duel', name: fName };
-          const friendDuelChoices = this.hasOldCardBinder
-            ? [
-                {
-                  label: `1. ⚔️ "I'm ready for a rematch, ${fName}! Let's battle!"`,
-                  primary: true,
-                  silentClick: true,
-                  onSelect: () => this.triggerDuel(friend)
-                },
-                {
-                  label: `2. 📖 "Open the Old Card Binder (Press B)"`,
-                  onSelect: () => this.toggleBinderModal(true)
-                },
-                {
-                  label: `3. 🃏 "How's your deck holding up since our first match?"`,
-                  onSelect: (el) => {
-                    el.innerHTML = `<b>${fName}:</b> "I've been tweaking my opening placement! If you slot your pulled Beasts into your Old Card Binder, you can mix up your strategy anytime!"`;
-                  }
-                },
-                {
-                  label: `4. 👋 "Catch you later, ${fName}! (Leave)"`,
-                  onSelect: () => this.closeDialogue()
-                }
-              ]
-            : [
-                {
-                  label: `1. ⚔️ "I'm ready, ${fName}! Let's battle in MYTHOS!"`,
-                  primary: true,
-                  silentClick: true,
-                  onSelect: () => this.triggerDuel(friend)
-                },
-                {
-                  label: `2. 🃏 "Which Beasts are you bringing to the board?"`,
-                  onSelect: (el) => {
-                    el.innerHTML = `<b>${fName}:</b> "No peeking until draft phase! Pick your 3 Mythos Beasts wisely—whoever takes me down wins my brother's <b>Old Card Binder</b>!"`;
-                  }
-                },
-                {
-                  label: `3. 👋 "Let me get my cards ready first. (Leave)"`,
-                  onSelect: () => this.closeDialogue()
-                }
-              ];
+          const hasWonBefore = (this.wins || 0) > 0;
+          const friendDuelChoices = [
+            {
+              label: hasWonBefore
+                ? `1. ⚔️ "I'm ready for a rematch, ${fName}! Let's battle!"`
+                : `1. ⚔️ "I'm ready, ${fName}! Let's battle in MYTHOS!"`,
+              primary: true,
+              silentClick: true,
+              onSelect: () => this.triggerDuel(friend)
+            }
+          ];
+          if (this.hasOldCardBinder) {
+            friendDuelChoices.push({
+              label: `2. 📖 "Open the Old Card Binder (Press B)"`,
+              onSelect: () => this.toggleBinderModal(true)
+            });
+          }
+          friendDuelChoices.push({
+            label: `${friendDuelChoices.length + 1}. 🃏 "${hasWonBefore ? 'How is your deck holding up?' : 'Which Beasts are you bringing to the board?'}"`,
+            onSelect: (el) => {
+              el.innerHTML = hasWonBefore
+                ? `<b>${fName}:</b> "I've been tweaking my opening placement! If you slot your pulled Beasts into your Old Card Binder, you can mix up your strategy anytime!"`
+                : `<b>${fName}:</b> "No peeking until draft phase! Pick your Mythos Beasts wisely—let's see what you pulled from Leo's pack!"`;
+            }
+          });
+          friendDuelChoices.push({
+            label: `${friendDuelChoices.length + 1}. 👋 "${hasWonBefore ? `Catch you later, ${fName}!` : 'Let me get my cards ready first.'} (Leave)"`,
+            onSelect: () => this.closeDialogue()
+          });
 
           const friendMeetup = this.getMeetupChoiceObjectsForNpc('friend', 'friend_interior', 'friend_duel');
           this.renderNpcChoicePrompt({
             npcId: 'friend_duel',
-            promptKey: `friend_interior_duel_${fName}_${pName}_${this.hasOldCardBinder}${friendMeetup.keySuffix}`,
+            promptKey: `friend_interior_duel_${fName}_${pName}_${this.hasOldCardBinder}_${hasWonBefore}${friendMeetup.keySuffix}`,
             speakerText: `⚔️ ${fName.toUpperCase()} — READY TO BATTLE AT ${fName.toUpperCase()}'S HOUSE!`,
             talkPromptHtml: `Press <b>Talk</b> to speak with <b>${fName}</b> at the duel table.`,
-            greetingHtml: friendMeetup.greetingOverride || (this.hasOldCardBinder
-              ? `<b>${fName}:</b> "That was such an awesome match, ${pName}! How is that <b>Old Card Binder</b> working out for you? You can slot up to 9 cards into it, inspect their standalone art, and test new builds in battle! Want a rematch?!"`
-              : `<b>${fName}:</b> "Welcome to my house, ${pName}!! I've got the <b>MYTHOS Tabletop Arena</b> set up right here on my table with the 3 cards I pulled from Leo's pack! Defeat me and I'll give you my brother's <b>Old Card Binder</b>! Ready to battle?!"`),
+            greetingHtml: friendMeetup.greetingOverride || (hasWonBefore
+              ? `<b>${fName}:</b> "That was such an awesome match, ${pName}! How is that <b>Old Card Binder</b> working out for you? You can slot up to 9 cards per page, inspect their art, and test new builds in battle! Want a rematch?!"`
+              : `<b>${fName}:</b> "Welcome to my house, ${pName}!! I've got the <b>MYTHOS Tabletop Arena</b> set up right here on my table with the cards I pulled from the pack you bought me! How's that <b>Old Card Binder</b> working out? Ready to battle?!"`),
             choices: [...friendMeetup.choices, ...friendDuelChoices],
-            challengeText: this.hasOldCardBinder ? `⚔️ Rematch ${fName}!` : `⚔️ Battle ${fName}!`
+            challengeText: hasWonBefore ? `⚔️ Rematch ${fName}!` : `⚔️ Battle ${fName}!`
           });
         } else {
           this.lastShopPromptKey = null;
@@ -10021,20 +10291,17 @@
       if (badgeEl) {
         badgeEl.textContent = String(this.getTotalInventoryCount());
       }
+      const totalUnifiedBinderCount = (this.playingDeck?.length || 0)
+        + this.getSlottedBinderCount()
+        + (this.inventory || []).filter(i => i && (i.qty || 0) > 0 && i.id !== 'old_card_binder').reduce((s, i) => s + (i.qty || 1), 0);
       if (binderBadgeEl) {
-        binderBadgeEl.textContent = String(this.getSlottedBinderCount());
+        binderBadgeEl.textContent = String(totalUnifiedBinderCount);
       }
       const openBinderBtn = document.getElementById('btn-open-binder');
       if (openBinderBtn) {
-        if (this.hasOldCardBinder) {
-          openBinderBtn.classList.remove('locked');
-          openBinderBtn.title = 'Open Old Card Binder (Key: B)';
-          openBinderBtn.innerHTML = `📖 Old Card Binder <span id="binder-badge-count" class="inv-badge-pill">${this.getSlottedBinderCount()}</span>`;
-        } else {
-          openBinderBtn.classList.add('locked');
-          openBinderBtn.title = `Defeat ${this.friendName || 'your friend'} in battle to earn the Old Card Binder!`;
-          openBinderBtn.innerHTML = `🔒 Old Card Binder`;
-        }
+        openBinderBtn.classList.remove('locked');
+        openBinderBtn.title = 'Open Binder, Playing Deck & Sell/Trade Bag (Key: B or I)';
+        openBinderBtn.innerHTML = `<img src="Sprites/Overworld/binder_tome_icon.png" class="hud-backpack-img" alt=""> Binder <span id="binder-badge-count" class="inv-badge-pill">${totalUnifiedBinderCount}</span>`;
       }
       if (locPill) {
         const pName = this.draftAppearance?.name || 'Asher';
@@ -10142,11 +10409,11 @@
         hdrMobInvBadge.textContent = String(this.getTotalInventoryCount());
       }
       if (hdrMobBinderBadge) {
-        hdrMobBinderBadge.textContent = this.hasOldCardBinder ? String(this.getSlottedBinderCount()) : '🔒';
+        hdrMobBinderBadge.textContent = String(totalUnifiedBinderCount);
       }
       if (hdrMobBinderBtn) {
-        hdrMobBinderBtn.classList.toggle('locked', !this.hasOldCardBinder);
-        hdrMobBinderBtn.title = this.hasOldCardBinder ? 'Open Old Card Binder' : 'Old Card Binder (Locked)';
+        hdrMobBinderBtn.classList.remove('locked');
+        hdrMobBinderBtn.title = 'Open Binder, Playing Deck & Sell/Trade Bag';
       }
       if (hdrMobDeckBadge) {
         hdrMobDeckBadge.textContent = String((this.playingDeck || []).length);
@@ -10664,21 +10931,35 @@
         binderDoneBtn.addEventListener('click', () => this.toggleBinderModal(false));
       }
 
-      const binderToInvBtn = document.getElementById('btn-binder-to-inv');
-      if (binderToInvBtn) {
-        binderToInvBtn.addEventListener('click', () => {
-          this.toggleBinderModal(false);
-          this.toggleInventoryModal(true);
-        });
-      }
+      document.getElementById('btn-binder-tab-sleeves')?.addEventListener('click', () => {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        this.binderDrawerTab = 'sleeves';
+        this.renderBinderModal();
+      });
 
-      const binderToDeckBtn = document.getElementById('btn-binder-to-deck');
-      if (binderToDeckBtn) {
-        binderToDeckBtn.addEventListener('click', () => {
-          this.toggleBinderModal(false);
-          this.togglePlayingDeckModal(true);
-        });
-      }
+      document.getElementById('btn-binder-tab-bag')?.addEventListener('click', () => {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        this.binderDrawerTab = 'bag';
+        this.renderBinderModal();
+      });
+
+      document.getElementById('btn-binder-autofill')?.addEventListener('click', () => {
+        this.autoFillPlayingDeck();
+      });
+
+      document.getElementById('btn-binder-clear-deck')?.addEventListener('click', () => {
+        this.clearPlayingDeck();
+      });
+
+      document.getElementById('btn-binder-raw-art')?.addEventListener('click', (e) => {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        const dlg = document.getElementById('binder-hd-split-dialog');
+        if (!dlg) return;
+        const peeking = dlg.classList.toggle('raw-art-peek');
+        if (e.currentTarget) {
+          e.currentTarget.textContent = peeking ? '🃏 Show UI' : '👁️ Art';
+        }
+      });
 
       document.querySelectorAll('#binder-sort-bar .binder-sort-btn').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -10968,6 +11249,9 @@
       this.hasOpenedStarterPack = this.worldSave.hasOpenedStarterPack ?? false;
       this.friendWaitingAtHouse = this.worldSave.friendWaitingAtHouse ?? false;
       this.hasOldCardBinder = this.worldSave.hasOldCardBinder ?? false;
+      if (this.hasBoughtCardShopPacks && !this.hasOldCardBinder) {
+        this.hasOldCardBinder = true;
+      }
       this.dayNumber = this.worldSave.dayNumber || 1;
       this.lastParkTourneyCompletedDay = this.worldSave.lastParkTourneyCompletedDay ?? 0;
       this.bertoBattledDay = this.worldSave.bertoBattledDay ?? 0;
@@ -11992,22 +12276,12 @@
         }
         return false;
       } else {
-        // Wider Zoomed-Out Exterior World Bounds with Expanded South Block, Central Park East & West South Connector Ave
-        const inOakhavenNorthRoad = (tx >= 14.1 && tx <= 15.5 && ty >= 0.1 && ty <= 5.25);
-        const inOakhavenWestNorthRoad = (tx >= -0.45 && tx < 0.5 && ty >= 0.1 && ty <= 5.25);
-        const inWestSouthConnector = (tx >= -18.0 && tx < 0.5 && ty >= 4.2 && ty <= 11.4);
-        const inMayorBackyard = (tx >= -18.0 && tx <= -9.8 && ty >= 1.15 && ty <= 4.3);
-        const inWestCobblestoneConnector = (tx >= -0.30 && tx <= 0.65 && ty >= 10.5 && ty <= 31.85);
-        const distRoundabout = Math.hypot(tx - 0.175, ty - 32.85);
-        const inRoundaboutRing = (distRoundabout <= 1.58 && distRoundabout >= 0.62);
-        const inRoundaboutWestExit = (tx >= -21.38 && tx <= -1.0 && ty >= 32.38 && ty <= 33.32);
-        const inNorthWestPavedRoad = (tx >= -24.5 && tx <= 15.65 && ty >= 27.13 && ty <= 28.07);
-        const inBistroPlaza = (tx >= -17.8 && tx <= -13.2 && ty >= 31.0 && ty <= 32.5);
-        const inApartmentPlaza = (tx >= -11.8 && tx <= -6.6 && ty >= 31.0 && ty <= 32.5);
-        const inCornerStorePlaza = (tx >= -5.7 && tx <= -0.30 && ty >= 26.0 && ty <= 27.25);
-        const inConventionPlaza = (tx >= -24.8 && tx <= -15.2 && ty >= 26.2 && ty <= 27.25);
-        if (!inOakhavenNorthRoad && !inOakhavenWestNorthRoad && !inWestSouthConnector && !inMayorBackyard && !inWestCobblestoneConnector && !inRoundaboutRing && !inRoundaboutWestExit && !inNorthWestPavedRoad && !inBistroPlaza && !inApartmentPlaza && !inCornerStorePlaza && !inConventionPlaza && (tx < 0.5 || tx > 25.6 || ty < 0.5 || ty > 17.8)) return true;
-        if (distRoundabout < 0.62) return true; // Roundabout center island
+        // Exterior world outer bounds: all grass across the map is walkable (buildings, fences, trees & props still collide below)
+        const minExtX = (this.EXT_MIN_COL ?? -26.5) + 0.5;
+        const maxExtX = (this.EXT_COLS ?? 26) - 0.4;
+        const minExtY = 0.5;
+        const maxExtY = (this.EXT_ROWS ?? 36.5) - 0.5;
+        if (tx < minExtX || tx > maxExtX || ty < minExtY || ty > maxExtY) return true;
 
         // Oakhaven Convention Center (West End of Willow Way: x: -24.4..-15.6, y: 22.1..26.6)
         if (tx >= -24.4 && tx <= -15.6 && ty >= 22.1 && ty <= 26.6) {
@@ -12549,10 +12823,10 @@
         return { step, minX, minY, maxX, maxY, cols, rows };
       }
       const isExt = this.currentArea === 'exterior';
-      const minX = isExt ? 0.25 : 2.0;
-      const minY = isExt ? 0.0 : 4.0;
-      const maxX = isExt ? 25.75 : 14.0;
-      const maxY = isExt ? 18.0 : 10.5;
+      const minX = isExt ? ((this.EXT_MIN_COL ?? -26.5) + 0.5) : 2.0;
+      const minY = isExt ? 0.5 : 4.0;
+      const maxX = isExt ? ((this.EXT_COLS ?? 26) - 0.4) : 14.0;
+      const maxY = isExt ? ((this.EXT_ROWS ?? 36.5) - 0.5) : 10.5;
       const cols = Math.round((maxX - minX) / step) + 1;
       const rows = Math.round((maxY - minY) / step) + 1;
       return { step, minX, minY, maxX, maxY, cols, rows };

@@ -90,12 +90,12 @@ select {
     align-items: center;
     gap: 3px;
     font-family: var(--font-body);
-    font-size: 10.5px;
+    font-size: 11px;
     font-weight: 700;
     color: #f4e4bc;
     background: linear-gradient(180deg, rgba(61, 41, 27, 0.95), rgba(37, 24, 16, 0.98));
     border: 1px solid #8a6640;
-    padding: 4px 6px;
+    padding: 4px 7px;
     border-radius: 6px;
     line-height: 1;
     white-space: nowrap;
@@ -768,4 +768,61 @@ select {
   top: 0 !important;
   z-index: 30 !important;
   grid-column: 1 / -1 !important;
+}
+
+/* Remove Backpack & Satchel bottom card preview + Inspect Creature button on mobile */
+#inventory-detail-panel,
+.inventory-detail-card,
+#btn-inv-inspect {
+  display: none !important;
+}
+
+.inventory-modal-dialog {
+  max-height: 92dvh !important;
+  padding: 14px 16px !important;
+}
+
+.inventory-grid {
+  max-height: 58dvh !important;
+}
+
+/* Mobile Option B Unified Binder + Playing Deck Tray + Sell/Trade Bag */
+.binder-modal-dialog.binder-hd-split-dialog {
+  width: 98vw !important;
+  max-height: 94dvh !important;
+}
+
+.binder-content-sheet.binder-hd-sheet {
+  padding: 8px 10px !important;
+  gap: 8px !important;
+}
+
+.binder-hd-header {
+  padding: 6px 8px !important;
+  gap: 6px !important;
+}
+
+.binder-hd-header .binder-sub {
+  display: none !important;
+}
+
+.binder-gauge-pill {
+  font-size: 10.5px !important;
+  padding: 3px 7px !important;
+}
+
+.binder-deck-tray-grid,
+.binder-hd-sheet .binder-grid {
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 6px !important;
+  max-height: 28dvh !important;
+}
+
+.binder-trad-art-img {
+  height: 92px !important;
+}
+
+.binder-xfer-btn {
+  font-size: 9.5px !important;
+  padding: 3px 4px !important;
 }

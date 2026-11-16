@@ -6,8 +6,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>Mythos - Open World & Tabletop Card Game</title>
-  <link rel="stylesheet" href="css/style.css?v=2.64">
-  <link rel="stylesheet" href="css/mobile.css?v=2.64" media="(max-width: 820px), (hover: none) and (pointer: coarse)">
+  <link rel="stylesheet" href="css/style.css?v=2.69">
+  <link rel="stylesheet" href="css/mobile.css?v=2.69" media="(max-width: 820px), (hover: none) and (pointer: coarse)">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=MedievalSharp&family=Metamorphous&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
@@ -18,7 +18,7 @@
     <header class="game-header">
       <div class="logo-area">
         <h1 class="game-title">MYTHOS</h1>
-        <span class="version-tag" id="game-version">v2.64</span>
+        <span class="version-tag" id="game-version">v2.69</span>
         <span class="header-day-tag" id="header-mobile-day">📅 Mon D1</span>
         <span class="header-money-tag" id="header-mobile-money">$0.00</span>
         <span class="subtitle" id="header-subtitle"></span>
@@ -33,17 +33,10 @@
             <span class="hdr-mob-emoji">📱</span>
             <span id="hdr-mob-phone-badge" class="hdr-mob-badge hidden">!</span>
           </button>
-          <button type="button" id="btn-hdr-mob-inventory" class="ui-btn primary-btn header-mob-icon-btn" title="Open Adventurer Backpack">
-            <img src="Sprites/Overworld/backpack_icon.png" class="hdr-mob-img" alt="Backpack">
-            <span id="hdr-mob-inv-badge" class="hdr-mob-badge">0</span>
-          </button>
-          <button type="button" id="btn-hdr-mob-binder" class="ui-btn primary-btn header-mob-icon-btn locked" title="Old Card Binder">
-            <span class="hdr-mob-emoji">📖</span>
+          <button type="button" id="btn-hdr-mob-binder" class="ui-btn primary-btn header-mob-icon-btn header-mob-binder-unified" title="Open Binder, Playing Deck &amp; Sell/Trade Bag">
+            <img src="Sprites/Overworld/binder_tome_icon.png" class="hdr-mob-img" alt="Binder">
+            <span class="hdr-mob-btn-label">Binder</span>
             <span id="hdr-mob-binder-badge" class="hdr-mob-badge">0</span>
-          </button>
-          <button type="button" id="btn-hdr-mob-deck" class="ui-btn primary-btn header-mob-icon-btn" title="Playing Deck">
-            <span class="hdr-mob-emoji">🃏</span>
-            <span id="hdr-mob-deck-badge" class="hdr-mob-badge">0</span>
           </button>
         </div>
 
@@ -58,9 +51,9 @@
           <div class="overworld-toolbar header-menu-section" id="overworld-toolbar">
             <button id="btn-open-calendar" class="ui-btn primary-btn calendar-toolbar-btn" style="padding: 4px 10px; font-size: 12px; background: linear-gradient(135deg, #059669, #10b981); border-color: #34d399;" title="Town Weekly Calendar & Daily Events (Key: C)">📅 <span id="calendar-btn-day-label">Monday</span> • Day <span id="calendar-btn-day-num">1</span></button>
             <button id="btn-open-phone" class="ui-btn primary-btn phone-toolbar-btn" style="padding: 4px 10px; font-size: 12px; background: linear-gradient(135deg, #4f46e5, #6366f1); border-color: #818cf8;" title="Mythos Mobile Smartphone (Key: P)">📱 Phone <span id="phone-alert-badge" class="phone-badge-pill hidden">!</span></button>
-            <button id="btn-open-inventory" class="ui-btn primary-btn backpack-toolbar-btn" title="Open Adventurer Backpack & Inventory (Key: I)"><img src="Sprites/Overworld/backpack_icon.png" class="hud-backpack-img" alt=""> Backpack <span id="inv-badge-count" class="inv-badge-pill">0</span></button>
-            <button id="btn-open-binder" class="ui-btn primary-btn binder-toolbar-btn locked" style="padding: 4px 10px; font-size: 12px; background: linear-gradient(135deg, #1e3a8a, #2563eb); border-color: #60a5fa;" title="Old Card Binder (Locked — Defeat Friend to Unlock)">📖 Old Card Binder <span id="binder-badge-count" class="inv-badge-pill">0</span></button>
-            <button id="btn-open-playing-deck" class="ui-btn primary-btn deck-toolbar-btn" style="padding: 4px 10px; font-size: 12px; background: linear-gradient(135deg, #78350f, #b45309); border-color: #fbbf24;" title="Build the Playing Deck you take into Mythos battles">🃏 Playing Deck <span id="deck-badge-count" class="inv-badge-pill">0</span></button>
+            <button id="btn-open-inventory" class="ui-btn primary-btn backpack-toolbar-btn hidden" title="Open Adventurer Backpack & Inventory (Key: I)"><img src="Sprites/Overworld/backpack_icon.png" class="hud-backpack-img" alt=""> Backpack <span id="inv-badge-count" class="inv-badge-pill">0</span></button>
+            <button id="btn-open-binder" class="ui-btn primary-btn binder-toolbar-btn" style="padding: 4px 10px; font-size: 12px; background: linear-gradient(135deg, #5c3322, #331a12); border-color: #fbbf24;" title="Open Binder, Playing Deck &amp; Sell/Trade Bag (Key: B or I)"><img src="Sprites/Overworld/binder_tome_icon.png" class="hud-backpack-img" alt=""> Binder <span id="binder-badge-count" class="inv-badge-pill">0</span></button>
+            <button id="btn-open-playing-deck" class="ui-btn primary-btn deck-toolbar-btn hidden" style="padding: 4px 10px; font-size: 12px; background: linear-gradient(135deg, #78350f, #b45309); border-color: #fbbf24;" title="Build the Playing Deck you take into Mythos battles">🃏 Playing Deck <span id="deck-badge-count" class="inv-badge-pill">0</span></button>
             <button id="btn-open-creator" class="ui-btn secondary" style="padding: 4px 10px; font-size: 12px;" title="Customize Character or World Save">👤 Character</button>
             <select id="ow-time-select" class="ow-select" title="Time of Day Shader">
               <option value="day" selected>☀️ Summer Day</option>
@@ -672,7 +665,7 @@
         </div>
       </div>
 
-      <div class="intro-version-badge" id="intro-version-tag">v2.64</div>
+      <div class="intro-version-badge" id="intro-version-tag">v2.69</div>
     </div>
 
     <!-- Stardew Valley / Pokémon Style Character Creator Modal -->
@@ -929,59 +922,88 @@
       </div>
     </div>
 
-    <!-- Mythos Collector Card Binder Modal (Multi-Page 9-Pocket Protective Sleeves) -->
+    <!-- Mythos Unified Binder, Playing Deck Tray & Sell/Trade Bag Modal (Option B Split View) -->
     <div class="modal-overlay hidden" id="binder-modal">
-      <div class="binder-modal-dialog">
-        <!-- Beat-Up Leather Cover Corners & Tape Accents -->
+      <div class="binder-modal-dialog binder-hd-split-dialog" id="binder-hd-split-dialog">
         <span class="binder-brass-corner top-left" aria-hidden="true"></span>
         <span class="binder-brass-corner bottom-left" aria-hidden="true"></span>
         <span class="binder-brass-corner top-right" aria-hidden="true"></span>
         <span class="binder-brass-corner bottom-right" aria-hidden="true"></span>
-        <span class="binder-tape-patch" aria-hidden="true"></span>
 
-        <!-- Left Section: Tarnished 3-Ring Spine + Vertical Divider Sort Tabs -->
-        <div class="binder-left-section">
-          <div class="binder-rings-spine" aria-hidden="true">
-            <span class="binder-ring"></span>
-            <span class="binder-ring"></span>
-            <span class="binder-ring"></span>
-          </div>
-
-          <div class="binder-sort-bar" id="binder-sort-bar" aria-label="Sort Binder Cards">
-            <span class="binder-sort-label">SORT</span>
-            <button type="button" class="binder-sort-btn active" data-sort="default" title="Sort by Slot Order">Slot Order</button>
-            <button type="button" class="binder-sort-btn" data-sort="alpha" title="Sort Alphabetically">🔤 A–Z</button>
-            <button type="button" class="binder-sort-btn" data-sort="type" title="Sort by Element/Type">🏷️ Type</button>
-            <button type="button" class="binder-sort-btn" data-sort="power" title="Sort by Attack Power">⚔️ Power</button>
-            <button type="button" class="binder-sort-btn" data-sort="stars" title="Sort by Star Rating">⭐ Stars</button>
-          </div>
-        </div>
-
-        <div class="binder-content-sheet">
-          <div class="binder-header">
+        <div class="binder-content-sheet binder-hd-sheet">
+          <!-- Top Bar: Binder Title + 18-24 Card Limit + 45 Star Cap + Actions -->
+          <div class="binder-header binder-hd-header">
             <div class="binder-title-group">
-              <span class="binder-icon-badge">📖</span>
+              <img src="Sprites/Overworld/binder_tome_icon.png" class="binder-tome-header-icon" alt="Binder">
               <div>
-                <h2 class="binder-title" id="binder-main-title">OLD CARD BINDER</h2>
-                <p class="binder-sub" id="binder-sub-title">A well-loved 4-page collector binder • Click any card to inspect moves, types, and abilities</p>
+                <h2 class="binder-title" id="binder-main-title">BINDER</h2>
+                <p class="binder-sub" id="binder-sub-title">Playing Deck (18–24 Cards • Max 45★) • Binder Sleeves &amp; Sell/Trade Bag • Hold card to zoom</p>
               </div>
             </div>
             <div class="binder-header-actions">
-              <span class="binder-counter-pill" id="binder-counter-pill">3 / 36 Sleeves Filled</span>
-              <button type="button" class="ui-btn primary-btn" id="btn-binder-to-deck" style="padding: 4px 10px; font-size: 11px; background: linear-gradient(135deg, #78350f, #b45309); border-color: #fbbf24;">🃏 Playing Deck</button>
-              <button type="button" class="ui-btn secondary" id="btn-binder-to-inv" style="padding: 4px 10px; font-size: 11px;">🎒 Backpack</button>
+              <span class="binder-gauge-pill cards" id="binder-deck-limit-pill" title="Playing Deck Card Limit (Minimum 18, Maximum 24)">🃏 0 / 24 (Min 18)</span>
+              <span class="binder-gauge-pill stars" id="binder-star-limit-pill" title="Playing Deck Maximum Star Cap (45 Stars)">⭐ 0 / 45★</span>
+              <span class="binder-counter-pill hidden" id="binder-counter-pill">0 / 36</span>
+              <button type="button" class="ui-btn secondary binder-top-ctrl-btn" id="btn-binder-autofill" title="Auto-fill Playing Deck up to 18-24 cards under 45★">✨ Fill Deck</button>
+              <button type="button" class="ui-btn secondary binder-top-ctrl-btn" id="btn-binder-clear-deck" title="Return all Playing Deck cards to Binder/Bag">🧹 Clear</button>
+              <button type="button" class="ui-btn secondary binder-top-ctrl-btn" id="btn-binder-raw-art" title="Peek at 32-bit HD tabletop background art">👁️ Art</button>
               <button type="button" class="drawer-close-btn" id="btn-close-binder" title="Close Binder">✕</button>
             </div>
           </div>
 
-          <!-- 9-Pocket Card Sleeves Grid (3x3 Collector Sheet) -->
-          <div class="binder-grid" id="binder-slots-grid">
-            <!-- Dynamically populated with 9 sleeve slots per page -->
+          <div class="binder-split-body" id="binder-split-body">
+            <!-- TOP HALF: Recessed Crimson Velvet Playing Deck Tray -->
+            <div class="binder-deck-tray-section">
+              <div class="binder-tray-bar">
+                <span class="binder-tray-title">⚔️ Playing Deck Tray <small>(Hold card to inspect closer • Pull to 📖 Binder or 🎒 Sell Bag)</small></span>
+                <div class="binder-star-progress-wrap" title="Star Cap Usage (Max 45★)">
+                  <div class="binder-star-progress-fill" id="binder-star-meter-fill" style="width: 0%"></div>
+                </div>
+              </div>
+              <div class="binder-deck-tray-grid" id="binder-deck-tray-grid">
+                <!-- Dynamically populated with active Playing Deck cards -->
+              </div>
+            </div>
+
+            <!-- BOTTOM HALF: Open Leather Binder Sleeves & Sell/Trade Bag Drawer -->
+            <div class="binder-drawer-section">
+              <div class="binder-drawer-toolbar">
+                <div class="binder-drawer-tabs">
+                  <button type="button" class="binder-drawer-tab active" id="btn-binder-tab-sleeves" data-tab="sleeves">
+                    📖 Binder Sleeves (<span id="binder-tab-sleeves-count">0</span>)
+                  </button>
+                  <button type="button" class="binder-drawer-tab" id="btn-binder-tab-bag" data-tab="bag">
+                    🎒 Sell/Trade Bag (<span id="binder-tab-bag-count">0</span>)
+                  </button>
+                </div>
+
+                <div class="binder-sort-bar binder-inline-sort" id="binder-sort-bar" aria-label="Sort Binder Cards">
+                  <span class="binder-sort-label">SORT:</span>
+                  <button type="button" class="binder-sort-btn active" data-sort="default" title="Sort by Slot Order">Slot</button>
+                  <button type="button" class="binder-sort-btn" data-sort="alpha" title="Sort Alphabetically">A–Z</button>
+                  <button type="button" class="binder-sort-btn" data-sort="type" title="Sort by Element/Type">Type</button>
+                  <button type="button" class="binder-sort-btn" data-sort="power" title="Sort by Attack Power">PWR</button>
+                  <button type="button" class="binder-sort-btn" data-sort="stars" title="Sort by Star Rating">★</button>
+                </div>
+
+                <span class="binder-drawer-mode-pill" id="binder-drawer-mode-pill">🔒 Protected from Sale</span>
+              </div>
+
+              <!-- Tab 1: 9-Pocket Card Sleeves Grid -->
+              <div class="binder-grid" id="binder-slots-grid">
+                <!-- Dynamically populated with 9 sleeve slots per page -->
+              </div>
+
+              <!-- Tab 2: Loose Sell/Trade Bag (Inventory Cards, Unopened Packs & Gear) -->
+              <div class="binder-grid hidden" id="binder-bag-grid">
+                <!-- Dynamically populated with sellable loose cards & booster packs -->
+              </div>
+            </div>
           </div>
 
           <div class="binder-footer">
-            <div class="binder-hint">
-              💡 <b>Tip:</b> Click any inserted card to enter <b>Creature Inspect Mode</b>.
+            <div class="binder-hint" id="binder-hint-text">
+              💡 <b>Tip:</b> Hold-click any card to view its <b>Traditional Card Art</b> closer. Pull cards to <b>🎒 Sell/Trade Bag</b> to sell at Leo's Shop or on your Phone!
             </div>
             <div class="binder-page-nav" id="binder-page-nav">
               <button type="button" class="binder-page-btn" id="btn-binder-prev-page" title="Previous Page">◀ Prev</button>
@@ -1576,10 +1598,10 @@
     </div>
   </div>
 
-  <script src="js/audio.js?v=2.64"></script>
-  <script src="js/character_sprites.js?v=2.64"></script>
-  <script src="js/overworld.js?v=2.64"></script>
-  <script src="js/gwent_cards.js?v=2.64"></script>
-  <script src="js/game.js?v=2.64"></script>
+  <script src="js/audio.js?v=2.69"></script>
+  <script src="js/character_sprites.js?v=2.69"></script>
+  <script src="js/overworld.js?v=2.69"></script>
+  <script src="js/gwent_cards.js?v=2.69"></script>
+  <script src="js/game.js?v=2.69"></script>
 </body>
 </html>

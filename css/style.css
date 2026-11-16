@@ -6031,6 +6031,394 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   pointer-events: auto;
 }
 
+/* ==========================================================================
+   Option B Unified Binder, Playing Deck Tray & Sell/Trade Bag (32-bit HD Art)
+   ========================================================================== */
+.binder-modal-dialog.binder-hd-split-dialog {
+  max-width: 980px;
+  width: 96%;
+  max-height: 93dvh;
+  padding: 0;
+  border: 3.5px solid #b88b3a;
+  outline: 2px solid #23140b;
+  border-radius: 16px;
+  background: #1a100a url('../Sprites/Overworld/binder_tome_bg.jpg') center center / cover no-repeat;
+  box-shadow: inset 0 0 36px rgba(0, 0, 0, 0.8), 0 24px 70px rgba(0, 0, 0, 0.95);
+}
+
+.binder-content-sheet.binder-hd-sheet {
+  width: 100%;
+  padding: 12px 16px;
+  gap: 10px;
+  border: none;
+  border-radius: 13px;
+  background: linear-gradient(180deg, rgba(18, 10, 6, 0.42) 0%, rgba(16, 10, 6, 0.56) 100%);
+  box-shadow: none;
+  overflow-y: auto;
+}
+
+.binder-hd-header {
+  background: rgba(18, 11, 7, 0.86);
+  border: 1.5px solid rgba(251, 191, 36, 0.55);
+  border-radius: 10px;
+  padding: 8px 12px;
+  backdrop-filter: blur(4px);
+}
+
+.binder-tome-header-icon {
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.8));
+}
+
+.binder-hd-header .binder-title {
+  color: #fde68a;
+  font-size: 18px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.9);
+}
+
+.binder-hd-header .binder-sub {
+  color: #e7d4ab;
+  font-size: 11px;
+}
+
+.binder-gauge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+  background: rgba(45, 22, 10, 0.92);
+  border: 1.5px solid #f59e0b;
+  color: #fef3c7;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15), 0 2px 6px rgba(0, 0, 0, 0.55);
+}
+
+.binder-gauge-pill.warn {
+  background: rgba(127, 29, 29, 0.94);
+  border-color: #f87171;
+  color: #fee2e2;
+}
+
+.binder-top-ctrl-btn {
+  padding: 4px 9px !important;
+  font-size: 11px !important;
+}
+
+.binder-split-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: opacity 0.2s ease;
+}
+
+.binder-modal-dialog.raw-art-peek .binder-split-body,
+.binder-modal-dialog.raw-art-peek .binder-footer {
+  opacity: 0.04;
+  pointer-events: none;
+}
+
+/* Upper Section: Recessed Crimson Velvet Playing Deck Tray */
+.binder-deck-tray-section {
+  background: linear-gradient(180deg, rgba(48, 8, 15, 0.72) 0%, rgba(26, 4, 9, 0.82) 100%);
+  border: 1.5px solid rgba(251, 191, 36, 0.68);
+  border-radius: 12px;
+  padding: 9px 11px;
+  box-shadow: inset 0 3px 14px rgba(0, 0, 0, 0.82);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.binder-tray-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.binder-tray-title {
+  font-size: 12.5px;
+  font-weight: 800;
+  color: #fde68a;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+}
+
+.binder-tray-title small {
+  font-weight: 600;
+  color: #f3e8d2;
+  opacity: 0.85;
+  margin-left: 4px;
+}
+
+.binder-star-progress-wrap {
+  width: 130px;
+  height: 9px;
+  background: rgba(0, 0, 0, 0.75);
+  border: 1px solid rgba(251, 191, 36, 0.65);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.binder-star-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #f59e0b 0%, #fde047 100%);
+  transition: width 0.2s ease;
+}
+
+.binder-star-progress-fill.near-cap {
+  background: linear-gradient(90deg, #ef4444 0%, #f97316 100%);
+}
+
+.binder-deck-tray-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+  gap: 8px;
+  max-height: 205px;
+  overflow-y: auto;
+  padding: 2px;
+}
+
+/* Lower Section: Open Stitched Leather Binder & Sell/Trade Bag Drawer */
+.binder-drawer-section {
+  background: linear-gradient(180deg, rgba(46, 30, 18, 0.76) 0%, rgba(24, 15, 9, 0.86) 100%);
+  border: 1.5px solid rgba(217, 155, 82, 0.72);
+  border-radius: 12px;
+  padding: 9px 11px;
+  box-shadow: inset 0 2px 12px rgba(0, 0, 0, 0.78);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.binder-drawer-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.binder-drawer-tabs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.binder-drawer-tab {
+  padding: 5px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  background: rgba(15, 10, 6, 0.68);
+  border: 1.5px solid rgba(214, 179, 124, 0.35);
+  color: #e7d4ab;
+  transition: all 0.14s ease;
+}
+
+.binder-drawer-tab.active[data-tab="sleeves"] {
+  background: linear-gradient(180deg, #b45309 0%, #78350f 100%);
+  border-color: #fbbf24;
+  color: #fffbeb;
+  box-shadow: 0 2px 8px rgba(180, 83, 9, 0.45);
+}
+
+.binder-drawer-tab.active[data-tab="bag"] {
+  background: linear-gradient(180deg, #047857 0%, #064e3b 100%);
+  border-color: #34d399;
+  color: #ecfdf5;
+  box-shadow: 0 2px 8px rgba(4, 120, 87, 0.45);
+}
+
+.binder-inline-sort {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 4px !important;
+  width: auto !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.binder-inline-sort .binder-sort-label {
+  border: none;
+  padding: 0 2px;
+}
+
+.binder-inline-sort .binder-sort-btn {
+  padding: 4px 8px;
+  font-size: 10.5px;
+  border-radius: 6px;
+  border: 1px solid #8a6640;
+  transform: none !important;
+}
+
+.binder-drawer-mode-pill {
+  font-size: 11px;
+  font-weight: 700;
+  color: #fde68a;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(251, 191, 36, 0.4);
+  padding: 3px 8px;
+  border-radius: 999px;
+}
+
+/* Traditional Card Slot inside Deck Tray, Binder & Sell/Trade Bag */
+.binder-trad-slot {
+  background: linear-gradient(180deg, rgba(28, 17, 11, 0.94) 0%, rgba(16, 10, 6, 0.98) 100%);
+  border: 1.5px solid #d97706;
+  border-radius: 10px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  gap: 5px;
+  position: relative;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.72);
+  transition: transform 0.14s ease, border-color 0.14s ease;
+}
+
+.binder-trad-slot:hover {
+  border-color: #fde047;
+  transform: translateY(-2px);
+}
+
+.binder-trad-art-wrap {
+  position: relative;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.binder-trad-art-img {
+  height: 118px;
+  width: auto;
+  max-width: 100%;
+  border-radius: 6px;
+  object-fit: contain;
+  display: block;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.75);
+}
+
+.binder-trad-star-badge {
+  position: absolute;
+  top: 3px;
+  left: 4px;
+  background: rgba(12, 8, 5, 0.88);
+  border: 1px solid #fbbf24;
+  color: #fde047;
+  font-size: 10px;
+  font-weight: 900;
+  padding: 1px 5px;
+  border-radius: 5px;
+  line-height: 1.2;
+  pointer-events: none;
+}
+
+.binder-trad-qty-badge {
+  position: absolute;
+  top: 3px;
+  right: 4px;
+  background: rgba(15, 23, 42, 0.92);
+  border: 1px solid #fde047;
+  color: #fef08a;
+  font-size: 10px;
+  font-weight: 900;
+  padding: 1px 5px;
+  border-radius: 999px;
+  line-height: 1.2;
+  pointer-events: none;
+}
+
+.binder-trad-name {
+  font-size: 11px;
+  font-weight: 800;
+  color: #fef3c7;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+}
+
+.binder-trad-actions {
+  display: flex;
+  gap: 4px;
+  width: 100%;
+}
+
+.binder-xfer-btn {
+  flex: 1;
+  padding: 4px 5px;
+  border-radius: 6px;
+  font-size: 10.5px;
+  font-weight: 800;
+  cursor: pointer;
+  text-align: center;
+  white-space: nowrap;
+  transition: filter 0.12s ease, transform 0.12s ease;
+}
+
+.binder-xfer-btn:hover:not(:disabled) {
+  filter: brightness(1.14);
+  transform: translateY(-1px);
+}
+
+.binder-xfer-btn:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+.binder-xfer-btn.to-deck {
+  background: linear-gradient(180deg, #d97706 0%, #92400e 100%);
+  border: 1px solid #fde047;
+  color: #fffbeb;
+}
+
+.binder-xfer-btn.to-binder {
+  background: linear-gradient(180deg, #1d4ed8 0%, #1e3a8a 100%);
+  border: 1px solid #93c5fd;
+  color: #eff6ff;
+}
+
+.binder-xfer-btn.to-bag {
+  background: linear-gradient(180deg, #047857 0%, #064e3b 100%);
+  border: 1px solid #6ee7b7;
+  color: #ecfdf5;
+}
+
+.binder-hd-sheet .binder-grid {
+  grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+  gap: 8px;
+  max-height: 235px;
+  overflow-y: auto;
+  padding: 2px;
+}
+
+.binder-hd-sheet .binder-footer {
+  background: rgba(18, 11, 7, 0.86);
+  border: 1px solid rgba(217, 155, 82, 0.45);
+  border-radius: 10px;
+  padding: 7px 12px;
+}
+
+.binder-hd-sheet .binder-hint {
+  color: #f3e8d2;
+}
+
+.binder-hd-sheet .binder-page-indicator {
+  color: #fde68a;
+}
+
 .binder-slot-btn {
   width: 100%;
   padding: 7px 10px;
@@ -6994,6 +7382,7 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   }
 
   .logo-area {
+    flex: 0 0 auto;
     gap: 5px !important;
     min-width: 0;
     overflow: hidden;
@@ -7011,10 +7400,10 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
     align-items: center;
     gap: 3px;
     font-family: var(--font-body);
-    font-size: 10.5px;
+    font-size: 11px;
     font-weight: 700;
     line-height: 1;
-    padding: 4px 6px;
+    padding: 4px 7px;
     border-radius: 6px;
     white-space: nowrap;
     box-shadow: inset 0 1px 0 rgba(255, 232, 185, 0.14), 0 1px 2px rgba(0, 0, 0, 0.45);
@@ -7034,27 +7423,51 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   }
 
   .header-right-group {
-    gap: 4px !important;
+    flex: 1 1 auto !important;
+    min-width: 0;
+    justify-content: flex-end !important;
+    gap: 8px !important;
   }
 
   .header-mobile-icons {
+    flex: 1 1 auto;
+    max-width: 280px;
     display: flex !important;
     align-items: center;
-    gap: 4px;
+    justify-content: space-evenly;
+    gap: 6px;
   }
 
   .header-mob-icon-btn {
     position: relative;
-    width: 30px !important;
-    height: 29px !important;
+    width: 32px !important;
+    height: 30px !important;
     padding: 0 !important;
     display: inline-flex !important;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
     border-radius: 6px !important;
     background: linear-gradient(180deg, #4b3322 0%, #2e1f14 100%) !important;
     border: 1px solid #a87b46 !important;
     box-shadow: inset 0 1px 0 rgba(255, 230, 175, 0.2), 0 2px 4px rgba(0, 0, 0, 0.5) !important;
+  }
+
+  .header-mob-icon-btn.header-mob-binder-unified {
+    width: auto !important;
+    padding: 0 9px !important;
+    gap: 5px;
+    border: 1.5px solid #fbbf24 !important;
+    background: linear-gradient(180deg, #5c3322 0%, #331a12 100%) !important;
+  }
+
+  .hdr-mob-btn-label {
+    font-family: var(--font-body);
+    font-size: 11px;
+    font-weight: 800;
+    color: #fef3c7;
+    letter-spacing: 0.3px;
+    pointer-events: none;
   }
 
   .header-mob-icon-btn.locked {
@@ -7451,6 +7864,22 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   .pack-collect-btn {
     font-size: 13.5px !important;
     padding: 10px 20px !important;
+  }
+
+  /* Remove Backpack & Satchel bottom card preview + Inspect Creature button on mobile */
+  #inventory-detail-panel,
+  .inventory-detail-card,
+  #btn-inv-inspect {
+    display: none !important;
+  }
+
+  .inventory-modal-dialog {
+    max-height: 92dvh !important;
+    padding: 14px 16px !important;
+  }
+
+  .inventory-grid {
+    max-height: 58dvh !important;
   }
 }
 
