@@ -852,10 +852,12 @@
       if (marketDot) marketDot.classList.toggle('hidden', !marketAlert);
       const badge = document.getElementById('phone-alert-badge');
       const mobBadge = document.getElementById('mob-phone-badge');
+      const hdrMobPhoneBadge = document.getElementById('hdr-mob-phone-badge');
       const menuAlert = document.getElementById('header-menu-alert');
       const hasAnyAlert = Boolean(this.phoneUnreadShop || marketAlert);
       if (badge) badge.classList.toggle('hidden', !hasAnyAlert);
       if (mobBadge) mobBadge.classList.toggle('hidden', !hasAnyAlert);
+      if (hdrMobPhoneBadge) hdrMobPhoneBadge.classList.toggle('hidden', !hasAnyAlert);
       if (menuAlert) menuAlert.classList.toggle('hidden', !hasAnyAlert);
     }
 
@@ -10293,6 +10295,10 @@
       const mobPhoneBtn = document.getElementById('btn-mob-phone');
       if (mobPhoneBtn) {
         mobPhoneBtn.addEventListener('click', () => this.togglePhoneModal(true));
+      }
+      const hdrMobPhoneBtn = document.getElementById('btn-hdr-mob-phone');
+      if (hdrMobPhoneBtn) {
+        hdrMobPhoneBtn.addEventListener('click', () => this.togglePhoneModal(true));
       }
       const closePhoneBtn = document.getElementById('btn-close-phone');
       if (closePhoneBtn) {

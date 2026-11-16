@@ -90,12 +90,12 @@ select {
     align-items: center;
     gap: 3px;
     font-family: var(--font-body);
-    font-size: 11px;
+    font-size: 10.5px;
     font-weight: 700;
     color: #f4e4bc;
     background: linear-gradient(180deg, rgba(61, 41, 27, 0.95), rgba(37, 24, 16, 0.98));
     border: 1px solid #8a6640;
-    padding: 4px 7px;
+    padding: 4px 6px;
     border-radius: 6px;
     line-height: 1;
     white-space: nowrap;
@@ -652,10 +652,7 @@ select {
 }
 
 .ow-mobile-header-bar {
-  max-width: 100% !important;
-  width: 100% !important;
-  margin: 0 !important;
-  z-index: 35 !important;
+  display: none !important;
 }
 
 .overworld-stage {
@@ -692,7 +689,7 @@ select {
   position: absolute !important;
   left: 0 !important;
   right: 0 !important;
-  top: 26px !important;
+  top: 6px !important;
   bottom: auto !important;
   width: 100% !important;
   max-width: 100% !important;

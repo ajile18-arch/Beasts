@@ -7011,10 +7011,10 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
     align-items: center;
     gap: 3px;
     font-family: var(--font-body);
-    font-size: 11px;
+    font-size: 10.5px;
     font-weight: 700;
     line-height: 1;
-    padding: 4px 7px;
+    padding: 4px 6px;
     border-radius: 6px;
     white-space: nowrap;
     box-shadow: inset 0 1px 0 rgba(255, 232, 185, 0.14), 0 1px 2px rgba(0, 0, 0, 0.45);
@@ -7034,19 +7034,19 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   }
 
   .header-right-group {
-    gap: 5px !important;
+    gap: 4px !important;
   }
 
   .header-mobile-icons {
     display: flex !important;
     align-items: center;
-    gap: 5px;
+    gap: 4px;
   }
 
   .header-mob-icon-btn {
     position: relative;
-    width: 32px !important;
-    height: 30px !important;
+    width: 30px !important;
+    height: 29px !important;
     padding: 0 !important;
     display: inline-flex !important;
     align-items: center;
@@ -7107,11 +7107,6 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
     display: none !important;
   }
 
-  #btn-mob-inventory,
-  #btn-mob-binder {
-    display: none !important;
-  }
-
   .header-actions {
     gap: 6px !important;
   }
@@ -7161,29 +7156,9 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
     display: none !important;
   }
 
-  /* Top Quick HUD / Nav Bar - Sleek, slim and tight to top */
+  /* Mobile secondary HUD bar removed — controls live in main top header */
   .ow-mobile-header-bar {
-    display: flex !important;
-    width: 100% !important;
-    max-width: 480px !important;
-    margin: 0 0 1px 0 !important;
-    padding: 1px 6px !important;
-    height: 25px !important;
-    min-height: 25px !important;
-    max-height: 25px !important;
-    flex-shrink: 0 !important;
-    border-radius: 0 0 6px 6px !important;
-    border-top: none !important;
-  }
-
-  .ow-mobile-loc-tag {
-    font-size: 10.5px !important;
-  }
-
-  .ow-mob-nav-btn {
-    padding: 2px 5px !important;
-    font-size: 10px !important;
-    line-height: 1.1 !important;
+    display: none !important;
   }
 
   /* Full-Screen Game Map Stage on Mobile */
@@ -7227,7 +7202,7 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
     position: absolute !important;
     left: 0 !important;
     right: 0 !important;
-    top: 26px !important;
+    top: 6px !important;
     bottom: auto !important;
     display: flex !important;
     flex: none !important;
@@ -7482,21 +7457,6 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
 /* Very Small Handsets / Compact Phones */
 @media (max-width: 480px) {
   .ow-mobile-header-bar {
-    padding: 3px 6px !important;
-    gap: 4px !important;
-  }
-
-  .ow-mobile-loc-tag {
-    font-size: 11px !important;
-    max-width: 44% !important;
-  }
-
-  .ow-mob-nav-btn {
-    padding: 4px 6px !important;
-    font-size: 10px !important;
-  }
-
-  .ow-mob-nav-btn .mob-btn-text {
     display: none !important;
   }
 

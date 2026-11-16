@@ -6,8 +6,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>Mythos - Open World & Tabletop Card Game</title>
-  <link rel="stylesheet" href="css/style.css?v=2.63">
-  <link rel="stylesheet" href="css/mobile.css?v=2.63" media="(max-width: 820px), (hover: none) and (pointer: coarse)">
+  <link rel="stylesheet" href="css/style.css?v=2.64">
+  <link rel="stylesheet" href="css/mobile.css?v=2.64" media="(max-width: 820px), (hover: none) and (pointer: coarse)">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=MedievalSharp&family=Metamorphous&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
@@ -18,7 +18,7 @@
     <header class="game-header">
       <div class="logo-area">
         <h1 class="game-title">MYTHOS</h1>
-        <span class="version-tag" id="game-version">v2.63</span>
+        <span class="version-tag" id="game-version">v2.64</span>
         <span class="header-day-tag" id="header-mobile-day">📅 Mon D1</span>
         <span class="header-money-tag" id="header-mobile-money">$0.00</span>
         <span class="subtitle" id="header-subtitle"></span>
@@ -29,6 +29,10 @@
       <div class="header-right-group">
         <!-- Mobile Header Quick Access Icons -->
         <div class="header-mobile-icons" id="header-mobile-icons">
+          <button type="button" id="btn-hdr-mob-phone" class="ui-btn primary-btn header-mob-icon-btn" title="Mythos Mobile Phone">
+            <span class="hdr-mob-emoji">📱</span>
+            <span id="hdr-mob-phone-badge" class="hdr-mob-badge hidden">!</span>
+          </button>
           <button type="button" id="btn-hdr-mob-inventory" class="ui-btn primary-btn header-mob-icon-btn" title="Open Adventurer Backpack">
             <img src="Sprites/Overworld/backpack_icon.png" class="hdr-mob-img" alt="Backpack">
             <span id="hdr-mob-inv-badge" class="hdr-mob-badge">0</span>
@@ -668,7 +672,7 @@
         </div>
       </div>
 
-      <div class="intro-version-badge" id="intro-version-tag">v2.63</div>
+      <div class="intro-version-badge" id="intro-version-tag">v2.64</div>
     </div>
 
     <!-- Stardew Valley / Pokémon Style Character Creator Modal -->
@@ -1572,10 +1576,10 @@
     </div>
   </div>
 
-  <script src="js/audio.js?v=2.63"></script>
-  <script src="js/character_sprites.js?v=2.63"></script>
-  <script src="js/overworld.js?v=2.63"></script>
-  <script src="js/gwent_cards.js?v=2.63"></script>
-  <script src="js/game.js?v=2.63"></script>
+  <script src="js/audio.js?v=2.64"></script>
+  <script src="js/character_sprites.js?v=2.64"></script>
+  <script src="js/overworld.js?v=2.64"></script>
+  <script src="js/gwent_cards.js?v=2.64"></script>
+  <script src="js/game.js?v=2.64"></script>
 </body>
 </html>
