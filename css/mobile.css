@@ -813,9 +813,29 @@ select {
 
 .binder-deck-tray-grid,
 .binder-hd-sheet .binder-grid {
-  grid-template-columns: repeat(3, 1fr) !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  grid-auto-rows: max-content !important;
+  align-items: start !important;
   gap: 6px !important;
   max-height: 28dvh !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  overscroll-behavior-x: none !important;
+  touch-action: pan-y !important;
+}
+
+.binder-split-body.drawer-collapsed .binder-deck-tray-grid,
+#binder-split-body.drawer-collapsed .binder-deck-tray-grid {
+  max-height: 58dvh !important;
+}
+
+.binder-split-body.tray-collapsed .binder-hd-sheet .binder-grid,
+#binder-split-body.tray-collapsed .binder-grid {
+  max-height: 54dvh !important;
+}
+
+.binder-tray-title small {
+  display: none !important;
 }
 
 .binder-trad-art-img {
@@ -823,6 +843,8 @@ select {
 }
 
 .binder-xfer-btn {
-  font-size: 9.5px !important;
-  padding: 3px 4px !important;
+  font-size: 8.5px !important;
+  letter-spacing: -0.25px !important;
+  padding: 3px 1px !important;
+  min-width: 0 !important;
 }

@@ -24,7 +24,7 @@
       this.ROWS = 12;
       this.EXT_ROWS = 36.5; // Expanded South Block + 3-block Southern Paved Avenue & Roundabout
       this.EXT_MIN_COL = -26.5; // West extension of South Connector Ave, Willow Way & Convention Center
-      this.EXT_COLS = 26;   // Expanded East Central Park width (1664px)
+      this.EXT_COLS = 33.5; // Expanded East Central Park & Oakhaven Elementary Campus at Willow Way East
       this.EXT_ZOOM = 1.28; // Cozy RPG closer framing (~12.5x9.4 tiles) matching illustrated pixel style
       this.cameraY = 0;
       this.cameraX = 0;
@@ -224,6 +224,7 @@
       this.jasperNpc = this.createJasperNpc();
       this.bertoNpc = this.createBertoNpc();
       this.shaunNpc = this.createShaunNpc();
+      this.evelynNpc = this.createEvelynNpc();
       this.syncParkNpcBubbles();
       this.npcs = [
         this.createFriendNpc(this.friendName),
@@ -571,6 +572,30 @@
           outfitStyle: 'vest',
           outfitColor: 'forest',
           pantsColor: 'khaki',
+          hatStyle: 'none'
+        })
+      };
+    }
+
+    createEvelynNpc() {
+      const CS = window.MythosCharacterSprites;
+      return {
+        id: 'evelyn',
+        name: 'Ms. Evelyn',
+        x: 13.3,
+        y: 6.25,
+        dir: 'down',
+        walkTick: 0,
+        bubble: '🏫',
+        sprite: new CS.CharacterSpriteSheet({
+          name: 'Ms. Evelyn',
+          skin: 'warm',
+          hairStyle: 'bun',
+          hairColor: 'silver',
+          eyeColor: 'blue',
+          outfitStyle: 'vest',
+          outfitColor: 'navy',
+          pantsColor: 'dark',
           hatStyle: 'none'
         })
       };
@@ -2909,7 +2934,8 @@
         }
         const cardDef = this.getBaseSetCardCatalog().find(c => c.beastId === m.beastId);
         if (cardDef) {
-          this.addCardToInventory(cardDef);
+          this.addCardToBinder(cardDef);
+          this.renderBinderModal?.();
         }
         m.status = 'completed';
         if (window.sounds?.playCollect) window.sounds.playCollect();
@@ -2917,7 +2943,7 @@
         this.updateHUDSaveInfo();
         this.renderInventoryModal?.();
         this.updateMeetupBadgeCount();
-        this.showAutosaveIndicator(`🤝 Bought ${m.cardName} from ${m.npcName} for ${this.formatMoney(m.agreedPrice)}!`);
+        this.showAutosaveIndicator(`🤝 Bought ${m.cardName} from ${m.npcName} for ${this.formatMoney(m.agreedPrice)}! Placed in 📖 Binder.`);
         const buySuccessMsg = `Awesome meeting up at ${m.shortVenueLabel}! Here's your <b>${m.cardName}</b> card for <b>${this.formatMoney(m.agreedPrice)}</b>!`;
         this._justCompletedMeetup = { meetup: m, message: buySuccessMsg };
         return {
@@ -3144,13 +3170,72 @@
       this.updateHUDSaveInfo();
     }
 
-    addCardToInventory(cardDef) {
-      if (!cardDef) return;
-      this.addInventoryItem({
-        ...cardDef,
+    /**
+     * Place an acquired Mythos card (packs, rewards, purchases, meetups) into
+     * the Card Binder sleeves so it is never placed directly into Playing Deck.
+     */
+    addCardToBinder(cardOrDef) {
+      if (!cardOrDef) return false;
+      const rawObj = typeof cardOrDef === 'string'
+        ? (this.getBaseSetCardCatalog().find(c => c.beastId === cardOrDef || c.id === cardOrDef) || this.buildMythosCardRecord?.(cardOrDef))
+        : cardOrDef;
+      if (!rawObj) return false;
+
+      const rawId = rawObj.id ? String(rawObj.id) : '';
+      const cleanBeastId = String(rawObj.beastId || rawId.replace(/^card_/, '') || '').trim();
+      const baseDef = (cleanBeastId && this.buildMythosCardRecord)
+        ? this.buildMythosCardRecord(cleanBeastId)
+        : null;
+      const recordId = rawId.startsWith('card_')
+        ? rawId
+        : (baseDef?.id || (cleanBeastId ? `card_${cleanBeastId}` : rawId));
+      const cleanName = String(rawObj.name || baseDef?.name || cleanBeastId || 'Mythos Card').replace(/\s*\(Mythos Card\)$/i, '');
+
+      const cleanRecord = {
+        ...(baseDef || {}),
+        ...rawObj,
+        id: recordId,
+        beastId: cleanBeastId || rawObj.beastId || baseDef?.beastId,
+        name: cleanName,
+        shortName: rawObj.shortName || baseDef?.shortName || cleanName,
+        icon: rawObj.icon || '🃏',
         type: 'mythos_card',
-        qty: 1
-      });
+        qty: Math.max(1, Math.round(Number(rawObj.qty) || 1))
+      };
+
+      if (!Array.isArray(this.binderSlots)) {
+        this.binderSlots = this.wrapReactiveArray
+          ? this.wrapReactiveArray(Array(36).fill(null), 'binder')
+          : Array(36).fill(null);
+      }
+
+      const existingIdx = this.binderSlots.findIndex(
+        s => s && ((cleanRecord.id && s.id === cleanRecord.id) || (cleanRecord.beastId && s.beastId === cleanRecord.beastId))
+      );
+      if (existingIdx !== -1) {
+        const existing = this.binderSlots[existingIdx];
+        if (cleanRecord.traditionalCardImg && !existing.traditionalCardImg) {
+          existing.traditionalCardImg = cleanRecord.traditionalCardImg;
+        }
+        existing.qty = (existing.qty || 1) + cleanRecord.qty;
+        return true;
+      }
+
+      let emptyIdx = this.binderSlots.findIndex(s => !s);
+      if (emptyIdx === -1) {
+        // Expand by one 9-card binder page when all existing sleeves hold distinct cards
+        emptyIdx = this.binderSlots.length;
+        for (let p = 0; p < 9; p++) {
+          this.binderSlots.push(null);
+        }
+      }
+      this.binderSlots[emptyIdx] = cleanRecord;
+      return true;
+    }
+
+    addCardToInventory(cardDef) {
+      if (!cardDef) return false;
+      return this.addCardToBinder(cardDef);
     }
 
     getTotalInventoryCount() {
@@ -5058,11 +5143,12 @@
           overlay.remove();
           document.getElementById('berto-reward-modal')?.remove();
           if (picked) {
-            this.addCardToInventory(picked);
+            this.addCardToBinder(picked);
             this.saveWorldData(this.draftAppearance);
             this.updateHUDSaveInfo();
+            this.renderBinderModal?.();
             if (window.sounds?.playHeal) window.sounds.playHeal();
-            this.showAutosaveIndicator?.(`🃏 Claimed ${picked.shortName || picked.name} (${'★'.repeat(Math.round(Number(picked.stars) || 2))})! 😤 Berto stormed out of the Bistro!`);
+            this.showAutosaveIndicator?.(`📖 Claimed ${picked.shortName || picked.name} (${'★'.repeat(Math.round(Number(picked.stars) || 2))}) into Binder! 😤 Berto stormed out of the Bistro!`);
           }
           this.bertoRewardPending = false;
           this.bertoStormAnimStart = performance.now();
@@ -5793,7 +5879,7 @@
         this.updateFreeRoamPrompt();
         return;
       }
-      if (challenger?.id === 'nova' || challenger?.id === 'silas' || challenger?.id === 'maya') {
+      if (challenger?.id === 'nova' || challenger?.id === 'silas' || challenger?.id === 'maya' || challenger?.id === 'evelyn') {
         if (window.sounds?.playVictory) window.sounds.playVictory();
         this.activeDialogueNpc = challenger.id;
         this.updateFreeRoamPrompt();
@@ -5895,7 +5981,11 @@
     attachTradCardLongPress(el, cardDef, fallbackCard = null) {
       if (!el) return;
       el.title = 'Hold click (or right-click) to inspect card closer';
+      el.setAttribute('draggable', 'false');
+      el.querySelectorAll('img').forEach(img => img.setAttribute('draggable', 'false'));
       let holdTimer = null;
+      let startX = 0;
+      let startY = 0;
       const openCloser = () => {
         if (window.sounds?.playClick) window.sounds.playClick();
         if (cardDef && window.game?.openCardModal) {
@@ -5910,13 +6000,24 @@
           holdTimer = null;
         }
       };
+      el.addEventListener('dragstart', (e) => {
+        e.preventDefault();
+      });
       el.addEventListener('pointerdown', (e) => {
         if (e.button !== 0 && e.pointerType === 'mouse') return;
+        startX = e.clientX;
+        startY = e.clientY;
         cancelHold();
         holdTimer = setTimeout(() => {
           holdTimer = null;
           openCloser();
         }, 320);
+      });
+      el.addEventListener('pointermove', (e) => {
+        if (!holdTimer) return;
+        if (Math.hypot(e.clientX - startX, e.clientY - startY) > 6) {
+          cancelHold();
+        }
       });
       el.addEventListener('pointerup', cancelHold);
       el.addEventListener('pointerleave', cancelHold);
@@ -5925,6 +6026,39 @@
         e.preventDefault();
         openCloser();
       });
+    }
+
+    /** Apply expand/minimize UI state to the Binder's Playing Deck Tray and Sleeves/Bag sections. */
+    applyBinderCollapseState() {
+      const traySection = document.getElementById('binder-deck-tray-section');
+      const trayHeader = document.getElementById('binder-deck-tray-header');
+      const drawerSection = document.getElementById('binder-drawer-section');
+      const drawerHeader = document.getElementById('binder-drawer-header');
+      const splitBody = document.getElementById('binder-split-body');
+      const pageNavEl = document.getElementById('binder-page-nav');
+
+      const trayCollapsed = Boolean(this.binderTrayCollapsed);
+      const drawerCollapsed = Boolean(this.binderDrawerCollapsed);
+      const activeTab = this.binderDrawerTab === 'bag' ? 'bag' : 'sleeves';
+
+      traySection?.classList.toggle('collapsed', trayCollapsed);
+      trayHeader?.setAttribute('aria-expanded', trayCollapsed ? 'false' : 'true');
+      drawerSection?.classList.toggle('collapsed', drawerCollapsed);
+      drawerHeader?.setAttribute('aria-expanded', drawerCollapsed ? 'false' : 'true');
+      splitBody?.classList.toggle('tray-collapsed', trayCollapsed);
+      splitBody?.classList.toggle('drawer-collapsed', drawerCollapsed);
+      pageNavEl?.classList.toggle('hidden', activeTab !== 'sleeves' || drawerCollapsed);
+    }
+
+    /** Toggle a collapsible Binder section ('tray' or 'drawer') when its header is clicked. */
+    toggleBinderSection(section) {
+      if (window.sounds?.playClick) window.sounds.playClick();
+      if (section === 'tray') {
+        this.binderTrayCollapsed = !this.binderTrayCollapsed;
+      } else if (section === 'drawer') {
+        this.binderDrawerCollapsed = !this.binderDrawerCollapsed;
+      }
+      this.applyBinderCollapseState();
     }
 
     renderBinderModal() {
@@ -5987,8 +6121,17 @@
       if (binderBadgeEl) {
         binderBadgeEl.textContent = String(stats.cardCount + slottedCount + bagTotalCount);
       }
+      const traySummaryPill = document.getElementById('binder-tray-summary-pill');
+      const drawerSummaryPill = document.getElementById('binder-drawer-summary-pill');
+
       if (tabSleevesCount) tabSleevesCount.textContent = String(slottedCount);
       if (tabBagCount) tabBagCount.textContent = String(bagTotalCount);
+      if (traySummaryPill) {
+        traySummaryPill.textContent = `${stats.cardCount}/${stats.maxCards} • ${stats.totalStars}/${stats.maxStars}★`;
+      }
+      if (drawerSummaryPill) {
+        drawerSummaryPill.textContent = `📖 ${slottedCount}/${totalSlots} • 🎒 ${bagTotalCount}`;
+      }
 
       const activeTab = this.binderDrawerTab === 'bag' ? 'bag' : 'sleeves';
       tabSleevesBtn?.classList.toggle('active', activeTab === 'sleeves');
@@ -5996,13 +6139,39 @@
       gridEl?.classList.toggle('hidden', activeTab !== 'sleeves');
       bagGridEl?.classList.toggle('hidden', activeTab !== 'bag');
       sortBarEl?.classList.toggle('hidden', activeTab !== 'sleeves');
-      pageNavEl?.classList.toggle('hidden', activeTab !== 'sleeves');
+      pageNavEl?.classList.toggle('hidden', activeTab !== 'sleeves' || Boolean(this.binderDrawerCollapsed));
       if (modePill) {
         modePill.textContent = activeTab === 'sleeves' ? '🔒 Protected from Sale' : '💰 Ready to Sell / Trade';
       }
+      this.applyBinderCollapseState();
 
-      // 1. Render Top Playing Deck Tray
+      // 1. Render Top Playing Deck Tray (horizontal click/drag/scroll strictly disabled)
       if (deckTrayEl) {
+        if (!deckTrayEl.dataset.hLockBound) {
+          deckTrayEl.dataset.hLockBound = '1';
+          deckTrayEl.addEventListener('dragstart', (ev) => ev.preventDefault());
+          deckTrayEl.addEventListener('scroll', () => {
+            if (deckTrayEl.scrollLeft !== 0) deckTrayEl.scrollLeft = 0;
+          }, { passive: true });
+          let tStartX = 0;
+          let tStartY = 0;
+          deckTrayEl.addEventListener('touchstart', (ev) => {
+            if (ev.touches.length === 1) {
+              tStartX = ev.touches[0].clientX;
+              tStartY = ev.touches[0].clientY;
+            }
+          }, { passive: true });
+          deckTrayEl.addEventListener('touchmove', (ev) => {
+            if (ev.touches.length !== 1) return;
+            const dx = Math.abs(ev.touches[0].clientX - tStartX);
+            const dy = Math.abs(ev.touches[0].clientY - tStartY);
+            if (dx > 8 && dx > dy * 1.4 && ev.cancelable) {
+              ev.preventDefault();
+            }
+            if (deckTrayEl.scrollLeft !== 0) deckTrayEl.scrollLeft = 0;
+          }, { passive: false });
+        }
+        deckTrayEl.scrollLeft = 0;
         deckTrayEl.innerHTML = '';
         if (!this.playingDeck || this.playingDeck.length === 0) {
           deckTrayEl.innerHTML = `
@@ -6029,9 +6198,10 @@
             const stars = Number(c.stars) || 1;
             const slot = document.createElement('div');
             slot.className = 'binder-trad-slot';
+            slot.setAttribute('draggable', 'false');
             slot.innerHTML = `
-              <div class="binder-trad-art-wrap">
-                <img src="${tradImg}" alt="${c.name}" class="binder-trad-art-img">
+              <div class="binder-trad-art-wrap" draggable="false">
+                <img src="${tradImg}" alt="${c.name}" class="binder-trad-art-img" draggable="false">
                 <span class="binder-trad-star-badge">${stars}★</span>
                 ${entry.count > 1 ? `<span class="binder-trad-qty-badge">x${entry.count}</span>` : ''}
               </div>
@@ -6123,9 +6293,10 @@
             const displayName = (card.shortName || card.name || '').replace(/\s*\(Mythos Card\)$/i, '');
 
             slotEl.className = 'binder-trad-slot';
+            slotEl.setAttribute('draggable', 'false');
             slotEl.innerHTML = `
-              <div class="binder-trad-art-wrap">
-                <img src="${binderCardImg}" alt="${displayName}" class="binder-trad-art-img">
+              <div class="binder-trad-art-wrap" draggable="false">
+                <img src="${binderCardImg}" alt="${displayName}" class="binder-trad-art-img" draggable="false">
                 <span class="binder-trad-star-badge">${stars}★</span>
                 ${qty > 1 ? `<span class="binder-trad-qty-badge">x${qty}</span>` : ''}
               </div>
@@ -6187,12 +6358,13 @@
           bagItems.forEach(item => {
             const slotEl = document.createElement('div');
             slotEl.className = 'binder-trad-slot';
+            slotEl.setAttribute('draggable', 'false');
             const displayName = (item.shortName || item.name || '').replace(/\s*\(Mythos Card\)$/i, '');
 
             if (item.type === 'booster_pack') {
               slotEl.innerHTML = `
-                <div class="binder-trad-art-wrap">
-                  <img src="${item.cardImg || 'Cards/Mythos_Card_Back.png'}" alt="${displayName}" class="binder-trad-art-img">
+                <div class="binder-trad-art-wrap" draggable="false">
+                  <img src="${item.cardImg || 'Cards/Mythos_Card_Back.png'}" alt="${displayName}" class="binder-trad-art-img" draggable="false">
                   <span class="binder-trad-qty-badge">x${item.qty || 1}</span>
                 </div>
                 <div class="binder-trad-name" title="${displayName}">${displayName}</div>
@@ -6209,8 +6381,8 @@
               const themeId = item.themeId || 'tavern_feast';
               const isEquipped = (this.equippedBoardTheme || 'classic') === themeId;
               slotEl.innerHTML = `
-                <div class="binder-trad-art-wrap">
-                  <img src="${item.cardImg || 'Sprites/Board/tavern_feast_board_bg.jpg'}" alt="${displayName}" class="binder-trad-art-img">
+                <div class="binder-trad-art-wrap" draggable="false">
+                  <img src="${item.cardImg || 'Sprites/Board/tavern_feast_board_bg.jpg'}" alt="${displayName}" class="binder-trad-art-img" draggable="false">
                 </div>
                 <div class="binder-trad-name" title="${displayName}">${displayName}</div>
                 <div class="binder-trad-actions">
@@ -6230,8 +6402,8 @@
               const stars = Number(gwentDef?.stars ?? item.stars) || 1;
               const tradImg = this.getCardTraditionalImg(item);
               slotEl.innerHTML = `
-                <div class="binder-trad-art-wrap">
-                  <img src="${tradImg}" alt="${displayName}" class="binder-trad-art-img">
+                <div class="binder-trad-art-wrap" draggable="false">
+                  <img src="${tradImg}" alt="${displayName}" class="binder-trad-art-img" draggable="false">
                   <span class="binder-trad-star-badge">${stars}★</span>
                   ${(item.qty || 1) > 1 ? `<span class="binder-trad-qty-badge">x${item.qty}</span>` : ''}
                 </div>
@@ -7115,7 +7287,7 @@
         foilBadge.textContent = isStarterPack ? '18-CARD STARTER PACK' : 'BASE SET BOOSTER';
       }
       if (collectBtn) {
-        collectBtn.textContent = `🎒 Collect All ${this.packOpeningState.pulledCards.length} Cards into Inventory`;
+        collectBtn.textContent = `📖 Collect All ${this.packOpeningState.pulledCards.length} Cards into Binder`;
       }
       sealedZone.classList.remove('hidden');
       wrapper.className = 'sealed-booster-wrapper';
@@ -7315,7 +7487,7 @@
           viewAllBtn.classList.remove('hidden');
         }
         if (collectBtn) {
-          collectBtn.textContent = `🎒 Collect All ${st.pulledCards.length} Cards into Inventory`;
+          collectBtn.textContent = `📖 Collect All ${st.pulledCards.length} Cards into Binder`;
           collectBtn.classList.remove('hidden');
         }
       }
@@ -7359,12 +7531,12 @@
 
       if (badgeEl) badgeEl.textContent = st.isStarterPack ? '✨ STARTER PACK COMPLETE ✨' : '✨ BOOSTER PACK COMPLETE ✨';
       if (titleEl) titleEl.textContent = `✨ ALL ${st.pulledCards.length} CARDS PULLED! ✨`;
-      if (subEl) subEl.innerHTML = `All ${st.pulledCards.length} Mythos Cards unsealed! Collect them to add them to your backpack inventory${st.isStarterPack ? ' and fill out your Playing Deck' : ''}:`;
+      if (subEl) subEl.innerHTML = `All ${st.pulledCards.length} Mythos Cards unsealed! Collect them to place them directly into your <b>Card Binder</b> sleeves:`;
 
       nextBtn?.classList.add('hidden');
       viewAllBtn?.classList.add('hidden');
       if (collectBtn) {
-        collectBtn.textContent = `🎒 Collect All ${st.pulledCards.length} Cards into Inventory`;
+        collectBtn.textContent = `📖 Collect All ${st.pulledCards.length} Cards into Binder`;
         collectBtn.classList.remove('hidden');
       }
 
@@ -7411,29 +7583,28 @@
         window.sounds.playVictory();
       }
 
-      const fillStarterDeckDirectly = st.isStarterPack && (!this.playingDeck || this.playingDeck.length === 0);
-      if (fillStarterDeckDirectly) {
-        this.playingDeck = st.pulledCards.map(c => c.beastId).filter(Boolean);
-        this.deckStorageMigrated = true;
-      } else {
-        // Add each pulled Mythos Card directly into the Player's Inventory!
-        st.pulledCards.forEach(card => {
-          this.addInventoryItem({
-            id: card.id,
-            beastId: card.beastId,
-            name: card.name,
-            shortName: card.shortName,
-            element: card.element,
-            stars: card.stars,
-            qty: 1,
-            icon: '🃏',
-            cardImg: card.cardImg,
-            traditionalCardImg: card.traditionalCardImg || null,
-            type: 'mythos_card',
-            desc: card.desc
-          });
+      // Place all pulled Mythos Cards (Starter or Booster Pack) into the Card Binder, never directly into Playing Deck
+      st.pulledCards.forEach(card => {
+        this.addCardToBinder({
+          id: card.id,
+          beastId: card.beastId,
+          name: card.name,
+          shortName: card.shortName,
+          element: card.element,
+          stars: card.stars,
+          qty: 1,
+          icon: '🃏',
+          cardImg: card.cardImg,
+          traditionalCardImg: card.traditionalCardImg || null,
+          type: 'mythos_card',
+          desc: card.desc
         });
-      }
+      });
+      this.lastPulledPackCardNames = st.pulledCards
+        .slice(0, 3)
+        .map(c => c.shortName || String(c.name || '').replace(/\s*\(Mythos Card\)$/i, ''))
+        .filter(Boolean);
+      this.deckStorageMigrated = true;
 
       this.hasOpenedStarterPack = true;
       this.storyState = 'friend_challenges_after_pack';
@@ -7447,8 +7618,10 @@
       }
       this.saveWorldData(this.draftAppearance);
       this.updateHUDSaveInfo();
+      this.renderBinderModal?.();
       this.renderInventoryModal();
       this.renderShopModal();
+      this.showAutosaveIndicator?.(`📖 Placed ${st.pulledCards.length} ${st.isStarterPack ? 'Starter Pack ' : ''}Cards into your Binder!`);
 
       const modal = document.getElementById('pack-opening-modal');
       modal?.classList.add('hidden');
@@ -7862,7 +8035,7 @@
         bar.classList.remove('tv-broadcast');
         speakerEl.textContent = `🃏 ${friendName.toUpperCase()} & SHOPKEEPER LEO`;
         speakerEl.className = 'ow-speaker-tag tv';
-        textEl.innerHTML = `<b>${friendName}:</b> "Whoa, hold up ${playerName}! Don't leave <b>Leo's Card Shop</b> without opening the <b>18-Card Mythos Starter Pack</b> you just got from Leo!"<br><b>Shopkeeper Leo:</b> "That's the best part! Break <b>The Seal of Mythos</b> and unseal your 18-card Starter Pack to fill out your Playing Deck before you head out!"`;
+        textEl.innerHTML = `<b>${friendName}:</b> "Whoa, hold up ${playerName}! Don't leave <b>Leo's Card Shop</b> without opening the <b>18-Card Mythos Starter Pack</b> you just got from Leo!"<br><b>Shopkeeper Leo:</b> "That's the best part! Break <b>The Seal of Mythos</b> and unseal your 18-card Starter Pack into your Binder before you head out!"`;
 
         choicesEl.innerHTML = '';
         const openBtn = document.createElement('button');
@@ -7884,11 +8057,15 @@
         bar.classList.remove('tv-broadcast');
         speakerEl.textContent = `⚔️ ${friendName.toUpperCase()} (CHALLENGES YOU TO A BATTLE!!)`;
         speakerEl.className = 'ow-speaker-tag friend';
-        const pulledList = (this.inventory || [])
-          .filter(i => i.type === 'mythos_card')
-          .map(i => `<b>${i.name.replace(' (Mythos Card)', '')}</b>`)
-          .join(', ');
-        textEl.innerHTML = `<b>${friendName}:</b> "NO WAY!! You pulled ${pulledList || '3 awesome cards'}?! I just opened my pack from Leo too! I'm heading back to <b>my house</b> right now to set up the tabletop board — come meet me there for a <b>MYTHOS Battle</b> whenever you're ready!"`;
+        const recentNames = (Array.isArray(this.lastPulledPackCardNames) && this.lastPulledPackCardNames.length > 0)
+          ? this.lastPulledPackCardNames
+          : (this.binderSlots || [])
+            .filter(Boolean)
+            .slice(0, 3)
+            .map(i => (i.shortName || i.name || '').replace(' (Mythos Card)', ''))
+            .filter(Boolean);
+        const pulledList = recentNames.map(n => `<b>${n}</b>`).join(', ');
+        textEl.innerHTML = `<b>${friendName}:</b> "NO WAY!! You pulled ${pulledList || 'awesome cards'}?! I just opened my pack from Leo too! I'm heading back to <b>my house</b> right now to set up the tabletop board — come meet me there for a <b>MYTHOS Battle</b> whenever you're ready!"`;
 
         choicesEl.innerHTML = '';
         const acceptBtn = document.createElement('button');
@@ -7902,10 +8079,10 @@
         const viewCardsBtn = document.createElement('button');
         viewCardsBtn.type = 'button';
         viewCardsBtn.className = 'ow-choice-btn';
-        viewCardsBtn.innerHTML = `🎒 Inspect My 3 Pulled Cards in Inventory (I)`;
+        viewCardsBtn.innerHTML = `📖 Inspect Pulled Cards & Build Playing Deck in Binder (B)`;
         viewCardsBtn.addEventListener('click', (ev) => {
           ev.stopPropagation();
-          this.toggleInventoryModal(true);
+          this.toggleBinderModal(true);
         });
         choicesEl.appendChild(acceptBtn);
         choicesEl.appendChild(viewCardsBtn);
@@ -8469,7 +8646,7 @@
                 {
                   label: `2. ✨ "What's inside the MYTHOS Starter Pack, Leo?"`,
                   onSelect: (el) => {
-                    el.innerHTML = `<b>Shopkeeper Leo:</b> "Every <b>Starter Pack</b> holds a full <b>18 Beast cards</b> to fill out your playable deck — from blazing Phoenixes to soaring Pegasus and armored Golems! Rip it open right here at the counter!"`;
+                    el.innerHTML = `<b>Shopkeeper Leo:</b> "Every <b>Starter Pack</b> holds a full <b>18 Beast cards</b> for your Card Binder — from blazing Phoenixes to soaring Pegasus and armored Golems! Rip it open right here at the counter!"`;
                   }
                 },
                 {
@@ -9204,6 +9381,66 @@
           challengeBtn.classList.remove('ow-talk-btn');
           bar.classList.add('hidden');
         }
+      } else if (this.currentArea === 'school_interior') {
+        const pName = this.draftAppearance?.name || 'Asher';
+        const evelyn = this.evelynNpc;
+        const distToEvelyn = evelyn ? Math.hypot(this.player.x - evelyn.x, this.player.y - (evelyn.y + 0.55)) : 999;
+        const distToTrophy = Math.hypot(this.player.x - 6.5, this.player.y - 4.75);
+        if (distToEvelyn < 1.55) {
+          this.nearInteractable = evelyn;
+          this.renderNpcChoicePrompt({
+            npcId: 'evelyn',
+            promptKey: `evelyn_dialogue_${pName}`,
+            speakerText: '🏫 HEADMISTRESS MS. EVELYN — OAKHAVEN ELEMENTARY',
+            speakerClass: 'ow-speaker-tag friend',
+            talkPromptHtml: `Press <b>Talk</b> to speak with <b>Ms. Evelyn</b> at the front lectern.`,
+            greetingHtml: `<b>Ms. Evelyn:</b> "Good day, ${pName}! Welcome to <b>Oakhaven Elementary</b> at the east end of Willow Way. Our doors face West toward the bus drop-off loop, with our fenced playground courtyard just to the north!"`,
+            choices: [
+              {
+                label: `1. ⚔️ "Care for an Academy Mythos exhibition match, Ms. Evelyn?"`,
+                primary: true,
+                silentClick: true,
+                onSelect: () => this.triggerDuel(this.evelynNpc)
+              },
+              {
+                label: `2. 🃏 "Any tips for building a 18–24 card Mythos deck?"`,
+                onSelect: (el) => {
+                  el.innerHTML = `<b>Ms. Evelyn:</b> "Keep your Playing Deck between <b>18 and 24 cards</b> while staying under the <b>45★ Star Cap</b>! Mix nimble 1★–2★ beasts so you always leave room for a 4★ finisher like <b>Phoenix</b> or <b>Sea Dragon</b>."`;
+                }
+              },
+              {
+                label: `3. 🛝 "Tell me about the school playground & drop-off loop."`,
+                onSelect: (el) => {
+                  el.innerHTML = `<b>Ms. Evelyn:</b> "Step out the West doors onto the covered portico! Our one-way drop-off loop keeps Oakhaven Bus #04 running smoothly, and the double gate on the north fence opens right into the swings, slide fort, and basketball half-court!"`;
+                }
+              },
+              {
+                label: `4. 👋 "Thank you, Ms. Evelyn! I'll explore the classroom. (Leave)"`,
+                onSelect: () => this.closeDialogue()
+              }
+            ],
+            challengeText: '⚔️ Academy Match!'
+          });
+        } else if (distToTrophy < 1.25) {
+          this.nearInteractable = { id: 'school_trophy_case', name: 'School Trophy Case' };
+          this.renderNpcChoicePrompt({
+            npcId: 'school_trophy_case',
+            promptKey: 'school_trophy_case',
+            speakerText: '🏆 OAKHAVEN ELEMENTARY — HONOR TROPHY CASE',
+            talkPromptHtml: `Press <b>Inspect</b> to examine the <b>School Trophy Case</b>.`,
+            greetingHtml: `<b>Honor Roll Plaque:</b> <i>"Oakhaven Elementary Founders Cup &amp; After-School Mythos League Champions"</i> — Polished golden goblets, silver stars, and framed vintage Beast foils gleam behind the beveled glass.`,
+            choices: [
+              { label: '✓ Close (Space)', onSelect: () => this.closeDialogue() }
+            ],
+            challengeText: '🏆 Inspect (Space)'
+          });
+        } else {
+          this.lastShopPromptKey = null;
+          this.nearInteractable = null;
+          this.activeDialogueNpc = null;
+          challengeBtn.classList.remove('ow-talk-btn');
+          bar.classList.add('hidden');
+        }
       } else if (this.currentArea === 'exterior') {
         // Exterior Neighborhood & Far-East Block Leo's Card Shop Avenue Prompt (Zoomed-out view)
         const pName = this.draftAppearance?.name || 'Asher';
@@ -9527,7 +9764,14 @@
             'northwest_road_street_sign',
             'Willow Way Street Sign',
             `🪧 WILLOW WAY`,
-            `<b>◄ West:</b> Corner Market &amp; Convention Center &nbsp;|&nbsp; <b>► East:</b> Oakhaven Blvd &amp; Willow Way East (3 Blocks) &nbsp;|&nbsp; <b>▼ South:</b> Oakhaven Boulevard`
+            `<b>◄ West:</b> Corner Market &amp; Convention Center &nbsp;|&nbsp; <b>► East:</b> Oakhaven Elementary, Drop-Off Loop &amp; Playground &nbsp;|&nbsp; <b>▼ South:</b> Oakhaven Boulevard`
+          );
+        } else if (Math.hypot(this.player.x - 19.95, this.player.y - 27.60) < 1.35) {
+          showStaticPrompt(
+            'school_monument_sign',
+            'Oakhaven Elementary Monument Sign',
+            `🏫 OAKHAVEN ELEMENTARY SCHOOL`,
+            `<b>► East:</b> Covered West Entrance Doors &nbsp;|&nbsp; <b>▲ North Gate:</b> Fenced Playground &amp; Half-Court &nbsp;|&nbsp; <b>◄ West:</b> Willow Way`
           );
         } else if (nearParkNpc) {
           this.nearInteractable = nearParkNpc.npc;
@@ -9736,6 +9980,10 @@
         }
         if (active === 'maya') {
           this.triggerDuel(this.mayaNpc);
+          return true;
+        }
+        if (active === 'evelyn') {
+          this.triggerDuel(this.evelynNpc);
           return true;
         }
         if (window.sounds?.playClick) window.sounds.playClick();
@@ -10333,6 +10581,8 @@
           areaLabel = `🛒 Shaun's Corner Market`;
         } else if (this.currentArea === 'convention_center_interior') {
           areaLabel = `🏛️ Oakhaven Convention Center`;
+        } else if (this.currentArea === 'school_interior') {
+          areaLabel = `🏫 Oakhaven Elementary`;
         } else if (this.currentArea === 'apartment_hall_interior') {
           areaLabel = `🏢 Oakhaven Apartments — Main Hall`;
         } else if (this.currentArea === 'apt_1_interior') {
@@ -10345,6 +10595,8 @@
           areaLabel = `🚪 Oakhaven Apartments — Suite 104`;
         } else if (this.currentArea === 'mayor_2f_interior') {
           areaLabel = `🏛️ Mayor Donald's Manor (2F)`;
+        } else if (this.currentArea === 'exterior' && this.player && this.player.x >= 16.0 && this.player.y >= 17.5) {
+          areaLabel = `🏫 Oakhaven Elementary Campus`;
         } else if (this.currentArea === 'exterior' && this.player && this.player.x >= 16.0) {
           areaLabel = `🌳 Central Park Courtyard`;
         }
@@ -10381,11 +10633,13 @@
         else if (this.currentArea === 'restaurant_interior') shortArea = `🍽️ Bistro`;
         else if (this.currentArea === 'corner_store_interior') shortArea = `🛒 Market`;
         else if (this.currentArea === 'convention_center_interior') shortArea = `🏛️ Expo Hall`;
+        else if (this.currentArea === 'school_interior') shortArea = `🏫 School`;
         else if (this.currentArea === 'apartment_hall_interior') shortArea = `🏢 Apt. Hall`;
         else if (this.currentArea === 'apt_1_interior') shortArea = `🚪 Apt. 101`;
         else if (this.currentArea === 'apt_2_interior') shortArea = `🚪 Apt. 102`;
         else if (this.currentArea === 'apt_3_interior') shortArea = `🚪 Apt. 103`;
         else if (this.currentArea === 'apt_4_interior') shortArea = `🚪 Apt. 104`;
+        else if (this.currentArea === 'exterior' && this.player && this.player.x >= 16.0 && this.player.y >= 17.5) shortArea = `🏫 School`;
         else if (this.currentArea === 'exterior' && this.player && this.player.x >= 16.0) shortArea = `🌳 Park`;
         mobLocTag.textContent = `${shortArea} • 🎒 ${this.formatMoney(this.gold || 0)}`;
       }
@@ -10930,6 +11184,20 @@
       if (binderDoneBtn) {
         binderDoneBtn.addEventListener('click', () => this.toggleBinderModal(false));
       }
+
+      const bindCollapsibleHeader = (headerId, section) => {
+        const hdr = document.getElementById(headerId);
+        if (!hdr) return;
+        hdr.addEventListener('click', () => this.toggleBinderSection(section));
+        hdr.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            this.toggleBinderSection(section);
+          }
+        });
+      };
+      bindCollapsibleHeader('binder-deck-tray-header', 'tray');
+      bindCollapsibleHeader('binder-drawer-header', 'drawer');
 
       document.getElementById('btn-binder-tab-sleeves')?.addEventListener('click', () => {
         if (window.sounds?.playClick) window.sounds.playClick();
@@ -11910,6 +12178,14 @@
             yOffset: 1.05
           },
           {
+            active: this.currentArea === 'school_interior',
+            npc: this.evelynNpc,
+            talkId: 'evelyn',
+            tapRadius: 0.9,
+            reachRadius: 1.45,
+            yOffset: 0.55
+          },
+          {
             active: this.currentArea === 'exterior',
             npc: this.chloeNpc,
             talkId: 'chloe',
@@ -12092,7 +12368,8 @@
         pluto_interior: this.plutoNpc,
         nova_interior: this.novaNpc,
         silas_interior: this.silasNpc,
-        maya_interior: this.mayaNpc
+        maya_interior: this.mayaNpc,
+        school_interior: this.evelynNpc
       };
       const target = challenger || areaNpcMap[this.currentArea] || this.getFriendNpc() || this.npcs[0];
       if (this.onStartDuel) {
@@ -12275,13 +12552,63 @@
           if (tx >= b.x1 && tx <= b.x2 && ty >= b.y1 && ty <= b.y2) return true;
         }
         return false;
+      } else if (this.currentArea === 'school_interior') {
+        // Oakhaven Elementary Interior (22 x 14 Cutaway Hall & Main Classroom Wing)
+        // Allow stepping into the West Entrance Doors threshold to exit cleanly back outside
+        if (tx >= 1.5 && tx <= 2.35 && ty >= 6.1 && ty <= 8.0) return false;
+        if (tx < 2.05 || tx > 19.95 || ty < 3.75 || ty > 12.55) return true;
+        // North Lobby Wall Lockers (x: 2.3..5.5), Trophy Case (5.6..7.5), Bulletin Board (7.6..9.1)
+        if (tx >= 2.25 && tx <= 8.95 && ty < 4.55) return true;
+        // Hall Partition Pillar & Classroom Chalkboard Shelf / Globe (x: 9.0..12.0, y < 4.25; Globe x: 15.6..16.5)
+        if (tx >= 15.55 && tx <= 16.55 && ty < 4.75) return true;
+        // Classroom Bookshelves & Supply Cabinet along NE wall (x: 16.65..19.75, y < 4.85)
+        if (tx >= 16.65 && tx <= 19.85 && ty < 4.85) return true;
+        // Teacher Ms. Evelyn's Carved Oak Lectern Desk (blocks behind/north of her at y=4.8..5.75)
+        if (tx >= 12.15 && tx <= 14.45 && ty >= 4.75 && ty <= 5.75) return true;
+        // Student Desks & Chairs in two roomy walkable rows (wide 1.6-tile aisles)
+        const deskXs = [10.0, 12.8, 15.6];
+        const deskYs = [7.85, 10.15];
+        for (const dx of deskXs) {
+          for (const dy of deskYs) {
+            if (tx >= dx - 0.58 && tx <= dx + 0.58 && ty >= dy - 0.36 && ty <= dy + 0.42) return true;
+          }
+        }
+        return false;
       } else {
         // Exterior world outer bounds: all grass across the map is walkable (buildings, fences, trees & props still collide below)
         const minExtX = (this.EXT_MIN_COL ?? -26.5) + 0.5;
-        const maxExtX = (this.EXT_COLS ?? 26) - 0.4;
+        const maxExtX = (this.EXT_COLS ?? 33.5) - 0.4;
         const minExtY = 0.5;
         const maxExtY = (this.EXT_ROWS ?? 36.5) - 0.5;
         if (tx < minExtX || tx > maxExtX || ty < minExtY || ty > maxExtY) return true;
+
+        // Oakhaven Elementary School (East End of Willow Way: Option 1 Civic Storybook HD w/ West Portico Doors)
+        if (tx >= 24.45 && tx <= 31.35 && ty >= 24.45 && ty <= 28.45) {
+          // Walkable Covered West Entrance Portico Threshold & Stairs (door faces WEST toward Drop-Off Loop!)
+          if (tx <= 24.75 && ty >= 27.20 && ty <= 28.42) return false;
+          return true;
+        }
+        // School Drop-Off Island Monument Sign, Flagpole & Parked Oakhaven Bus #04
+        if (tx >= 19.30 && tx <= 20.60 && ty >= 27.18 && ty <= 27.95) return true;
+        if (Math.hypot(tx - 19.95, ty - 26.35) < 0.24) return true;
+        if (tx >= 21.55 && tx <= 22.62 && ty >= 28.82 && ty <= 30.28) return true;
+
+        // Large Fenced Playground North Side of School (x: 24.05..31.65, y: 18.60..23.85, Open West Double Gate y: 21.15..22.55)
+        if (tx >= 23.92 && tx <= 31.78 && ty >= 18.48 && ty <= 23.98) {
+          // Perimeter Brick-Pillar & Iron Fence Walls
+          if (tx >= 23.92 && tx <= 24.22 && ty >= 18.48 && ty <= 23.98 && (ty < 21.15 || ty > 22.55)) return true; // West fence w/ Open Gate
+          if (tx >= 31.48 && tx <= 31.78) return true; // East fence
+          if (ty >= 18.48 && ty <= 18.74) return true; // North fence
+          if (ty >= 23.72 && ty <= 23.98) return true; // South fence
+          // Tight inner equipment hitboxes inside Concept A HD playground so player walks around freely!
+          if (tx >= 24.55 && tx <= 26.35 && ty >= 19.12 && ty <= 20.38) return true; // Cedar Clubhouse Fort & Wave Slide
+          if (tx >= 26.75 && tx <= 28.22 && ty >= 19.20 && ty <= 20.12) return true; // 3-Bay Steel Swingset
+          if (tx >= 24.90 && tx <= 26.15 && ty >= 22.30 && ty <= 22.92) return true; // Wood & Steel Seesaw
+          if (Math.hypot(tx - 27.45, ty - 22.55) < 0.42) return true; // Spinning Carousel Merry-Go-Round
+          if (tx >= 31.02 && tx <= 31.50 && ty >= 20.65 && ty <= 21.55) return true; // Basketball Hoop Stanchion
+          if (tx >= 24.28 && tx <= 25.02 && ty >= 23.16 && ty <= 23.56) return true; // West Oak Recess Bench
+          if (tx >= 27.68 && tx <= 28.42 && ty >= 23.16 && ty <= 23.56) return true; // East Oak Recess Bench
+        }
 
         // Oakhaven Convention Center (West End of Willow Way: x: -24.4..-15.6, y: 22.1..26.6)
         if (tx >= -24.4 && tx <= -15.6 && ty >= 22.1 && ty <= 26.6) {
@@ -12575,7 +12902,17 @@
         [-8.4, 11.35, 24, false, 'town'],
         [-11.6, 11.35, 24, true, 'town'],
         [-14.8, 11.35, 24, false, 'town'],
-        [-17.8, 11.35, 24, true, 'town']
+        [-17.8, 11.35, 24, true, 'town'],
+        // Oakhaven Elementary Campus & Playground Shading Trees (Willow Way East)
+        [16.65, 24.05, 22, false, 'town'],
+        [16.65, 30.85, 22, true, 'town'],
+        [32.35, 19.60, 24, false, 'town'],
+        [32.45, 22.85, 23, true, 'town'],
+        [32.45, 26.25, 24, false, 'town'],
+        [32.35, 29.40, 23, true, 'town'],
+        [25.25, 30.85, 22, false, 'town'],
+        [28.55, 30.85, 24, true, 'town'],
+        [31.20, 30.85, 22, false, 'town']
       ];
     }
 
@@ -12715,6 +13052,16 @@
           spriteBaseYFrac: 770 / 792,
           hx: -11.6, hy: 28.5, hw: 4.8, maxY: 31.7,
           doorX: -9.20, doorY: 31.45
+        },
+        {
+          id: 'oakhaven_school',
+          spriteKey: 'school_exterior',
+          isWideCivic: true,
+          spriteWallWFrac: 1085 / 1320,
+          spriteWallX1Frac: 195 / 1320,
+          spriteBaseYFrac: 786 / 816,
+          hx: 24.45, hy: 24.45, hw: 6.9, maxY: 28.45,
+          doorX: 24.25, doorY: 27.85
         }
       ];
     }
@@ -12734,7 +13081,9 @@
           const dw = Math.round((b.hw * S) / (b.spriteWallWFrac || 0.911));
           const dh = Math.round(dw * (img.height / img.width));
           const cx = (b.hx + b.hw / 2) * S;
-          const dx = Math.round(cx - dw / 2);
+          const dx = b.spriteWallX1Frac
+            ? Math.round(b.hx * S - dw * b.spriteWallX1Frac)
+            : Math.round(cx - dw / 2);
           const dy = Math.round(b.maxY * S - dh * (b.spriteBaseYFrac || (546 / 657)));
           minX = Math.min(minX, dx / S);
           maxX = Math.max(maxX, (dx + dw) / S);
@@ -12779,6 +13128,12 @@
     /** Redirect an interior click anywhere in or around the exit doorway/mat to the exit trigger point. */
     resolveInteriorExitDoorTarget(tx, ty) {
       if (this.currentArea === 'exterior' || this.currentArea === 'mayor_2f_interior') return null;
+      if (this.currentArea === 'school_interior') {
+        if (tx >= 0.8 && tx <= 2.65 && ty >= 5.7 && ty <= 8.4) {
+          return { id: 'interior_exit', x: 2.25, y: 7.05 };
+        }
+        return null;
+      }
       if (this.currentArea === 'apartment_hall_interior') {
         if (tx >= 6.4 && tx <= 9.6 && ty >= 8.8 && ty <= 11.2) {
           return { id: 'interior_exit', x: 8.0, y: 9.75 };
@@ -12822,10 +13177,19 @@
         const rows = Math.round((maxY - minY) / step) + 1;
         return { step, minX, minY, maxX, maxY, cols, rows };
       }
+      if (this.currentArea === 'school_interior') {
+        const minX = 1.75;
+        const minY = 3.5;
+        const maxX = 20.25;
+        const maxY = 12.75;
+        const cols = Math.round((maxX - minX) / step) + 1;
+        const rows = Math.round((maxY - minY) / step) + 1;
+        return { step, minX, minY, maxX, maxY, cols, rows };
+      }
       const isExt = this.currentArea === 'exterior';
       const minX = isExt ? ((this.EXT_MIN_COL ?? -26.5) + 0.5) : 2.0;
       const minY = isExt ? 0.5 : 4.0;
-      const maxX = isExt ? ((this.EXT_COLS ?? 26) - 0.4) : 14.0;
+      const maxX = isExt ? ((this.EXT_COLS ?? 33.5) - 0.4) : 14.0;
       const maxY = isExt ? ((this.EXT_ROWS ?? 36.5) - 0.5) : 10.5;
       const cols = Math.round((maxX - minX) / step) + 1;
       const rows = Math.round((maxY - minY) / step) + 1;
@@ -13727,6 +14091,30 @@
           this.player.targetY = null;
           this.areaTransitionCooldown = 25;
           this.updateHUDSaveInfo();
+        } else if (this.currentArea === 'exterior' && this.player.x >= 24.05 && this.player.x <= 24.80 && this.player.y >= 27.20 && this.player.y <= 28.42) {
+          // Enter Oakhaven Elementary through West-Facing Covered Portico Double Doors!
+          if (window.sounds?.playMove) window.sounds.playMove();
+          this.currentArea = 'school_interior';
+          this.player.x = 3.15;
+          this.player.y = 7.05;
+          this.player.dir = 'right';
+          this.player.targetX = null;
+          this.player.targetY = null;
+          this.areaTransitionCooldown = 25;
+          this.cameraX = 0;
+          this.cameraY = 0;
+          this.updateHUDSaveInfo();
+        } else if (this.currentArea === 'school_interior' && this.player.x <= 2.35 && this.player.y >= 6.05 && this.player.y <= 8.05) {
+          // Exit Oakhaven Elementary West Doors back onto Covered Portico Drop-Off Apron
+          if (window.sounds?.playMove) window.sounds.playMove();
+          this.currentArea = 'exterior';
+          this.player.x = 23.65;
+          this.player.y = 27.85;
+          this.player.dir = 'left';
+          this.player.targetX = null;
+          this.player.targetY = null;
+          this.areaTransitionCooldown = 25;
+          this.updateHUDSaveInfo();
         } else if (this.currentArea === 'mayor_interior' && this.player.x >= 11.35 && this.player.x <= 13.35 && this.player.y <= 5.45) {
           // Climb stairs from 1st Story to 2nd Story of Mayor Donald's Manor!
           if (window.sounds?.playMove) window.sounds.playMove();
@@ -13858,14 +14246,28 @@
         const targetCamX = targetCenterX - viewW / 2;
         this.cameraX += (targetCamX - this.cameraX) * 0.18;
 
-        const inPark = this.player.x >= 16.0;
-        if (this._lastInPark !== inPark) {
-          this._lastInPark = inPark;
+        const extZone = this.player.x >= 16.0 ? (this.player.y >= 17.5 ? 'school' : 'park') : 'town';
+        if (this._lastInPark !== extZone) {
+          this._lastInPark = extZone;
           this.updateHUDSaveInfo();
         }
       } else if (this.currentArea === 'convention_center_interior') {
         const hallW = 34 * this.TILE;
         const hallH = 26 * this.TILE;
+        const minCenterX = visibleW / 2;
+        const maxCenterX = Math.max(minCenterX, hallW - visibleW / 2);
+        const targetCenterX = Math.max(minCenterX, Math.min(maxCenterX, this.player.x * this.TILE));
+        const targetCamX = targetCenterX - viewW / 2;
+        this.cameraX += (targetCamX - this.cameraX) * 0.18;
+
+        const minCenterY = visibleH / 2;
+        const maxCenterY = Math.max(minCenterY, hallH - visibleH / 2);
+        const targetCenterY = Math.max(minCenterY, Math.min(maxCenterY, this.player.y * this.TILE));
+        const targetCamY = targetCenterY - viewH / 2;
+        this.cameraY += (targetCamY - this.cameraY) * 0.18;
+      } else if (this.currentArea === 'school_interior') {
+        const hallW = 22 * this.TILE;
+        const hallH = 14 * this.TILE;
         const minCenterX = visibleW / 2;
         const maxCenterX = Math.max(minCenterX, hallW - visibleW / 2);
         const targetCenterX = Math.max(minCenterX, Math.min(maxCenterX, this.player.x * this.TILE));
@@ -16434,6 +16836,9 @@
         'cottage_player', 'cottage_friend', 'cottage_pluto',
         'cottage_nova', 'cottage_silas', 'cottage_maya',
         'card_shop', 'shop_banner', 'convention_center', 'oakhaven_apartments',
+        'school_exterior', 'school_bus',
+        'playground_ground', 'playground_fort', 'playground_swingset',
+        'playground_seesaw', 'playground_spinner', 'playground_hoop',
         'tree_green', 'tree_autumn', 'tree_autumn_small',
         'fountain', 'bush_round', 'bush_flower',
         'bench_left', 'bench_front', 'bench_right',
@@ -16444,7 +16849,7 @@
       this.owSprites = this.owSprites || {};
       keys.forEach((k) => {
         const img = new Image();
-        img.src = `Sprites/Overworld/${k}.png`;
+        img.src = `Sprites/Overworld/${k}.png?v=2.75`;
         img.onload = () => {
           if (k === 'tile_grass' || k === 'tile_dirt' || k === 'tile_flagstone' || k === 'tile_wood_floor') {
             this._pixelArtVer = 0; // force pattern refresh once high-res PNG tiles finish decoding
@@ -21152,6 +21557,246 @@
       ctx.fillRect(stX - 60, ry, stW + 120, 380);
     }
 
+    // =========================================================================
+    // OAKHAVEN ELEMENTARY SCHOOL INTERIOR (22 x 14 Tiles - West Door Lobby & Classroom)
+    // =========================================================================
+    renderSchoolInterior() {
+      const ctx = this.ctx;
+      const S = this.TILE; // 64px
+      const INK = '#20120c';
+      const snap = (v) => Math.round(v);
+      const hallW = 22 * S;
+      const hallH = 14 * S;
+      const rx = 1.6 * S;
+      const ry = 0.85 * S;
+      const rw = 18.8 * S;
+      const rh = 11.9 * S;
+      const floorTop = 3.75 * S;
+      const splitX = 8.85 * S;
+
+      if (typeof this.initWoodPattern === 'function') this.initWoodPattern();
+
+      const pxBox = (x, y, w, h, mainCol, hiCol, shadeCol, outline = INK, lw = 2) => {
+        const bx = snap(x), by = snap(y), bw = snap(w), bh = snap(h);
+        ctx.fillStyle = mainCol;
+        ctx.fillRect(bx, by, bw, bh);
+        if (hiCol) {
+          ctx.fillStyle = hiCol;
+          ctx.fillRect(bx, by, bw, Math.min(4, bh));
+          ctx.fillRect(bx, by, Math.min(3, bw), bh);
+        }
+        if (shadeCol) {
+          ctx.fillStyle = shadeCol;
+          ctx.fillRect(bx, by + bh - Math.min(4, bh), bw, Math.min(4, bh));
+        }
+        if (outline) {
+          ctx.strokeStyle = outline;
+          ctx.lineWidth = lw;
+          ctx.strokeRect(bx, by, bw, bh);
+        }
+      };
+
+      // 1. Cutaway Diorama Slate-Wood Outer Void & Timber Frame
+      ctx.fillStyle = '#151210';
+      ctx.fillRect(0, 0, hallW, hallH);
+      pxBox(rx - 14, ry - 14, rw + 28, rh + 28, '#3b2416', '#5e3c24', '#22130b', INK, 3);
+
+      // 2. Floor Zones: West Lobby Checkered Terrazzo (x: 1.6..8.85) & East Oak Classroom Parquet (x: 8.85..20.4)
+      const floorH = ry + rh - floorTop;
+      // Lobby polished cream & sage-slate checkerboard terrazzo tiles
+      const tileSz = 32;
+      for (let ty = floorTop; ty < ry + rh; ty += tileSz) {
+        for (let tx = rx; tx < splitX; tx += tileSz) {
+          const even = ((Math.floor((tx - rx) / tileSz) + Math.floor((ty - floorTop) / tileSz)) % 2 === 0);
+          ctx.fillStyle = even ? '#f2ebd9' : '#d6ccb4';
+          ctx.fillRect(snap(tx), snap(ty), Math.min(tileSz, snap(splitX - tx)), Math.min(tileSz, snap(ry + rh - ty)));
+          ctx.strokeStyle = 'rgba(100, 82, 58, 0.16)';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(snap(tx), snap(ty), Math.min(tileSz, snap(splitX - tx)), Math.min(tileSz, snap(ry + rh - ty)));
+        }
+      }
+      // Classroom honey-oak parquet
+      ctx.fillStyle = this.woodFloorPattern || '#b58450';
+      ctx.fillRect(snap(splitX), snap(floorTop), snap(rx + rw - splitX), snap(floorH));
+      ctx.fillStyle = 'rgba(255, 226, 175, 0.08)';
+      ctx.fillRect(snap(splitX), snap(floorTop), snap(rx + rw - splitX), snap(floorH));
+      // Brass transition strip between lobby & classroom
+      ctx.fillStyle = '#d97706';
+      ctx.fillRect(snap(splitX - 3), snap(floorTop), 6, snap(floorH));
+
+      // Woven crimson/emerald Academy Welcome Runner at West Entrance Doors
+      pxBox(rx + 6, 6.15 * S, 3.1 * S, 1.85 * S, '#7f1d1d', '#991b1b', '#450a0a', '#fbbf24', 2);
+      ctx.strokeStyle = '#fde68a';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(rx + 12, 6.28 * S, 3.1 * S - 12, 1.85 * S - 16);
+      ctx.fillStyle = '#fef3c7';
+      ctx.font = 'bold 9.5px Cinzel, Georgia, serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('OAKHAVEN', rx + 6 + 2.02 * S, 6.96 * S);
+      ctx.fillText('ELEMENTARY', rx + 6 + 2.02 * S, 7.22 * S);
+
+      // Emerald & Gold Lecture Rug under Ms. Evelyn's Lectern
+      pxBox(11.1 * S, 5.15 * S, 4.4 * S, 2.2 * S, '#165336', '#1e6e48', '#0d3622', '#fbbf24', 2);
+      ctx.strokeStyle = 'rgba(254, 240, 138, 0.55)';
+      ctx.strokeRect(11.22 * S, 5.27 * S, 4.16 * S, 1.96 * S);
+
+      // 3. Cream Plaster Back Wall, Brick Dado, Oak Wainscot & Arched Classroom Windows
+      const wallH = floorTop - ry;
+      pxBox(rx, ry, rw, wallH, '#f1e7cf', '#fff9eb', '#d8cab0', INK, 2);
+      // Warm horizontal plaster molding
+      ctx.fillStyle = '#5c3820';
+      ctx.fillRect(rx, ry, rw, 10);
+      // Forest-green school dado & cedar baseboard
+      pxBox(rx, floorTop - 54, rw, 54, '#1b4730', '#2b6b49', '#0e281a', INK, 1.5);
+      pxBox(rx, floorTop - 14, rw, 14, '#5c3820', '#7e4e2e', '#361f10', INK, 1.5);
+
+      // Classroom Sunlit Windows on Upper East Wall
+      [10.2, 17.8].forEach(wxT => {
+        const wx = snap(wxT * S), wy = snap(ry + 24);
+        pxBox(wx - 4, wy - 4, 62, 76, '#5c3820', '#845030', '#382012', INK, 2);
+        const g = ctx.createLinearGradient(wx, wy, wx, wy + 68);
+        g.addColorStop(0, '#93c5fd');
+        g.addColorStop(0.55, '#fef08a');
+        g.addColorStop(1, '#f59e0b');
+        ctx.fillStyle = g;
+        ctx.fillRect(wx, wy, 54, 68);
+        ctx.strokeStyle = '#fef3c7'; ctx.lineWidth = 2.5;
+        ctx.strokeRect(wx, wy, 54, 68);
+        ctx.beginPath();
+        ctx.moveTo(wx + 27, wy); ctx.lineTo(wx + 27, wy + 68);
+        ctx.moveTo(wx, wy + 34); ctx.lineTo(wx + 54, wy + 34);
+        ctx.stroke();
+      });
+
+      // 4. Lobby Fixtures: Student Lockers, Gold Trophy & Rare Card Case, Club Bulletin Board
+      // Row of 4 Forest-Green Steel Lockers (x: 2.3..5.3)
+      for (let i = 0; i < 4; i++) {
+        const lx = snap((2.35 + i * 0.72) * S), ly = snap(floorTop - 88);
+        pxBox(lx, ly, 42, 96, '#1f5737', '#2f7a4f', '#10321f', INK, 2);
+        ctx.fillStyle = '#0c2416';
+        for (let v = 0; v < 3; v++) ctx.fillRect(lx + 10, ly + 12 + v * 5, 22, 2.5);
+        ctx.fillStyle = '#fbbf24';
+        ctx.fillRect(lx + 30, ly + 42, 5, 10);
+      }
+
+      // Illuminated Oak & Beveled-Glass Trophy & Champion Card Case (x: 5.55..7.45)
+      const tcX = snap(5.55 * S), tcY = snap(floorTop - 94), tcW = snap(1.9 * S), tcH = 104;
+      pxBox(tcX, tcY, tcW, tcH, '#5c3820', '#845030', '#331c0e', INK, 2);
+      pxBox(tcX + 8, tcY + 10, tcW - 16, tcH - 30, '#0f172a', '#1e293b', '#020617', '#fbbf24', 1.8);
+      // Golden trophies & display card inside case
+      [tcX + 26, tcX + 60, tcX + 94].forEach((gx, idx) => {
+        ctx.fillStyle = idx === 1 ? '#fde047' : '#f59e0b';
+        ctx.beginPath(); ctx.arc(gx, tcY + 34, 9, 0, Math.PI * 2); ctx.fill();
+        ctx.fillRect(gx - 3, tcY + 42, 6, 10);
+        ctx.fillRect(gx - 7, tcY + 51, 14, 4);
+      });
+      ctx.fillStyle = 'rgba(255,255,255,0.16)';
+      ctx.fillRect(tcX + 12, tcY + 14, 14, tcH - 38);
+
+      // Cork "MYTHOS AFTER-SCHOOL CLUB" Bulletin Board (x: 7.75..9.05)
+      const bbX = snap(7.75 * S), bbY = snap(ry + 36);
+      pxBox(bbX, bbY, 82, 64, '#5c3820', '#845030', '#331c0e', INK, 2);
+      pxBox(bbX + 6, bbY + 6, 70, 52, '#c28d54', '#d9a46b', '#9e6c38', '#451a03', 1.5);
+      // Pinned colorful flyers
+      [[bbX + 14, bbY + 14, '#fef08a'], [bbX + 38, bbY + 12, '#93c5fd'], [bbX + 22, bbY + 34, '#fca5a5']].forEach(([fx, fy, fc]) => {
+        ctx.fillStyle = fc;
+        ctx.fillRect(fx, fy, 18, 16);
+        ctx.fillStyle = '#dc2626';
+        ctx.beginPath(); ctx.arc(fx + 9, fy + 2, 2.2, 0, Math.PI * 2); ctx.fill();
+      });
+
+      // 5. Classroom Back Wall: Giant Slate Chalkboard + Wall Clock + Library Bookshelf + Globe
+      const cbX = snap(11.35 * S), cbY = snap(ry + 28), cbW = snap(4.05 * S), cbH = 82;
+      pxBox(cbX, cbY, cbW, cbH, '#6c4226', '#8e5a37', '#382012', INK, 2.5);
+      pxBox(cbX + 7, cbY + 7, cbW - 14, cbH - 16, '#143b2a', '#1d523b', '#0b2419', '#2b160b', 1.6);
+      // Chalk dust writings & Mythos lesson notes
+      ctx.fillStyle = '#f8fafc';
+      ctx.font = 'bold 11px Inter, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('MYTHOS ACADEMY LESSON', cbX + cbW / 2, cbY + 26);
+      ctx.fillStyle = '#fde68a';
+      ctx.font = '10px Inter, sans-serif';
+      ctx.fillText('DECK: 18–24 CARDS  |  CAP: 45★', cbX + cbW / 2, cbY + 46);
+      ctx.fillStyle = '#93c5fd';
+      ctx.fillText('Playgrounds North • West Bus Loop', cbX + cbW / 2, cbY + 64);
+
+      // Brass-rimmed Classroom Globe on Oak Stand (x: 15.95, y: 4.1)
+      const glX = snap(16.05 * S), glY = snap(floorTop - 16);
+      pxBox(glX - 14, glY - 6, 28, 30, '#5c3820', '#845030', '#382012', INK, 1.5);
+      ctx.fillStyle = '#2563eb';
+      ctx.beginPath(); ctx.arc(glX, glY - 18, 14, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#22c55e';
+      ctx.beginPath(); ctx.arc(glX - 4, glY - 21, 5, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(glX + 5, glY - 14, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(glX, glY - 18, 16, -0.5, 2.6); ctx.stroke();
+
+      // Filled Library Bookshelf in NE Corner (x: 16.75..19.7)
+      const bsX = snap(16.75 * S), bsY = snap(floorTop - 92), bsW = snap(2.9 * S), bsH = 104;
+      pxBox(bsX, bsY, bsW, bsH, '#5c3820', '#845030', '#331c0e', INK, 2);
+      const bookCols = ['#dc2626', '#2563eb', '#16a34a', '#d97706', '#7c3aed', '#0891b2'];
+      for (let sh = 0; sh < 3; sh++) {
+        const syShelf = bsY + 12 + sh * 30;
+        pxBox(bsX + 6, syShelf, bsW - 12, 22, '#24140b', null, null, null);
+        for (let bx = bsX + 10; bx < bsX + bsW - 16; bx += 9) {
+          ctx.fillStyle = bookCols[Math.floor((bx + sh * 3) / 9) % bookCols.length];
+          ctx.fillRect(bx, syShelf + 2, 7, 19);
+        }
+      }
+
+      // 6. Teacher Ms. Evelyn's Carved Oak Lectern Desk (x: 12.2..14.4, y: 4.8..5.7)
+      const tdX = snap(12.2 * S), tdY = snap(4.85 * S), tdW = snap(2.2 * S), tdH = snap(0.85 * S);
+      ctx.fillStyle = 'rgba(0,0,0,0.28)';
+      ctx.fillRect(tdX + 4, tdY + tdH - 4, tdW, 10);
+      pxBox(tdX, tdY, tdW, tdH, '#6c4226', '#8e5a37', '#382012', INK, 2);
+      // Stack of textbooks, brass bell & red orchard apple on Teacher's Desk
+      pxBox(tdX + 16, tdY + 8, 28, 18, '#2563eb', '#60a5fa', '#1e3a8a', INK, 1.3);
+      ctx.fillStyle = '#dc2626';
+      ctx.beginPath(); ctx.arc(tdX + tdW - 24, tdY + 18, 6, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#22c55e';
+      ctx.fillRect(tdX + tdW - 24, tdY + 10, 3, 4);
+      ctx.fillStyle = '#fbbf24';
+      ctx.beginPath(); ctx.arc(tdX + tdW / 2, tdY + 20, 6, Math.PI, 0); ctx.fill();
+
+      // 7. Two Neat Rows of 6 Oak-and-Steel Student Desks (wide aisles!)
+      const deskXs = [10.0, 12.8, 15.6];
+      const deskYs = [7.85, 10.15];
+      deskXs.forEach((dxT, ci) => {
+        deskYs.forEach((dyT, ri) => {
+          const sx = snap(dxT * S), sy = snap(dyT * S);
+          ctx.fillStyle = 'rgba(0,0,0,0.26)';
+          ctx.fillRect(sx - 30, sy + 18, 62, 10);
+          // Chair tucked behind desk facing North toward Ms. Evelyn
+          pxBox(sx - 15, sy + 6, 30, 18, '#475569', '#94a3b8', '#1e293b', INK, 1.5);
+          // Oak desktop
+          pxBox(sx - 32, sy - 20, 64, 30, '#a87442', '#cc965e', '#734b24', INK, 2);
+          // Notebook + pencil on student desk
+          ctx.fillStyle = (ci + ri) % 2 === 0 ? '#fef3c7' : '#dbeafe';
+          ctx.fillRect(sx - 18, sy - 14, 18, 14);
+          ctx.strokeStyle = '#334155'; ctx.lineWidth = 1; ctx.strokeRect(sx - 18, sy - 14, 18, 14);
+          ctx.fillStyle = '#fbbf24';
+          ctx.fillRect(sx + 6, sy - 10, 12, 3);
+        });
+      });
+
+      // 8. WEST-FACING GRAND EXIT DOUBLE DOORS ON WEST WALL (x = rx, y = 6.1..8.0)
+      const doorX = snap(rx - 14), doorTop = snap(6.1 * S), doorH = snap(1.9 * S);
+      pxBox(doorX, doorTop, 22, doorH, '#452817', '#6c4226', '#241209', INK, 2);
+      ctx.fillStyle = '#fde68a';
+      ctx.fillRect(doorX + 4, doorTop + 8, 14, Math.floor(doorH / 2) - 12);
+      ctx.fillRect(doorX + 4, doorTop + Math.floor(doorH / 2) + 4, 14, Math.floor(doorH / 2) - 12);
+      ctx.strokeStyle = '#b45309'; ctx.lineWidth = 2;
+      ctx.strokeRect(doorX + 4, doorTop + 8, 14, doorH - 16);
+      // Luminous "← EXIT" floor indicator badge inside West doors
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.84)';
+      ctx.beginPath(); ctx.roundRect(rx + 14, 6.85 * S, 64, 22, 6); ctx.fill();
+      ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = 1.4; ctx.stroke();
+      ctx.fillStyle = '#fde68a';
+      ctx.font = 'bold 10px Inter, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('← EXIT', rx + 46, 6.85 * S + 15);
+    }
+
     renderCornerStoreInterior() {
       const g = this._drawCutawayRoomShell({
         voidColor: '#12141a',
@@ -23873,6 +24518,437 @@
       drawWillowWayCornerStore();
       drawWillowWayConventionCenter();
 
+      // =========================================================================
+      // OAKHAVEN ELEMENTARY CAMPUS AT EAST END OF WILLOW WAY (CONCEPT 2 HD-32)
+      // - Willow Way East widens into a 1-way Paved Drop-Off Loop Road
+      // - Covered Portico West-Facing School (door lined facing WEST toward road)
+      // - Large Brick-Pillar & Iron Fenced North Playground beside the School
+      // =========================================================================
+      const drawWillowWaySchoolCampus = () => {
+        // 1. Extend Willow Way East into 1-Way Paved Drop-Off Loop (x: 15.70..22.70, y: 24.4..30.8)
+        const connStartX = Math.round(15.60 * S);
+        const loopLeftX = Math.round(18.0 * S);
+        const loopRightX = Math.round(22.15 * S);
+        const loopTopY = Math.round(25.0 * S);
+        const loopBotY = Math.round(30.2 * S);
+
+        ctx.save();
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        // Outer concrete rim & asphalt D-loop
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = Math.round(oakhavenWestTurnW + 10);
+        ctx.beginPath();
+        ctx.moveTo(loopLeftX + 68, loopTopY);
+        ctx.lineTo(loopRightX, loopTopY);
+        ctx.lineTo(loopRightX, loopBotY);
+        ctx.lineTo(loopLeftX + 68, loopBotY);
+        ctx.quadraticCurveTo(loopLeftX - 42, (loopTopY + loopBotY) / 2, loopLeftX + 68, loopTopY);
+        ctx.stroke();
+
+        ctx.strokeStyle = this.urbanRoadPattern || '#444d5c';
+        ctx.lineWidth = oakhavenWestTurnW;
+        ctx.stroke();
+
+        // Dashed yellow one-way lane center stripe
+        ctx.strokeStyle = '#fde047';
+        ctx.lineWidth = 3;
+        ctx.setLineDash([12, 12]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.restore();
+
+        // Draw straight Willow Way connector cleanly over the outer rim so asphalt merges with zero seam
+        drawUrbanPavedRoadH(connStartX, northWestPavedY, Math.round(18.35 * S - connStartX), oakhavenWestTurnW);
+        ctx.fillStyle = this.urbanRoadPattern || '#444d5c';
+        ctx.fillRect(Math.round(17.2 * S), northWestPavedY + 4, Math.round(1.4 * S), Math.round(oakhavenWestTurnW - 8));
+
+        // 2. Landscaped Drop-Off Loop Island with Brick Monument Sign & Flagpole
+        const islX = Math.round(18.55 * S), islY = Math.round(25.60 * S);
+        const islW = Math.round(2.90 * S), islH = Math.round(4.00 * S);
+        ctx.fillStyle = '#64748b';
+        ctx.beginPath(); ctx.roundRect(islX - 4, islY - 4, islW + 8, islH + 8, 36); ctx.fill();
+        ctx.fillStyle = '#cbd5e1';
+        ctx.beginPath(); ctx.roundRect(islX - 2, islY - 2, islW + 4, islH + 4, 34); ctx.fill();
+        ctx.save();
+        ctx.beginPath(); ctx.roundRect(islX + 2, islY + 2, islW - 4, islH - 4, 30); ctx.clip();
+        ctx.fillStyle = this.grassPattern || '#4f9e38';
+        ctx.fillRect(islX, islY, islW, islH);
+        ctx.restore();
+
+        // Brick Monument Sign ("OAKHAVEN ELEMENTARY") at center of loop island (x: 19.35..20.55, y: 27.2..27.9)
+        const msX = Math.round(19.32 * S), msY = Math.round(27.22 * S);
+        const msW = Math.round(1.26 * S), msH = Math.round(0.68 * S);
+        ctx.fillStyle = 'rgba(0,0,0,0.34)';
+        ctx.fillRect(msX + 3, msY + 5, msW, msH);
+        ctx.fillStyle = '#923a25';
+        ctx.fillRect(msX, msY, msW, msH);
+        ctx.strokeStyle = '#3b1c12'; ctx.lineWidth = 2; ctx.strokeRect(msX, msY, msW, msH);
+        ctx.fillStyle = '#e7decb';
+        ctx.fillRect(msX - 3, msY - 4, msW + 6, 7);
+        ctx.strokeRect(msX - 3, msY - 4, msW + 6, 7);
+        ctx.fillStyle = '#183c2c';
+        ctx.fillRect(msX + 7, msY + 8, msW - 14, msH - 15);
+        ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = 1.4; ctx.strokeRect(msX + 7, msY + 8, msW - 14, msH - 15);
+        ctx.fillStyle = '#fef3c7';
+        ctx.font = 'bold 8px Cinzel, Georgia, serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('OAKHAVEN', msX + msW / 2, msY + 20);
+        ctx.fillText('ELEMENTARY', msX + msW / 2, msY + 31);
+
+        // Tall Flagpole (x: 19.95, y: 26.35) + Ornamental Shrubs on Island
+        const fpX = Math.round(19.95 * S), fpY = Math.round(26.35 * S);
+        ctx.fillStyle = '#94a3b8';
+        ctx.beginPath(); ctx.arc(fpX, fpY, 9, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#334155';
+        ctx.fillRect(fpX - 2, fpY - 44, 5, 44);
+        ctx.fillStyle = '#f8fafc';
+        ctx.fillRect(fpX - 1, fpY - 44, 2, 44);
+        ctx.fillStyle = '#fbbf24';
+        ctx.beginPath(); ctx.arc(fpX + 0.5, fpY - 46, 3.5, 0, Math.PI * 2); ctx.fill();
+        const wave = Math.sin((this.tick || 0) * 0.08) * 1.6;
+        ctx.fillStyle = '#1e3a8a';
+        ctx.beginPath();
+        ctx.moveTo(fpX + 3, fpY - 43);
+        ctx.lineTo(fpX + 24, fpY - 43 + wave);
+        ctx.lineTo(fpX + 24, fpY - 30 + wave);
+        ctx.lineTo(fpX + 3, fpY - 30);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = '#fbbf24';
+        ctx.fillRect(fpX + 10, fpY - 39 + wave * 0.5, 7, 5);
+
+        if (this.isImgReady('bush_flower')) {
+          const bImg = this.owSprites.bush_flower;
+          const bw = 34, bh = Math.round(34 * (bImg.height / bImg.width));
+          ctx.drawImage(bImg, Math.round(18.75 * S), Math.round(26.0 * S), bw, bh);
+          ctx.drawImage(bImg, Math.round(20.62 * S), Math.round(28.85 * S), bw, bh);
+        }
+
+        // 3. Yellow School Drop-Off Loading Curb, Crosswalk & Sidewalk Apron
+        const hatchX = Math.round(22.42 * S);
+        const hatchY = Math.round(25.1 * S);
+        const hatchH = Math.round(5.1 * S);
+        ctx.fillStyle = 'rgba(250, 204, 21, 0.25)';
+        ctx.fillRect(hatchX, hatchY, 16, hatchH);
+        ctx.fillStyle = '#facc15';
+        ctx.fillRect(hatchX + 14, hatchY - 4, 5, hatchH + 8);
+        ctx.strokeStyle = '#facc15';
+        ctx.lineWidth = 1.6;
+        for (let hy = hatchY + 6; hy < hatchY + hatchH - 6; hy += 12) {
+          ctx.beginPath(); ctx.moveTo(hatchX, hy); ctx.lineTo(hatchX + 14, hy + 8); ctx.stroke();
+        }
+
+        // Concrete Sidewalk Apron connecting Drop-Off Curb -> West Steps -> Playground Double Gate
+        const swX = Math.round(22.70 * S), swY = Math.round(20.55 * S);
+        const swW = Math.round(1.90 * S), swH = Math.round(10.05 * S);
+        ctx.fillStyle = this.flagstonePattern || '#cbd5e1';
+        ctx.fillRect(swX, swY, swW, swH);
+        ctx.fillStyle = 'rgba(226, 232, 240, 0.55)';
+        ctx.fillRect(swX, swY, swW, swH);
+        ctx.strokeStyle = '#64748b';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(swX, swY, swW, swH);
+        ctx.strokeStyle = 'rgba(100, 116, 139, 0.26)';
+        ctx.lineWidth = 1;
+        for (let sy = swY + 32; sy < swY + swH; sy += 32) {
+          ctx.beginPath(); ctx.moveTo(swX, sy); ctx.lineTo(swX + swW, sy); ctx.stroke();
+        }
+
+        // White Zebra Crosswalk linking Median Island straight to Covered West Entrance Steps
+        const cwX = Math.round(21.62 * S), cwY = Math.round(27.18 * S), cwW = Math.round(1.0 * S);
+        ctx.fillStyle = '#f8fafc';
+        for (let cy = cwY; cy < Math.round(28.18 * S); cy += 10) {
+          ctx.fillRect(cwX, cy, cwW, 6);
+        }
+
+        // Curb-side Cast-Iron Campus Streetlamps
+        [22.85, 26.25, 29.60].forEach(lyT => {
+          const lx = Math.round(22.82 * S), ly = Math.round(lyT * S);
+          ctx.fillStyle = '#1e293b';
+          ctx.fillRect(lx, ly - 26, 4, 28);
+          if (this.settings.timeOfDay !== 'day') {
+            ctx.fillStyle = 'rgba(253, 224, 71, 0.28)';
+            ctx.beginPath(); ctx.arc(lx + 2, ly - 28, 22, 0, Math.PI * 2); ctx.fill();
+          }
+          ctx.fillStyle = '#fef08a';
+          ctx.fillRect(lx - 2, ly - 31, 8, 6);
+        });
+
+        // 4. Depth-Sorted Oakhaven Yellow School Bus #04 Parked in South Drop-Off Lane
+        if (this.isImgReady('school_bus')) {
+          const bImg = this.owSprites.school_bus;
+          const bw = Math.round(1.02 * S);
+          const bh = Math.round(bw * (bImg.height / bImg.width));
+          const bx = Math.round(21.60 * S);
+          const by = Math.round(30.35 * S - bh);
+          this._extDepthProps.push({
+            sortY: Math.round(30.30 * S),
+            zBias: 0,
+            draw: () => {
+              ctx.imageSmoothingEnabled = true;
+              ctx.drawImage(bImg, bx, by, bw, bh);
+              ctx.imageSmoothingEnabled = false;
+            }
+          });
+        }
+
+        // 5. Concept A HD Civic Heritage Fenced Playground North of School (x: 24.05..31.65, y: 18.60..23.85)
+        const pgX = Math.round(24.05 * S), pgY = Math.round(18.60 * S);
+        const pgW = Math.round(7.60 * S), pgH = Math.round(5.25 * S);
+
+        if (this.isImgReady('playground_ground')) {
+          ctx.save();
+          ctx.imageSmoothingEnabled = true;
+          ctx.drawImage(this.owSprites.playground_ground, pgX, pgY, pgW, pgH);
+          ctx.restore();
+        } else {
+          ctx.fillStyle = '#a6723e';
+          ctx.fillRect(pgX, pgY, pgW, pgH);
+        }
+
+        // Depth-sorted Playground Equipment, Benches, Spinner & Hoop
+        // 5a. 32-Bit HD Cedar Clubhouse Fort & Wave Slide (24.55..26.35, 19.12..20.38)
+        this._extDepthProps.push({
+          sortY: Math.round(20.38 * S),
+          zBias: 0,
+          draw: () => {
+            const fw = Math.round(2.40 * S);
+            const fh = Math.round(fw * (256 / 340));
+            const fx = Math.round(24.24 * S);
+            const fy = Math.round(20.48 * S - fh);
+            if (this.isImgReady('playground_fort')) {
+              ctx.save();
+              ctx.imageSmoothingEnabled = true;
+              ctx.drawImage(this.owSprites.playground_fort, fx, fy, fw, fh);
+              ctx.restore();
+            }
+          }
+        });
+
+        // 5b. 32-Bit HD Steel A-Frame Swingset w/ Animated Link Chains & Seats (26.75..28.22, 19.20..20.12)
+        this._extDepthProps.push({
+          sortY: Math.round(20.12 * S),
+          zBias: 0,
+          draw: () => {
+            const swW = Math.round(1.74 * S);
+            const swH = Math.round(swW * (146 / 248));
+            const swX = Math.round(26.62 * S);
+            const swY = Math.round(20.22 * S - swH);
+            if (this.isImgReady('playground_swingset')) {
+              ctx.save();
+              ctx.imageSmoothingEnabled = true;
+              ctx.drawImage(this.owSprites.playground_swingset, swX, swY, swW, swH);
+              ctx.restore();
+            }
+            const topBarY = swY + Math.round(swH * (14 / 146));
+            const dropH = Math.round(swH * (70 / 146));
+            [0.32, 0.50, 0.68].forEach((frac, sIdx) => {
+              const cxSeat = swX + Math.round(swW * frac);
+              const sway = Math.sin((this.tick || 0) * 0.045 + sIdx * 1.45) * 3.2;
+              ctx.strokeStyle = '#64748b';
+              ctx.lineWidth = 1.6;
+              ctx.beginPath();
+              ctx.moveTo(cxSeat - 4, topBarY); ctx.lineTo(cxSeat - 4 + sway, topBarY + dropH);
+              ctx.moveTo(cxSeat + 4, topBarY); ctx.lineTo(cxSeat + 4 + sway, topBarY + dropH);
+              ctx.stroke();
+              ctx.fillStyle = sIdx === 1 ? '#eab308' : '#dc2626';
+              ctx.fillRect(cxSeat - 7 + sway, topBarY + dropH, 14, 4);
+              ctx.strokeStyle = '#26140c';
+              ctx.lineWidth = 1;
+              ctx.strokeRect(cxSeat - 7 + sway, topBarY + dropH, 14, 4);
+            });
+          }
+        });
+
+        // 5c. 32-Bit HD Wood & Steel Seesaw (24.90..26.15, 22.30..22.92)
+        this._extDepthProps.push({
+          sortY: Math.round(22.92 * S),
+          zBias: 0,
+          draw: () => {
+            const ssW = Math.round(1.42 * S);
+            const ssH = Math.round(ssW * (88 / 176));
+            const ssX = Math.round(25.52 * S - ssW / 2);
+            const ssY = Math.round(22.64 * S - ssH / 2);
+            if (this.isImgReady('playground_seesaw')) {
+              ctx.save();
+              ctx.imageSmoothingEnabled = true;
+              ctx.drawImage(this.owSprites.playground_seesaw, ssX, ssY, ssW, ssH);
+              ctx.restore();
+            }
+          }
+        });
+
+        // 5d. Rotating 32-Bit HD 6-Wedge Carousel Merry-Go-Round (27.45, 22.55)
+        this._extDepthProps.push({
+          sortY: Math.round(22.95 * S),
+          zBias: 0,
+          draw: () => {
+            const spCx = Math.round(27.45 * S);
+            const spCy = Math.round(22.55 * S);
+            const spSz = Math.round(0.96 * S);
+            ctx.fillStyle = 'rgba(42, 24, 10, 0.34)';
+            ctx.beginPath(); ctx.ellipse(spCx + 2, spCy + 4, spSz * 0.52, spSz * 0.46, 0, 0, Math.PI * 2); ctx.fill();
+            if (this.isImgReady('playground_spinner')) {
+              ctx.save();
+              ctx.imageSmoothingEnabled = true;
+              ctx.translate(spCx, spCy);
+              ctx.rotate((this.tick || 0) * 0.012);
+              ctx.drawImage(this.owSprites.playground_spinner, -spSz / 2, -spSz / 2, spSz, spSz);
+              ctx.restore();
+            }
+          }
+        });
+
+        // 5e. 32-Bit HD Basketball Hoop Stanchion & Acrylic Backboard (31.22, 21.15)
+        this._extDepthProps.push({
+          sortY: Math.round(21.50 * S),
+          zBias: 0,
+          draw: () => {
+            const hW = Math.round(0.86 * S);
+            const hH = Math.round(hW * (122 / 76));
+            const hX = Math.round(31.50 * S - hW);
+            const hY = Math.round(21.65 * S - hH);
+            if (this.isImgReady('playground_hoop')) {
+              ctx.save();
+              ctx.imageSmoothingEnabled = true;
+              ctx.drawImage(this.owSprites.playground_hoop, hX, hY, hW, hH);
+              ctx.restore();
+            }
+          }
+        });
+
+        // 5f. Oak Recess Benches & Corner Flowering Shrubs (West & East Mulch Perimeter)
+        [[24.65, 23.38], [28.05, 23.38]].forEach(([bxT, byT]) => {
+          this._extDepthProps.push({
+            sortY: Math.round((byT + 0.16) * S),
+            zBias: 0,
+            draw: () => {
+              if (this.isImgReady('bench_front')) {
+                const bw = 42, bh = Math.round(42 * (this.owSprites.bench_front.height / this.owSprites.bench_front.width));
+                ctx.drawImage(this.owSprites.bench_front, Math.round(bxT * S - bw / 2), Math.round(byT * S - bh + 8), bw, bh);
+              }
+            }
+          });
+        });
+        [[23.76, 20.12], [23.76, 23.28]].forEach(([sxT, syT]) => {
+          this._extDepthProps.push({
+            sortY: Math.round((syT + 0.14) * S),
+            zBias: 0,
+            draw: () => {
+              if (this.isImgReady('bush_flower')) {
+                ctx.save();
+                ctx.imageSmoothingEnabled = true;
+                ctx.drawImage(this.owSprites.bush_flower, Math.round(sxT * S - 22), Math.round(syT * S - 26), 44, 32);
+                ctx.restore();
+              }
+            }
+          });
+        });
+
+        // 5g. Ornamental Brick-Pillar & Spear-Picket Wrought-Iron Safety Fence (Open West Gate y: 21.15..22.55)
+        const drawBrickIronFence = (x1, y1, x2, y2) => {
+          ctx.strokeStyle = '#0f172a';
+          ctx.lineWidth = 3.5;
+          ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+          ctx.strokeStyle = '#334155';
+          ctx.lineWidth = 2.2;
+          ctx.beginPath(); ctx.moveTo(x1, y1 - 11); ctx.lineTo(x2, y2 - 11); ctx.stroke();
+          const dist = Math.hypot(x2 - x1, y2 - y1);
+          const pickets = Math.max(2, Math.floor(dist / 9));
+          ctx.strokeStyle = '#1e293b';
+          ctx.lineWidth = 1.6;
+          for (let p = 1; p < pickets; p++) {
+            const px = Math.round(x1 + ((x2 - x1) * p) / pickets);
+            const py = Math.round(y1 + ((y2 - y1) * p) / pickets);
+            ctx.beginPath(); ctx.moveTo(px, py + 1); ctx.lineTo(px, py - 14); ctx.stroke();
+            ctx.fillStyle = '#475569';
+            ctx.fillRect(px - 1, py - 16, 2, 3);
+          }
+          const piers = Math.max(1, Math.round(dist / 46));
+          for (let i = 0; i <= piers; i++) {
+            const px = Math.round(x1 + ((x2 - x1) * i) / piers);
+            const py = Math.round(y1 + ((y2 - y1) * i) / piers);
+            ctx.fillStyle = '#923a25';
+            ctx.fillRect(px - 5, py - 15, 10, 17);
+            ctx.strokeStyle = '#3b1c12'; ctx.lineWidth = 1.3;
+            ctx.strokeRect(px - 5, py - 15, 10, 17);
+            ctx.fillStyle = 'rgba(245, 224, 200, 0.35)';
+            ctx.fillRect(px - 4, py - 10, 8, 1);
+            ctx.fillRect(px - 4, py - 5, 8, 1);
+            ctx.fillStyle = '#e7dec8';
+            ctx.fillRect(px - 6, py - 18, 12, 4);
+            ctx.strokeRect(px - 6, py - 18, 12, 4);
+          }
+        };
+        const gateTopY = Math.round(21.15 * S), gateBotY = Math.round(22.55 * S);
+        drawBrickIronFence(pgX, pgY, pgX + pgW, pgY);               // North fence
+        drawBrickIronFence(pgX + pgW, pgY, pgX + pgW, pgY + pgH);   // East fence
+        drawBrickIronFence(pgX, pgY, pgX, gateTopY);                // West-upper fence
+        drawBrickIronFence(pgX, gateBotY, pgX, pgY + pgH);          // West-lower fence
+
+        // Crisp "PLAYGROUND" Gilded Header Plaque at Open West Gate
+        ctx.fillStyle = '#163e2b';
+        ctx.beginPath(); ctx.roundRect(pgX - 28, gateTopY - 24, 56, 14, 4); ctx.fill();
+        ctx.strokeStyle = '#d4a848'; ctx.lineWidth = 1.4; ctx.stroke();
+        ctx.fillStyle = '#fde68a';
+        ctx.font = 'bold 7.5px Cinzel, Georgia, serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('PLAYGROUND', pgX, gateTopY - 14.5);
+
+        // Depth-sorted South Playground Fence so player stands cleanly behind south fence inside playground
+        this._extDepthProps.push({
+          sortY: pgY + pgH + 4,
+          zBias: 0,
+          draw: () => drawBrickIronFence(pgX, pgY + pgH, pgX + pgW, pgY + pgH)
+        });
+
+        // 6. Option 1 Oakhaven Civic Storybook HD West-Facing School Exterior Sprite (school_exterior.png)
+        if (this.isImgReady('school_exterior')) {
+          const sImg = this.owSprites.school_exterior;
+          const dw = Math.round((6.90 * S) / (1085 / 1320));
+          const dh = Math.round(dw * (sImg.height / sImg.width));
+          const dx = Math.round(24.45 * S - dw * (195 / 1320));
+          const dy = Math.round(28.45 * S - dh * (786 / 816));
+          ctx.save();
+          ctx.imageSmoothingEnabled = true;
+          ctx.drawImage(sImg, dx, dy, dw, dh);
+          if (this.settings?.timeOfDay === 'night') {
+            ctx.globalCompositeOperation = 'lighter';
+            [
+              [0.10, 0.78, 22, 0.34], // West Portico brass lantern & open entrance glow
+              [0.30, 0.50, 18, 0.22], // Upper West window 1
+              [0.39, 0.50, 18, 0.22], // Upper West window 2
+              [0.74, 0.50, 18, 0.22], // Upper East window 1
+              [0.86, 0.50, 18, 0.22], // Upper East window 2
+              [0.35, 0.78, 24, 0.24], // Lower West classroom bay
+              [0.56, 0.78, 24, 0.24], // Lower Center classroom bay
+              [0.80, 0.78, 24, 0.24]  // Lower East classroom bay
+            ].forEach(([fx, fy, gr, ga]) => {
+              const gx = dx + dw * fx;
+              const gy = dy + dh * fy;
+              const glow = ctx.createRadialGradient(gx, gy, 2, gx, gy, gr);
+              glow.addColorStop(0, `rgba(253, 224, 71, ${ga})`);
+              glow.addColorStop(1, 'rgba(253, 224, 71, 0)');
+              ctx.fillStyle = glow;
+              ctx.beginPath();
+              ctx.arc(gx, gy, gr, 0, Math.PI * 2);
+              ctx.fill();
+            });
+          }
+          ctx.restore();
+        } else {
+          ctx.fillStyle = '#923a25';
+          ctx.fillRect(Math.round(24.45 * S), Math.round(25.35 * S), Math.round(6.90 * S), Math.round(3.10 * S));
+        }
+      };
+
+      drawOakhavenBistro();
+      drawOakhavenApartments();
+      drawWillowWayCornerStore();
+      drawWillowWayConventionCenter();
+      drawWillowWaySchoolCampus();
+
       // Organic Raised 3/4 Turf-Lip & Rounded Stone Curb Edges along Grass-to-Road Borders
       const drawStoneCurbH = (cx, cy, cw, side = 'bot') => {
         const x = Math.round(cx), y = Math.round(cy), w = Math.round(cw);
@@ -23944,9 +25020,8 @@
       drawStoneCurbV(oakhavenWestTurnX + oakhavenWestTurnW, road2Y + road2H, road3Y - (road2Y + road2H), 'left');
       drawStoneCurbV(oakhavenWestTurnX + oakhavenWestTurnW, road3Y + road3H, northWestPavedY - (road3Y + road3H), 'left');
       drawStoneCurbV(oakhavenWestTurnX + oakhavenWestTurnW, northWestPavedY + oakhavenWestTurnW, (rbCy - rbOuterR) - (northWestPavedY + oakhavenWestTurnW) + 12, 'left');
-      drawStoneCurbH(oakhavenWestTurnX + oakhavenWestTurnW, northWestPavedY - 6, willowEastEndX - (oakhavenWestTurnX + oakhavenWestTurnW), 'bot');
-      drawStoneCurbH(oakhavenWestTurnX + oakhavenWestTurnW, northWestPavedY + oakhavenWestTurnW, willowEastEndX - (oakhavenWestTurnX + oakhavenWestTurnW), 'top');
-      drawStoneCurbV(willowEastEndX, northWestPavedY - 6, oakhavenWestTurnW + 12, 'left');
+      drawStoneCurbH(oakhavenWestTurnX + oakhavenWestTurnW, northWestPavedY - 6, Math.round(17.35 * S) - (oakhavenWestTurnX + oakhavenWestTurnW), 'bot');
+      drawStoneCurbH(oakhavenWestTurnX + oakhavenWestTurnW, northWestPavedY + oakhavenWestTurnW, Math.round(17.35 * S) - (oakhavenWestTurnX + oakhavenWestTurnW), 'top');
       drawStoneCurbH(westExitEndX, westExitY - 6, (-15.85 * S) - westExitEndX, 'bot');
       drawStoneCurbH(-15.15 * S, westExitY - 6, (-9.55 - (-15.15)) * S, 'bot');
       drawStoneCurbH(-8.85 * S, westExitY - 6, (rbCx - rbOuterR) - (-8.85 * S) + 12, 'bot');
@@ -26435,6 +27510,12 @@
         this.shaunNpc.y = 4.42;
         this.shaunNpc.dir = 'down';
         active.push(this.shaunNpc);
+      } else if (area === 'school_interior') {
+        if (!this.evelynNpc) this.evelynNpc = this.createEvelynNpc();
+        this.evelynNpc.x = 13.3;
+        this.evelynNpc.y = 6.25;
+        this.evelynNpc.dir = 'down';
+        active.push(this.evelynNpc);
       } else if (area === 'exterior') {
         const friend = this.npcs.find(n => n.id === 'best_friend' || n.id === 'friend');
         if (friend && friend.following && !this.friendWaitingAtHouse) {
@@ -26539,6 +27620,8 @@
         this.renderCornerStoreInterior();
       } else if (this.currentArea === 'convention_center_interior') {
         this.renderConventionCenterInterior();
+      } else if (this.currentArea === 'school_interior') {
+        this.renderSchoolInterior();
       } else {
         this.renderCraftsmanExterior();
       }

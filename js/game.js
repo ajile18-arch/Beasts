@@ -349,7 +349,7 @@
   // ---------------------------------------------------------------------------
   class BeastsGame {
     constructor() {
-      this.VERSION = '2.69';
+      this.VERSION = '2.75';
       this.gameMode = 'ai'; // 'ai' | '2p'
       this.currentView = 'overworld';
       this.currentChallenger = null;
@@ -580,6 +580,7 @@
       this.isMatchOver = false;
       this.elWinnerModal?.classList.add('hidden');
       document.getElementById('gwent-round-overlay')?.classList.add('hidden');
+      document.getElementById('gwent-optional-play-modal')?.remove();
 
       const playingDeckIds = (this.overworld?.playingDeck || []).filter(id => GWENT_CARDS[id]);
       const p1Deck = this.buildDeck(p1Guaranteed, playingDeckIds);
@@ -716,6 +717,8 @@
 
       if (this.gameMode === 'ai' && this.state.turnTeam === 2) {
         this.aiTimeout = setTimeout(() => this.runAiTurn(), 1300);
+      } else {
+        this.checkAutoEndTurn(this.state.turnTeam);
       }
     }
 
@@ -793,12 +796,62 @@
       return Boolean(this.state?.players?.[team]);
     }
 
-    hasReadyAttackers(team) {
-      const canAttack = this.canTeamAttackThisTurn(team);
+    canPlaceAnyCard(team) {
+      if (this.isMatchOver || !this.state || this.state.mulliganActive || this.state.pendingOptionalPlay) {
+        return false;
+      }
+      if (team !== this.state.turnTeam) return false;
+      const player = this.state.players?.[team];
+      if (!player || player.passed || this.state.playedCardThisTurn) {
+        return false;
+      }
+      return (player.hand || []).some(card =>
+        card && (card.row === 'agile' || card.row === 'melee' || card.row === 'ranged')
+      );
+    }
+
+    canPerformAnyAttack(team) {
+      if (!this.canTeamAttackThisTurn(team)) return false;
       return this.getAllBoardCards(team).some(c =>
-        (canAttack && !c.attackedThisTurn && this.getValidAttackTargets(team, c.uid).length > 0) ||
+        !c.attackedThisTurn && this.getValidAttackTargets(team, c.uid).length > 0
+      );
+    }
+
+    canUseAnyAbility(team) {
+      if (this.state?.pendingOptionalPlay) return true;
+      return this.getAllBoardCards(team).some(c =>
         this.getBoostableAlliesFor(c, team).length > 0
       );
+    }
+
+    hasReadyAttackers(team) {
+      return this.canPerformAnyAttack(team) || this.getAllBoardCards(team).some(c =>
+        this.getBoostableAlliesFor(c, team).length > 0
+      );
+    }
+
+    hasAnyAvailableAction(team) {
+      return this.canPlaceAnyCard(team) || this.canUseAnyAbility(team) || this.canPerformAnyAttack(team);
+    }
+
+    /** Automatically end the active turn when no card placements, abilities, or attacks remain. */
+    checkAutoEndTurn(team = this.state?.turnTeam) {
+      if (this.isMatchOver || !this.state || this.state.mulliganActive || this.state.pendingOptionalPlay) {
+        return false;
+      }
+      if (team !== this.state.turnTeam) return false;
+      if (this.gameMode === 'ai' && team === 2) return false;
+      const player = this.state.players?.[team];
+      if (!player || player.passed) return false;
+      if (this.hasAnyAvailableAction(team)) return false;
+
+      const oppTeam = team === 1 ? 2 : 1;
+      const opp = this.state.players?.[oppTeam];
+      if (opp?.passed && player.hand.length > 0) {
+        this.log(`⏭️ ${player.name} has no remaining attacks, abilities, or card placements — turn ended automatically.`, team === 1 ? 'team1' : 'team2');
+      }
+      this.advanceTurn();
+      return true;
     }
 
     resetTurnAttackFlags(team) {
@@ -981,17 +1034,13 @@
       window.soundFX?.playHeal?.();
       this.log(`🐺 ${sourceCard.name} raised ${targetCard.name}'s Power by +${amt}!`, team === 1 ? 'team1' : 'team2');
 
-      if (sourceCard.attackedThisTurn && this.getBoostableAlliesFor(sourceCard, team).length === 0) {
+      const noAttacksLeftForSource = sourceCard.attackedThisTurn || this.getValidAttackTargets(team, sourceCard.uid).length === 0;
+      if (noAttacksLeftForSource && this.getBoostableAlliesFor(sourceCard, team).length === 0) {
         this.state.selectedAttackerUid = null;
       }
 
       this.render();
-      if (!(this.gameMode === 'ai' && team === 2)) {
-        const player = this.state.players[team];
-        if ((this.state.playedCardThisTurn || player.hand.length === 0) && !this.hasReadyAttackers(team)) {
-          this.advanceTurn();
-        }
-      }
+      this.checkAutoEndTurn(team);
     }
 
     executeBoardAttack(attackerTeam, attackerUid, targetTeam, targetCard, targetRow) {
@@ -1060,12 +1109,7 @@
       }
 
       this.render();
-      if (!(this.gameMode === 'ai' && attackerTeam === 2)) {
-        const player = this.state.players[attackerTeam];
-        if ((this.state.playedCardThisTurn || player.hand.length === 0) && !this.hasReadyAttackers(attackerTeam)) {
-          this.advanceTurn();
-        }
-      }
+      this.checkAutoEndTurn(attackerTeam);
     }
 
     getBattlefieldCardMetrics(uid) {
@@ -1236,9 +1280,7 @@
       this.resolveCardAbility(team, card, targetRow, prePlayMyScore, prePlayOppScore, alliesOnBoardBefore);
 
       this.render();
-      if (!(this.gameMode === 'ai' && team === 2) && !this.state.pendingOptionalPlay && !this.hasReadyAttackers(team)) {
-        this.advanceTurn();
-      }
+      this.checkAutoEndTurn(team);
     }
 
     promptOptionalHandPlay({ team, targetRow, logType, sourceName, title, sound = 'howl', candidates = [] }) {
@@ -1309,9 +1351,7 @@
             }
           }
           this.render();
-          if (!this.state.pendingOptionalPlay && !this.hasReadyAttackers(team)) {
-            this.advanceTurn();
-          }
+          this.checkAutoEndTurn(team);
         });
       });
 
@@ -1320,9 +1360,7 @@
         window.soundFX?.playClick?.();
         this.log(`${title}: ${sourceName} holds the Goblin Army in reserve.`, logType);
         this.render();
-        if (!this.hasReadyAttackers(team)) {
-          this.advanceTurn();
-        }
+        this.checkAutoEndTurn(team);
       });
 
       document.body.appendChild(overlay);
@@ -1377,9 +1415,7 @@
             onSelect(chosen);
           }
           this.render();
-          if (!this.state.pendingOptionalPlay && !this.hasReadyAttackers(team)) {
-            this.advanceTurn();
-          }
+          this.checkAutoEndTurn(team);
         });
       });
 
@@ -1388,9 +1424,7 @@
         window.soundFX?.playClick?.();
         this.log(`❄️ ${sourceName} held its Freeze in reserve.`, logType);
         this.render();
-        if (!this.state.pendingOptionalPlay && !this.hasReadyAttackers(team)) {
-          this.advanceTurn();
-        }
+        this.checkAutoEndTurn(team);
       });
 
       document.body.appendChild(overlay);
@@ -1445,9 +1479,7 @@
             onSelect(rk);
           }
           this.render();
-          if (!this.state.pendingOptionalPlay && !this.hasReadyAttackers(team)) {
-            this.advanceTurn();
-          }
+          this.checkAutoEndTurn(team);
         });
       });
 
@@ -1456,9 +1488,7 @@
         window.soundFX?.playClick?.();
         this.log(`🦎 ${sourceName} held Corrosive Gaze in reserve.`, logType);
         this.render();
-        if (!this.state.pendingOptionalPlay && !this.hasReadyAttackers(team)) {
-          this.advanceTurn();
-        }
+        this.checkAutoEndTurn(team);
       });
 
       document.body.appendChild(overlay);
@@ -1622,12 +1652,16 @@
         this.state.players[finishedTeam].turnsThisRound = (this.state.players[finishedTeam].turnsThisRound || 0) + 1;
       }
 
-      // Auto-pass if a player has 0 cards left in hand
-      if (!p1.passed && p1.hand.length === 0) {
+      // Auto-pass when a player has no placeable cards left (preserving remaining board attacks/abilities if turn just passed to them)
+      const hasPlaceableHandCard = (teamNum) => (this.state.players[teamNum]?.hand || []).some(
+        c => c && (c.row === 'agile' || c.row === 'melee' || c.row === 'ranged')
+      );
+      if (!p1.passed && !hasPlaceableHandCard(1) && (finishedTeam === 1 || !this.hasReadyAttackers(1))) {
         p1.passed = true;
         this.log(`🏳️ ${p1.name} has no cards left and passes automatically.`, 'team1');
       }
-      if (!p2.passed && p2.hand.length === 0) {
+      const p2CanActBeforePass = this.gameMode === '2p' && finishedTeam !== 2 && this.hasReadyAttackers(2);
+      if (!p2.passed && !hasPlaceableHandCard(2) && !p2CanActBeforePass) {
         p2.passed = true;
         this.log(`🏳️ ${p2.name} has no cards left and passes automatically.`, 'team2');
       }
@@ -1653,6 +1687,8 @@
 
       if (this.gameMode === 'ai' && this.state.turnTeam === 2 && !this.isMatchOver) {
         this.aiTimeout = setTimeout(() => this.runAiTurn(), 1300);
+      } else {
+        this.checkAutoEndTurn(this.state.turnTeam);
       }
     }
 
@@ -1780,6 +1816,8 @@
       this.state.round += 1;
       this.state.turnTeam = startingTeam;
       this.state.playedCardThisTurn = false;
+      this.state.pendingOptionalPlay = false;
+      document.getElementById('gwent-optional-play-modal')?.remove();
       this.state.selectedHandUid = null;
       this.state.selectedAttackerUid = null;
 
@@ -1834,6 +1872,8 @@
 
       if (this.gameMode === 'ai' && this.state.turnTeam === 2) {
         this.aiTimeout = setTimeout(() => this.runAiTurn(), 1300);
+      } else {
+        this.checkAutoEndTurn(this.state.turnTeam);
       }
     }
 
@@ -2015,6 +2055,12 @@
         } else {
           msgEl.innerHTML = `<b>Berto</b> won the Mythos match.<br><div style="margin-top: 12px; color: #fca5a5;">😏 Berto: "Told you! Still undefeated on Tuesdays—don't bother asking for a rematch today!"</div>`;
           this.overworld?.handleBertoBattleResult?.(false);
+        }
+      } else if (this.currentChallenger?.id === 'evelyn' && msgEl) {
+        if (isPlayerVictory) {
+          msgEl.innerHTML = `You defeated <b>Ms. Evelyn</b> in Mythos!<br><div style="margin-top: 12px; color: #fde68a;">🏫 Ms. Evelyn: "Splendid strategy and poise! Oakhaven Elementary is proud to have a duelist of your caliber."</div>`;
+        } else {
+          msgEl.innerHTML = `<b>Ms. Evelyn</b> won the Academy exhibition match.<br><div style="margin-top: 12px; color: #cbd5e1;">🏫 Ms. Evelyn: "A thoughtful effort! Adjust your deck synergies in the Binder and challenge me again anytime."</div>`;
         }
       } else if (this.currentChallenger?.tournamentContext?.type === 'park_monday_rr' && msgEl) {
         document.getElementById('btn-rematch')?.classList.add('hidden');

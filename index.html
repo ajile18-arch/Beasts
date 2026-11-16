@@ -6,8 +6,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>Mythos - Open World & Tabletop Card Game</title>
-  <link rel="stylesheet" href="css/style.css?v=2.69">
-  <link rel="stylesheet" href="css/mobile.css?v=2.69" media="(max-width: 820px), (hover: none) and (pointer: coarse)">
+  <link rel="stylesheet" href="css/style.css?v=2.75">
+  <link rel="stylesheet" href="css/mobile.css?v=2.75" media="(max-width: 820px), (hover: none) and (pointer: coarse)">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=MedievalSharp&family=Metamorphous&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
@@ -18,7 +18,7 @@
     <header class="game-header">
       <div class="logo-area">
         <h1 class="game-title">MYTHOS</h1>
-        <span class="version-tag" id="game-version">v2.69</span>
+        <span class="version-tag" id="game-version">v2.75</span>
         <span class="header-day-tag" id="header-mobile-day">📅 Mon D1</span>
         <span class="header-money-tag" id="header-mobile-money">$0.00</span>
         <span class="subtitle" id="header-subtitle"></span>
@@ -665,7 +665,7 @@
         </div>
       </div>
 
-      <div class="intro-version-badge" id="intro-version-tag">v2.69</div>
+      <div class="intro-version-badge" id="intro-version-tag">v2.75</div>
     </div>
 
     <!-- Stardew Valley / Pokémon Style Character Creator Modal -->
@@ -953,9 +953,14 @@
 
           <div class="binder-split-body" id="binder-split-body">
             <!-- TOP HALF: Recessed Crimson Velvet Playing Deck Tray -->
-            <div class="binder-deck-tray-section">
-              <div class="binder-tray-bar">
-                <span class="binder-tray-title">⚔️ Playing Deck Tray <small>(Hold card to inspect closer • Pull to 📖 Binder or 🎒 Sell Bag)</small></span>
+            <div class="binder-deck-tray-section" id="binder-deck-tray-section">
+              <div class="binder-tray-bar binder-section-header" id="binder-deck-tray-header" role="button" tabindex="0" aria-expanded="true" title="Click to minimize or expand Playing Deck Tray">
+                <span class="binder-tray-title">
+                  <span class="binder-collapse-chevron" id="binder-tray-chevron" aria-hidden="true">▾</span>
+                  ⚔️ Playing Deck Tray
+                  <span class="binder-tray-summary-pill" id="binder-tray-summary-pill">0 / 24 • 0★</span>
+                  <small>(Hold card to inspect • Tap header to minimize)</small>
+                </span>
                 <div class="binder-star-progress-wrap" title="Star Cap Usage (Max 45★)">
                   <div class="binder-star-progress-fill" id="binder-star-meter-fill" style="width: 0%"></div>
                 </div>
@@ -966,37 +971,46 @@
             </div>
 
             <!-- BOTTOM HALF: Open Leather Binder Sleeves & Sell/Trade Bag Drawer -->
-            <div class="binder-drawer-section">
-              <div class="binder-drawer-toolbar">
-                <div class="binder-drawer-tabs">
-                  <button type="button" class="binder-drawer-tab active" id="btn-binder-tab-sleeves" data-tab="sleeves">
-                    📖 Binder Sleeves (<span id="binder-tab-sleeves-count">0</span>)
-                  </button>
-                  <button type="button" class="binder-drawer-tab" id="btn-binder-tab-bag" data-tab="bag">
-                    🎒 Sell/Trade Bag (<span id="binder-tab-bag-count">0</span>)
-                  </button>
-                </div>
-
-                <div class="binder-sort-bar binder-inline-sort" id="binder-sort-bar" aria-label="Sort Binder Cards">
-                  <span class="binder-sort-label">SORT:</span>
-                  <button type="button" class="binder-sort-btn active" data-sort="default" title="Sort by Slot Order">Slot</button>
-                  <button type="button" class="binder-sort-btn" data-sort="alpha" title="Sort Alphabetically">A–Z</button>
-                  <button type="button" class="binder-sort-btn" data-sort="type" title="Sort by Element/Type">Type</button>
-                  <button type="button" class="binder-sort-btn" data-sort="power" title="Sort by Attack Power">PWR</button>
-                  <button type="button" class="binder-sort-btn" data-sort="stars" title="Sort by Star Rating">★</button>
-                </div>
-
+            <div class="binder-drawer-section" id="binder-drawer-section">
+              <div class="binder-tray-bar binder-section-header binder-drawer-header" id="binder-drawer-header" role="button" tabindex="0" aria-expanded="true" title="Click to minimize or expand Binder Sleeves &amp; Sell/Trade Bag">
+                <span class="binder-tray-title">
+                  <span class="binder-collapse-chevron" id="binder-drawer-chevron" aria-hidden="true">▾</span>
+                  <span id="binder-drawer-header-label">📖 Binder Sleeves &amp; Sell/Trade Bag</span>
+                  <span class="binder-tray-summary-pill" id="binder-drawer-summary-pill">0 / 36 • 🎒 0</span>
+                </span>
                 <span class="binder-drawer-mode-pill" id="binder-drawer-mode-pill">🔒 Protected from Sale</span>
               </div>
 
-              <!-- Tab 1: 9-Pocket Card Sleeves Grid -->
-              <div class="binder-grid" id="binder-slots-grid">
-                <!-- Dynamically populated with 9 sleeve slots per page -->
-              </div>
+              <div class="binder-drawer-body" id="binder-drawer-body">
+                <div class="binder-drawer-toolbar">
+                  <div class="binder-drawer-tabs">
+                    <button type="button" class="binder-drawer-tab active" id="btn-binder-tab-sleeves" data-tab="sleeves">
+                      📖 Binder Sleeves (<span id="binder-tab-sleeves-count">0</span>)
+                    </button>
+                    <button type="button" class="binder-drawer-tab" id="btn-binder-tab-bag" data-tab="bag">
+                      🎒 Sell/Trade Bag (<span id="binder-tab-bag-count">0</span>)
+                    </button>
+                  </div>
 
-              <!-- Tab 2: Loose Sell/Trade Bag (Inventory Cards, Unopened Packs & Gear) -->
-              <div class="binder-grid hidden" id="binder-bag-grid">
-                <!-- Dynamically populated with sellable loose cards & booster packs -->
+                  <div class="binder-sort-bar binder-inline-sort" id="binder-sort-bar" aria-label="Sort Binder Cards">
+                    <span class="binder-sort-label">SORT:</span>
+                    <button type="button" class="binder-sort-btn active" data-sort="default" title="Sort by Slot Order">Slot</button>
+                    <button type="button" class="binder-sort-btn" data-sort="alpha" title="Sort Alphabetically">A–Z</button>
+                    <button type="button" class="binder-sort-btn" data-sort="type" title="Sort by Element/Type">Type</button>
+                    <button type="button" class="binder-sort-btn" data-sort="power" title="Sort by Attack Power">PWR</button>
+                    <button type="button" class="binder-sort-btn" data-sort="stars" title="Sort by Star Rating">★</button>
+                  </div>
+                </div>
+
+                <!-- Tab 1: 9-Pocket Card Sleeves Grid -->
+                <div class="binder-grid" id="binder-slots-grid">
+                  <!-- Dynamically populated with 9 sleeve slots per page -->
+                </div>
+
+                <!-- Tab 2: Loose Sell/Trade Bag (Inventory Cards, Unopened Packs & Gear) -->
+                <div class="binder-grid hidden" id="binder-bag-grid">
+                  <!-- Dynamically populated with sellable loose cards & booster packs -->
+                </div>
               </div>
             </div>
           </div>
@@ -1307,7 +1321,7 @@
             👀 View All 5 Cards
           </button>
           <button type="button" class="ui-btn primary-btn pack-collect-btn hidden" id="btn-pack-collect">
-            🎒 Collect All 5 Cards into Inventory
+            📖 Collect All 5 Cards into Binder
           </button>
         </div>
       </div>
@@ -1598,10 +1612,10 @@
     </div>
   </div>
 
-  <script src="js/audio.js?v=2.69"></script>
-  <script src="js/character_sprites.js?v=2.69"></script>
-  <script src="js/overworld.js?v=2.69"></script>
-  <script src="js/gwent_cards.js?v=2.69"></script>
-  <script src="js/game.js?v=2.69"></script>
+  <script src="js/audio.js?v=2.75"></script>
+  <script src="js/character_sprites.js?v=2.75"></script>
+  <script src="js/overworld.js?v=2.75"></script>
+  <script src="js/gwent_cards.js?v=2.75"></script>
+  <script src="js/game.js?v=2.75"></script>
 </body>
 </html>

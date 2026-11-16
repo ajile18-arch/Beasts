@@ -6114,6 +6114,7 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  min-width: 0;
   transition: opacity 0.2s ease;
 }
 
@@ -6133,6 +6134,7 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  min-width: 0;
 }
 
 .binder-tray-bar {
@@ -6143,7 +6145,63 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   flex-wrap: wrap;
 }
 
+.binder-section-header {
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  border-radius: 8px;
+  padding: 3px 6px;
+  margin: 0;
+  transition: background-color 0.14s ease, box-shadow 0.14s ease;
+}
+
+.binder-section-header:hover {
+  background: rgba(251, 191, 36, 0.14);
+}
+
+.binder-section-header:focus-visible {
+  outline: 2px solid #fde047;
+  outline-offset: 2px;
+}
+
+.binder-collapse-chevron {
+  display: inline-block;
+  width: 14px;
+  text-align: center;
+  color: #fbbf24;
+  font-size: 13px;
+  line-height: 1;
+  transition: transform 0.18s ease;
+}
+
+.binder-deck-tray-section.collapsed .binder-collapse-chevron,
+.binder-drawer-section.collapsed .binder-collapse-chevron {
+  transform: rotate(-90deg);
+}
+
+.binder-tray-summary-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 5px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 800;
+  color: #fef3c7;
+  background: rgba(0, 0, 0, 0.48);
+  border: 1px solid rgba(251, 191, 36, 0.42);
+}
+
+.binder-deck-tray-section.collapsed .binder-deck-tray-grid {
+  display: none;
+}
+
 .binder-tray-title {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
   font-size: 12.5px;
   font-weight: 800;
   color: #fde68a;
@@ -6178,11 +6236,20 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
 
 .binder-deck-tray-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(126px, 1fr));
+  grid-auto-rows: max-content;
+  align-items: start;
   gap: 8px;
   max-height: 205px;
   overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior-x: none;
+  touch-action: pan-y;
   padding: 2px;
+}
+
+.binder-split-body.drawer-collapsed .binder-deck-tray-grid {
+  max-height: 460px;
 }
 
 /* Lower Section: Open Stitched Leather Binder & Sell/Trade Bag Drawer */
@@ -6195,6 +6262,18 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  min-width: 0;
+}
+
+.binder-drawer-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.binder-drawer-section.collapsed .binder-drawer-body {
+  display: none;
 }
 
 .binder-drawer-toolbar {
@@ -6282,6 +6361,10 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   justify-content: space-between;
   gap: 5px;
   position: relative;
+  min-width: 0;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-user-drag: none;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.72);
   transition: transform 0.14s ease, border-color 0.14s ease;
 }
@@ -6297,6 +6380,11 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   display: flex;
   justify-content: center;
   cursor: pointer;
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-user-drag: none;
+  -webkit-touch-callout: none;
 }
 
 .binder-trad-art-img {
@@ -6306,6 +6394,11 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   border-radius: 6px;
   object-fit: contain;
   display: block;
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-user-drag: none;
+  -webkit-touch-callout: none;
   box-shadow: 0 3px 8px rgba(0, 0, 0, 0.75);
 }
 
@@ -6352,15 +6445,17 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
 
 .binder-trad-actions {
   display: flex;
-  gap: 4px;
+  gap: 3px;
   width: 100%;
 }
 
 .binder-xfer-btn {
   flex: 1;
-  padding: 4px 5px;
+  min-width: 0;
+  overflow: hidden;
+  padding: 4px 3px;
   border-radius: 6px;
-  font-size: 10.5px;
+  font-size: 10px;
   font-weight: 800;
   cursor: pointer;
   text-align: center;
@@ -6397,11 +6492,21 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
 }
 
 .binder-hd-sheet .binder-grid {
-  grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(126px, 1fr));
+  grid-auto-rows: max-content;
+  align-items: start;
   gap: 8px;
   max-height: 235px;
   overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior-x: none;
+  touch-action: pan-y;
   padding: 2px;
+}
+
+.binder-split-body.tray-collapsed .binder-hd-sheet .binder-grid,
+#binder-split-body.tray-collapsed .binder-grid {
+  max-height: 440px;
 }
 
 .binder-hd-sheet .binder-footer {
