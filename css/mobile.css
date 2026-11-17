@@ -229,17 +229,38 @@ select {
   }
 
   .gwent-side {
-    gap: 4px !important;
+    gap: 6px !important;
     flex: 1 1 0 !important;
     min-height: 0 !important;
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: stretch !important;
+  }
+
+  .gwent-side-score-circle {
+    align-self: center !important;
+    width: 36px !important;
+    height: 36px !important;
+    font-size: 15px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .gwent-side-rows {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    width: 100% !important;
     display: flex !important;
     flex-direction: column !important;
+    gap: 4px !important;
   }
 
   .gwent-row {
+    width: 100% !important;
+    box-sizing: border-box !important;
     padding: 4px 6px !important;
     gap: 6px !important;
-    min-height: 64px !important;
+    min-height: 60px !important;
     max-height: none !important;
     flex: 1 1 0 !important;
     align-items: center !important;
@@ -537,11 +558,41 @@ select {
     overflow-y: auto !important;
   }
 
+  .gwent-side {
+    gap: 6px !important;
+    flex: 1 1 0 !important;
+    min-height: 0 !important;
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: stretch !important;
+  }
+
+  .gwent-side-score-circle {
+    align-self: center !important;
+    width: 34px !important;
+    height: 34px !important;
+    font-size: 14px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .gwent-side-rows {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 3px !important;
+  }
+
   .gwent-row {
+    width: 100% !important;
+    box-sizing: border-box !important;
     padding: 2px 5px !important;
     gap: 4px !important;
     min-height: 44px !important;
     max-height: none !important;
+    flex: 1 1 0 !important;
   }
 
   .gwent-row-label {
