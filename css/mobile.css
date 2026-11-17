@@ -100,6 +100,68 @@ select {
     line-height: 1;
     white-space: nowrap;
   }
+
+  /* Intro / Title Screen — fit full widescreen artwork & menu cleanly in portrait */
+  .modal-overlay.intro-title-screen {
+    height: 100dvh !important;
+    overflow-y: auto !important;
+    background: radial-gradient(circle at 50% 25%, #23160d 0%, #100906 55%, #090604 100%) !important;
+  }
+
+  .intro-title-backdrop {
+    background-size: 100% auto !important;
+    background-position: center calc(10px + var(--sat, 0px)) !important;
+    animation: none !important;
+  }
+
+  .intro-title-vignette {
+    background: linear-gradient(
+      180deg,
+      rgba(9, 6, 4, 0.22) 0%,
+      transparent 10%,
+      transparent 36%,
+      rgba(9, 6, 4, 0.85) 54%,
+      #090604 64%
+    ) !important;
+  }
+
+  .intro-title-stage {
+    height: 100% !important;
+    min-height: 100dvh !important;
+    justify-content: flex-end !important;
+    padding: calc(12px + var(--sat, 0px)) calc(12px + var(--sar, 0px)) calc(24px + var(--sab, 0px)) calc(12px + var(--sal, 0px)) !important;
+    gap: 8px !important;
+  }
+
+  .intro-crest-spacer {
+    flex: 1 1 auto !important;
+    min-height: 44vw !important;
+  }
+
+  .intro-rpg-menu-wrap {
+    width: min(350px, 92vw) !important;
+    gap: 8px !important;
+  }
+
+  .intro-save-banner {
+    padding: 6px 10px !important;
+  }
+
+  .intro-rpg-menu-box {
+    padding: 10px 12px !important;
+    gap: 7px !important;
+  }
+
+  .intro-rpg-btn {
+    min-height: 38px !important;
+    padding: 7px 12px !important;
+    font-size: 12.5px !important;
+  }
+
+  .intro-version-badge {
+    bottom: calc(6px + var(--sab, 0px)) !important;
+    right: calc(10px + var(--sar, 0px)) !important;
+  }
 }
 
 @media (orientation: portrait), (max-width: 768px) {
@@ -372,7 +434,8 @@ select {
 
   /* Player Hand Dock — anchored towards the bottom of the screen */
   .gwent-hand-tray {
-    height: 126px !important;
+    height: auto !important;
+    min-height: 126px !important;
     margin: 2px 2px 0 !important;
     padding: 5px 8px 6px !important;
     border-radius: 12px !important;
@@ -398,7 +461,7 @@ select {
 
   .gwent-player-hand {
     gap: 4px !important;
-    height: 106px !important;
+    height: 108px !important;
     align-items: flex-end !important;
     justify-content: flex-start !important;
     overflow-x: auto !important;
@@ -406,7 +469,7 @@ select {
     overscroll-behavior-x: contain !important;
     overscroll-behavior-y: none !important;
     touch-action: pan-x !important;
-    padding: 10px 6px 4px !important;
+    padding: 12px 6px 6px !important;
     -webkit-overflow-scrolling: touch !important;
   }
 
@@ -646,6 +709,7 @@ select {
 
   .gwent-hand-tray {
     height: 56px !important;
+    flex-shrink: 0 !important;
     margin: 0 !important;
     padding: 2px 6px 0 !important;
     border-radius: 10px 10px 0 0 !important;
@@ -957,6 +1021,11 @@ select {
   padding-right: var(--sar) !important;
 }
 
+#arena-view:not(.hidden) {
+  display: flex !important;
+  flex-direction: column !important;
+}
+
 .ow-bottom-deck {
   padding-left: calc(var(--mob-edge-x) + var(--sal)) !important;
   padding-right: calc(var(--mob-edge-x) + var(--sar)) !important;
@@ -1005,6 +1074,7 @@ select {
   padding-top: 4px !important;
   flex: 1 1 0 !important;
   min-height: 0 !important;
+  height: auto !important;
 }
 
 @media (orientation: landscape) and (max-height: 520px) {
@@ -1015,11 +1085,15 @@ select {
   }
 }
 
-.gwent-hand-bar,
-.gwent-player-hand {
+.gwent-hand-bar {
   padding-left: calc(var(--mob-edge-x) + var(--sal)) !important;
   padding-right: calc(var(--mob-edge-x) + var(--sar)) !important;
   padding-bottom: calc(6px + var(--sab)) !important;
+}
+
+.gwent-player-hand {
+  padding-left: calc(var(--mob-edge-x) + var(--sal)) !important;
+  padding-right: calc(var(--mob-edge-x) + var(--sar)) !important;
 }
 
 .ui-modal-backdrop {
