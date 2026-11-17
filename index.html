@@ -50,16 +50,12 @@
           <!-- Overworld Menu Items (Visible in Overworld) -->
           <div class="overworld-toolbar header-menu-section" id="overworld-toolbar">
             <button id="btn-open-calendar" class="ui-btn primary-btn calendar-toolbar-btn" style="padding: 4px 10px; font-size: 12px; background: linear-gradient(135deg, #059669, #10b981); border-color: #34d399;" title="Town Weekly Calendar & Daily Events (Key: C)">📅 <span id="calendar-btn-day-label">Monday</span> • Day <span id="calendar-btn-day-num">1</span></button>
+            <button id="btn-open-notebook" class="ui-btn primary-btn notebook-toolbar-btn" style="padding: 4px 10px; font-size: 12px; background: linear-gradient(135deg, #b45309, #d97706); border-color: #fbbf24;" title="Adventurer's Notebook — Pinned Events, Signs & Dialogue (Key: N)">📓 Notebook <span id="notebook-badge-count" class="inv-badge-pill">0</span></button>
             <button id="btn-open-phone" class="ui-btn primary-btn phone-toolbar-btn" style="padding: 4px 10px; font-size: 12px; background: linear-gradient(135deg, #4f46e5, #6366f1); border-color: #818cf8;" title="Mythos Mobile Smartphone (Key: P)">📱 Phone <span id="phone-alert-badge" class="phone-badge-pill hidden">!</span></button>
             <button id="btn-open-inventory" class="ui-btn primary-btn backpack-toolbar-btn hidden" title="Open Adventurer Backpack & Inventory (Key: I)"><img src="Sprites/Overworld/backpack_icon.png" class="hud-backpack-img" alt=""> Backpack <span id="inv-badge-count" class="inv-badge-pill">0</span></button>
             <button id="btn-open-binder" class="ui-btn primary-btn binder-toolbar-btn" style="padding: 4px 10px; font-size: 12px; background: linear-gradient(135deg, #5c3322, #331a12); border-color: #fbbf24;" title="Open Binder, Playing Deck &amp; Sell/Trade Bag (Key: B or I)"><img src="Sprites/Overworld/binder_tome_icon.png" class="hud-backpack-img" alt=""> Binder <span id="binder-badge-count" class="inv-badge-pill">0</span></button>
             <button id="btn-open-playing-deck" class="ui-btn primary-btn deck-toolbar-btn hidden" style="padding: 4px 10px; font-size: 12px; background: linear-gradient(135deg, #78350f, #b45309); border-color: #fbbf24;" title="Build the Playing Deck you take into Mythos battles">🃏 Playing Deck <span id="deck-badge-count" class="inv-badge-pill">0</span></button>
             <button id="btn-open-creator" class="ui-btn secondary" style="padding: 4px 10px; font-size: 12px;" title="Customize Character or World Save">👤 Character</button>
-            <select id="ow-time-select" class="ow-select" title="Time of Day Shader">
-              <option value="day" selected>☀️ Summer Day</option>
-              <option value="sunset">🌅 Golden Hour</option>
-              <option value="night">🌙 Cozy Night</option>
-            </select>
           </div>
 
           <!-- Match & Audio Controls -->
@@ -104,6 +100,15 @@
       <!-- Top: Game Map Stage -->
       <div class="overworld-stage" id="overworld-stage">
         <canvas id="overworld-canvas" width="1024" height="768"></canvas>
+        <!-- Real-Time Day Clock (48 real minutes = 1 in-game day) -->
+        <div class="ow-clock-widget" id="ow-clock-widget" data-phase="morning" title="Time of Day">
+          <span class="ow-clock-icon" id="ow-clock-icon">🌅</span>
+          <div class="ow-clock-text">
+            <span class="ow-clock-time" id="ow-clock-time">8:00 AM</span>
+            <span class="ow-clock-phase" id="ow-clock-phase">Morning • Mon D1</span>
+          </div>
+          <div class="ow-clock-track"><div class="ow-clock-progress" id="ow-clock-progress"></div></div>
+        </div>
         <div class="ow-controls-hint">
           Walk: <b>WASD / Arrow Keys</b> or <b>Click Tile</b> • Interact / Continue: <b>Space / Enter</b>
         </div>
@@ -172,6 +177,20 @@
         <span class="gwent-hud-round" id="hud-round-pill">R1</span>
         <button type="button" class="ui-btn gwent-hud-end-turn-btn" id="hud-btn-end-turn" title="End Turn">⏭️ End Turn</button>
         <button type="button" class="ui-btn gwent-hud-pass-btn" id="hud-btn-pass" title="Pass Round">🏳️ Pass</button>
+      </div>
+
+      <!-- Interactive Tutorial Coach Overlay -->
+      <div class="gwent-tutorial-banner hidden" id="gwent-tutorial-banner">
+        <div class="tut-header-row">
+          <span class="tut-step-pill" id="tut-step-pill">🎓 Tutorial • Step 1/5</span>
+          <button type="button" class="tut-skip-btn" id="tut-btn-skip">Skip Tutorial</button>
+        </div>
+        <div class="tut-title" id="tut-title">Welcome to Mythos!</div>
+        <div class="tut-body" id="tut-body"></div>
+        <div class="tut-tip" id="tut-tip"></div>
+        <div class="tut-actions">
+          <button type="button" class="ui-btn primary-btn tut-next-btn" id="tut-btn-next">Next ▸</button>
+        </div>
       </div>
 
       <!-- Single-Click Card Ability Popup -->
@@ -301,21 +320,22 @@
         <div class="gwent-battlefield" id="gwent-battlefield">
           <!-- Opponent Rows (Lunar) -->
           <div class="gwent-side gwent-side-opp">
-            <div class="gwent-row" data-team="2" data-row="ranged" id="row-2-ranged">
-              <div class="gwent-row-label">
-                <span class="row-icon">🏹</span>
-                <span class="row-name">RANGED</span>
+            <div class="gwent-side-score-circle opp" id="board-total-score-2" title="Opponent Total Power (Both Rows)">0</div>
+            <div class="gwent-side-rows">
+              <div class="gwent-row" data-team="2" data-row="ranged" id="row-2-ranged">
+                <div class="gwent-row-label">
+                  <span class="row-icon">🏹</span>
+                  <span class="row-name">RANGED</span>
+                </div>
+                <div class="gwent-row-cards" id="cards-2-ranged"></div>
               </div>
-              <div class="gwent-row-score" id="score-2-ranged">0</div>
-              <div class="gwent-row-cards" id="cards-2-ranged"></div>
-            </div>
-            <div class="gwent-row" data-team="2" data-row="melee" id="row-2-melee">
-              <div class="gwent-row-label">
-                <span class="row-icon">⚔️</span>
-                <span class="row-name">MELEE</span>
+              <div class="gwent-row" data-team="2" data-row="melee" id="row-2-melee">
+                <div class="gwent-row-label">
+                  <span class="row-icon">⚔️</span>
+                  <span class="row-name">MELEE</span>
+                </div>
+                <div class="gwent-row-cards" id="cards-2-melee"></div>
               </div>
-              <div class="gwent-row-score" id="score-2-melee">0</div>
-              <div class="gwent-row-cards" id="cards-2-melee"></div>
             </div>
           </div>
 
@@ -348,21 +368,22 @@
 
           <!-- Player Rows (Solar) -->
           <div class="gwent-side gwent-side-player">
-            <div class="gwent-row" data-team="1" data-row="melee" id="row-1-melee">
-              <div class="gwent-row-label">
-                <span class="row-icon">⚔️</span>
-                <span class="row-name">MELEE</span>
+            <div class="gwent-side-score-circle player" id="board-total-score-1" title="Your Total Power (Both Rows)">0</div>
+            <div class="gwent-side-rows">
+              <div class="gwent-row" data-team="1" data-row="melee" id="row-1-melee">
+                <div class="gwent-row-label">
+                  <span class="row-icon">⚔️</span>
+                  <span class="row-name">MELEE</span>
+                </div>
+                <div class="gwent-row-cards" id="cards-1-melee"></div>
               </div>
-              <div class="gwent-row-score" id="score-1-melee">0</div>
-              <div class="gwent-row-cards" id="cards-1-melee"></div>
-            </div>
-            <div class="gwent-row" data-team="1" data-row="ranged" id="row-1-ranged">
-              <div class="gwent-row-label">
-                <span class="row-icon">🏹</span>
-                <span class="row-name">RANGED</span>
+              <div class="gwent-row" data-team="1" data-row="ranged" id="row-1-ranged">
+                <div class="gwent-row-label">
+                  <span class="row-icon">🏹</span>
+                  <span class="row-name">RANGED</span>
+                </div>
+                <div class="gwent-row-cards" id="cards-1-ranged"></div>
               </div>
-              <div class="gwent-row-score" id="score-1-ranged">0</div>
-              <div class="gwent-row-cards" id="cards-1-ranged"></div>
             </div>
           </div>
 
@@ -650,14 +671,6 @@
               <span>🔊 Audio &amp; Music</span>
               <button type="button" class="ui-btn secondary intro-setting-toggle" id="btn-intro-sound">Sound: ON</button>
             </div>
-            <div class="intro-setting-row">
-              <span>🌤️ Time of Day</span>
-              <select id="intro-time-select" class="ow-select">
-                <option value="day">☀️ Summer Day</option>
-                <option value="sunset">🌅 Golden Sunset</option>
-                <option value="night">🌙 Starlight Night</option>
-              </select>
-            </div>
             <button type="button" class="intro-rpg-btn" id="btn-intro-settings-back">
               <span class="rpg-btn-label">← BACK TO TITLE</span>
             </button>
@@ -837,7 +850,7 @@
             <span class="shop-icon-badge">🃏</span>
             <div>
               <h2 class="shop-title">LEO'S CARD SHOP • BUY &amp; SELL COUNTER</h2>
-              <p class="shop-sub">Buy 1st-Edition Booster Packs ($5) or sell extra cards from your backpack for cash!</p>
+              <p class="shop-sub">Buy 1st-Edition Booster Packs ($10) or sell extra cards from your backpack for cash!</p>
             </div>
           </div>
           <div class="shop-header-right">
@@ -849,7 +862,7 @@
         <!-- Shop Navigation Tabs: BUY / SELL -->
         <div class="shop-tabs-nav">
           <button type="button" class="shop-tab-btn active" id="shop-tab-buy" data-tab="buy">
-            🛒 BUY PACKS ($5)
+            🛒 BUY PACKS ($10)
           </button>
           <button type="button" class="shop-tab-btn" id="shop-tab-sell" data-tab="sell">
             💵 SELL CARDS <span class="shop-tab-count-pill" id="shop-sell-count-pill">0</span>
@@ -868,7 +881,7 @@
               <div class="shop-pack-details">
                 <div class="shop-pack-header">
                   <h3 class="shop-pack-title">1st-Edition Mythos Base Card Pack</h3>
-                  <span class="shop-pack-price-tag">$5.00</span>
+                  <span class="shop-pack-price-tag">$10.00</span>
                 </div>
                 <p class="shop-pack-desc">
                   Factory-sealed foil booster pack containing <b>5 random Mythos Game Cards</b>. Rip open the pack to discover new warriors, pack beasts, and war machines!
@@ -880,7 +893,7 @@
                 </div>
                 <div class="shop-buy-actions">
                   <button type="button" class="ui-btn primary-btn shop-buy-btn" id="btn-shop-buy-pack">
-                    🛒 Buy Base Card Pack ($5.00)
+                    🛒 Buy Base Card Pack ($10.00)
                   </button>
                   <button type="button" class="ui-btn secondary shop-rip-now-btn hidden" id="btn-shop-rip-now">
                     ✨ Rip Open Unopened Pack
@@ -931,20 +944,20 @@
         <span class="binder-brass-corner bottom-right" aria-hidden="true"></span>
 
         <div class="binder-content-sheet binder-hd-sheet">
-          <!-- Top Bar: Binder Title + 18-24 Card Limit + 45 Star Cap + Actions -->
+          <!-- Top Bar: Binder Title + 18-24 Card Limit + 40 Star Cap + Actions -->
           <div class="binder-header binder-hd-header">
             <div class="binder-title-group">
               <img src="Sprites/Overworld/binder_tome_icon.png" class="binder-tome-header-icon" alt="Binder">
               <div>
                 <h2 class="binder-title" id="binder-main-title">BINDER</h2>
-                <p class="binder-sub" id="binder-sub-title">Playing Deck (18–24 Cards • Max 45★) • Binder Sleeves &amp; Sell/Trade Bag • Hold card to zoom</p>
+                <p class="binder-sub" id="binder-sub-title">Playing Deck (18–24 Cards • Max 40★) • Binder Sleeves &amp; Sell/Trade Bag • Hold card to zoom</p>
               </div>
             </div>
             <div class="binder-header-actions">
               <span class="binder-gauge-pill cards" id="binder-deck-limit-pill" title="Playing Deck Card Limit (Minimum 18, Maximum 24)">🃏 0 / 24 (Min 18)</span>
-              <span class="binder-gauge-pill stars" id="binder-star-limit-pill" title="Playing Deck Maximum Star Cap (45 Stars)">⭐ 0 / 45★</span>
+              <span class="binder-gauge-pill stars" id="binder-star-limit-pill" title="Playing Deck Maximum Star Cap (40 Stars)">⭐ 0 / 40★</span>
               <span class="binder-counter-pill hidden" id="binder-counter-pill">0 / 36</span>
-              <button type="button" class="ui-btn secondary binder-top-ctrl-btn" id="btn-binder-autofill" title="Auto-fill Playing Deck up to 18-24 cards under 45★">✨ Fill Deck</button>
+              <button type="button" class="ui-btn secondary binder-top-ctrl-btn" id="btn-binder-autofill" title="Auto-fill Playing Deck up to 18-24 cards under 40★">✨ Fill Deck</button>
               <button type="button" class="ui-btn secondary binder-top-ctrl-btn" id="btn-binder-clear-deck" title="Return all Playing Deck cards to Binder/Bag">🧹 Clear</button>
               <button type="button" class="ui-btn secondary binder-top-ctrl-btn" id="btn-binder-raw-art" title="Peek at 32-bit HD tabletop background art">👁️ Art</button>
               <button type="button" class="drawer-close-btn" id="btn-close-binder" title="Close Binder">✕</button>
@@ -961,7 +974,7 @@
                   <span class="binder-tray-summary-pill" id="binder-tray-summary-pill">0 / 24 • 0★</span>
                   <small>(Hold card to inspect • Tap header to minimize)</small>
                 </span>
-                <div class="binder-star-progress-wrap" title="Star Cap Usage (Max 45★)">
+                <div class="binder-star-progress-wrap" title="Star Cap Usage (Max 40★)">
                   <div class="binder-star-progress-fill" id="binder-star-meter-fill" style="width: 0%"></div>
                 </div>
               </div>
@@ -1608,6 +1621,55 @@
           <button id="btn-close-park-tourney-footer" class="ui-btn secondary-btn">Close</button>
           <button id="btn-start-park-tourney-match" class="ui-btn primary-btn">⚔️ Play Round 1</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Adventurer's Notebook Modal -->
+  <div id="notebook-modal" class="ui-modal-backdrop hidden">
+    <div class="calendar-modal-card notebook-modal-card">
+      <div class="calendar-modal-header notebook-modal-header">
+        <div class="calendar-header-title">
+          <span class="calendar-header-icon">📓</span>
+          <div>
+            <h2 class="calendar-title">Adventurer's Notebook</h2>
+            <div class="calendar-subtitle" id="notebook-subtitle">Pin events from dialogue, signs &amp; town notices</div>
+          </div>
+        </div>
+        <button id="btn-close-notebook" class="calendar-close-btn" title="Close (Esc)">✕</button>
+      </div>
+
+      <div class="notebook-toolbar-row">
+        <div class="notebook-tabs" id="notebook-tabs">
+          <button type="button" class="notebook-tab-btn active" data-nb-tab="pinned">📌 Pinned (<span id="nb-tab-pinned-count">0</span>)</button>
+          <button type="button" class="notebook-tab-btn" data-nb-tab="discovered">📖 All Discovered (<span id="nb-tab-all-count">0</span>)</button>
+        </div>
+        <button type="button" id="btn-notebook-toggle-add" class="ui-btn secondary notebook-add-toggle-btn">+ Add Note</button>
+      </div>
+
+      <div class="notebook-filter-row" id="notebook-filter-row">
+        <button type="button" class="notebook-filter-chip active" data-nb-cat="all">All</button>
+        <button type="button" class="notebook-filter-chip" data-nb-cat="meetup">🤝 Meetups</button>
+        <button type="button" class="notebook-filter-chip" data-nb-cat="event">🏆 Events</button>
+        <button type="button" class="notebook-filter-chip" data-nb-cat="custom">📝 My Notes</button>
+      </div>
+
+      <form id="notebook-add-form" class="notebook-add-form hidden">
+        <input type="text" id="notebook-custom-title" class="notebook-input" maxlength="64" placeholder="Note title (e.g., Wednesday Booster Bash @ 12:01 PM)" required />
+        <textarea id="notebook-custom-body" class="notebook-textarea" rows="2" maxlength="320" placeholder="Write details, times, locations, or reminders..." required></textarea>
+        <div class="notebook-add-actions">
+          <button type="button" id="btn-notebook-cancel-add" class="ui-btn secondary">Cancel</button>
+          <button type="submit" class="ui-btn primary-btn">📌 Pin Custom Note</button>
+        </div>
+      </form>
+
+      <div id="notebook-entries-list" class="notebook-entries-list">
+        <!-- Populated dynamically -->
+      </div>
+
+      <div class="calendar-modal-footer">
+        <div class="calendar-tip">💡 <em>Tip: <strong>Long-click / hold</strong> on any dialogue or sign to pin it! Agreed meetups appear automatically.</em></div>
+        <button id="btn-done-notebook" class="ui-btn primary-btn" style="min-width: 110px;">Done</button>
       </div>
     </div>
   </div>

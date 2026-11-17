@@ -1,4 +1,4 @@
-/**
+﻿/**
  * MYTHOS — Open-World RPG Overworld Engine
  * - Interior: Inspired directly by the cutaway room reference (slate-blue void,
  *   chamfered wood-capped walls, cream plaster wall with subtle stone cracks,
@@ -38,7 +38,7 @@
       this.loadOverworldSprites();
 
       this.settings = {
-        timeOfDay: 'day',
+        timeOfDay: 'morning', // driven by the real-time day clock (morning | afternoon | night)
         shadersEnabled: true,
         showGrid: false
       };
@@ -139,7 +139,7 @@
           title: "Weekend Town Market",
           icon: '🏷️',
           highlight: 'Booster Sale ($4.00 per pack)',
-          desc: "The weekend outdoor market brings discounts to Leo's Card Shop! 1st-Edition Booster Packs are on sale for $4.00 (regularly $5.00).",
+          desc: "The weekend outdoor market brings discounts to Leo's Card Shop! 1st-Edition Booster Packs are on sale for $8.00 (regularly $10.00).",
           perk: "Booster packs discounted to $4.00"
         },
         {
@@ -154,6 +154,160 @@
           perk: "+1 Move Range for Celestial & Flying beasts in duels"
         }
       ];
+
+      // Real-Time Day Clock: 48 real minutes = 1 in-game day (1 in-game hour = 2 real minutes).
+      // The day rolls over to the next at midnight. Three visual stages:
+      // Morning (6 AM - 12 PM), Afternoon (12 PM - 6 PM), Night (6 PM - 6 AM).
+      this.REAL_MS_PER_GAME_MINUTE = 2000;
+      this.MINUTES_PER_DAY = 24 * 60;
+      this.WAKE_UP_MINUTE = 6 * 60;        // Sleeping in bed wakes you at 6:00 AM
+      this.NEW_GAME_START_MINUTE = 8 * 60; // Fresh saves start at 8:00 AM
+      this.TIME_PHASES = {
+        morning: { id: 'morning', label: 'Morning', icon: '🌅', start: 6 * 60, end: 12 * 60 },
+        afternoon: { id: 'afternoon', label: 'Afternoon', icon: '☀️', start: 12 * 60, end: 18 * 60 },
+        night: { id: 'night', label: 'Night', icon: '🌙', start: 18 * 60, end: 6 * 60 }
+      };
+      // NPC Hangout Spot & Roaming AI (each NPC roams within 3 tiles of their hangout spot unless otherwise noted)
+      this.DEFAULT_NPC_ROAM_RADIUS = 3;
+      this.HOURLY_TRIP_CHANCE = 0.15;       // 15% chance per in-game hour to visit a town building
+      this.HOURLY_HOUSE_TRIP_CHANCE = 0.08; // 8% chance per in-game hour to visit another NPC's house
+      this.MAX_CONCURRENT_TRIPS = 8;        // Max NPCs away on trips at the same time
+      this.TRIP_STAY_MINUTES = 120;     // 2 in-game hours at destination building
+      this.TRIP_BUILDINGS = {
+        restaurant_interior: {
+          area: 'restaurant_interior',
+          name: 'Oakhaven Bistro',
+          extDoor: { x: -15.5, y: 32.0 },
+          intEntry: { x: 9.8, y: 9.15 },
+          spots: [
+            { x: 8.8, y: 6.7, dir: 'left' },
+            { x: 6.2, y: 6.8, dir: 'up' },
+            { x: 6.4, y: 8.8, dir: 'up' },
+            { x: 12.6, y: 6.2, dir: 'left' }
+          ]
+        },
+        corner_store_interior: {
+          area: 'corner_store_interior',
+          name: "Shaun's Corner Market",
+          extDoor: { x: -3.4, y: 26.95 },
+          intEntry: { x: 9.8, y: 9.15 },
+          spots: [
+            { x: 6.8, y: 6.2, dir: 'up' },
+            { x: 7.4, y: 7.8, dir: 'left' },
+            { x: 12.6, y: 6.5, dir: 'left' },
+            { x: 4.5, y: 6.2, dir: 'down' }
+          ]
+        },
+        convention_center_interior: {
+          area: 'convention_center_interior',
+          name: 'Oakhaven Convention Center',
+          extDoor: { x: -20.0, y: 26.95 },
+          intEntry: { x: 17.0, y: 23.25 },
+          spots: [
+            { x: 14.0, y: 18.0, dir: 'up' },
+            { x: 20.0, y: 18.0, dir: 'up' },
+            { x: 17.0, y: 12.5, dir: 'up' },
+            { x: 12.5, y: 12.5, dir: 'right' }
+          ]
+        },
+        card_shop_interior: {
+          area: 'card_shop_interior',
+          name: "Leo's Card Shop",
+          extDoor: { x: 13.65, y: 9.45 },
+          intEntry: { x: 9.8, y: 9.15 },
+          spots: [
+            { x: 6.2, y: 6.3, dir: 'up' },
+            { x: 3.3, y: 6.5, dir: 'up' },
+            { x: 12.6, y: 6.2, dir: 'left' },
+            { x: 8.8, y: 7.4, dir: 'right' }
+          ]
+        }
+      };
+      this.TRIP_HOUSES = {
+        friend_interior: {
+          area: 'friend_interior',
+          name: `${this.friendName || 'Rocky'}'s House`,
+          extDoor: { x: 10.05, y: 3.48 },
+          intEntry: { x: 9.8, y: 9.15 },
+          spots: [{ x: 8.8, y: 7.4, dir: 'left' }, { x: 6.8, y: 8.2, dir: 'up' }]
+        },
+        pluto_interior: {
+          area: 'pluto_interior',
+          name: "Pluto's House",
+          extDoor: { x: 1.98, y: 9.25 },
+          intEntry: { x: 9.8, y: 9.15 },
+          spots: [{ x: 8.8, y: 7.4, dir: 'left' }, { x: 6.2, y: 7.8, dir: 'up' }]
+        },
+        nova_interior: {
+          area: 'nova_interior',
+          name: "Nova's House",
+          extDoor: { x: 1.98, y: 14.45 },
+          intEntry: { x: 9.8, y: 9.15 },
+          spots: [{ x: 8.8, y: 7.4, dir: 'left' }, { x: 6.2, y: 7.8, dir: 'up' }]
+        },
+        silas_interior: {
+          area: 'silas_interior',
+          name: "Silas's House",
+          extDoor: { x: 7.60, y: 14.45 },
+          intEntry: { x: 9.8, y: 9.15 },
+          spots: [{ x: 8.8, y: 7.4, dir: 'left' }, { x: 6.2, y: 7.8, dir: 'up' }]
+        },
+        maya_interior: {
+          area: 'maya_interior',
+          name: "Maya's House",
+          extDoor: { x: 12.68, y: 14.45 },
+          intEntry: { x: 9.8, y: 9.15 },
+          spots: [{ x: 8.8, y: 7.4, dir: 'left' }, { x: 6.2, y: 7.8, dir: 'up' }]
+        },
+        clara_interior: {
+          area: 'clara_interior',
+          name: "Clara's House",
+          extDoor: { x: -3.30, y: 9.25 },
+          intEntry: { x: 9.8, y: 9.15 },
+          spots: [{ x: 8.8, y: 7.4, dir: 'left' }, { x: 6.2, y: 7.8, dir: 'up' }]
+        },
+        bram_interior: {
+          area: 'bram_interior',
+          name: "Bram's House",
+          extDoor: { x: -7.80, y: 9.25 },
+          intEntry: { x: 9.8, y: 9.15 },
+          spots: [{ x: 8.8, y: 7.4, dir: 'left' }, { x: 6.2, y: 7.8, dir: 'up' }]
+        },
+        mayor_2f_interior: {
+          area: 'mayor_2f_interior',
+          name: "Mayor Donald's Manor",
+          extDoor: { x: -13.80, y: 9.25 },
+          intEntry: { x: 12.35, y: 5.55 },
+          intExit: { x: 12.35, y: 9.45 },
+          spots: [{ x: 8.5, y: 7.4, dir: 'left' }, { x: 6.2, y: 7.8, dir: 'up' }]
+        }
+      };
+      this.AREA_PORTALS = {
+        interior: { extDoor: { x: 1.98, y: 3.48 }, intEntry: { x: 9.8, y: 9.15 } },
+        friend_interior: { extDoor: { x: 10.05, y: 3.48 }, intEntry: { x: 9.8, y: 9.15 } },
+        card_shop_interior: { extDoor: { x: 13.65, y: 9.45 }, intEntry: { x: 9.8, y: 9.15 } },
+        pluto_interior: { extDoor: { x: 1.98, y: 9.25 }, intEntry: { x: 9.8, y: 9.15 } },
+        nova_interior: { extDoor: { x: 1.98, y: 14.45 }, intEntry: { x: 9.8, y: 9.15 } },
+        silas_interior: { extDoor: { x: 7.60, y: 14.45 }, intEntry: { x: 9.8, y: 9.15 } },
+        maya_interior: { extDoor: { x: 12.68, y: 14.45 }, intEntry: { x: 9.8, y: 9.15 } },
+        clara_interior: { extDoor: { x: -3.30, y: 9.25 }, intEntry: { x: 9.8, y: 9.15 } },
+        bram_interior: { extDoor: { x: -7.80, y: 9.25 }, intEntry: { x: 9.8, y: 9.15 } },
+        mayor_2f_interior: { extDoor: { x: -13.80, y: 9.25 }, intEntry: { x: 12.35, y: 5.55 }, intExit: { x: 12.35, y: 9.45 } },
+        school_interior: { extDoor: { x: 23.65, y: 27.85 }, intEntry: { x: 3.15, y: 7.05 } }
+      };
+
+      // Scripted intro cutscene beats where the clock is frozen
+      this.CLOCK_PAUSED_STORY_STATES = [
+        'intro_waiting', 'intro_bored', 'tv_commercial', 'both_excited', 'mom_gave_money',
+        'shop_bought_packs', 'must_open_pack_before_leaving', 'friend_challenges_after_pack'
+      ];
+      const savedClockMinutes = Number(this.worldSave?.timeOfDayMinutes);
+      this.timeOfDayMinutes = Number.isFinite(savedClockMinutes)
+        ? ((savedClockMinutes % this.MINUTES_PER_DAY) + this.MINUTES_PER_DAY) % this.MINUTES_PER_DAY
+        : this.NEW_GAME_START_MINUTE;
+      this._clockLastTs = null;
+      this._clockHudKey = null;
+      this.settings.timeOfDay = this.getTimePhase().id;
 
       // Ensure existing saves receive the +$5 if Mom gave them money under the old $20 rule
       if (this.hasMomBoosterMoney && !this.migratedMom25) {
@@ -201,6 +355,8 @@
 
       this.playerSprite = new CS.CharacterSpriteSheet(this.draftAppearance);
       this.lastParkTourneyCompletedDay = this.worldSave?.lastParkTourneyCompletedDay ?? 0;
+      this.boosterBashCompletedDay = this.worldSave?.boosterBashCompletedDay ?? 0;
+      this.boosterBash = null;
       this.bertoBattledDay = this.worldSave?.bertoBattledDay ?? 0;
       this.bertoBattledOutcome = this.worldSave?.bertoBattledOutcome || null;
       this.bertoRewardPending = false;
@@ -219,6 +375,10 @@
       this.novaNpc = this.createNovaNpc();
       this.silasNpc = this.createSilasNpc();
       this.mayaNpc = this.createMayaNpc();
+      this.claraNpc = this.createClaraNpc();
+      this.bramNpc = this.createBramNpc();
+      this.mayorNpc = this.createMayorNpc();
+      this.chefNpc = this.createChefNpc();
       this.chloeNpc = this.createChloeNpc();
       this.rowanNpc = this.createRowanNpc();
       this.jasperNpc = this.createJasperNpc();
@@ -297,6 +457,7 @@
         dir: 'left',
         walkTick: 0,
         bubble: '💬',
+        hangoutSpot: { area: 'friend_interior', x: 5.5, y: 8.0, dir: 'up', radius: 6, label: `${friendName}'s Duel Room` },
         sprite: new CS.CharacterSpriteSheet({
           name: friendName,
           skin: isMike ? 'warm' : 'light',
@@ -323,6 +484,7 @@
         dir: 'up',
         walkTick: 0,
         bubble: '💼',
+        hangoutSpot: { area: 'interior', x: 11.2, y: 6.8, dir: 'left', radius: 6, label: 'Home Living Room' },
         sprite: new CS.CharacterSpriteSheet({
           name: 'Mom',
           skin: this.draftAppearance?.skin || 'light',
@@ -347,6 +509,7 @@
         dir: 'down',
         walkTick: 0,
         bubble: '🤩',
+        hangoutSpot: { area: 'card_shop_interior', x: 6.2, y: 4.42, dir: 'down', radius: 0, label: "Leo's Card Shop Counter" },
         sprite: new CS.CharacterSpriteSheet({
           name: 'Leo',
           skin: 'olive',
@@ -367,10 +530,11 @@
         id: 'pluto',
         name: 'Pluto',
         x: 6.2,
-        y: 5.25,
+        y: 6.2,
         dir: 'down',
         walkTick: 0,
         bubble: '💻',
+        hangoutSpot: { area: 'pluto_interior', x: 6.2, y: 6.2, dir: 'down', radius: 6, label: "Pluto's Battlestation" },
         sprite: new CS.CharacterSpriteSheet({
           name: 'Pluto',
           skin: 'light',
@@ -391,10 +555,11 @@
         id: 'nova',
         name: 'Nova',
         x: 6.2,
-        y: 5.35,
+        y: 6.2,
         dir: 'down',
         walkTick: 0,
         bubble: '✨',
+        hangoutSpot: { area: 'nova_interior', x: 6.2, y: 6.2, dir: 'down', radius: 6, label: "Nova's Observatory" },
         sprite: new CS.CharacterSpriteSheet({
           name: 'Nova',
           skin: 'light',
@@ -415,10 +580,11 @@
         id: 'silas',
         name: 'Silas',
         x: 6.2,
-        y: 5.35,
+        y: 6.2,
         dir: 'down',
         walkTick: 0,
         bubble: '🪵',
+        hangoutSpot: { area: 'silas_interior', x: 6.2, y: 6.2, dir: 'down', radius: 6, label: "Silas's Cabin" },
         sprite: new CS.CharacterSpriteSheet({
           name: 'Silas',
           skin: 'warm',
@@ -439,10 +605,11 @@
         id: 'maya',
         name: 'Maya',
         x: 6.2,
-        y: 5.35,
+        y: 6.2,
         dir: 'down',
         walkTick: 0,
         bubble: '🌿',
+        hangoutSpot: { area: 'maya_interior', x: 6.2, y: 6.2, dir: 'down', radius: 6, label: "Maya's Greenhouse" },
         sprite: new CS.CharacterSpriteSheet({
           name: 'Maya',
           skin: 'olive',
@@ -463,10 +630,11 @@
         id: 'clara',
         name: 'Clara',
         x: 6.2,
-        y: 5.35,
+        y: 6.2,
         dir: 'down',
         walkTick: 0,
         bubble: '🧁',
+        hangoutSpot: { area: 'clara_interior', x: 6.2, y: 6.2, dir: 'down', radius: 6, label: "Clara's Cottage" },
         sprite: new CS.CharacterSpriteSheet({
           name: 'Clara',
           skin: 'fair',
@@ -487,10 +655,11 @@
         id: 'bram',
         name: 'Bram',
         x: 6.2,
-        y: 5.35,
+        y: 6.2,
         dir: 'down',
         walkTick: 0,
         bubble: '🪵',
+        hangoutSpot: { area: 'bram_interior', x: 6.2, y: 6.2, dir: 'down', radius: 6, label: "Bram's Cottage" },
         sprite: new CS.CharacterSpriteSheet({
           name: 'Bram',
           skin: 'tan',
@@ -510,11 +679,12 @@
       return {
         id: 'mayor_donald',
         name: 'Mayor Donald',
-        x: 7.9,
-        y: 5.35,
+        x: 7.7,
+        y: 6.3,
         dir: 'down',
         walkTick: 0,
         bubble: '🎩',
+        hangoutSpot: { area: 'mayor_2f_interior', x: 7.7, y: 6.3, dir: 'down', radius: 6, label: "Mayor's Study" },
         sprite: new CS.CharacterSpriteSheet({
           name: 'Mayor Donald',
           skin: 'light',
@@ -539,6 +709,7 @@
         dir: 'down',
         walkTick: 0,
         bubble: '🍽️',
+        hangoutSpot: { area: 'restaurant_interior', x: 5.65, y: 4.42, dir: 'down', radius: 0, label: 'Bistro Kitchen Counter' },
         sprite: new CS.CharacterSpriteSheet({
           name: 'Chef Marco',
           skin: 'tan',
@@ -563,6 +734,7 @@
         dir: 'down',
         walkTick: 0,
         bubble: '🛒',
+        hangoutSpot: { area: 'corner_store_interior', x: 5.65, y: 4.42, dir: 'down', radius: 0, label: 'Corner Store Counter' },
         sprite: new CS.CharacterSpriteSheet({
           name: 'Shaun',
           skin: 'light',
@@ -582,11 +754,12 @@
       return {
         id: 'evelyn',
         name: 'Ms. Evelyn',
-        x: 13.3,
-        y: 6.25,
+        x: 12.6,
+        y: 7.0,
         dir: 'down',
         walkTick: 0,
         bubble: '🏫',
+        hangoutSpot: { area: 'school_interior', x: 12.6, y: 7.0, dir: 'down', radius: 6, label: 'Oakhaven Elementary' },
         sprite: new CS.CharacterSpriteSheet({
           name: 'Ms. Evelyn',
           skin: 'warm',
@@ -611,6 +784,7 @@
         dir: 'down',
         walkTick: 0,
         bubble: '🧺',
+        hangoutSpot: { area: 'exterior', x: 19.5, y: 7.1, dir: 'down', radius: 6, label: 'Central Park Picnic' },
         sprite: new CS.CharacterSpriteSheet({
           name: 'Chloe',
           skin: 'warm',
@@ -631,10 +805,11 @@
         id: 'berto',
         name: 'Berto',
         x: 8.65,
-        y: 5.85,
+        y: 6.1,
         dir: 'down',
         walkTick: 0,
         bubble: '⚔️',
+        hangoutSpot: { area: 'restaurant_interior', x: 8.65, y: 6.1, dir: 'down', radius: 6, label: 'Oakhaven Bistro' },
         sprite: new CS.CharacterSpriteSheet({
           name: 'Berto',
           skin: 'tan',
@@ -659,10 +834,11 @@
         dir: 'left',
         walkTick: 0,
         bubble: '🃏',
+        hangoutSpot: { area: 'exterior', x: 23.6, y: 7.7, dir: 'left', radius: 6, label: 'Central Park Card Table' },
         sprite: new CS.CharacterSpriteSheet({
           name: 'Rowan',
           skin: 'light',
-          hairStyle: 'swept',
+          hairStyle: 'spiky',
           hairColor: 'midnight',
           eyeColor: 'blue',
           outfitStyle: 'jacket',
@@ -683,6 +859,7 @@
         dir: 'up',
         walkTick: 0,
         bubble: '🎨',
+        hangoutSpot: { area: 'exterior', x: 21.1, y: 11.2, dir: 'up', radius: 6, label: 'Central Park Fountain' },
         sprite: new CS.CharacterSpriteSheet({
           name: 'Jasper',
           skin: 'olive',
@@ -749,6 +926,8 @@
         grid.innerHTML = '';
         this.WEEKLY_CALENDAR.forEach((dayEv, idx) => {
           const isToday = idx === currentIdx;
+          const noteId = `cal_event_${dayEv.dayName.toLowerCase()}`;
+          const isPinned = this.isNotebookNotePinned(noteId);
           const card = document.createElement('div');
           card.className = `calendar-day-card${isToday ? ' active-today' : ''}`;
           card.innerHTML = `
@@ -757,10 +936,306 @@
             <div class="cal-card-icon">${dayEv.icon}</div>
             <div class="cal-card-event-name">${dayEv.title}</div>
             <div class="cal-card-perk-pill">${dayEv.highlight}</div>
+            <button type="button" class="cal-pin-btn${isPinned ? ' pinned' : ''}" data-cal-note-id="${noteId}">${isPinned ? '✅ Pinned' : '📌 Pin'}</button>
           `;
+          const pinBtn = card.querySelector('.cal-pin-btn');
+          if (pinBtn) {
+            pinBtn.addEventListener('click', (ev) => {
+              ev.stopPropagation();
+              this.togglePinNotebookNote(noteId, {
+                id: noteId,
+                title: `${dayEv.dayName}: ${dayEv.title}`,
+                category: 'event',
+                icon: dayEv.icon || '📅',
+                source: 'Town Weekly Calendar',
+                body: `${dayEv.desc} (${dayEv.highlight})`
+              });
+              this.renderCalendarModal();
+            });
+          }
           grid.appendChild(card);
         });
       }
+    }
+
+    // -------------------------------------------------------------------------
+    // Adventurer's Notebook (Pin Events from Dialogue, Signs & Calendar)
+    // -------------------------------------------------------------------------
+    stripNoteHtml(html) {
+      if (!html) return '';
+      const tmp = document.createElement('div');
+      tmp.innerHTML = String(html);
+      return (tmp.textContent || tmp.innerText || '').replace(/\s+/g, ' ').trim();
+    }
+
+    getNotebookNotes() {
+      if (!Array.isArray(this.notebookNotes)) this.notebookNotes = [];
+      return this.notebookNotes;
+    }
+
+    isNotebookNotePinned(noteId) {
+      return this.getNotebookNotes().some(n => n.id === noteId && n.pinned);
+    }
+
+    updateNotebookBadgeCount() {
+      const pinnedCount = this.getNotebookNotes().filter(n => n.pinned).length;
+      const badge = document.getElementById('notebook-badge-count');
+      if (badge) {
+        badge.textContent = String(pinnedCount);
+      }
+      const tabPinned = document.getElementById('nb-tab-pinned-count');
+      if (tabPinned) tabPinned.textContent = String(pinnedCount);
+      const tabAll = document.getElementById('nb-tab-all-count');
+      if (tabAll) tabAll.textContent = String(this.getNotebookNotes().length);
+    }
+
+    upsertNotebookNote(noteObj, { pin = false, announce = false } = {}) {
+      if (!noteObj || !noteObj.id) return null;
+      const notes = this.getNotebookNotes();
+      let existing = notes.find(n => n.id === noteObj.id);
+      const now = Date.now();
+      if (existing) {
+        existing.title = noteObj.title || existing.title;
+        existing.body = noteObj.body || existing.body;
+        existing.source = noteObj.source || existing.source;
+        existing.category = noteObj.category || existing.category;
+        existing.icon = noteObj.icon || existing.icon;
+        if (pin) existing.pinned = true;
+        existing.updatedAt = now;
+      } else {
+        existing = {
+          id: noteObj.id,
+          title: noteObj.title || 'Town Note',
+          category: noteObj.category || 'dialogue',
+          icon: noteObj.icon || '📝',
+          source: noteObj.source || 'Oakhaven',
+          body: noteObj.body || '',
+          pinned: !!pin,
+          discoveredDay: this.dayNumber || 1,
+          discoveredDayName: this.getCurrentDayName?.() || 'Monday',
+          discoveredTime: this.formatClockTime?.() || '',
+          updatedAt: now
+        };
+        notes.unshift(existing);
+      }
+      this.updateNotebookBadgeCount();
+      this.syncActivePinNoteButton();
+      this.saveWorldData?.(this.draftAppearance);
+      if (announce) {
+        this.showAutosaveIndicator?.(existing.pinned ? `📌 Pinned to Notebook: ${existing.title}` : `📓 Saved to Notebook: ${existing.title}`);
+      }
+      const nbModal = document.getElementById('notebook-modal');
+      if (nbModal && !nbModal.classList.contains('hidden')) {
+        this.renderNotebookModal();
+      }
+      return existing;
+    }
+
+    togglePinNotebookNote(noteId, fallbackNoteObj = null) {
+      const notes = this.getNotebookNotes();
+      const existing = notes.find(n => n.id === noteId);
+      if (existing) {
+        existing.pinned = !existing.pinned;
+        existing.updatedAt = Date.now();
+        if (window.sounds?.playClick) window.sounds.playClick();
+        this.updateNotebookBadgeCount();
+        this.syncActivePinNoteButton();
+        this.saveWorldData?.(this.draftAppearance);
+        this.showAutosaveIndicator?.(existing.pinned ? `📌 Pinned: ${existing.title}` : `📍 Unpinned: ${existing.title}`);
+        const nbModal = document.getElementById('notebook-modal');
+        if (nbModal && !nbModal.classList.contains('hidden')) {
+          this.renderNotebookModal();
+        }
+        return existing.pinned;
+      }
+      if (fallbackNoteObj) {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        const created = this.upsertNotebookNote({ ...fallbackNoteObj, id: noteId }, { pin: true, announce: true });
+        return !!created?.pinned;
+      }
+      return false;
+    }
+
+    deleteNotebookNote(noteId) {
+      const notes = this.getNotebookNotes();
+      const idx = notes.findIndex(n => n.id === noteId);
+      if (idx === -1) return;
+      notes.splice(idx, 1);
+      if (window.sounds?.playClick) window.sounds.playClick();
+      this.updateNotebookBadgeCount();
+      this.syncActivePinNoteButton();
+      this.saveWorldData?.(this.draftAppearance);
+      this.renderNotebookModal();
+    }
+
+    addCustomNotebookNote(title, body) {
+      const cleanTitle = (title || '').trim();
+      const cleanBody = (body || '').trim();
+      if (!cleanTitle || !cleanBody) return null;
+      const id = `custom_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+      return this.upsertNotebookNote({
+        id,
+        title: cleanTitle,
+        category: 'custom',
+        icon: '📝',
+        source: 'Personal Note',
+        body: cleanBody
+      }, { pin: true, announce: true });
+    }
+
+    setActivePinNoteContext(noteObj) {
+      this._activePinNoteContext = noteObj || null;
+      this.syncActivePinNoteButton();
+    }
+
+    clearActivePinNoteContext() {
+      this._activePinNoteContext = null;
+      this.syncActivePinNoteButton();
+    }
+
+    syncActivePinNoteButton() {
+      const textEl = document.getElementById('ow-dialog-text');
+      const bar = document.getElementById('ow-dialog-bar');
+      if (!textEl) return;
+      const ctx = this._activePinNoteContext;
+      const canPin = !!(ctx && bar && !bar.classList.contains('hidden') && !bar.classList.contains('talk-icon-only'));
+      if (!canPin) {
+        textEl.removeAttribute('data-pinnable');
+        textEl.classList.remove('pin-holding');
+        textEl.removeAttribute('title');
+        return;
+      }
+      const pinned = this.isNotebookNotePinned(ctx.id);
+      textEl.setAttribute('data-pinnable', 'true');
+      textEl.title = pinned
+        ? 'Already pinned to Notebook (hold to unpin)'
+        : `Hold (long-click) to pin "${ctx.title}" to your Notebook`;
+    }
+
+    toggleNotebookModal(force) {
+      const modal = document.getElementById('notebook-modal');
+      if (!modal) return;
+      const shouldOpen = force !== undefined ? !!force : modal.classList.contains('hidden');
+      if (shouldOpen) {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        this.renderNotebookModal();
+        modal.classList.remove('hidden');
+      } else {
+        modal.classList.add('hidden');
+      }
+    }
+
+    renderNotebookModal() {
+      const listEl = document.getElementById('notebook-entries-list');
+      const subEl = document.getElementById('notebook-subtitle');
+      const notes = this.getNotebookNotes();
+      this.updateNotebookBadgeCount();
+
+      const tab = this.notebookTab || 'pinned';
+      const catFilter = this.notebookCategoryFilter || 'all';
+
+      document.querySelectorAll('#notebook-tabs .notebook-tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.nbTab === tab);
+      });
+      document.querySelectorAll('#notebook-filter-row .notebook-filter-chip').forEach(chip => {
+        chip.classList.toggle('active', chip.dataset.nbCat === catFilter);
+      });
+
+      const pinnedCount = notes.filter(n => n.pinned).length;
+      if (subEl) {
+        subEl.textContent = `${pinnedCount} pinned • ${notes.length} discovered`;
+      }
+
+      if (!listEl) return;
+      let filtered = tab === 'pinned' ? notes.filter(n => n.pinned) : [...notes];
+      if (catFilter !== 'all') {
+        filtered = filtered.filter(n => n.category === catFilter);
+      }
+      filtered.sort((a, b) => (b.pinned - a.pinned) || ((b.updatedAt || 0) - (a.updatedAt || 0)));
+
+      listEl.innerHTML = '';
+      if (filtered.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'notebook-empty-state';
+        empty.innerHTML = tab === 'pinned'
+          ? '<b>No pinned notes yet!</b><br>Long-click / hold on any dialogue or sign, or pin an event from the Weekly Calendar. Agreed meetups appear automatically!'
+          : '<b>No discovered notes in this category yet.</b><br>Explore Oakhaven, inspect signs, and chat with townsfolk to log clues!';
+        listEl.appendChild(empty);
+        return;
+      }
+
+      const catLabels = {
+        meetup: 'Meetup',
+        event: 'Event',
+        custom: 'My Note'
+      };
+
+      const appendNoteCard = (note) => {
+        const card = document.createElement('div');
+        card.className = `notebook-entry-card${note.pinned ? ' is-pinned' : ''}`;
+        const catClass = `cat-${note.category || 'dialogue'}`;
+        const catText = catLabels[note.category] || 'Note';
+        const whenStr = note.discoveredDay
+          ? `Day ${note.discoveredDay} (${note.discoveredDayName || ''})${note.discoveredTime ? ` • ${note.discoveredTime}` : ''}`
+          : '';
+
+        card.innerHTML = `
+          <div class="notebook-entry-top">
+            <div class="notebook-entry-title-wrap">
+              <span class="notebook-entry-title">${note.icon || '📝'} ${this.escapeHtml(note.title)}</span>
+              <span class="notebook-cat-badge ${catClass}">${catText}</span>
+            </div>
+            <div class="notebook-entry-actions">
+              <button type="button" class="notebook-pin-btn${note.pinned ? ' pinned' : ''}">${note.pinned ? '✅ Pinned' : '📌 Pin'}</button>
+              ${note.category === 'custom' ? '<button type="button" class="notebook-del-btn" title="Delete custom note">✕</button>' : ''}
+            </div>
+          </div>
+          <div class="notebook-entry-body">${this.escapeHtml(note.body)}</div>
+          <div class="notebook-entry-meta">
+            <span>Source: <b>${this.escapeHtml(note.source || 'Oakhaven')}</b></span>
+            <span>${this.escapeHtml(whenStr)}</span>
+          </div>
+        `;
+        const pinBtn = card.querySelector('.notebook-pin-btn');
+        if (pinBtn) {
+          pinBtn.addEventListener('click', () => this.togglePinNotebookNote(note.id));
+        }
+        const delBtn = card.querySelector('.notebook-del-btn');
+        if (delBtn) {
+          delBtn.addEventListener('click', () => this.deleteNotebookNote(note.id));
+        }
+        listEl.appendChild(card);
+      };
+
+      const meetupNotes = filtered.filter(n => n.category === 'meetup');
+      const otherNotes = filtered.filter(n => n.category !== 'meetup');
+
+      if (meetupNotes.length > 0) {
+        const hdr = document.createElement('div');
+        hdr.className = 'notebook-section-header';
+        hdr.textContent = `🤝 Scheduled Meetups (${meetupNotes.length})`;
+        listEl.appendChild(hdr);
+        meetupNotes.forEach(appendNoteCard);
+      }
+
+      if (otherNotes.length > 0) {
+        if (meetupNotes.length > 0) {
+          const hdr = document.createElement('div');
+          hdr.className = 'notebook-section-header';
+          hdr.textContent = tab === 'pinned' ? `📌 Pinned Notes (${otherNotes.length})` : `📖 Notes & Clues (${otherNotes.length})`;
+          listEl.appendChild(hdr);
+        }
+        otherNotes.forEach(appendNoteCard);
+      }
+    }
+
+    escapeHtml(str) {
+      return String(str ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
     }
 
     sleepInBed() {
@@ -780,8 +1255,15 @@
       if (bar) bar.classList.add('hidden');
 
       setTimeout(() => {
-        // Advance day
-        this.dayNumber = (this.dayNumber || 1) + 1;
+        // Sleeping before midnight advances to tomorrow; sleeping after midnight
+        // (the clock has already rolled the day over) just rests until 6:00 AM.
+        const alreadyPastMidnight = (this.timeOfDayMinutes ?? 0) < (this.WAKE_UP_MINUTE ?? 360);
+        if (!alreadyPastMidnight) {
+          this.dayNumber = (this.dayNumber || 1) + 1;
+        }
+        this.timeOfDayMinutes = this.WAKE_UP_MINUTE ?? 360;
+        this.syncTimeOfDayPhase(false);
+        this.updateClockHUD(true);
         if (this.activeParkTourney && this.activeParkTourney.dayNumber !== this.dayNumber) {
           this.activeParkTourney = null;
         }
@@ -843,6 +1325,158 @@
     }
 
     // -------------------------------------------------------------------------
+    // Real-Time Day Clock (48 real minutes = 1 in-game day)
+    // -------------------------------------------------------------------------
+    getTimePhase(minutes = this.timeOfDayMinutes) {
+      const m = (((Number(minutes) || 0) % 1440) + 1440) % 1440;
+      const P = this.TIME_PHASES;
+      if (m >= P.morning.start && m < P.morning.end) return P.morning;
+      if (m >= P.afternoon.start && m < P.afternoon.end) return P.afternoon;
+      return P.night;
+    }
+
+    formatClockTime(minutes = this.timeOfDayMinutes) {
+      const total = Math.floor((((Number(minutes) || 0) % 1440) + 1440) % 1440);
+      const h24 = Math.floor(total / 60);
+      const mm = total % 60;
+      const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+      return `${h12}:${String(mm).padStart(2, '0')} ${h24 < 12 ? 'AM' : 'PM'}`;
+    }
+
+    isClockRunning() {
+      if (!this.active || this._isSleeping) return false;
+      return !(this.CLOCK_PAUSED_STORY_STATES || []).includes(this.storyState);
+    }
+
+    /** Called every frame from update(); advances the clock by real elapsed time. */
+    tickClock() {
+      const now = performance.now();
+      const last = this._clockLastTs;
+      this._clockLastTs = now;
+      if (last === null || !this.isClockRunning()) return;
+      // Clamp large gaps (background tab, battle, menus that paused the loop)
+      const dtMs = Math.min(Math.max(0, now - last), 250);
+      this.advanceClock(dtMs / this.REAL_MS_PER_GAME_MINUTE);
+    }
+
+    advanceClock(gameMinutes) {
+      if (!(gameMinutes > 0)) return;
+      const prevHour = Math.floor(this.timeOfDayMinutes / 60);
+      let t = this.timeOfDayMinutes + gameMinutes;
+      while (t >= this.MINUTES_PER_DAY) {
+        t -= this.MINUTES_PER_DAY;
+        this.timeOfDayMinutes = t;
+        this.rollOverToNextDay();
+      }
+      this.timeOfDayMinutes = t;
+      this.syncTimeOfDayPhase(true);
+      // Persist the clock once per in-game hour (every 2 real minutes) and roll hourly NPC trips
+      if (Math.floor(t / 60) !== prevHour) {
+        this.onInGameHourPassed();
+        this.saveWorldData(this.draftAppearance);
+      }
+      this.updateClockHUD();
+    }
+
+    getTotalGameMinutes() {
+      return ((this.dayNumber || 1) - 1) * this.MINUTES_PER_DAY + (this.timeOfDayMinutes || 0);
+    }
+
+    /** Midnight passed: move the calendar to the next day. */
+    rollOverToNextDay() {
+      this.dayNumber = (this.dayNumber || 1) + 1;
+      if (this.activeParkTourney && this.activeParkTourney.dayNumber !== this.dayNumber) {
+        this.activeParkTourney = null;
+      }
+      this.syncParkNpcBubbles();
+      this.updateMeetupBadgeCount?.();
+      this.saveWorldData(this.draftAppearance);
+      this.updateHUDSaveInfo();
+      const calModal = document.getElementById('calendar-modal');
+      if (calModal && !calModal.classList.contains('hidden')) this.renderCalendarModal();
+      const ev = this.getCurrentDayEvent();
+      this.showAutosaveIndicator(`🌙 Midnight! It's now ${this.getCurrentDayName()} • Day ${this.dayNumber}${ev ? ` — ${ev.icon} ${ev.title}` : ''}`);
+    }
+
+    /** Keeps settings.timeOfDay (used by all scene renderers) in step with the clock. */
+    syncTimeOfDayPhase(announce = false) {
+      const phase = this.getTimePhase();
+      if (this.settings.timeOfDay === phase.id) return;
+      this.settings.timeOfDay = phase.id;
+      if (!announce) return;
+      const messages = {
+        morning: `🌅 Morning has come — ${this.formatClockTime()}`,
+        afternoon: `☀️ It's the afternoon — ${this.formatClockTime()}`,
+        night: `🌙 Night falls over ${this.draftAppearance?.worldName || 'Oakhaven'} — ${this.formatClockTime()}`
+      };
+      this.showAutosaveIndicator(messages[phase.id]);
+    }
+
+    /** Jump the clock to a specific time (handy for testing, e.g. game.overworld.setClockTime(17, 55)). */
+    setClockTime(hour = 8, minute = 0) {
+      const m = (Number(hour) || 0) * 60 + (Number(minute) || 0);
+      this.timeOfDayMinutes = ((m % 1440) + 1440) % 1440;
+      this.syncTimeOfDayPhase(false);
+      this.updateClockHUD(true);
+      this.saveWorldData(this.draftAppearance);
+    }
+
+    updateClockHUD(force = false) {
+      if (!this.TIME_PHASES) return;
+      const minuteNow = Math.floor(this.timeOfDayMinutes);
+      const key = `${minuteNow}|${this.dayNumber}`;
+      if (!force && key === this._clockHudKey) return;
+      this._clockHudKey = key;
+      const phase = this.getTimePhase();
+      const widget = document.getElementById('ow-clock-widget');
+      if (!widget) return;
+      widget.dataset.phase = phase.id;
+      const iconEl = document.getElementById('ow-clock-icon');
+      const timeEl = document.getElementById('ow-clock-time');
+      const phaseEl = document.getElementById('ow-clock-phase');
+      const barEl = document.getElementById('ow-clock-progress');
+      if (iconEl) iconEl.textContent = phase.icon;
+      if (timeEl) timeEl.textContent = this.formatClockTime(minuteNow);
+      if (phaseEl) {
+        const shortDay = (this.getCurrentDayName() || 'Mon').slice(0, 3);
+        phaseEl.textContent = `${phase.label} • ${shortDay} D${this.dayNumber || 1}`;
+      }
+      if (barEl) barEl.style.width = `${((minuteNow / 1440) * 100).toFixed(2)}%`;
+      widget.title = `${phase.label} — ${this.formatClockTime(minuteNow)} (1 in-game hour = 2 real minutes)`;
+    }
+
+    /**
+     * Screen tint for the current time of day. Each stage has its own look, with a
+     * short crossfade (30 in-game minutes either side) around 6 AM, 12 PM and 6 PM.
+     */
+    getTimeOfDayOverlay() {
+      const LOOKS = {
+        morning: { top: [255, 178, 196, 0.27], bottom: [160, 196, 255, 0.25] },   // pink dawn sky + cool misty haze
+        afternoon: { top: [255, 214, 120, 0.15], bottom: [255, 168, 56, 0.13] },  // warm golden sunlight
+        night: { top: [8, 16, 56, 0.58], bottom: [18, 28, 72, 0.50] }             // deep moonlit blue
+      };
+      const BLEND = 30;
+      const m = this.timeOfDayMinutes;
+      const boundaries = [
+        { at: 6 * 60, from: 'night', to: 'morning' },
+        { at: 12 * 60, from: 'morning', to: 'afternoon' },
+        { at: 18 * 60, from: 'afternoon', to: 'night' }
+      ];
+      for (const b of boundaries) {
+        const d = m - b.at;
+        if (Math.abs(d) < BLEND) {
+          const t = (d + BLEND) / (BLEND * 2);
+          const mix = (a, c) => a.map((v, i) => v + (c[i] - v) * t);
+          return {
+            top: mix(LOOKS[b.from].top, LOOKS[b.to].top),
+            bottom: mix(LOOKS[b.from].bottom, LOOKS[b.to].bottom)
+          };
+        }
+      }
+      return LOOKS[this.getTimePhase().id];
+    }
+
+    // -------------------------------------------------------------------------
     // Mythos Mobile Smartphone System (Apps: Contacts, Card Exchange, Shop Alerts, Tournaments)
     // -------------------------------------------------------------------------
     initPhoneSystem() {
@@ -864,7 +1498,15 @@
         ? this.worldSave.scheduledMeetups.map(m => ({ ...m }))
         : [];
       this.registeredTournaments = this.worldSave?.registeredTournaments || [];
+      this.hasCompletedTutorial = this.worldSave?.hasCompletedTutorial ?? false;
+      this.notebookNotes = Array.isArray(this.worldSave?.notebookNotes)
+        ? this.worldSave.notebookNotes.map(n => ({ ...n }))
+        : [];
+      this.notebookTab = 'pinned';
+      this.notebookCategoryFilter = 'all';
+      this._activePinNoteContext = null;
       this.updateMeetupBadgeCount();
+      this.updateNotebookBadgeCount();
       this.syncPhoneAlertBadges();
     }
 
@@ -1037,25 +1679,131 @@
       };
     }
 
-    getScheduledMeetupsForNpc(npcId, area, day = (this.dayNumber || 1)) {
+    getMeetupWindowSlotsDef() {
+      return [
+        { id: '00_03', label: '12 AM – 3 AM', shortLabel: '12a–3a', icon: '🌙', rangeLabel: '12 AM – 3 AM', order: 0 },
+        { id: '03_06', label: '3 AM – 6 AM',  shortLabel: '3a–6a',  icon: '🌙', rangeLabel: '3 AM – 6 AM',  order: 1 },
+        { id: '06_09', label: '6 AM – 9 AM',  shortLabel: '6a–9a',  icon: '🌅', rangeLabel: '6 AM – 9 AM',  order: 2 },
+        { id: '09_12', label: '9 AM – 12 PM', shortLabel: '9a–12p', icon: '🌅', rangeLabel: '9 AM – 12 PM', order: 3 },
+        { id: '12_15', label: '12 PM – 3 PM', shortLabel: '12p–3p', icon: '☀️', rangeLabel: '12 PM – 3 PM', order: 4 },
+        { id: '15_18', label: '3 PM – 6 PM',  shortLabel: '3p–6p',  icon: '☀️', rangeLabel: '3 PM – 6 PM',  order: 5 },
+        { id: '18_21', label: '6 PM – 9 PM',  shortLabel: '6p–9p',  icon: '🌆', rangeLabel: '6 PM – 9 PM',  order: 6 },
+        { id: '21_24', label: '9 PM – 12 AM', shortLabel: '9p–12a', icon: '🌙', rangeLabel: '9 PM – 12 AM', order: 7 }
+      ];
+    }
+
+    getMeetupWindowMeta(windowId = '09_12') {
+      const slots = this.getMeetupWindowSlotsDef();
+      const legacy = { morning: '09_12', afternoon: '12_15', night: '18_21' };
+      const id = legacy[windowId] || windowId;
+      return slots.find(s => s.id === id) || slots[3];
+    }
+
+    getCurrentMeetupWindowId() {
+      const mins = (((Number(this.timeOfDayMinutes) || 0) % 1440) + 1440) % 1440;
+      const idx = Math.min(7, Math.floor(mins / 180)); // 8 x 3-hour windows per day
+      return this.getMeetupWindowSlotsDef()[idx].id;
+    }
+
+    getAvailableMeetupSlots(count = 4) {
+      const curDay = this.dayNumber || 1;
+      const defs = this.getMeetupWindowSlotsDef();
+      const curWin = this.getCurrentMeetupWindowId();
+      let d = curDay;
+      let idx = Math.max(0, defs.findIndex(s => s.id === curWin));
+      const slots = [];
+      for (let i = 0; i < count; i++) {
+        const meta = defs[idx];
+        const dayMeta = this.getDayMetadataForNumber(d);
+        const relTitle = d === curDay
+          ? 'Today'
+          : (d === curDay + 1 ? 'Tomorrow' : `${dayMeta.shortDay}`);
+        slots.push({
+          dayNum: d,
+          windowId: meta.id,
+          icon: meta.icon,
+          label: meta.label,
+          rangeLabel: meta.rangeLabel,
+          relTitle,
+          shortDay: dayMeta.shortDay
+        });
+        idx++;
+        if (idx >= defs.length) {
+          idx = 0;
+          d++;
+        }
+      }
+      return slots;
+    }
+
+    formatMeetupWindowLabel(meetup) {
+      if (!meetup) return '';
+      const curDay = this.dayNumber || 1;
+      const winMeta = this.getMeetupWindowMeta(meetup.scheduledWindow || '09_12');
+      const dayMeta = this.getDayMetadataForNumber(meetup.scheduledDay || curDay);
+      const dayStr = meetup.scheduledDay === curDay
+        ? 'Today'
+        : (meetup.scheduledDay === curDay + 1 ? 'Tomorrow' : `Day ${meetup.scheduledDay} (${dayMeta.shortDay})`);
+      return `${winMeta.icon} ${dayStr} • ${winMeta.rangeLabel}`;
+    }
+
+    isMeetupActiveNow(m, curDay = (this.dayNumber || 1), curWin = this.getCurrentMeetupWindowId()) {
+      if (!m || m.status !== 'scheduled') return false;
+      if (m.scheduledDay !== curDay) return false;
+      return !m.scheduledWindow || m.scheduledWindow === curWin;
+    }
+
+    isMeetupMissed(m, curDay = (this.dayNumber || 1), curWin = this.getCurrentMeetupWindowId()) {
+      if (!m || m.status !== 'scheduled') return false;
+      if (m.scheduledDay < curDay) return true;
+      if (m.scheduledDay > curDay || !m.scheduledWindow) return false;
+      return this.getMeetupWindowMeta(m.scheduledWindow).order < this.getMeetupWindowMeta(curWin).order;
+    }
+
+    getMeetupRealNpc(npcId) {
+      if (npcId === 'pluto') return this.plutoNpc || (this.plutoNpc = this.createPlutoNpc());
+      if (npcId === 'nova') return this.novaNpc || (this.novaNpc = this.createNovaNpc());
+      if (npcId === 'silas') return this.silasNpc || (this.silasNpc = this.createSilasNpc());
+      if (npcId === 'maya') return this.mayaNpc || (this.mayaNpc = this.createMayaNpc());
+      if (npcId === 'friend' || npcId === 'best_friend') return this.getFriendNpc();
+      return null;
+    }
+
+    getMeetupStartGameMinute(m) {
+      const day = Math.max(1, Number(m?.scheduledDay) || 1);
+      const order = this.getMeetupWindowMeta(m?.scheduledWindow || '09_12').order;
+      return (day - 1) * this.MINUTES_PER_DAY + order * 180;
+    }
+
+    getMeetupEndGameMinute(m) {
+      return this.getMeetupStartGameMinute(m) + 180;
+    }
+
+    getScheduledMeetupsForNpc(npcId, area, day = (this.dayNumber || 1), win = this.getCurrentMeetupWindowId()) {
       return (this.scheduledMeetups || []).filter(m =>
         m.status === 'scheduled' &&
-        m.scheduledDay === day &&
         m.npcId === npcId &&
-        m.area === area
+        m.area === area &&
+        this.isMeetupActiveNow(m, day, win)
       );
     }
 
     getActiveMeetupVisitorsForArea(area = this.currentArea) {
       if (this.storyState !== 'free_roam') return [];
       const day = this.dayNumber || 1;
+      const win = this.getCurrentMeetupWindowId();
       const matches = (this.scheduledMeetups || []).filter(m =>
         m.status === 'scheduled' &&
-        m.scheduledDay === day &&
         m.area === area &&
-        m.venueType !== 'npc_house'
+        m.venueType !== 'npc_house' &&
+        this.isMeetupActiveNow(m, day, win)
       );
-      return matches.map((m, idx) => {
+      return matches.reduce((arr, m, idx) => {
+        const realNpc = this.getMeetupRealNpc(m.npcId);
+        // If the real NPC is already physically in this area for this meetup, don't spawn a duplicate clone
+        if (realNpc && realNpc.trip?.meetupId === m.id && this.getNpcArea(realNpc) === area) {
+          return arr;
+        }
         const target = this.getMeetupTargetDetails(m.npcId, m.venueType, m.landmarkId);
         const base = m.meetupPos || target.meetupPos || { x: 6.2, y: 7.6, dir: 'right' };
         let px = base.x;
@@ -1066,7 +1814,7 @@
         } else {
           px = base.x - idx * 0.9;
         }
-        return {
+        arr.push({
           id: `meetup_${m.id}`,
           meetupId: m.id,
           isMeetupVisitor: true,
@@ -1078,8 +1826,9 @@
           sprite: this.getNpcSpriteForMeetup(m.npcId),
           bubble: '🤝',
           meetup: m
-        };
-      });
+        });
+        return arr;
+      }, []);
     }
 
     updateMeetupBadgeCount() {
@@ -1128,7 +1877,7 @@
             { sender: 'npc', text: `Check the Leo's Alerts app anytime to see when we restock or run pack sales!` }
           ],
           replies: [
-            { text: `📦 "Do you have any foil packs left in stock?"`, reply: `Always! Base Set boosters are $5.00 each, and remember that Mondays have a +25% Foil Holo surge rate!` },
+            { text: `📦 "Do you have any foil packs left in stock?"`, reply: `Always! Base Set boosters are $10.00 each, and remember that Mondays have a +25% Foil Holo surge rate!` },
             { text: `💵 "Do you buy duplicate singles from players?"`, reply: `Yes! You can sell to me directly at my shop counter or post listings on the Card Exchange app to find town buyers!` }
           ]
         },
@@ -1423,7 +2172,7 @@
           time: 'Official Store Bulletin',
           icon: '📦',
           highlight: false,
-          text: 'Factory-sealed 1st-Edition foil booster packs ($5.00 each) are fully stocked on our showcase racks. Every pack guarantees 5 collectible Mythos cards with chances at rare foils!'
+          text: 'Factory-sealed 1st-Edition foil booster packs ($10.00 each) are fully stocked on our showcase racks. Every pack guarantees 5 collectible Mythos cards with chances at rare foils!'
         },
         {
           id: 'feed_singles',
@@ -1659,6 +2408,7 @@
       const idx = ((dayNum - 1) % days.length + days.length) % days.length;
       const dayName = days[idx];
       const ev = cal[idx] || cal[0];
+
       const curDay = this.dayNumber || 1;
       const diff = dayNum - curDay;
       const relLabel = diff === 0 ? 'Today' : (diff === 1 ? 'Tomorrow' : `In ${diff}d`);
@@ -2330,7 +3080,7 @@
         btnStyle = 'style="background: #334155; border-color: #475569; cursor: default;"';
         disabledAttr = 'disabled';
       } else if (scheduled) {
-        btnLabel = `📅 Scheduled Day ${scheduled.scheduledDay} (${this.formatMoney(scheduled.agreedPrice)})`;
+        btnLabel = `🕒 ${this.formatMeetupWindowLabel(scheduled)} (${this.formatMoney(scheduled.agreedPrice)})`;
         btnStyle = 'style="background: linear-gradient(135deg, #4f46e5, #6366f1); border-color: #818cf8;"';
       } else if (!hasCard) {
         btnLabel = '❌ Card Not in Backpack';
@@ -2374,14 +3124,18 @@
     }
 
     renderMeetupsTab(container) {
+
       const curDay = this.dayNumber || 1;
+      const curWin = this.getCurrentMeetupWindowId();
       const activeMeetups = (this.scheduledMeetups || [])
         .filter(m => m.status === 'scheduled')
         .sort((a, b) => {
-          const rank = d => (d === curDay ? 0 : d > curDay ? 1 : 2);
-          const ra = rank(a.scheduledDay);
-          const rb = rank(b.scheduledDay);
-          return ra !== rb ? ra - rb : a.scheduledDay - b.scheduledDay;
+          const rank = m => (this.isMeetupActiveNow(m, curDay, curWin) ? 0 : (this.isMeetupMissed(m, curDay, curWin) ? 2 : 1));
+          const ra = rank(a);
+          const rb = rank(b);
+          if (ra !== rb) return ra - rb;
+          if (a.scheduledDay !== b.scheduledDay) return a.scheduledDay - b.scheduledDay;
+          return this.getMeetupWindowMeta(a.scheduledWindow).order - this.getMeetupWindowMeta(b.scheduledWindow).order;
         });
 
       if (activeMeetups.length === 0) {
@@ -2390,7 +3144,7 @@
         empty.innerHTML = `
           <div class="phone-listing-card-title">No Card Meetups Scheduled</div>
           <div style="font-size: 11px; color: #cbd5e1; line-height: 1.4;">
-            Pick any listing in <b>Buy</b> or <b>Sell</b> to negotiate a price and schedule a meetup day &amp; location!
+            Pick any listing in <b>Buy</b> or <b>Sell</b> to negotiate a price and schedule a meetup time window &amp; location!
           </div>
         `;
         container.appendChild(empty);
@@ -2398,13 +3152,13 @@
       }
 
       activeMeetups.forEach(m => {
-        const dayMeta = this.getDayMetadataForNumber(m.scheduledDay);
-        const isToday = m.scheduledDay === curDay;
-        const isMissed = m.scheduledDay < curDay;
-        const statusCls = isToday ? 'today' : (isMissed ? 'missed' : 'upcoming');
-        const statusText = isToday
-          ? `🤝 TODAY (Day ${m.scheduledDay})`
-          : (isMissed ? `⚠️ MISSED (Day ${m.scheduledDay})` : `📆 Day ${m.scheduledDay} • ${dayMeta.shortDay}`);
+        const winMeta = this.getMeetupWindowMeta(m.scheduledWindow || 'morning');
+        const isNow = this.isMeetupActiveNow(m, curDay, curWin);
+        const isMissed = this.isMeetupMissed(m, curDay, curWin);
+        const statusCls = isNow ? 'today' : (isMissed ? 'missed' : 'upcoming');
+        const statusText = isNow
+          ? `🤝 NOW (${winMeta.icon} ${winMeta.label})`
+          : (isMissed ? `⚠️ MISSED (${this.formatMeetupWindowLabel(m)})` : `🕒 ${this.formatMeetupWindowLabel(m)}`);
         const isBuy = m.type === 'buy';
 
         const cardEl = document.createElement('div');
@@ -2463,10 +3217,12 @@
       const basePrice = item.basePrice || (isBuy ? item.price : item.payout) || 1.25;
       const venueType = existingMeetup?.venueType || 'landmark';
       const landmarkId = existingMeetup?.landmarkId || 'park_fountain';
+
       const curDay = this.dayNumber || 1;
-      const scheduledDay = existingMeetup
-        ? Math.max(curDay, existingMeetup.scheduledDay || curDay)
-        : curDay;
+      const curWin = this.getCurrentMeetupWindowId();
+      const useExistingSlot = existingMeetup && !this.isMeetupMissed(existingMeetup, curDay, curWin);
+      const scheduledDay = useExistingSlot ? (existingMeetup.scheduledDay || curDay) : curDay;
+      const scheduledWindow = useExistingSlot ? (existingMeetup.scheduledWindow || curWin) : curWin;
 
       const venuePrice = this.getVenueAdjustedPrice(basePrice, venueType, item.type);
       const listingMeta = item.isPlayerListing
@@ -2499,6 +3255,7 @@
         venueType,
         landmarkId,
         scheduledDay,
+        scheduledWindow,
         venuePrice: bounds.venuePrice,
         npcCurrentOffer: bounds.openOffer,
         npcFairTarget: bounds.fairTarget,
@@ -2553,21 +3310,25 @@
       const neg = this.activeNegotiation;
       if (!pane || !neg) return;
 
+
       const curDay = this.dayNumber || 1;
       const isBuy = neg.type === 'buy';
       const npcPrice = this.getVenueAdjustedPrice(neg.basePrice, 'npc_house', neg.type);
       const landmarkPrice = this.getVenueAdjustedPrice(neg.basePrice, 'landmark', neg.type);
       const homePrice = this.getVenueAdjustedPrice(neg.basePrice, 'player_house', neg.type);
       const target = this.getMeetupTargetDetails(neg.npcId, neg.venueType, neg.landmarkId);
-      const dayMeta = this.getDayMetadataForNumber(neg.scheduledDay);
+      const slots = this.getAvailableMeetupSlots(4);
+      const activeWinLabel = this.formatMeetupWindowLabel({
+        scheduledDay: neg.scheduledDay,
+        scheduledWindow: neg.scheduledWindow || this.getCurrentMeetupWindowId()
+      });
 
-      const dayButtonsHtml = [0, 1, 2, 3].map(offset => {
-        const d = this.getDayMetadataForNumber(curDay + offset);
-        const active = neg.scheduledDay === d.dayNum ? 'active' : '';
+      const dayButtonsHtml = slots.map(s => {
+        const active = (neg.scheduledDay === s.dayNum && (neg.scheduledWindow || this.getCurrentMeetupWindowId()) === s.windowId) ? 'active' : '';
         return `
-          <button class="phone-neg-pill ${active}" data-day="${d.dayNum}">
-            <span>${d.icon} ${d.relLabel}</span>
-            <small>Day ${d.dayNum} (${d.shortDay})</small>
+          <button class="phone-neg-pill ${active}" data-day="${s.dayNum}" data-window="${s.windowId}">
+            <span>${s.icon} ${s.rangeLabel}</span>
+            <small>${s.relTitle} (Day ${s.dayNum})</small>
           </button>
         `;
       }).join('');
@@ -2612,7 +3373,7 @@
       } else if (neg.status === 'agreed') {
         controlsHtml = `
           <div style="font-size:11px; color:#86efac; background:rgba(16,185,129,0.12); border:1px solid rgba(52,211,153,0.4); border-radius:8px; padding:6px 8px;">
-            ✅ Deal Agreed at <b>${this.formatMoney(neg.agreedPrice)}</b> for <b>${dayMeta.relLabel} (Day ${dayMeta.dayNum})</b> @ <b>${target.shortVenueLabel}</b>!
+            ✅ Deal Agreed at <b>${this.formatMoney(neg.agreedPrice)}</b> for <b>${activeWinLabel}</b> @ <b>${target.shortVenueLabel}</b>!
           </div>
           <div class="phone-neg-actions-row">
             <button class="phone-neg-btn-accept" id="btn-neg-confirm">📅 Confirm &amp; Schedule Meetup</button>
@@ -2640,7 +3401,7 @@
         </div>
 
         <div class="phone-neg-section">
-          <div class="phone-neg-label"><span>1. Choose Meetup Day</span><span>Day ${neg.scheduledDay} (${dayMeta.shortDay})</span></div>
+          <div class="phone-neg-label"><span>1. Choose Meetup Time</span><span>${activeWinLabel}</span></div>
           <div class="phone-neg-grid-4">${dayButtonsHtml}</div>
         </div>
 
@@ -2686,6 +3447,7 @@
         btn.addEventListener('click', () => {
           if (window.sounds?.playClick) window.sounds.playClick();
           neg.scheduledDay = Number(btn.getAttribute('data-day'));
+          neg.scheduledWindow = btn.getAttribute('data-window') || this.getCurrentMeetupWindowId();
           this.renderNegotiationPane();
         });
       });
@@ -2851,9 +3613,13 @@
         sender: 'player',
         text: `Agreed — ${this.formatMoney(neg.agreedPrice)} works for me!`
       });
+      const winLabel = this.formatMeetupWindowLabel({
+        scheduledDay: neg.scheduledDay,
+        scheduledWindow: neg.scheduledWindow || this.getCurrentMeetupWindowId()
+      });
       neg.messages.push({
         sender: 'npc',
-        text: `Awesome! Click Confirm & Schedule Meetup below and I'll see you on Day ${neg.scheduledDay}!`
+        text: `Awesome! Click Confirm & Schedule Meetup below and I'll see you ${winLabel}!`
       });
       if (window.sounds?.playCollect) window.sounds.playCollect();
       this.renderNegotiationPane();
@@ -2878,6 +3644,7 @@
         basePrice: neg.basePrice,
         agreedPrice: neg.agreedPrice,
         scheduledDay: neg.scheduledDay,
+        scheduledWindow: neg.scheduledWindow || this.getCurrentMeetupWindowId(),
         venueType: target.venueType,
         landmarkId: target.landmarkId,
         area: target.area,
@@ -2891,6 +3658,14 @@
         m => !(m.status === 'scheduled' && (m.id === meetupRecord.id || m.listingId === neg.listingId))
       );
       this.scheduledMeetups.push(meetupRecord);
+      this.upsertNotebookNote({
+        id: `meetup_${meetupRecord.id}`,
+        title: `${meetupRecord.type === 'buy' ? 'Buy' : 'Sell'} ${meetupRecord.cardName} (${this.formatMoney(meetupRecord.agreedPrice)})`,
+        category: 'meetup',
+        icon: '🤝',
+        source: `${meetupRecord.npcName} • Card Market`,
+        body: `Meet ${meetupRecord.npcName} at ${meetupRecord.venueLabel || meetupRecord.shortVenueLabel} • ${this.formatMeetupWindowLabel(meetupRecord)}`
+      }, { pin: true });
       if (neg.playerListingId) {
         this.playerSellListings = (this.playerSellListings || []).filter(l => l.id !== neg.playerListingId);
       }
@@ -2902,12 +3677,20 @@
       this.syncPhoneAlertBadges();
       this.renderMarketApp();
       this.showAutosaveIndicator(
-        `📅 Meetup Scheduled: ${meetupRecord.npcName} @ ${meetupRecord.shortVenueLabel} on Day ${meetupRecord.scheduledDay}!`
+        `📅 Meetup Scheduled: ${meetupRecord.npcName} @ ${meetupRecord.shortVenueLabel} (${this.formatMeetupWindowLabel(meetupRecord)})!`
       );
     }
 
     cancelScheduledMeetup(meetupId) {
+      const m = (this.scheduledMeetups || []).find(item => item.id === meetupId);
       this.scheduledMeetups = (this.scheduledMeetups || []).filter(m => m.id !== meetupId);
+      this.deleteNotebookNote(`meetup_${meetupId}`);
+      if (m) {
+        const npc = this.getMeetupRealNpc(m.npcId);
+        if (npc && npc.trip?.meetupId === meetupId) {
+          this.startNpcReturnFromTrip(npc);
+        }
+      }
       this.saveWorldData(this.draftAppearance);
       this.updateMeetupBadgeCount();
       this.renderMarketApp();
@@ -2938,6 +3721,19 @@
           this.renderBinderModal?.();
         }
         m.status = 'completed';
+        const nbNote = this.getNotebookNotes().find(n => n.id === `meetup_${m.id}`);
+        if (nbNote) {
+          nbNote.pinned = false;
+          if (!nbNote.title.startsWith('✅ ')) nbNote.title = `✅ ${nbNote.title}`;
+          nbNote.updatedAt = Date.now();
+          this.updateNotebookBadgeCount();
+        }
+        if (m.venueType !== 'npc_house') {
+          const npc = this.getMeetupRealNpc(m.npcId);
+          if (npc && npc.trip?.meetupId === m.id) {
+            this.startNpcReturnFromTrip(npc);
+          }
+        }
         if (window.sounds?.playCollect) window.sounds.playCollect();
         this.saveWorldData(this.draftAppearance);
         this.updateHUDSaveInfo();
@@ -2972,6 +3768,19 @@
         this.phoneListingsSold.push(m.listingId);
       }
       m.status = 'completed';
+      const nbNoteSell = this.getNotebookNotes().find(n => n.id === `meetup_${m.id}`);
+      if (nbNoteSell) {
+        nbNoteSell.pinned = false;
+        if (!nbNoteSell.title.startsWith('✅ ')) nbNoteSell.title = `✅ ${nbNoteSell.title}`;
+        nbNoteSell.updatedAt = Date.now();
+        this.updateNotebookBadgeCount();
+      }
+      if (m.venueType !== 'npc_house') {
+        const npc = this.getMeetupRealNpc(m.npcId);
+        if (npc && npc.trip?.meetupId === m.id) {
+          this.startNpcReturnFromTrip(npc);
+        }
+      }
       if (window.sounds?.playCoins) window.sounds.playCoins();
       this.saveWorldData(this.draftAppearance);
       this.updateHUDSaveInfo();
@@ -4481,7 +5290,7 @@
     buyBaseCardPack() {
       const activeEvent = this.getCurrentDayEvent();
       const isDiscountDay = activeEvent?.id === 'weekend_market';
-      const cost = isDiscountDay ? 4.00 : 5.00;
+      const cost = isDiscountDay ? 8.00 : 10.00;
       if ((this.gold || 0) < cost) {
         if (window.sounds?.playClick) window.sounds.playClick();
         const statusEl = document.getElementById('shop-buy-status');
@@ -4671,7 +5480,7 @@
       const buyBtn = document.getElementById('btn-shop-buy-pack');
       const ripNowBtn = document.getElementById('btn-shop-rip-now');
       const activeEvent = this.getCurrentDayEvent();
-      const packCost = activeEvent?.id === 'weekend_market' ? 4.00 : 5.00;
+      const packCost = activeEvent?.id === 'weekend_market' ? 8.00 : 10.00;
       const hasMoneyForPack = (this.gold || 0) >= packCost;
       if (buyBtn) {
         buyBtn.disabled = !hasMoneyForPack;
@@ -5833,13 +6642,216 @@
       const daysLeft = 7 - this.getCurrentDayIndex();
       return {
         label: `4. 🏆 "Tell me about the Monday Park Tournament"`,
+        note: {
+          id: 'event_park_monday_rr',
+          title: 'Monday Central Park Round Robin',
+          category: 'event',
+          icon: '🏆',
+          source: npcName,
+          body: `Heard From: ${npcName}\nPlace: Oakhaven Central Park\nTime: Mondays (All Day)\nEntry Fee: Free\nFormat: 4-Player Casual Round Robin (3 rounds; 1st: $10.00, 2nd: $5.00)`
+        },
         onSelect: (tEl) => {
           tEl.innerHTML = `<b>${npcName}:</b> "Every <b>Monday</b> right here in Oakhaven Central Park, Rowan, Chloe, Jasper, and you play a casual 4-player <b>Round Robin</b>! Winner takes <b>$10.00</b> and 2nd place wins <b>$5.00</b> — redoable once every Monday! Come back in <b>${daysLeft} day${daysLeft > 1 ? 's' : ''}</b> (Monday) and talk to any of us to kick off!"`;
         }
       };
     }
 
+    // -------------------------------------------------------------------------
+    // Leo's Card Shop — Wednesday Booster Bash (12:01 PM – 2:00 PM Check-In)
+    // -------------------------------------------------------------------------
+    isWednesdayToday() {
+      return this.getCurrentDayIndex() === 2; // 0=Mon, 1=Tue, 2=Wed
+    }
+
+    isBoosterBashCheckInOpen() {
+      if (!this.isWednesdayToday()) return false;
+      const m = Math.floor((((Number(this.timeOfDayMinutes) || 0) % 1440) + 1440) % 1440);
+      return m >= (12 * 60 + 1) && m <= (14 * 60); // 12:01 PM – 2:00 PM on Wednesdays
+    }
+
+    isBoosterBashCompletedToday() {
+      return Number(this.boosterBashCompletedDay || 0) === Number(this.dayNumber || 1);
+    }
+
+    startBoosterBash() {
+      if (this.boosterBash || this.isBoosterBashCompletedToday() || !this.isBoosterBashCheckInOpen()) return false;
+      const pool = ['pluto', 'nova', 'silas', 'maya', 'clara', 'bram', 'mayor_donald', 'evelyn', 'chloe', 'rowan', 'jasper', 'best_friend'];
+      for (let i = pool.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [pool[i], pool[j]] = [pool[j], pool[i]];
+      }
+      this.boosterBash = {
+        dayNumber: this.dayNumber || 1,
+        challengerIds: pool.slice(0, 3),
+        roundIndex: 0,
+        wins: 0,
+        losses: 0,
+        lastWon: null,
+        phase: 'go_to_seat',
+        activeNpc: null,
+        path: []
+      };
+      this.lastShopPromptKey = null;
+      this.showAutosaveIndicator('🏆 Checked in for Booster Bash! Take a seat at the duel table!');
+      return true;
+    }
+
+    spawnBoosterBashChallenger() {
+      const bb = this.boosterBash;
+      if (!bb || bb.roundIndex >= 3) return false;
+      const npcId = bb.challengerIds[bb.roundIndex];
+      const all = this.getAllKnownNpcs();
+      const src = all.find(n => n && n.id === npcId) || this.plutoNpc;
+      if (!src) return false;
+
+      const challenger = {
+        id: src.id,
+        name: src.name,
+        sprite: src.sprite,
+        x: 9.8,
+        y: 9.45,
+        dir: 'up',
+        walkTick: 0,
+        bubble: '⚔️',
+        isBoosterBashChallenger: true
+      };
+      const rawPath = this.findPathInArea('card_shop_interior', challenger.x, challenger.y, 11.75, 6.8);
+      bb.activeNpc = challenger;
+      bb.path = this.cleanNpcTripPath(challenger.x, challenger.y, rawPath, { x: 11.75, y: 6.8 });
+      bb.phase = 'challenger_walking';
+      return true;
+    }
+
+    updateBoosterBash() {
+      const bb = this.boosterBash;
+      if (!bb || !this.active || this.currentArea !== 'card_shop_interior') return;
+
+      if (bb.phase === 'go_to_seat') {
+        const nearChair = Math.hypot(this.player.x - 9.25, this.player.y - 6.8) < 1.05 ||
+          Math.hypot(this.player.x - 10.5, this.player.y - 6.8) < 1.5;
+        if (nearChair) {
+          this.spawnBoosterBashChallenger();
+        }
+        return;
+      }
+
+      if ((bb.phase === 'challenger_walking' || bb.phase === 'challenger_leaving') && bb.activeNpc) {
+        const npc = bb.activeNpc;
+        const speed = 0.024;
+        if (!bb.path || bb.path.length === 0) {
+          npc.walkTick = 0;
+          if (bb.phase === 'challenger_walking') {
+            npc.dir = 'left';
+            bb.phase = 'ready_to_duel';
+            this.lastShopPromptKey = null;
+            this.activeDialogueNpc = 'booster_bash_challenger';
+            this.updateFreeRoamPrompt();
+          } else {
+            bb.activeNpc = null;
+            bb.roundIndex += 1;
+            if (bb.roundIndex < 3) {
+              bb.phase = 'go_to_seat';
+            } else {
+              bb.phase = 'claim_prize';
+              this.lastShopPromptKey = null;
+              this.showAutosaveIndicator('🏆 All 3 Booster Bash matches complete! Talk to Leo for your prize!');
+              this.updateFreeRoamPrompt();
+            }
+          }
+          return;
+        }
+
+        const wp = bb.path[0];
+        const dx = wp.x - npc.x;
+        const dy = wp.y - npc.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist <= speed) {
+          npc.x = wp.x;
+          npc.y = wp.y;
+          bb.path.shift();
+        } else {
+          npc.x += (dx / dist) * speed;
+          npc.y += (dy / dist) * speed;
+          npc.walkTick = (npc.walkTick || 0) + 0.06;
+          if (dist > 0.12) {
+            if (Math.abs(dx) > Math.abs(dy) * 1.15) npc.dir = dx > 0 ? 'right' : 'left';
+            else if (Math.abs(dy) > Math.abs(dx) * 1.15) npc.dir = dy > 0 ? 'down' : 'up';
+          }
+        }
+      }
+    }
+
+    startBoosterBashDuel() {
+      const bb = this.boosterBash;
+      if (!bb || !bb.activeNpc || bb.phase !== 'ready_to_duel') return;
+      const c = bb.activeNpc;
+      this.triggerDuel({
+        ...c,
+        tournamentContext: {
+          type: 'booster_bash',
+          round: bb.roundIndex + 1
+        }
+      });
+    }
+
+    recordBoosterBashMatchResult(won) {
+      const bb = this.boosterBash;
+      if (!bb) return;
+      if (won) bb.wins += 1;
+      else bb.losses += 1;
+      bb.lastWon = !!won;
+      bb.phase = 'post_battle';
+    }
+
+    dismissBoosterBashPostBattle() {
+      const bb = this.boosterBash;
+      if (!bb || !bb.activeNpc || bb.phase !== 'post_battle') return;
+      const npc = bb.activeNpc;
+      npc.bubble = bb.lastWon ? '🤝' : '😏';
+      const rawPath = this.findPathInArea('card_shop_interior', npc.x, npc.y, 9.8, 9.45);
+      bb.path = this.cleanNpcTripPath(npc.x, npc.y, rawPath, { x: 9.8, y: 9.45 });
+      bb.phase = 'challenger_leaving';
+      this.closeDialogue();
+    }
+
+    claimBoosterBashPrize() {
+      const bb = this.boosterBash;
+      if (!bb || bb.phase !== 'claim_prize') return 0;
+      const packs = Math.max(0, Math.min(3, bb.wins || 0));
+      if (packs > 0) {
+        this.addInventoryItem({
+          id: 'unopened_base_pack',
+          name: 'Unopened Mythos Base Card Pack',
+          qty: packs,
+          icon: '🃏',
+          cardImg: 'Cards/Mythos_Card_Back.png',
+          type: 'booster_pack',
+          desc: `<b>Unopened Mythos Base Set Booster Pack (1st Edition)</b> — Won as a <b>Booster Bash</b> prize at Leo's Card Shop!`
+        });
+        if (window.sounds?.playVictory) window.sounds.playVictory();
+      }
+      this.boosterBashCompletedDay = this.dayNumber || 1;
+      this.boosterBash = null;
+      this.saveWorldData(this.draftAppearance);
+      this.updateHUDSaveInfo();
+      this.showAutosaveIndicator(
+        packs > 0
+          ? `🎁 Claimed ${packs} Standard Booster Pack${packs > 1 ? 's' : ''} from Booster Bash!`
+          : '🃏 Booster Bash complete! Better luck next time!'
+      );
+      return packs;
+    }
+
     onReturnFromBattle(challenger) {
+      if (challenger?.tournamentContext?.type === 'booster_bash') {
+        if (this.boosterBash?.activeNpc) {
+          this.boosterBash.activeNpc.bubble = this.boosterBash.lastWon ? '🤝' : '😏';
+        }
+        this.activeDialogueNpc = 'booster_bash_challenger';
+        this.lastShopPromptKey = null;
+        this.updateFreeRoamPrompt();
+        return;
+      }
       if (challenger?.tournamentContext?.type === 'park_monday_rr') {
         this.syncParkNpcBubbles();
         this.updateFreeRoamPrompt();
@@ -5974,7 +6986,7 @@
         minCards: 18,
         maxCards: 24,
         totalStars,
-        maxStars: 45
+        maxStars: 40
       };
     }
 
@@ -6780,7 +7792,7 @@
       const deckCounts = {};
       let currentStars = 0;
       const maxCards = 24;
-      const maxStars = 45;
+      const maxStars = 40;
 
       const tryAddOwned = (cid) => {
         if (this.playingDeck.length >= maxCards) return false;
@@ -7640,6 +8652,9 @@
 
       this.gold = 0;
       this.dayNumber = 1;
+      this.timeOfDayMinutes = this.NEW_GAME_START_MINUTE;
+      this.syncTimeOfDayPhase(false);
+      this.updateClockHUD(true);
       this.hasMomBoosterMoney = false;
       this.migratedMom25 = false;
       this.hasBoughtCardShopPacks = false;
@@ -7663,6 +8678,10 @@
       this.sellDraftPrice = null;
       this.scheduledMeetups = [];
       this.registeredTournaments = [];
+      this.hasCompletedTutorial = false;
+      this.notebookNotes = [];
+      this._activePinNoteContext = null;
+      this.updateNotebookBadgeCount?.();
       this.lastParkTourneyCompletedDay = 0;
       this.bertoBattledDay = 0;
       this.bertoBattledOutcome = null;
@@ -7878,7 +8897,7 @@
       const id = interactable.id;
       if (typeof id === 'string' && id.startsWith('meetup_')) return true;
       const friend = this.getFriendNpc();
-      return id === 'friend' || id === 'best_friend' || id === 'friend_duel' || id === 'mom' || id === 'shopkeeper' || id === 'pluto' || id === 'nova' || id === 'silas' || id === 'maya' || id === 'clara' || id === 'bram' || id === 'mayor_donald' || id === 'chef_marco' || id === 'berto' || id === 'shaun' || id === 'chloe' || id === 'rowan' || id === 'jasper' || interactable === friend || interactable === this.shopkeeperNpc || interactable === this.plutoNpc || interactable === this.novaNpc || interactable === this.silasNpc || interactable === this.mayaNpc || interactable === this.claraNpc || interactable === this.bramNpc || interactable === this.mayorNpc || interactable === this.chefNpc || interactable === this.bertoNpc || interactable === this.shaunNpc || interactable === this.chloeNpc || interactable === this.rowanNpc || interactable === this.jasperNpc;
+      return id === 'friend' || id === 'best_friend' || id === 'friend_duel' || id === 'booster_bash_challenger' || id === 'mom' || id === 'shopkeeper' || id === 'pluto' || id === 'nova' || id === 'silas' || id === 'maya' || id === 'clara' || id === 'bram' || id === 'mayor_donald' || id === 'chef_marco' || id === 'berto' || id === 'shaun' || id === 'evelyn' || id === 'chloe' || id === 'rowan' || id === 'jasper' || interactable === friend || interactable === this.shopkeeperNpc || interactable === this.plutoNpc || interactable === this.novaNpc || interactable === this.silasNpc || interactable === this.mayaNpc || interactable === this.claraNpc || interactable === this.bramNpc || interactable === this.mayorNpc || interactable === this.chefNpc || interactable === this.bertoNpc || interactable === this.shaunNpc || interactable === this.evelynNpc || interactable === this.chloeNpc || interactable === this.rowanNpc || interactable === this.jasperNpc;
     }
 
     startTalkingToNpc(npcId) {
@@ -7908,6 +8927,7 @@
       this.activeDialogueNpc = null;
       this._justCompletedMeetup = null;
       this.clearPendingBattleResults();
+      this.clearActivePinNoteContext();
       if (this.storyState === 'intro_bored') {
         this.storyState = 'intro_waiting';
       }
@@ -8163,19 +9183,74 @@
           this.lastShopPromptKey = promptKey;
           choicesEl.innerHTML = '';
           textEl.innerHTML = greetingHtml;
-          choices.forEach((choice) => {
+          const cleanSpeaker = this.stripNoteHtml(speakerText).replace(/^[^\w]+/, '').trim() || npcId;
+          const cleanGreeting = this.stripNoteHtml(greetingHtml);
+          if (cleanGreeting) {
+            this.setActivePinNoteContext({
+              id: `dlg_${npcId}_greeting`,
+              title: `${cleanSpeaker} — Greeting`,
+              category: 'dialogue',
+              icon: '💬',
+              source: cleanSpeaker,
+              body: cleanGreeting
+            });
+          } else {
+            this.clearActivePinNoteContext();
+          }
+          choices.forEach((choice, cIdx) => {
             const btn = document.createElement('button');
             btn.type = 'button';
             btn.className = `ow-choice-btn${choice.primary ? ' primary' : ''}`;
             btn.innerHTML = choice.label;
             btn.addEventListener('click', (ev) => {
               ev.stopPropagation();
+              if (btn._pinEventNote) {
+                const pinned = this.togglePinNotebookNote(btn._pinEventNote.id, btn._pinEventNote);
+                btn.innerHTML = pinned
+                  ? '✅ Pinned to Notebook! (Click to unpin)'
+                  : '📌 Pin this event to Notebook';
+                return;
+              }
               if (!choice.silentClick && window.sounds?.playClick) {
                 window.sounds.playClick();
               }
+              const isLeaveChoice = !!(choice.isLeave || /\(Leave\)|👋/i.test(choice.label || ''));
               if (choice.onSelect) choice.onSelect(textEl, btn);
-              if ((choice.isLeave || /\(Leave\)|👋/i.test(choice.label || '')) && this.activeDialogueNpc) {
+              if (isLeaveChoice && this.activeDialogueNpc) {
                 this.closeDialogue();
+                return;
+              }
+              if (this.activeDialogueNpc) {
+                const replyText = this.stripNoteHtml(textEl.innerHTML);
+                let noteObj = null;
+                if (choice.note) {
+                  noteObj = {
+                    ...choice.note,
+                    body: choice.note.body || replyText,
+                    source: choice.note.source || cleanSpeaker
+                  };
+                } else if (replyText) {
+                  const cleanLabel = this.stripNoteHtml(choice.label).replace(/^\d+\.\s*/, '').replace(/^[^\w"]+/, '').replace(/["]+/g, '').trim();
+                  const isEvent = /(tournament|booster bash|round robin|event|monday|tuesday|wednesday|thursday|friday|saturday|sunday|pm|am)/i.test(replyText);
+                  noteObj = {
+                    id: `dlg_${npcId}_${cIdx}_${cleanLabel.toLowerCase().replace(/[^a-z0-9]+/g, '_').slice(0, 32)}`,
+                    title: cleanLabel ? `${cleanSpeaker}: ${cleanLabel.slice(0, 42)}` : `${cleanSpeaker} Note`,
+                    category: isEvent ? 'event' : 'custom',
+                    icon: isEvent ? '🏆' : '📝',
+                    source: cleanSpeaker,
+                    body: replyText
+                  };
+                }
+                if (noteObj) {
+                  this.setActivePinNoteContext(noteObj);
+                  if (choice.note || noteObj.category === 'event') {
+                    btn._pinEventNote = noteObj;
+                    const alreadyPinned = this.isNotebookNotePinned(noteObj.id);
+                    btn.innerHTML = alreadyPinned
+                      ? '✅ Pinned to Notebook! (Click to unpin)'
+                      : '📌 Pin this event to Notebook';
+                  }
+                }
               }
             });
             choicesEl.appendChild(btn);
@@ -8184,8 +9259,10 @@
         choicesEl.classList.toggle('hidden', choicesEl.children.length === 0);
         challengeBtn.textContent = choices.length > 0 ? '👋 Leave (Space)' : challengeText;
         challengeBtn.classList.toggle('hidden', !showChallenge);
+        this.syncActivePinNoteButton();
       } else {
         this.lastShopPromptKey = null;
+        this.clearActivePinNoteContext();
         bar.classList.remove('talk-icon-only', 'tv-broadcast');
         bar.classList.add('hidden');
         choicesEl.classList.add('hidden');
@@ -8199,13 +9276,15 @@
       if (this.storyState !== 'free_roam') {
         return { choices: [], keySuffix: '', greetingOverride: null };
       }
+
       const curDay = this.dayNumber || 1;
-      const todayMeetups = this.getScheduledMeetupsForNpc(npcId, area, curDay);
+      const curWin = this.getCurrentMeetupWindowId();
+      const todayMeetups = this.getScheduledMeetupsForNpc(npcId, area, curDay, curWin);
       const otherDayMeetups = (this.scheduledMeetups || []).filter(m =>
         m.status === 'scheduled' &&
         m.npcId === npcId &&
         m.area === area &&
-        m.scheduledDay !== curDay
+        !this.isMeetupActiveNow(m, curDay, curWin)
       );
 
       const justDone = this._justCompletedMeetup;
@@ -8235,20 +9314,21 @@
       });
 
       otherDayMeetups.forEach(m => {
-        const isFuture = m.scheduledDay > curDay;
+        const missed = this.isMeetupMissed(m, curDay, curWin);
+        const winText = this.formatMeetupWindowLabel(m);
         choices.push({
-          label: `📅 Meetup Info: ${m.cardName} (${isFuture ? `Day ${m.scheduledDay}` : `Missed Day ${m.scheduledDay}`})`,
+          label: `🕒 Meetup Info: ${m.cardName} (${missed ? `Missed ${winText}` : winText})`,
           onSelect: (el) => {
-            el.innerHTML = isFuture
-              ? `<b>${m.npcName}:</b> "Our meetup for <b>${m.cardName}</b> is set for <b>Day ${m.scheduledDay}</b>! Come back on Day ${m.scheduledDay} (or reschedule in Card Exchange)."`
-              : `<b>${m.npcName}:</b> "Looks like Day ${m.scheduledDay} already passed! Open Card Exchange -> Meetups on your phone to reschedule our <b>${m.cardName}</b> trade."`;
+            el.innerHTML = !missed
+              ? `<b>${m.npcName}:</b> "Our meetup for <b>${m.cardName}</b> is set for <b>${winText}</b>! Come back during that window (or reschedule in Card Exchange)."`
+              : `<b>${m.npcName}:</b> "Looks like <b>${winText}</b> already passed! Open Card Exchange -> Meetups on your phone to reschedule our <b>${m.cardName}</b> trade."`;
           }
         });
       });
 
       const keySuffix = [
         todayMeetups.map(m => m.id).join(','),
-        otherDayMeetups.map(m => `${m.id}:${m.scheduledDay}`).join(','),
+        otherDayMeetups.map(m => `${m.id}:${m.scheduledDay}:${m.scheduledWindow || 'morning'}`).join(','),
         showDoneBanner ? `done_${justDone.meetup.id}` : ''
       ].filter(Boolean).join('|');
 
@@ -8299,7 +9379,28 @@
         this._justCompletedMeetup = null;
       }
 
-      const visitors = this.getActiveMeetupVisitorsForArea(this.currentArea);
+      const visitors = [...this.getActiveMeetupVisitorsForArea(this.currentArea)];
+      // Also include any real NPC who physically walked here for an active scheduled meetup
+      const curDay = this.dayNumber || 1;
+      const curWin = this.getCurrentMeetupWindowId();
+      (this.scheduledMeetups || []).forEach(m => {
+        if (m.status !== 'scheduled' || m.venueType === 'npc_house' || m.area !== this.currentArea) return;
+        if (!this.isMeetupActiveNow(m, curDay, curWin)) return;
+        const realNpc = this.getMeetupRealNpc(m.npcId);
+        if (realNpc && realNpc.trip?.meetupId === m.id && this.getNpcArea(realNpc) === this.currentArea) {
+          visitors.push({
+            id: `meetup_${m.id}`,
+            meetupId: m.id,
+            isMeetupVisitor: true,
+            npcId: m.npcId,
+            name: m.npcName,
+            x: realNpc.x,
+            y: realNpc.y,
+            dir: realNpc.dir,
+            meetup: m
+          });
+        }
+      });
       if (visitors.length === 0) return false;
       let nearest = null;
       let bestDist = Infinity;
@@ -8321,14 +9422,14 @@
         ? (isBuy
             ? `<b>${m.npcName}:</b> "Nice living room! Glad I could bring the meetup right to your house (+25% delivery rate)!"`
             : `<b>${m.npcName}:</b> "Nice living room! Since I came all the way to pick it up (-20% delivery fee), let's wrap up the trade!"`)
-        : `<b>${m.npcName}:</b> "${m.shortVenueLabel} is such a clean meeting spot! Right on time for Day ${m.scheduledDay}."`;
+        : `<b>${m.npcName}:</b> "${m.shortVenueLabel} is such a clean meeting spot! Right on time for ${this.formatMeetupWindowLabel(m)}."`;
 
       this.renderNpcChoicePrompt({
         npcId: nearest.id,
         promptKey: `meetup_vis_${m.id}_${this.gold}_${(this.inventory || []).length}`,
         speakerText: `🤝 ${m.npcName.toUpperCase()} — SCHEDULED MEETUP`,
         talkPromptHtml: `Press <b>Talk</b> to meet <b>${m.npcName}</b> for your <b>${m.cardName}</b> exchange (${priceTxt}).`,
-        greetingHtml: `<b>${m.npcName}:</b> "Hey! Thanks for meeting at <b>${m.shortVenueLabel}</b> on Day ${m.scheduledDay}! Ready to ${isBuy ? 'buy' : 'sell'} <b>${m.cardName}</b> for <b>${priceTxt}</b>?"`,
+        greetingHtml: `<b>${m.npcName}:</b> "Hey! Thanks for meeting at <b>${m.shortVenueLabel}</b> (${this.formatMeetupWindowLabel(m)})! Ready to ${isBuy ? 'buy' : 'sell'} <b>${m.cardName}</b> for <b>${priceTxt}</b>?"`,
         choices: [
           {
             label: `1. 🤝 Complete Exchange: ${isBuy ? 'Buy' : 'Sell'} ${m.cardName} (${priceTxt})`,
@@ -8360,6 +9461,7 @@
 
     updateFreeRoamPrompt() {
       if (this.storyState !== 'free_roam' && this.storyState !== 'intro_waiting') return;
+      const prevActiveDialogueNpc = this.activeDialogueNpc;
       const bar = document.getElementById('ow-dialog-bar');
       const speakerEl = document.getElementById('ow-speaker-tag');
       const textEl = document.getElementById('ow-dialog-text');
@@ -8522,7 +9624,7 @@
           bar.classList.add('tv-broadcast');
           speakerEl.textContent = '📺 LIVING ROOM TV';
           speakerEl.className = 'ow-speaker-tag tv';
-          textEl.innerHTML = `<i>"🔥 MYTHOS BOOSTER PACKS: Just $5 a pack at Leo's Card Shop! Collect Goblin Soldier, Werewolf Pup, Minerva, Manson & more!"</i>`;
+          textEl.innerHTML = `<i>"🔥 MYTHOS BOOSTER PACKS: Just $10 a pack at Leo's Card Shop! Collect Goblin Soldier, Werewolf Pup, Minerva, Manson & more!"</i>`;
           challengeBtn.classList.add('hidden');
         } else if (distToBed < 1.7) {
           this.lastShopPromptKey = null;
@@ -8558,19 +9660,38 @@
         if (distToFriend < 1.2 || distToTable < 1.32) {
           this.nearInteractable = { id: 'friend_duel', name: fName };
           const hasWonBefore = (this.wins || 0) > 0;
-          const friendDuelChoices = [
-            {
+          const needsTutorialPrompt = this.hasOpenedStarterPack && !this.hasCompletedTutorial && !hasWonBefore;
+          const friendDuelChoices = [];
+          if (needsTutorialPrompt) {
+            friendDuelChoices.push({
+              label: `1. 🎓 "Yes! Give me a quick rundown on how to play!"`,
+              primary: true,
+              silentClick: true,
+              onSelect: () => this.startTutorialDuel()
+            });
+            friendDuelChoices.push({
+              label: `2. ⚔️ "No thanks, I'm ready to battle!"`,
+              silentClick: true,
+              onSelect: () => this.triggerDuel(friend)
+            });
+          } else {
+            friendDuelChoices.push({
               label: hasWonBefore
                 ? `1. ⚔️ "I'm ready for a rematch, ${fName}! Let's battle!"`
                 : `1. ⚔️ "I'm ready, ${fName}! Let's battle in MYTHOS!"`,
               primary: true,
               silentClick: true,
               onSelect: () => this.triggerDuel(friend)
-            }
-          ];
+            });
+            friendDuelChoices.push({
+              label: `2. 🎓 "Can we run through the Mythos tutorial?"`,
+              silentClick: true,
+              onSelect: () => this.startTutorialDuel()
+            });
+          }
           if (this.hasOldCardBinder) {
             friendDuelChoices.push({
-              label: `2. 📖 "Open the Old Card Binder (Press B)"`,
+              label: `${friendDuelChoices.length + 1}. 📖 "Open the Old Card Binder (Press B)"`,
               onSelect: () => this.toggleBinderModal(true)
             });
           }
@@ -8590,14 +9711,16 @@
           const friendMeetup = this.getMeetupChoiceObjectsForNpc('friend', 'friend_interior', 'friend_duel');
           this.renderNpcChoicePrompt({
             npcId: 'friend_duel',
-            promptKey: `friend_interior_duel_${fName}_${pName}_${this.hasOldCardBinder}_${hasWonBefore}${friendMeetup.keySuffix}`,
+            promptKey: `friend_interior_duel_${fName}_${pName}_${this.hasOldCardBinder}_${hasWonBefore}_${needsTutorialPrompt}${friendMeetup.keySuffix}`,
             speakerText: `⚔️ ${fName.toUpperCase()} — READY TO BATTLE AT ${fName.toUpperCase()}'S HOUSE!`,
             talkPromptHtml: `Press <b>Talk</b> to speak with <b>${fName}</b> at the duel table.`,
-            greetingHtml: friendMeetup.greetingOverride || (hasWonBefore
-              ? `<b>${fName}:</b> "That was such an awesome match, ${pName}! How is that <b>Old Card Binder</b> working out for you? You can slot up to 9 cards per page, inspect their art, and test new builds in battle! Want a rematch?!"`
-              : `<b>${fName}:</b> "Welcome to my house, ${pName}!! I've got the <b>MYTHOS Tabletop Arena</b> set up right here on my table with the cards I pulled from the pack you bought me! How's that <b>Old Card Binder</b> working out? Ready to battle?!"`),
+            greetingHtml: friendMeetup.greetingOverride || (needsTutorialPrompt
+              ? `<b>${fName}:</b> "Welcome to my house, ${pName}!! I've got the <b>MYTHOS Tabletop Arena</b> all set up! Since we just cracked our starter packs, do you want a quick rundown on how to play Mythos before we duel for real?"`
+              : (hasWonBefore
+                ? `<b>${fName}:</b> "That was such an awesome match, ${pName}! How is that <b>Old Card Binder</b> working out for you? You can slot up to 9 cards per page, inspect their art, and test new builds in battle! Want a rematch?!"`
+                : `<b>${fName}:</b> "Welcome to my house, ${pName}!! I've got the <b>MYTHOS Tabletop Arena</b> set up right here on my table with the cards I pulled from the pack you bought me! Ready to battle?!"`)),
             choices: [...friendMeetup.choices, ...friendDuelChoices],
-            challengeText: hasWonBefore ? `⚔️ Rematch ${fName}!` : `⚔️ Battle ${fName}!`
+            challengeText: needsTutorialPrompt ? '🎓 Start Tutorial!' : (hasWonBefore ? `⚔️ Rematch ${fName}!` : `⚔️ Battle ${fName}!`)
           });
         } else {
           this.lastShopPromptKey = null;
@@ -8615,7 +9738,51 @@
         const distToCase = Math.hypot(this.player.x - 11.8, this.player.y - 5.2);
         const distToTable = Math.hypot(this.player.x - 10.6, this.player.y - 7.1);
 
-        if (this.tryRenderMeetupVisitorPrompt({ maxDist: 1.15 })) {
+        if (this.boosterBash && ['ready_to_duel', 'post_battle'].includes(this.boosterBash.phase) && this.boosterBash.activeNpc &&
+            (this.activeDialogueNpc === 'booster_bash_challenger' || distToTable < 1.85)) {
+          const bb = this.boosterBash;
+          const ch = bb.activeNpc;
+          const rndNum = bb.roundIndex + 1;
+          const isFinal = rndNum === 3;
+          this.nearInteractable = { id: 'booster_bash_challenger', name: ch.name };
+          if (bb.phase === 'ready_to_duel') {
+            this.renderNpcChoicePrompt({
+              npcId: 'booster_bash_challenger',
+              promptKey: `bb_ready_${rndNum}_${ch.id}`,
+              speakerText: `🏆 BOOSTER BASH • MATCH ${rndNum}/3 — ${ch.name.toUpperCase()}`,
+              talkPromptHtml: `Press <b>Talk</b> to face <b>${ch.name}</b> at the duel table!`,
+              greetingHtml: `<b>${ch.name}:</b> "${isFinal ? 'Final match of the Booster Bash!' : `Match ${rndNum} of the Booster Bash!`} Ready to duel, ${pName}?"`,
+              choices: [
+                {
+                  label: `1. ⚔️ "Let's duel, ${ch.name}!"`,
+                  primary: true,
+                  silentClick: true,
+                  onSelect: () => this.startBoosterBashDuel()
+                }
+              ],
+              challengeText: `⚔️ Duel ${ch.name}! (Space)`
+            });
+          } else {
+            const won = bb.lastWon;
+            this.renderNpcChoicePrompt({
+              npcId: 'booster_bash_challenger',
+              promptKey: `bb_post_${rndNum}_${ch.id}_${won}`,
+              speakerText: `🏆 BOOSTER BASH • MATCH ${rndNum}/3 — ${ch.name.toUpperCase()}`,
+              talkPromptHtml: `Press <b>Talk</b> to speak with <b>${ch.name}</b>.`,
+              greetingHtml: won
+                ? `<b>${ch.name}:</b> "Well played, ${pName}! You took Match ${rndNum}/3 — ${isFinal ? 'go talk to Leo for your booster pack rewards!' : 'the next challenger is coming up!'}"`
+                : `<b>${ch.name}:</b> "Good game, ${pName}! I took Match ${rndNum}/3 — ${isFinal ? 'head over to Leo to wrap up your Booster Bash!' : 'stay sharp for the next challenger!'}"`,
+              choices: [
+                {
+                  label: `1. 👋 "Good game, ${ch.name}!"`,
+                  primary: true,
+                  onSelect: () => this.dismissBoosterBashPostBattle()
+                }
+              ],
+              challengeText: '👋 Good Game (Space)'
+            });
+          }
+        } else if (this.tryRenderMeetupVisitorPrompt({ maxDist: 1.15 })) {
           // Handled Leo's Card Shop landmark meetup visitor
         } else if (distToKeeper < 1.08) {
           this.nearInteractable = { id: 'shopkeeper', name: 'Shopkeeper Leo' };
@@ -8701,6 +9868,55 @@
                 onSelect: () => this.startBoosterPackOpening(hasStarterPack ? 'unopened_starter_pack' : 'unopened_base_pack')
               });
             }
+            const bb = this.boosterBash;
+            const bbOpen = this.isBoosterBashCheckInOpen();
+            const bbDoneToday = this.isBoosterBashCompletedToday();
+            if (bb?.phase === 'claim_prize') {
+              const wCount = bb.wins || 0;
+              leoChoices.unshift({
+                label: `🏆 "Claim Booster Bash Prize (${wCount} Win${wCount === 1 ? '' : 's'} = ${wCount} Booster Pack${wCount === 1 ? '' : 's'})!"`,
+                primary: true,
+                onSelect: (el) => {
+                  const awarded = this.claimBoosterBashPrize();
+                  el.innerHTML = awarded > 0
+                    ? `<b>Shopkeeper Leo:</b> "What a run, ${pName}! You won <b>${awarded} of 3</b> matches in today's <b>Booster Bash</b> — here are your <b>${awarded} Standard Booster Pack${awarded > 1 ? 's' : ''}</b>!"`
+                    : `<b>Shopkeeper Leo:</b> "Tough bracket today, ${pName}! You finished 0–3 in the Booster Bash, but thanks for playing — come back tomorrow between 12:01 PM and 2:00 PM!"`;
+                }
+              });
+            } else if (bb) {
+              leoChoices.push({
+                label: `${nextNum++}. 🏆 "How's the Booster Bash going?"`,
+                onSelect: (el) => {
+                  el.innerHTML = `<b>Shopkeeper Leo:</b> "You're checked in for today's <b>Booster Bash</b> (${bb.wins}W–${bb.losses}L, Match ${Math.min(3, bb.roundIndex + 1)}/3)! Head over to the duel table on the right!"`;
+                }
+              });
+            } else if (!bbDoneToday && bbOpen) {
+              leoChoices.push({
+                label: `${nextNum++}. 🏆 "Check in for the Booster Bash! (12:01 PM – 2:00 PM)"`,
+                onSelect: (el) => {
+                  if (this.startBoosterBash()) {
+                    el.innerHTML = `<b>Shopkeeper Leo:</b> "You're checked in for today's <b>Booster Bash</b>, ${pName}! Go take a seat at the duel table on the right — 3 town duelists will challenge you one by one. Every win earns a <b>Standard Booster Pack</b>!"`;
+                  }
+                }
+              });
+            } else {
+              leoChoices.push({
+                label: `${nextNum++}. 🏆 "Tell me about the Booster Bash tournament."`,
+                note: {
+                  id: 'event_booster_bash',
+                  title: "Leo's Wednesday Booster Bash",
+                  category: 'event',
+                  icon: '🏆',
+                  source: 'Shopkeeper Leo',
+                  body: "Heard From: Shopkeeper Leo\nPlace: Leo's Card Shop (In-store duel table)\nTime: Wednesdays, 12:01 PM – 2:00 PM\nEntry Fee: Free\nFormat: 3-Match Gauntlet (1 Standard Booster Pack per win)"
+                },
+                onSelect: (el) => {
+                  el.innerHTML = bbDoneToday
+                    ? `<b>Shopkeeper Leo:</b> "You already finished today's <b>Booster Bash</b>! Check back next Wednesday between <b>12:01 PM and 2:00 PM</b>."`
+                    : `<b>Shopkeeper Leo:</b> "Every <b>Wednesday</b> between <b>12:01 PM and 2:00 PM</b> we host the <b>Booster Bash</b> right at the in-store duel table! Face 3 challengers and win 1 Standard Booster Pack for each victory!"`;
+                }
+              });
+            }
             leoChoices.push({
               label: `${nextNum}. 👋 "Thanks, Leo! (Leave)"`,
               onSelect: () => this.closeDialogue()
@@ -8708,7 +9924,7 @@
 
             this.renderNpcChoicePrompt({
               npcId: 'shopkeeper',
-              promptKey: `keeper_unlocked_${hasMoneyForPack}_${packCost}_${hasUnopenedPack}_${looseCardCount}_${this._leoRecentPackPurchase ? 1 : 0}_${pName}_${fName}`,
+              promptKey: `keeper_unlocked_${hasMoneyForPack}_${packCost}_${hasUnopenedPack}_${looseCardCount}_${this._leoRecentPackPurchase ? 1 : 0}_${bb?.phase || 'none'}_${bbOpen}_${bbDoneToday}_${pName}_${fName}`,
               speakerText: "🃏 SHOPKEEPER LEO — LEO'S CARD SHOP",
               speakerClass: 'ow-speaker-tag tv',
               talkPromptHtml: `Press <b>Talk</b> to speak with <b>Shopkeeper Leo</b> across the counter.`,
@@ -8728,7 +9944,7 @@
           bar.classList.remove('tv-broadcast');
           speakerEl.textContent = '✨ 1ST-EDITION MYTHOS DISPLAY RACK';
           speakerEl.className = 'ow-speaker-tag friend';
-          textEl.innerHTML = `Rows of gleaming foil <b>MYTHOS Base Set Booster Packs</b> ($5 each, 5 Cards per pack) and collector starter boxes line the shelves of <b>Leo's Card Shop</b>.`;
+          textEl.innerHTML = `Rows of gleaming foil <b>MYTHOS Base Set Booster Packs</b> ($10 each, 5 Cards per pack) and collector starter boxes line the shelves of <b>Leo's Card Shop</b>.`;
           challengeBtn.classList.add('hidden');
         } else if (distToTable < 1.55) {
           this.lastShopPromptKey = null;
@@ -8739,7 +9955,13 @@
           bar.classList.remove('tv-broadcast');
           speakerEl.textContent = '⚔️ IN-STORE MYTHOS DUEL TABLE';
           speakerEl.className = 'ow-speaker-tag friend';
-          if (this.hasOpenedStarterPack) {
+          if (this.boosterBash) {
+            speakerEl.textContent = '🏆 BOOSTER BASH DUEL TABLE';
+            const bb = this.boosterBash;
+            textEl.innerHTML = bb.phase === 'claim_prize'
+              ? `<b>Shopkeeper Leo:</b> "All 3 Booster Bash matches are done! Come back over to the counter to claim your packs!"`
+              : `<b>Shopkeeper Leo:</b> "Take a seat by the left chair for Booster Bash Match ${Math.min(3, bb.roundIndex + 1)}/3!"`;
+          } else if (this.hasOpenedStarterPack) {
             textEl.innerHTML = `<b>Shopkeeper Leo:</b> "${fName} just ran ahead to <b>${fName}'s House</b> to set up his tabletop board! Head out the door and walk up to his house whenever you're ready to battle him!"`;
           } else {
             textEl.innerHTML = `<b>${fName}:</b> "${this.hasBoughtCardShopPacks ? 'Whoa, Leo has an official Mythos tabletop mat set up! Open your Booster Pack first so we can see what 3 cards you got!' : 'Look at this tabletop mat! Let\'s talk to Shopkeeper Leo at the counter and grab our 2 Booster Packs first!'}"`;
@@ -8756,7 +9978,7 @@
       } else if (this.currentArea === 'pluto_interior') {
         const pName = this.draftAppearance?.name || 'Asher';
         const pluto = this.plutoNpc;
-        const distToPluto = pluto ? Math.hypot(this.player.x - pluto.x, this.player.y - (pluto.y + 0.85)) : 999;
+        const distToPluto = pluto ? Math.hypot(this.player.x - pluto.x, this.player.y - pluto.y) : 999;
         const distToDesk = Math.hypot(this.player.x - 6.2, this.player.y - 5.6);
         const distToBed = Math.hypot(this.player.x - 3.2, this.player.y - 5.4);
         const distToWardrobe = Math.hypot(this.player.x - 12.2, this.player.y - 5.0);
@@ -8852,7 +10074,7 @@
       } else if (this.currentArea === 'nova_interior') {
         const pName = this.draftAppearance?.name || 'Asher';
         const nova = this.novaNpc;
-        const distToNova = nova ? Math.hypot(this.player.x - nova.x, this.player.y - (nova.y + 0.85)) : 999;
+        const distToNova = nova ? Math.hypot(this.player.x - nova.x, this.player.y - nova.y) : 999;
         const distToScope = Math.hypot(this.player.x - 6.2, this.player.y - 4.8);
         const distToBed = Math.hypot(this.player.x - 3.2, this.player.y - 5.4);
         const distToCharts = Math.hypot(this.player.x - 12.2, this.player.y - 5.0);
@@ -8931,7 +10153,7 @@
       } else if (this.currentArea === 'silas_interior') {
         const pName = this.draftAppearance?.name || 'Asher';
         const silas = this.silasNpc;
-        const distToSilas = silas ? Math.hypot(this.player.x - silas.x, this.player.y - (silas.y + 0.85)) : 999;
+        const distToSilas = silas ? Math.hypot(this.player.x - silas.x, this.player.y - silas.y) : 999;
         const distToBench = Math.hypot(this.player.x - 3.2, this.player.y - 5.4);
         const distToFire = Math.hypot(this.player.x - 6.2, this.player.y - 4.8);
         const distToShelf = Math.hypot(this.player.x - 12.2, this.player.y - 5.0);
@@ -9010,7 +10232,7 @@
       } else if (this.currentArea === 'maya_interior') {
         const pName = this.draftAppearance?.name || 'Asher';
         const maya = this.mayaNpc;
-        const distToMaya = maya ? Math.hypot(this.player.x - maya.x, this.player.y - (maya.y + 0.85)) : 999;
+        const distToMaya = maya ? Math.hypot(this.player.x - maya.x, this.player.y - maya.y) : 999;
         const distToBench = Math.hypot(this.player.x - 3.2, this.player.y - 5.4);
         const distToGreenhouse = Math.hypot(this.player.x - 6.2, this.player.y - 4.8);
         const distToDesk = Math.hypot(this.player.x - 12.2, this.player.y - 5.0);
@@ -9089,7 +10311,7 @@
       } else if (this.currentArea === 'clara_interior') {
         const pName = this.draftAppearance?.name || 'Asher';
         const clara = this.claraNpc;
-        const distToClara = clara ? Math.hypot(this.player.x - clara.x, this.player.y - (clara.y + 0.85)) : 999;
+        const distToClara = clara ? Math.hypot(this.player.x - clara.x, this.player.y - clara.y) : 999;
         if (distToClara < 1.15) {
           this.nearInteractable = clara;
           this.renderNpcChoicePrompt({
@@ -9128,7 +10350,7 @@
       } else if (this.currentArea === 'bram_interior') {
         const pName = this.draftAppearance?.name || 'Asher';
         const bram = this.bramNpc;
-        const distToBram = bram ? Math.hypot(this.player.x - bram.x, this.player.y - (bram.y + 0.85)) : 999;
+        const distToBram = bram ? Math.hypot(this.player.x - bram.x, this.player.y - bram.y) : 999;
         if (distToBram < 1.15) {
           this.nearInteractable = bram;
           this.renderNpcChoicePrompt({
@@ -9345,7 +10567,7 @@
       } else if (this.currentArea === 'mayor_2f_interior') {
         const pName = this.draftAppearance?.name || 'Asher';
         const mayor = this.mayorNpc;
-        const distToMayor = mayor ? Math.hypot(this.player.x - mayor.x, this.player.y - (mayor.y + 0.85)) : 999;
+        const distToMayor = mayor ? Math.hypot(this.player.x - mayor.x, this.player.y - mayor.y) : 999;
         if (distToMayor < 1.25) {
           this.nearInteractable = mayor;
           this.renderNpcChoicePrompt({
@@ -9384,7 +10606,7 @@
       } else if (this.currentArea === 'school_interior') {
         const pName = this.draftAppearance?.name || 'Asher';
         const evelyn = this.evelynNpc;
-        const distToEvelyn = evelyn ? Math.hypot(this.player.x - evelyn.x, this.player.y - (evelyn.y + 0.55)) : 999;
+        const distToEvelyn = evelyn ? Math.hypot(this.player.x - evelyn.x, this.player.y - evelyn.y) : 999;
         const distToTrophy = Math.hypot(this.player.x - 6.5, this.player.y - 4.75);
         if (distToEvelyn < 1.55) {
           this.nearInteractable = evelyn;
@@ -9405,7 +10627,7 @@
               {
                 label: `2. 🃏 "Any tips for building a 18–24 card Mythos deck?"`,
                 onSelect: (el) => {
-                  el.innerHTML = `<b>Ms. Evelyn:</b> "Keep your Playing Deck between <b>18 and 24 cards</b> while staying under the <b>45★ Star Cap</b>! Mix nimble 1★–2★ beasts so you always leave room for a 4★ finisher like <b>Phoenix</b> or <b>Sea Dragon</b>."`;
+                  el.innerHTML = `<b>Ms. Evelyn:</b> "Keep your Playing Deck between <b>18 and 24 cards</b> while staying under the <b>40★ Star Cap</b>! Mix nimble 1★–2★ beasts so you always leave room for a 4★ finisher like <b>Phoenix</b> or <b>Sea Dragon</b>."`;
                 }
               },
               {
@@ -9529,6 +10751,18 @@
           } else {
             challengeBtn.classList.add('hidden');
           }
+          const noteId = `sign_${id}`;
+          const cleanBody = this.stripNoteHtml(bodyHtml);
+          const cleanSpeaker = this.stripNoteHtml(speakerText).replace(/^[^\w]+/, '').trim() || name;
+          const noteObj = {
+            id: noteId,
+            title: name,
+            category: 'sign',
+            icon: '🪧',
+            source: cleanSpeaker,
+            body: cleanBody
+          };
+          this.setActivePinNoteContext(noteObj);
         };
 
         const isMon = this.isMondayToday();
@@ -9830,6 +11064,7 @@
           this.nearInteractable = null;
           this.activeDialogueNpc = null;
           this.clearPendingBattleResults();
+          this.clearActivePinNoteContext();
           choicesEl.classList.add('hidden');
           challengeBtn.classList.remove('ow-talk-btn');
           bar.classList.add('hidden');
@@ -9839,9 +11074,47 @@
         this.nearInteractable = null;
         this.activeDialogueNpc = null;
         this.clearPendingBattleResults();
+        this.clearActivePinNoteContext();
         choicesEl.classList.add('hidden');
         challengeBtn.classList.remove('ow-talk-btn');
         bar.classList.add('hidden');
+      }
+      // If no area-specific prompt matched, check for any nearby NPC out on a building trip
+      if (!this.nearInteractable && this.storyState === 'free_roam') {
+        const tripNpc = this.getActiveNpcsForArea(this.currentArea).find(
+          n => n && n.trip && Math.hypot(this.player.x - n.x, this.player.y - n.y) < 1.15
+        );
+        if (tripNpc) {
+          this.nearInteractable = tripNpc;
+          const altIds = tripNpc.id === 'best_friend' ? ['friend', 'best_friend', this.friendName] : [];
+          if (prevActiveDialogueNpc && (prevActiveDialogueNpc === tripNpc.id || altIds.includes(prevActiveDialogueNpc))) {
+            this.activeDialogueNpc = prevActiveDialogueNpc;
+          }
+          const destName = tripNpc.trip.destName || 'town';
+          const isVisiting = tripNpc.trip.phase === 'at_dest';
+          const isReturning = ['to_dest_exit', 'to_home_door', 'to_home_spot'].includes(tripNpc.trip.phase);
+          const greeting = isVisiting
+            ? `<b>${tripNpc.name}:</b> "Hey ${this.playerName}! Taking a little break here at <b>${destName}</b> for a couple hours!"`
+            : (isReturning
+              ? `<b>${tripNpc.name}:</b> "Hey ${this.playerName}! Just wrapping up my visit to <b>${destName}</b> and heading back."`
+              : `<b>${tripNpc.name}:</b> "Hey ${this.playerName}! I'm heading over to <b>${destName}</b> for a bit!"`);
+          this.renderNpcChoicePrompt({
+            npcId: tripNpc.id,
+            altActiveIds: altIds,
+            promptKey: `trip_${tripNpc.id}_${tripNpc.trip.buildingKey}_${tripNpc.trip.phase}`,
+            speakerText: `🚶 ${tripNpc.name.toUpperCase()}`,
+            speakerClass: 'ow-speaker-tag friend',
+            talkPromptHtml: `Press <b>Talk</b> to chat with <b>${tripNpc.name}</b>.`,
+            greetingHtml: greeting,
+            choices: [
+              {
+                label: `1. 👋 "See you around, ${tripNpc.name}!" (Leave)`,
+                primary: true,
+                onSelect: () => this.closeDialogue()
+              }
+            ]
+          });
+        }
       }
       if (bar.classList.contains('hidden')) {
         this._justCompletedMeetup = null;
@@ -9892,15 +11165,6 @@
       }
 
       if (active) {
-        const challengeBtn = document.getElementById('ow-btn-challenge');
-        const isLeaveBtnVisible = challengeBtn
-          && !challengeBtn.classList.contains('hidden')
-          && (challengeBtn.textContent.includes('Leave') || challengeBtn.textContent.includes('👋'));
-        if (isLeaveBtnVisible) {
-          if (window.sounds?.playClick) window.sounds.playClick();
-          this.closeDialogue();
-          return true;
-        }
         if (typeof active === 'string' && active.startsWith('meetup_')) {
           if (this._justCompletedMeetup && this._justCompletedMeetup.meetup.area === this.currentArea) {
             if (window.sounds?.playClick) window.sounds.playClick();
@@ -9915,6 +11179,25 @@
           } else {
             const textEl = document.getElementById('ow-dialog-text');
             if (textEl) textEl.innerHTML = res.message;
+          }
+          return true;
+        }
+        const challengeBtn = document.getElementById('ow-btn-challenge');
+        const isLeaveBtnVisible = challengeBtn
+          && !challengeBtn.classList.contains('hidden')
+          && (challengeBtn.textContent.includes('Leave') || challengeBtn.textContent.includes('👋'));
+        if (isLeaveBtnVisible) {
+          if (window.sounds?.playClick) window.sounds.playClick();
+          this.closeDialogue();
+          return true;
+        }
+        if (active === 'booster_bash_challenger') {
+          if (this.boosterBash?.phase === 'ready_to_duel') {
+            this.startBoosterBashDuel();
+          } else if (this.boosterBash?.phase === 'post_battle') {
+            this.dismissBoosterBashPostBattle();
+          } else {
+            this.closeDialogue();
           }
           return true;
         }
@@ -10470,6 +11753,7 @@
         friendName: this.friendName,
         gold: this.gold ?? 0,
         dayNumber: this.dayNumber || 1,
+        timeOfDayMinutes: Math.round((this.timeOfDayMinutes ?? this.NEW_GAME_START_MINUTE ?? 480) * 100) / 100,
         hasMomBoosterMoney: this.hasMomBoosterMoney ?? false,
         migratedMom25: this.migratedMom25 ?? false,
         hasBoughtCardShopPacks: this.hasBoughtCardShopPacks ?? false,
@@ -10499,7 +11783,10 @@
         playerSellListings: this.playerSellListings || [],
         scheduledMeetups: this.scheduledMeetups || [],
         registeredTournaments: this.registeredTournaments || [],
+        hasCompletedTutorial: !!this.hasCompletedTutorial,
+        notebookNotes: Array.isArray(this.notebookNotes) ? this.notebookNotes.map(n => ({ ...n })) : [],
         lastParkTourneyCompletedDay: this.lastParkTourneyCompletedDay || 0,
+        boosterBashCompletedDay: this.boosterBashCompletedDay || 0,
         bertoBattledDay: this.bertoBattledDay || 0,
         bertoBattledOutcome: this.bertoBattledOutcome || null,
         lastParkTourneyResult: this.lastParkTourneyResult || null,
@@ -10527,6 +11814,7 @@
       const calDayNum = document.getElementById('calendar-btn-day-num');
       if (calDayLabel) calDayLabel.textContent = this.getCurrentDayName();
       if (calDayNum) calDayNum.textContent = String(this.dayNumber || 1);
+      this.updateClockHUD(true);
       const headerMobileDay = document.getElementById('header-mobile-day');
       if (headerMobileDay) {
         const shortDay = (this.getCurrentDayName() || 'Mon').slice(0, 3);
@@ -10746,15 +12034,11 @@
       const introSettingsBtn = document.getElementById('btn-intro-settings');
       const introSettingsBackBtn = document.getElementById('btn-intro-settings-back');
       const introSoundBtn = document.getElementById('btn-intro-sound');
-      const introTimeSelect = document.getElementById('intro-time-select');
 
       const syncIntroSettings = () => {
         if (introSoundBtn) {
           const isMuted = window.sounds && window.sounds.muted;
           introSoundBtn.textContent = isMuted ? 'Sound: OFF' : 'Sound: ON';
-        }
-        if (introTimeSelect) {
-          introTimeSelect.value = this.settings?.timeOfDay || 'day';
         }
       };
 
@@ -10779,16 +12063,6 @@
         introSoundBtn.addEventListener('click', () => {
           document.getElementById('btn-sound')?.click();
           syncIntroSettings();
-        });
-      }
-
-      if (introTimeSelect) {
-        introTimeSelect.addEventListener('change', (e) => {
-          const val = e.target.value;
-          if (this.settings) this.settings.timeOfDay = val;
-          const hudSelect = document.getElementById('ow-time-select');
-          if (hudSelect) hudSelect.value = val;
-          this.render();
         });
       }
 
@@ -11017,6 +12291,11 @@
         headerEl: document.querySelector('#park-tournament-modal .calendar-modal-header'),
         onClose: () => this.toggleParkTournamentModal(false)
       });
+      attachMenuSwipeDownToExit({
+        frameEl: document.querySelector('#notebook-modal .notebook-modal-card'),
+        headerEl: document.querySelector('#notebook-modal .notebook-modal-header'),
+        onClose: () => this.toggleNotebookModal(false)
+      });
 
       // App Icon Triggers on Phone Home
       document.getElementById('app-btn-contacts')?.addEventListener('click', () => {
@@ -11130,6 +12409,104 @@
       const doneCalBtn = document.getElementById('btn-done-calendar');
       if (doneCalBtn) {
         doneCalBtn.addEventListener('click', () => this.toggleCalendarModal(false));
+      }
+
+      // Adventurer's Notebook Handlers
+      const openNotebookBtn = document.getElementById('btn-open-notebook');
+      if (openNotebookBtn) {
+        openNotebookBtn.addEventListener('click', () => this.toggleNotebookModal(true));
+      }
+      const closeNotebookBtn = document.getElementById('btn-close-notebook');
+      if (closeNotebookBtn) {
+        closeNotebookBtn.addEventListener('click', () => this.toggleNotebookModal(false));
+      }
+      const doneNotebookBtn = document.getElementById('btn-done-notebook');
+      if (doneNotebookBtn) {
+        doneNotebookBtn.addEventListener('click', () => this.toggleNotebookModal(false));
+      }
+      const notebookModal = document.getElementById('notebook-modal');
+      if (notebookModal) {
+        notebookModal.addEventListener('click', (e) => {
+          if (e.target === notebookModal) this.toggleNotebookModal(false);
+        });
+      }
+      document.querySelectorAll('#notebook-tabs .notebook-tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          this.notebookTab = btn.dataset.nbTab || 'pinned';
+          this.renderNotebookModal();
+        });
+      });
+      document.querySelectorAll('#notebook-filter-row .notebook-filter-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+          this.notebookCategoryFilter = chip.dataset.nbCat || 'all';
+          this.renderNotebookModal();
+        });
+      });
+      const nbAddForm = document.getElementById('notebook-add-form');
+      const nbToggleAddBtn = document.getElementById('btn-notebook-toggle-add');
+      const nbCancelAddBtn = document.getElementById('btn-notebook-cancel-add');
+      if (nbToggleAddBtn && nbAddForm) {
+        nbToggleAddBtn.addEventListener('click', () => {
+          nbAddForm.classList.toggle('hidden');
+          if (!nbAddForm.classList.contains('hidden')) {
+            document.getElementById('notebook-custom-title')?.focus();
+          }
+        });
+      }
+      if (nbCancelAddBtn && nbAddForm) {
+        nbCancelAddBtn.addEventListener('click', () => {
+          nbAddForm.reset();
+          nbAddForm.classList.add('hidden');
+        });
+      }
+      if (nbAddForm) {
+        nbAddForm.addEventListener('submit', (e) => {
+          e.preventDefault();
+          const titleEl = document.getElementById('notebook-custom-title');
+          const bodyEl = document.getElementById('notebook-custom-body');
+          const created = this.addCustomNotebookNote(titleEl?.value, bodyEl?.value);
+          if (created) {
+            nbAddForm.reset();
+            nbAddForm.classList.add('hidden');
+            this.notebookTab = 'pinned';
+            this.renderNotebookModal();
+          }
+        });
+      }
+      const owDialogText = document.getElementById('ow-dialog-text');
+      if (owDialogText) {
+        let pinHoldTimer = null;
+        const cancelPinHold = () => {
+          if (pinHoldTimer) {
+            clearTimeout(pinHoldTimer);
+            pinHoldTimer = null;
+          }
+          owDialogText.classList.remove('pin-holding');
+        };
+        owDialogText.addEventListener('pointerdown', (e) => {
+          if (e.pointerType === 'mouse' && e.button !== 0) return;
+          const ctx = this._activePinNoteContext;
+          const bar = document.getElementById('ow-dialog-bar');
+          if (!ctx || !bar || bar.classList.contains('hidden') || bar.classList.contains('talk-icon-only')) return;
+          cancelPinHold();
+          owDialogText.classList.add('pin-holding');
+          pinHoldTimer = setTimeout(() => {
+            pinHoldTimer = null;
+            owDialogText.classList.remove('pin-holding');
+            const latestCtx = this._activePinNoteContext;
+            if (latestCtx) {
+              this.togglePinNotebookNote(latestCtx.id, latestCtx);
+            }
+          }, 480);
+        });
+        owDialogText.addEventListener('pointerup', cancelPinHold);
+        owDialogText.addEventListener('pointerleave', cancelPinHold);
+        owDialogText.addEventListener('pointercancel', cancelPinHold);
+        owDialogText.addEventListener('contextmenu', (e) => {
+          if (owDialogText.getAttribute('data-pinnable') === 'true') {
+            e.preventDefault();
+          }
+        });
       }
       const closeParkTourneyBtn = document.getElementById('btn-close-park-tourney');
       if (closeParkTourneyBtn) {
@@ -11949,6 +13326,11 @@
           this.togglePhoneModal();
           return;
         }
+        if (k === 'n') {
+          e.preventDefault();
+          this.toggleNotebookModal();
+          return;
+        }
         const wakeModal = document.getElementById('morning-wake-modal');
         if (wakeModal && !wakeModal.classList.contains('hidden')) {
           if (k === ' ' || k === 'enter' || k === 'escape') {
@@ -11959,6 +13341,7 @@
         }
         const overlayModalCloseOrder = [
           { id: 'park-tournament-modal', close: () => this.toggleParkTournamentModal(false) },
+          { id: 'notebook-modal', close: () => this.toggleNotebookModal(false) },
           { id: 'phone-modal', close: () => this.togglePhoneModal(false) },
           { id: 'calendar-modal', close: () => this.toggleCalendarModal(false) },
           { id: 'creature-inspect-modal', close: () => this.closeCreatureInspect() },
@@ -12324,13 +13707,6 @@
         handleCanvasTap(e.clientX, e.clientY);
       });
 
-      const timeSel = document.getElementById('ow-time-select');
-      if (timeSel) {
-        timeSel.addEventListener('change', (e) => {
-          this.settings.timeOfDay = e.target.value;
-        });
-      }
-
       const shaderChk = document.getElementById('ow-toggle-shaders');
       if (shaderChk) {
         shaderChk.addEventListener('change', (e) => {
@@ -12358,6 +13734,18 @@
       }
     }
 
+    startTutorialDuel() {
+      const friend = this.getFriendNpc() || this.npcs[0];
+      const fName = this.friendName || 'Rocky';
+      this.closeDialogue();
+      this.triggerDuel({
+        ...friend,
+        id: 'best_friend',
+        name: fName,
+        isTutorial: true
+      });
+    }
+
     triggerDuel(challenger = null, mapId = 'standard_10x8', customPlayerTeam = null, customOpponentTeam = null) {
       if (window.sounds?.playClick) window.sounds.playClick();
       this.storyState = 'free_roam';
@@ -12377,7 +13765,7 @@
       }
     }
 
-    isBlocked(tx, ty) {
+    isBlocked(tx, ty, ignoreNpc = null) {
       if (this.currentArea === 'interior') {
         // Cutaway room floor bounds
         if (tx < 2.2 || tx > 13.8 || ty < 4.15 || ty > 10.35) return true;
@@ -12391,7 +13779,7 @@
         if (Math.hypot(tx - 10.2, ty - 6.6) < 1.15) return true;
         // NPC collision (only Mom blocks movement when Mike/AJ is following you!)
         for (const n of this.npcs) {
-          if (n.following) continue;
+          if (n === ignoreNpc || n.following) continue;
           if (Math.hypot(tx - n.x, ty - n.y) < 0.65) return true;
         }
         return false;
@@ -12405,7 +13793,7 @@
         // Left/Center-Left Round Mythos Duel Table & Chairs (center at x: 5.5, y: 6.8)
         if (Math.hypot(tx - 5.5, ty - 6.8) < 1.18) return true;
         for (const n of this.npcs) {
-          if (n.id !== 'best_friend') continue;
+          if (n === ignoreNpc || n.id !== 'best_friend') continue;
           if (Math.hypot(tx - n.x, ty - n.y) < 0.65) return true;
         }
         return false;
@@ -12818,6 +14206,8 @@
 
         // 8. Tight base hitboxes for trees, standalone benches, picket fences, and fountains
         if (this.isBlockedExteriorProp(tx, ty)) return true;
+
+        if (this._npcRoadOnlyPath && !this.isExteriorRoadTile(tx, ty)) return true;
 
         return false;
       }
@@ -13341,6 +14731,62 @@
       return smoothed;
     }
 
+    /**
+     * Returns true when (tx, ty) in 'exterior' is on a road, paved avenue, roundabout,
+     * cobblestone connector, storefront plaza, or building entry walkway.
+     */
+    isExteriorRoadTile(tx, ty) {
+      const m = 0.15;
+      const inBox = (x1, y1, x2, y2) => tx >= x1 - m && tx <= x2 + m && ty >= y1 - m && ty <= y2 + m;
+
+      // Cobblestone Town Roads & Connectors
+      if (inBox(-0.35, 4.20, 15.35, 5.25)) return true;   // Upper E-W Cobblestone Road
+      if (inBox(14.25, 0.00, 15.35, 5.25)) return true;   // NE Cobblestone Turn
+      if (inBox(-26.5, 9.55, 33.50, 10.70)) return true;  // South Connector Ave
+      if (inBox(-0.35, 14.80, 33.50, 15.95)) return true; // Lower Cobblestone Way
+      if (inBox(5.55, 4.20, 6.65, 10.70)) return true;    // West N-S Connector
+      if (inBox(9.95, 4.20, 10.95, 15.95)) return true;   // East N-S Connector
+
+      // Urban Paved Avenue (Oakhaven Blvd), Willow Way, West Roundabout Ave & Roundabout
+      if (inBox(-0.35, 0.00, 0.70, 33.50)) return true;   // N-S Oakhaven Blvd
+      if (Math.hypot(tx - 0.175, ty - 32.85) <= 1.75) return true; // Roundabout
+      if (inBox(-21.45, 32.30, 0.70, 33.40)) return true; // West Roundabout Ave (Bistro)
+      if (inBox(-24.50, 27.05, 24.50, 28.20)) return true;// Willow Way & School Drop-Off Lane
+
+      // Building Entry Aprons & Plazas
+      if (inBox(1.50, 2.70, 2.50, 4.30)) return true;     // Player's House
+      if (inBox(9.60, 2.80, 10.60, 4.30)) return true;    // Friend's House
+      if (inBox(1.50, 8.70, 2.50, 9.60)) return true;     // Pluto's House
+      if (inBox(-3.80, 8.70, -2.80, 9.60)) return true;   // Clara's House
+      if (inBox(-8.30, 8.70, -7.30, 9.60)) return true;   // Bram's House
+      if (inBox(-14.50, 8.50, -13.10, 9.60)) return true; // Mayor's Manor
+      if (inBox(13.10, 8.90, 14.20, 9.60)) return true;   // Leo's Card Shop
+      if (inBox(1.50, 13.90, 2.50, 14.90)) return true;   // Nova's House
+      if (inBox(7.10, 13.90, 8.10, 14.90)) return true;   // Silas's House
+      if (inBox(12.20, 13.90, 13.20, 14.90)) return true; // Maya's House
+      if (inBox(-16.00, 31.60, -15.00, 32.40)) return true; // Bistro Entrance Apron
+      if (inBox(-5.70, 26.00, 0.70, 27.70)) return true;  // Corner Market Flagstone Plaza
+      if (inBox(-24.80, 26.20, -15.20, 27.70)) return true; // Convention Center Plaza
+      if (inBox(15.50, 27.00, 24.50, 28.60)) return true; // School Portico Drop-Off
+      if (inBox(18.00, 6.80, 24.20, 11.60)) return true;  // Central Park Courtyard Walkways
+
+      return false;
+    }
+
+    /** Compute path in any area without permanently mutating currentArea. */
+    findPathInArea(area, startX, startY, goalX, goalY, roadOnly = false) {
+      const prevArea = this.currentArea;
+      const prevRoadOnly = this._npcRoadOnlyPath;
+      this.currentArea = area;
+      this._npcRoadOnlyPath = !!(roadOnly && area === 'exterior');
+      try {
+        return this.findOverworldPath(startX, startY, goalX, goalY);
+      } finally {
+        this.currentArea = prevArea;
+        this._npcRoadOnlyPath = prevRoadOnly;
+      }
+    }
+
     /** Compute obstacle-avoiding waypoints on a quarter-tile grid, falling back to nearest reachable point. */
     findOverworldPath(startX, startY, goalX, goalY) {
       const goalWalkable = !this.isBlocked(goalX, goalY);
@@ -13573,8 +15019,603 @@
       return movedThisTick;
     }
 
+    // -------------------------------------------------------------------------
+    // NPC Hangout Spots & Roaming AI
+    // -------------------------------------------------------------------------
+    getNpcHangoutSpot(npc) {
+      if (!npc || !npc.hangoutSpot) return null;
+      const spot = npc.hangoutSpot;
+      const defaultRadius = this.DEFAULT_NPC_ROAM_RADIUS ?? 3;
+      const radius = Number.isFinite(spot.radius) ? Math.min(spot.radius, defaultRadius) : defaultRadius;
+      return { ...spot, radius };
+    }
+
+    isNpcPathClear(npc, x1, y1, x2, y2, activeNpcs = []) {
+      const dist = Math.hypot(x2 - x1, y2 - y1);
+      const steps = Math.max(2, Math.ceil(dist / 0.3));
+      for (let i = 1; i <= steps; i++) {
+        const t = i / steps;
+        const px = x1 + (x2 - x1) * t;
+        const py = y1 + (y2 - y1) * t;
+        if (this.isBlocked(px, py, npc)) return false;
+        if (this.player && Math.hypot(px - this.player.x, py - this.player.y) < 0.75) return false;
+        for (const other of activeNpcs) {
+          if (!other || other === npc) continue;
+          if (Math.hypot(px - other.x, py - other.y) < 0.75) return false;
+        }
+      }
+      return true;
+    }
+
+    pickNpcRoamTarget(npc, spot, activeNpcs = []) {
+      if (!spot || spot.radius <= 0) return null;
+      const dirs = [
+        { dx: 1, dy: 0, dir: 'right' },
+        { dx: -1, dy: 0, dir: 'left' },
+        { dx: 0, dy: 1, dir: 'down' },
+        { dx: 0, dy: -1, dir: 'up' }
+      ];
+      const opposite = { up: 'down', down: 'up', left: 'right', right: 'left' }[npc.dir];
+      const distFromSpot = Math.hypot(npc.x - spot.x, npc.y - spot.y);
+
+      // Prefer continuing or turning 90 degrees over snapping 180 degrees backwards,
+      // while gently pulling back toward the hangout spot when near the outer edge.
+      dirs.sort((a, b) => {
+        let scoreA = Math.random();
+        let scoreB = Math.random();
+        if (a.dir === opposite) scoreA += 1.5;
+        if (b.dir === opposite) scoreB += 1.5;
+        if (distFromSpot > spot.radius * 0.55) {
+          scoreA += Math.hypot((npc.x + a.dx) - spot.x, (npc.y + a.dy) - spot.y) - distFromSpot;
+          scoreB += Math.hypot((npc.x + b.dx) - spot.x, (npc.y + b.dy) - spot.y) - distFromSpot;
+        }
+        return scoreA - scoreB;
+      });
+
+      for (const d of dirs) {
+        for (let attempt = 0; attempt < 2; attempt++) {
+          const stepLen = 0.6 + Math.random() * 0.8; // Cozy 0.6–1.4 tile cardinal strolls
+          const cx = npc.x + d.dx * stepLen;
+          const cy = npc.y + d.dy * stepLen;
+          if (Math.hypot(cx - spot.x, cy - spot.y) > spot.radius) continue;
+          if (this.isNpcPathClear(npc, npc.x, npc.y, cx, cy, activeNpcs)) {
+            return { x: cx, y: cy, dir: d.dir };
+          }
+        }
+      }
+      return null;
+    }
+
+    updateNpcRoaming() {
+      if (!this.active || this._isSleeping) return;
+      if ((this.CLOCK_PAUSED_STORY_STATES || []).includes(this.storyState)) return;
+
+      const now = performance.now();
+      const activeNpcs = this.getActiveNpcsForArea(this.currentArea);
+      const speed = 0.025; // Matches player's stride-to-animation ratio at ~60% walk speed
+
+      for (const npc of activeNpcs) {
+        if (!npc || npc.isMeetupVisitor) continue;
+        // Skip NPCs currently in a scripted walk, following the player, or storming out
+        if (npc.following || npc.leavingForHouse) continue;
+        if (npc.targetX !== undefined && npc.targetX !== null && npc.targetY !== undefined && npc.targetY !== null) continue;
+        if (npc.id === 'berto' && this.bertoStormAnimStart > 0) continue;
+        if (npc.trip && npc.trip.phase !== 'at_dest') continue;
+
+        const spot = (npc.trip && npc.trip.phase === 'at_dest')
+          ? { area: npc.trip.destArea, x: npc.trip.destSpot.x, y: npc.trip.destSpot.y, radius: 1.5 }
+          : this.getNpcHangoutSpot(npc);
+        if (!spot || spot.area !== this.currentArea || spot.radius <= 0) continue;
+
+        // Pause roaming if the player is talking to or standing right next to this NPC
+        const isTalkingToThis = this.activeDialogueNpc === npc.id ||
+          (npc.id === 'best_friend' && (this.activeDialogueNpc === 'friend' || this.activeDialogueNpc === 'friend_duel'));
+        const isNearThis = this.nearInteractable && (
+          this.nearInteractable.id === npc.id ||
+          (npc.id === 'best_friend' && (this.nearInteractable.id === 'friend' || this.nearInteractable.id === 'friend_duel'))
+        );
+        if (isTalkingToThis || isNearThis) {
+          npc.roamTarget = null;
+          npc.walkTick = 0;
+          if (isTalkingToThis && this.player) {
+            const pdx = this.player.x - npc.x;
+            const pdy = this.player.y - npc.y;
+            if (Math.hypot(pdx, pdy) > 0.1) {
+              npc.dir = Math.abs(pdx) > Math.abs(pdy)
+                ? (pdx > 0 ? 'right' : 'left')
+                : (pdy > 0 ? 'down' : 'up');
+            }
+          }
+          continue;
+        }
+
+        // Initialize wander state lazily
+        if (npc.roamWaitUntil === undefined) {
+          npc.roamWaitUntil = now + 1500 + Math.random() * 2800;
+          npc.roamTarget = null;
+          continue;
+        }
+
+        if (!npc.roamTarget) {
+          npc.walkTick = 0;
+          if (now >= npc.roamWaitUntil) {
+            const target = this.pickNpcRoamTarget(npc, spot, activeNpcs);
+            if (target) {
+              npc.roamTarget = target;
+              npc.dir = target.dir;
+            } else {
+              npc.roamWaitUntil = now + 2200 + Math.random() * 2000;
+            }
+          }
+          continue;
+        }
+
+        const dx = npc.roamTarget.x - npc.x;
+        const dy = npc.roamTarget.y - npc.y;
+        const dist = Math.hypot(dx, dy);
+
+        if (dist <= 0.05) {
+          npc.x = npc.roamTarget.x;
+          npc.y = npc.roamTarget.y;
+          npc.roamTarget = null;
+          npc.walkTick = 0;
+          npc.roamWaitUntil = now + 3000 + Math.random() * 3000;
+          continue;
+        }
+
+        const nx = npc.x + (dx / dist) * Math.min(speed, dist);
+        const ny = npc.y + (dy / dist) * Math.min(speed, dist);
+        const blockedByPlayer = this.player && Math.hypot(nx - this.player.x, ny - this.player.y) < 0.72;
+        const blockedByOther = activeNpcs.some(o => o && o !== npc && Math.hypot(nx - o.x, ny - o.y) < 0.72);
+
+        if (!blockedByPlayer && !blockedByOther &&
+            Math.hypot(nx - spot.x, ny - spot.y) <= spot.radius &&
+            !this.isBlocked(nx, ny, npc)) {
+          const stepDx = nx - npc.x;
+          const stepDy = ny - npc.y;
+          npc.x = nx;
+          npc.y = ny;
+          if (Math.abs(stepDx) > Math.abs(stepDy)) {
+            npc.dir = stepDx > 0 ? 'right' : 'left';
+          } else if (Math.abs(stepDy) > 0.0001) {
+            npc.dir = stepDy > 0 ? 'down' : 'up';
+          }
+          npc.walkTick = (npc.walkTick || 0) + 0.065;
+        } else {
+          // Stop cleanly instead of sliding along walls or through the player
+          npc.roamTarget = null;
+          npc.walkTick = 0;
+          npc.roamWaitUntil = now + 2000 + Math.random() * 2200;
+        }
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // NPC Hourly Building Trips (Bistro, Corner Market, Convention Center)
+    // -------------------------------------------------------------------------
+    getAllKnownNpcs() {
+      const seen = new Set();
+      const list = [];
+      const add = (n) => {
+        if (n && !seen.has(n)) {
+          seen.add(n);
+          list.push(n);
+        }
+      };
+      (this.npcs || []).forEach(add);
+      [
+        this.shopkeeperNpc, this.plutoNpc, this.novaNpc, this.silasNpc,
+        this.mayaNpc, this.claraNpc, this.bramNpc, this.mayorNpc,
+        this.chefNpc, this.shaunNpc, this.evelynNpc, this.chloeNpc,
+        this.rowanNpc, this.jasperNpc, this.bertoNpc
+      ].forEach(add);
+      return list;
+    }
+
+    getNpcArea(npc) {
+      if (!npc) return 'exterior';
+      if (npc.trip && npc.trip.currentArea) return npc.trip.currentArea;
+      return npc.hangoutSpot?.area || 'exterior';
+    }
+
+    isNpcInEvent(npc) {
+      if (!npc) return true;
+      if (this.storyState !== 'free_roam') return true;
+      if (npc.following || npc.leavingForHouse) return true;
+      if (npc.targetX !== undefined && npc.targetX !== null && npc.targetY !== undefined && npc.targetY !== null) return true;
+      if (npc.id === 'berto') return true;
+      if (npc.id === 'best_friend' && (!this.hasOpenedStarterPack || !this.friendWaitingAtHouse)) return true;
+      if (npc.id === 'mom' && !this.hasMomBoosterMoney) return true;
+
+      // Monday Park Round Robin keeps park trio at Central Park until completed
+      if (['chloe', 'rowan', 'jasper'].includes(npc.id) && this.isMondayToday() && !this.isParkMondayTourneyCompletedToday()) {
+        return true;
+      }
+
+      // Scheduled Card Exchange meetup active in current time window keeps that NPC at their post
+      const curDay = this.dayNumber || 1;
+      const curWin = this.getCurrentMeetupWindowId();
+      const meetupId = (npc.id === 'best_friend' || npc.id === 'friend') ? 'friend' : npc.id;
+      if ((this.scheduledMeetups || []).some(m => m.npcId === meetupId && this.isMeetupActiveNow(m, curDay, curWin))) {
+        return true;
+      }
+
+      // Currently talking to or standing right next to the player
+      if (this.activeDialogueNpc === npc.id || (npc.id === 'best_friend' && (this.activeDialogueNpc === 'friend' || this.activeDialogueNpc === 'friend_duel'))) {
+        return true;
+      }
+      if (this.nearInteractable && (this.nearInteractable.id === npc.id || (npc.id === 'best_friend' && (this.nearInteractable.id === 'friend' || this.nearInteractable.id === 'friend_duel')))) {
+        return true;
+      }
+      return false;
+    }
+
+    getTripDestination(key) {
+      return (this.TRIP_BUILDINGS || {})[key] || (this.TRIP_HOUSES || {})[key] || null;
+    }
+
+    onInGameHourPassed() {
+      if (this.storyState !== 'free_roam' || this._isSleeping) return;
+      const buildingKeys = Object.keys(this.TRIP_BUILDINGS || {});
+      const houseKeys = Object.keys(this.TRIP_HOUSES || {});
+      if (buildingKeys.length === 0 && houseKeys.length === 0) return;
+
+      const allNpcs = this.getAllKnownNpcs();
+      const activeTrips = allNpcs.filter(n => n && (n.trip || n.pendingTrip)).length;
+      const maxTrips = this.MAX_CONCURRENT_TRIPS ?? 8;
+      let slotsLeft = Math.max(0, maxTrips - activeTrips);
+      if (slotsLeft <= 0) return;
+
+      // Shuffle eligible NPCs so the same ones aren't always checked first
+      const candidates = allNpcs.filter(npc => {
+        if (!npc || npc.trip || npc.pendingTrip) return false;
+        const spot = this.getNpcHangoutSpot(npc);
+        if (!spot || spot.radius <= 0) return false;
+        return !this.isNpcInEvent(npc);
+      });
+      for (let i = candidates.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+      }
+
+      const nowGameMin = this.getTotalGameMinutes();
+      const bChance = this.HOURLY_TRIP_CHANCE ?? 0.15;
+      const hChance = this.HOURLY_HOUSE_TRIP_CHANCE ?? 0.08;
+      let staggerOffset = 0;
+      for (const npc of candidates) {
+        if (slotsLeft <= 0) break;
+        const roll = Math.random();
+        let destKey = null;
+        if (roll < bChance && buildingKeys.length > 0) {
+          destKey = buildingKeys[Math.floor(Math.random() * buildingKeys.length)];
+        } else if (roll < bChance + hChance && houseKeys.length > 0) {
+          const ownArea = npc.hangoutSpot?.area;
+          const otherHouses = houseKeys.filter(k => k !== ownArea);
+          if (otherHouses.length > 0) {
+            destKey = otherHouses[Math.floor(Math.random() * otherHouses.length)];
+          }
+        }
+        if (!destKey) continue;
+
+        // Stagger departures by 8–15 in-game minutes apart so they don't all leave together
+        const delay = staggerOffset + Math.floor(Math.random() * 8);
+        if (delay <= 0) {
+          this.startNpcBuildingTrip(npc, destKey);
+        } else {
+          npc.pendingTrip = { buildingKey: destKey, startAtGameMinute: nowGameMin + delay };
+        }
+        staggerOffset += 8 + Math.floor(Math.random() * 8);
+        slotsLeft--;
+      }
+    }
+
+    cleanNpcTripPath(startX, startY, rawPath, fallbackGoal) {
+      const path = (rawPath && rawPath.length > 0) ? rawPath.map(p => ({ x: p.x, y: p.y })) : [{ x: fallbackGoal.x, y: fallbackGoal.y }];
+      // Drop leading grid-snapped waypoints that would make the NPC step backwards from their current position
+      while (path.length > 1) {
+        const p0 = path[0];
+        const p1 = path[1];
+        const d0 = Math.hypot(p0.x - startX, p0.y - startY);
+        const dot = (p0.x - startX) * (p1.x - startX) + (p0.y - startY) * (p1.y - startY);
+        if (d0 < 0.4 && dot <= 0) {
+          path.shift();
+        } else {
+          break;
+        }
+      }
+      return path;
+    }
+
+    startNpcMeetupTrip(npc, m) {
+      if (!npc || !m || m.venueType === 'npc_house') return false;
+      const homeSpot = this.getNpcHangoutSpot(npc);
+      if (!homeSpot) return false;
+      const target = this.getMeetupTargetDetails(m.npcId, m.venueType, m.landmarkId);
+      const destArea = m.area || target.area;
+      const destSpot = m.meetupPos || target.meetupPos || { x: 6.2, y: 7.6, dir: 'down' };
+      const curArea = this.getNpcArea(npc);
+      const homeArea = homeSpot.area || 'exterior';
+      const homePortal = (this.AREA_PORTALS || {})[homeArea];
+      const destPortal = destArea === 'exterior' ? null : (this.AREA_PORTALS || {})[destArea];
+
+      let phase;
+      let goal;
+      if (curArea === destArea) {
+        phase = 'to_dest_spot';
+        goal = destSpot;
+      } else if (curArea !== 'exterior') {
+        if (!homePortal) return false;
+        phase = 'to_home_exit';
+        goal = homePortal.intExit || homePortal.intEntry;
+      } else if (destArea === 'exterior') {
+        phase = 'to_dest_spot';
+        goal = destSpot;
+      } else {
+        if (!destPortal) return false;
+        phase = 'to_dest_door';
+        goal = destPortal.extDoor;
+      }
+
+      const rawPath = this.findPathInArea(curArea, npc.x, npc.y, goal.x, goal.y, curArea === 'exterior');
+      npc.pendingTrip = null;
+      npc.roamTarget = null;
+      npc.trip = {
+        meetupId: m.id,
+        buildingKey: destArea === 'exterior' ? null : destArea,
+        destArea,
+        destName: m.shortVenueLabel || m.venueLabel || 'Meetup',
+        destSpot: { ...destSpot },
+        homeArea,
+        homeSpot: { x: homeSpot.x, y: homeSpot.y, dir: homeSpot.dir || 'down' },
+        currentArea: curArea,
+        phase,
+        path: this.cleanNpcTripPath(npc.x, npc.y, rawPath, goal),
+        leaveAtGameMinute: this.getMeetupEndGameMinute(m)
+      };
+      return true;
+    }
+
+    startNpcReturnFromTrip(npc) {
+      const trip = npc?.trip;
+      if (!trip) return false;
+      if (['to_dest_exit', 'to_home_door', 'to_home_spot'].includes(trip.phase)) return true;
+      const curArea = trip.currentArea || this.getNpcArea(npc);
+      const homePortal = (this.AREA_PORTALS || {})[trip.homeArea];
+
+      if (curArea === trip.homeArea) {
+        const rawPath = this.findPathInArea(curArea, npc.x, npc.y, trip.homeSpot.x, trip.homeSpot.y, curArea === 'exterior');
+        trip.phase = 'to_home_spot';
+        trip.path = this.cleanNpcTripPath(npc.x, npc.y, rawPath, trip.homeSpot);
+      } else if (curArea === 'exterior') {
+        if (!homePortal) { npc.trip = null; return false; }
+        const rawPath = this.findPathInArea('exterior', npc.x, npc.y, homePortal.extDoor.x, homePortal.extDoor.y, true);
+        trip.phase = 'to_home_door';
+        trip.path = this.cleanNpcTripPath(npc.x, npc.y, rawPath, homePortal.extDoor);
+      } else {
+        const destPortal = this.getTripDestination(trip.buildingKey) || (this.AREA_PORTALS || {})[curArea];
+        if (!destPortal) { npc.trip = null; return false; }
+        const exitPt = destPortal.intExit || destPortal.intEntry;
+        const rawPath = this.findPathInArea(curArea, npc.x, npc.y, exitPt.x, exitPt.y);
+        trip.phase = 'to_dest_exit';
+        trip.path = this.cleanNpcTripPath(npc.x, npc.y, rawPath, exitPt);
+      }
+      npc.roamTarget = null;
+      return true;
+    }
+
+    startNpcBuildingTrip(npc, buildingKey) {
+      const dest = this.getTripDestination(buildingKey);
+      const homeSpot = this.getNpcHangoutSpot(npc);
+      if (!npc || !dest || !homeSpot) return false;
+      const destSpot = dest.spots[Math.floor(Math.random() * dest.spots.length)];
+      const homeArea = homeSpot.area || 'exterior';
+      const curArea = this.getNpcArea(npc);
+      const portal = (this.AREA_PORTALS || {})[homeArea];
+
+      let phase = 'to_dest_door';
+      let goal = dest.extDoor;
+      if (curArea !== 'exterior') {
+        if (!portal) return false;
+        phase = 'to_home_exit';
+        goal = portal.intExit || portal.intEntry;
+      }
+
+      const rawPath = this.findPathInArea(curArea, npc.x, npc.y, goal.x, goal.y, curArea === 'exterior');
+      npc.roamTarget = null;
+      npc.trip = {
+        buildingKey,
+        destArea: dest.area,
+        destName: dest.name,
+        destSpot: { ...destSpot },
+        homeArea,
+        homeSpot: { x: homeSpot.x, y: homeSpot.y, dir: homeSpot.dir || 'down' },
+        currentArea: curArea,
+        phase,
+        path: this.cleanNpcTripPath(npc.x, npc.y, rawPath, goal),
+        leaveAtGameMinute: null
+      };
+      return true;
+    }
+
+    updateNpcTrips() {
+      if (!this.active || this._isSleeping) return;
+      if ((this.CLOCK_PAUSED_STORY_STATES || []).includes(this.storyState)) return;
+
+      const speed = 0.022; // Relaxed, natural walking speed for building trips
+      const nowGameMin = this.getTotalGameMinutes();
+
+      // Dispatch meetup NPCs 30 in-game minutes before their scheduled meetup window starts
+      if (this.storyState === 'free_roam') {
+        for (const m of (this.scheduledMeetups || [])) {
+          if (m.status !== 'scheduled' || m.venueType === 'npc_house') continue;
+          const departAt = this.getMeetupStartGameMinute(m) - 30;
+          const endAt = this.getMeetupEndGameMinute(m);
+          if (nowGameMin >= departAt && nowGameMin < endAt) {
+            const npc = this.getMeetupRealNpc(m.npcId);
+            if (npc && npc.trip?.meetupId !== m.id) {
+              this.startNpcMeetupTrip(npc, m);
+            }
+          }
+        }
+      }
+
+      for (const npc of this.getAllKnownNpcs()) {
+        if (npc?.pendingTrip && !npc.trip) {
+          if (nowGameMin >= npc.pendingTrip.startAtGameMinute) {
+            const bKey = npc.pendingTrip.buildingKey;
+            npc.pendingTrip = null;
+            if (!this.isNpcInEvent(npc)) {
+              this.startNpcBuildingTrip(npc, bKey);
+            }
+          }
+        }
+        const trip = npc?.trip;
+        if (!trip) continue;
+
+        // Pause trip movement while the player is talking to or standing right beside this NPC
+        const isTalking = this.activeDialogueNpc === npc.id ||
+          (npc.id === 'best_friend' && (this.activeDialogueNpc === 'friend' || this.activeDialogueNpc === 'friend_duel'));
+        const isNear = this.nearInteractable && (
+          this.nearInteractable.id === npc.id ||
+          (npc.id === 'best_friend' && (this.nearInteractable.id === 'friend' || this.nearInteractable.id === 'friend_duel'))
+        );
+        if ((isTalking || (isNear && trip.phase === 'at_dest')) && trip.currentArea === this.currentArea) {
+          npc.walkTick = 0;
+          if (isTalking && this.player) {
+            const pdx = this.player.x - npc.x;
+            const pdy = this.player.y - npc.y;
+            if (Math.hypot(pdx, pdy) > 0.1) {
+              npc.dir = Math.abs(pdx) > Math.abs(pdy)
+                ? (pdx > 0 ? 'right' : 'left')
+                : (pdy > 0 ? 'down' : 'up');
+            }
+          }
+          continue;
+        }
+
+        // Waiting at destination building for 2 in-game hours (or until meetup window ends)
+        if (trip.phase === 'at_dest') {
+          if (nowGameMin >= trip.leaveAtGameMinute) {
+            this.startNpcReturnFromTrip(npc);
+          }
+          continue;
+        }
+
+        // Follow current waypoint path
+        if (!trip.path || trip.path.length === 0) {
+          this.advanceNpcTripPhase(npc);
+          continue;
+        }
+
+        const wp = trip.path[0];
+        const dx = wp.x - npc.x;
+        const dy = wp.y - npc.y;
+        const dist = Math.hypot(dx, dy);
+
+        if (dist <= speed) {
+          npc.x = wp.x;
+          npc.y = wp.y;
+          trip.path.shift();
+          if (trip.path.length === 0) {
+            npc.walkTick = 0;
+            this.advanceNpcTripPhase(npc);
+          }
+        } else {
+          const stepX = (dx / dist) * speed;
+          const stepY = (dy / dist) * speed;
+          npc.x += stepX;
+          npc.y += stepY;
+          npc.walkTick = (npc.walkTick || 0) + 0.055;
+          // Hysteresis on diagonal segments so sprite facing never flickers or reverses
+          if (dist > 0.12) {
+            if (Math.abs(dx) > Math.abs(dy) * 1.15) {
+              npc.dir = dx > 0 ? 'right' : 'left';
+            } else if (Math.abs(dy) > Math.abs(dx) * 1.15) {
+              npc.dir = dy > 0 ? 'down' : 'up';
+            } else if (!npc.dir) {
+              npc.dir = Math.abs(dx) >= Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
+            }
+          }
+        }
+      }
+    }
+
+    advanceNpcTripPhase(npc) {
+      const trip = npc?.trip;
+      if (!trip) return;
+      const dest = (trip.buildingKey ? this.getTripDestination(trip.buildingKey) : null) || (this.AREA_PORTALS || {})[trip.destArea];
+      const homePortal = (this.AREA_PORTALS || {})[trip.homeArea];
+
+      if (trip.phase === 'to_home_exit') {
+        trip.currentArea = 'exterior';
+        npc.x = homePortal.extDoor.x;
+        npc.y = homePortal.extDoor.y;
+        npc.dir = 'down';
+        if (trip.destArea === 'exterior') {
+          const rawPath = this.findPathInArea('exterior', npc.x, npc.y, trip.destSpot.x, trip.destSpot.y, true);
+          trip.phase = 'to_dest_spot';
+          trip.path = this.cleanNpcTripPath(npc.x, npc.y, rawPath, trip.destSpot);
+        } else {
+          const rawPath = this.findPathInArea('exterior', npc.x, npc.y, dest.extDoor.x, dest.extDoor.y, true);
+          trip.phase = 'to_dest_door';
+          trip.path = this.cleanNpcTripPath(npc.x, npc.y, rawPath, dest.extDoor);
+        }
+      } else if (trip.phase === 'to_dest_door') {
+        trip.currentArea = trip.destArea;
+        npc.x = dest.intEntry.x;
+        npc.y = dest.intEntry.y;
+        npc.dir = 'up';
+        const rawPath = this.findPathInArea(trip.destArea, npc.x, npc.y, trip.destSpot.x, trip.destSpot.y);
+        trip.phase = 'to_dest_spot';
+        trip.path = this.cleanNpcTripPath(npc.x, npc.y, rawPath, trip.destSpot);
+      } else if (trip.phase === 'to_dest_spot') {
+        trip.phase = 'at_dest';
+        if (!trip.leaveAtGameMinute) {
+          trip.leaveAtGameMinute = this.getTotalGameMinutes() + (this.TRIP_STAY_MINUTES ?? 120);
+        }
+        npc.dir = trip.destSpot.dir || 'down';
+        npc.walkTick = 0;
+        npc.roamTarget = null;
+        npc.roamWaitUntil = performance.now() + 2000;
+      } else if (trip.phase === 'to_dest_exit') {
+        trip.currentArea = 'exterior';
+        npc.x = dest.extDoor.x;
+        npc.y = dest.extDoor.y;
+        npc.dir = 'down';
+        if (trip.homeArea === 'exterior') {
+          const rawPath = this.findPathInArea('exterior', npc.x, npc.y, trip.homeSpot.x, trip.homeSpot.y, true);
+          trip.phase = 'to_home_spot';
+          trip.path = this.cleanNpcTripPath(npc.x, npc.y, rawPath, trip.homeSpot);
+        } else {
+          const rawPath = this.findPathInArea('exterior', npc.x, npc.y, homePortal.extDoor.x, homePortal.extDoor.y, true);
+          trip.phase = 'to_home_door';
+          trip.path = this.cleanNpcTripPath(npc.x, npc.y, rawPath, homePortal.extDoor);
+        }
+      } else if (trip.phase === 'to_home_door') {
+        trip.currentArea = trip.homeArea;
+        const entry = homePortal.intExit || homePortal.intEntry;
+        npc.x = entry.x;
+        npc.y = entry.y;
+        npc.dir = 'up';
+        const rawPath = this.findPathInArea(trip.homeArea, npc.x, npc.y, trip.homeSpot.x, trip.homeSpot.y);
+        trip.phase = 'to_home_spot';
+        trip.path = this.cleanNpcTripPath(npc.x, npc.y, rawPath, trip.homeSpot);
+      } else if (trip.phase === 'to_home_spot') {
+        npc.dir = trip.homeSpot.dir || 'down';
+        npc.walkTick = 0;
+        npc.roamTarget = null;
+        npc.roamWaitUntil = performance.now() + 2500;
+        npc.trip = null;
+      }
+    }
+
     update() {
       if (!this.active) return;
+
+      this.tickClock();
+      this.updateNpcTrips();
+      this.updateNpcRoaming();
+      this.updateBoosterBash();
 
       if (this.shakeTicks > 0) this.shakeTicks--;
       if (this.tvFlashTicks > 0) this.tvFlashTicks--;
@@ -13818,10 +15859,9 @@
           this.areaTransitionCooldown = 25;
           this.updateHUDSaveInfo();
         } else if (this.currentArea === 'card_shop_interior' && this.player.x >= 8.2 && this.player.x <= 11.4 && this.player.y >= 9.75) {
-          // If the player received their Booster Pack from Leo and attempts to leave Leo's Card Shop without opening it,
-          // stop them at the door and trigger a dialogue to open the card pack!
-          const hasUnopenedPack = (this.inventory || []).some(i => i.id === 'unopened_base_pack' && i.qty > 0);
-          if (this.hasBoughtCardShopPacks && (hasUnopenedPack || !this.hasOpenedStarterPack)) {
+          // Only stop the player at the door during the initial intro before they have opened their first starter pack
+          const hasUnopenedStarter = (this.inventory || []).some(i => (i.id === 'unopened_starter_pack' || i.id === 'unopened_base_pack') && i.qty > 0);
+          if (this.storyState !== 'free_roam' && !this.hasOpenedStarterPack && this.hasBoughtCardShopPacks && hasUnopenedStarter) {
             if (window.sounds?.playClick) window.sounds.playClick();
             this.player.y = 9.35;
             this.player.dir = 'up';
@@ -24667,7 +26707,7 @@
           const lx = Math.round(22.82 * S), ly = Math.round(lyT * S);
           ctx.fillStyle = '#1e293b';
           ctx.fillRect(lx, ly - 26, 4, 28);
-          if (this.settings.timeOfDay !== 'day') {
+          if (this.settings.timeOfDay === 'night') {
             ctx.fillStyle = 'rgba(253, 224, 71, 0.28)';
             ctx.beginPath(); ctx.arc(lx + 2, ly - 28, 22, 0, Math.PI * 2); ctx.fill();
           }
@@ -27317,11 +29357,15 @@
       const S = this.TILE;
       const { timeOfDay, shadersEnabled } = this.settings;
 
-      if (timeOfDay === 'sunset') {
-        ctx.fillStyle = shadersEnabled ? 'rgba(67, 20, 7, 0.22)' : 'rgba(120, 53, 15, 0.12)';
-        ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-      } else if (timeOfDay === 'night') {
-        ctx.fillStyle = shadersEnabled ? 'rgba(15, 23, 42, 0.52)' : 'rgba(15, 23, 42, 0.35)';
+      // Time-of-day tint (Morning / Afternoon / Night) driven by the real-time clock
+      const look = this.getTimeOfDayOverlay();
+      if (look) {
+        const alphaScale = shadersEnabled ? 1 : 0.7;
+        const rgba = (c) => `rgba(${Math.round(c[0])}, ${Math.round(c[1])}, ${Math.round(c[2])}, ${(c[3] * alphaScale).toFixed(3)})`;
+        const tint = ctx.createLinearGradient(0, 0, 0, this.canvas.height);
+        tint.addColorStop(0, rgba(look.top));
+        tint.addColorStop(1, rgba(look.bottom));
+        ctx.fillStyle = tint;
         ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
       }
 
@@ -27421,9 +29465,11 @@
           friend = this.createFriendNpc(this.friendName);
           this.npcs.unshift(friend);
         }
-        friend.x = 4.1;
-        friend.y = 6.8;
-        friend.dir = 'right';
+        if (friend.x > 13.8 || friend.x < 2.2 || friend.y < 4.15 || friend.y > 10.35) {
+          friend.x = 4.1;
+          friend.y = 6.8;
+          friend.dir = 'right';
+        }
         friend.bubble = '⚔️';
         active.push(friend);
       } else if (area === 'card_shop_interior') {
@@ -27434,53 +29480,32 @@
           friend.following = true;
           active.push(friend);
         }
+        if (this.boosterBash?.activeNpc && ['challenger_walking', 'ready_to_duel', 'post_battle', 'challenger_leaving'].includes(this.boosterBash.phase)) {
+          active.push(this.boosterBash.activeNpc);
+        }
       } else if (area === 'pluto_interior') {
         if (!this.plutoNpc) this.plutoNpc = this.createPlutoNpc();
-        this.plutoNpc.x = 6.2;
-        this.plutoNpc.y = 4.95;
-        this.plutoNpc.dir = 'down';
         active.push(this.plutoNpc);
       } else if (area === 'nova_interior') {
         if (!this.novaNpc) this.novaNpc = this.createNovaNpc();
-        this.novaNpc.x = 6.2;
-        this.novaNpc.y = 5.35;
-        this.novaNpc.dir = 'down';
         active.push(this.novaNpc);
       } else if (area === 'silas_interior') {
         if (!this.silasNpc) this.silasNpc = this.createSilasNpc();
-        this.silasNpc.x = 6.2;
-        this.silasNpc.y = 5.35;
-        this.silasNpc.dir = 'down';
         active.push(this.silasNpc);
       } else if (area === 'maya_interior') {
         if (!this.mayaNpc) this.mayaNpc = this.createMayaNpc();
-        this.mayaNpc.x = 6.2;
-        this.mayaNpc.y = 5.35;
-        this.mayaNpc.dir = 'down';
         active.push(this.mayaNpc);
       } else if (area === 'clara_interior') {
         if (!this.claraNpc) this.claraNpc = this.createClaraNpc();
-        this.claraNpc.x = 6.2;
-        this.claraNpc.y = 5.35;
-        this.claraNpc.dir = 'down';
         active.push(this.claraNpc);
       } else if (area === 'bram_interior') {
         if (!this.bramNpc) this.bramNpc = this.createBramNpc();
-        this.bramNpc.x = 6.2;
-        this.bramNpc.y = 5.35;
-        this.bramNpc.dir = 'down';
         active.push(this.bramNpc);
       } else if (area === 'mayor_2f_interior') {
         if (!this.mayorNpc) this.mayorNpc = this.createMayorNpc();
-        this.mayorNpc.x = 7.7;
-        this.mayorNpc.y = 5.85;
-        this.mayorNpc.dir = 'down';
         active.push(this.mayorNpc);
       } else if (area === 'restaurant_interior') {
         if (!this.chefNpc) this.chefNpc = this.createChefNpc();
-        this.chefNpc.x = 5.65;
-        this.chefNpc.y = 4.42;
-        this.chefNpc.dir = 'down';
         active.push(this.chefNpc);
         if (this.isBertoInBistroToday()) {
           if (!this.bertoNpc) this.bertoNpc = this.createBertoNpc();
@@ -27494,10 +29519,6 @@
             this.bertoNpc.bubble = '😤';
             if (p >= 1) this.bertoStormAnimStart = 0;
           } else {
-            this.bertoNpc.x = 8.65;
-            this.bertoNpc.y = 5.85;
-            this.bertoNpc.dir = 'down';
-            this.bertoNpc.walkTick = 0;
             this.bertoNpc.bubble = bertoStatus.outcome === 'berto_won'
               ? '😏'
               : (bertoStatus.outcome === 'player_won' ? '😤' : '⚔️');
@@ -27506,15 +29527,9 @@
         }
       } else if (area === 'corner_store_interior') {
         if (!this.shaunNpc) this.shaunNpc = this.createShaunNpc();
-        this.shaunNpc.x = 5.65;
-        this.shaunNpc.y = 4.42;
-        this.shaunNpc.dir = 'down';
         active.push(this.shaunNpc);
       } else if (area === 'school_interior') {
         if (!this.evelynNpc) this.evelynNpc = this.createEvelynNpc();
-        this.evelynNpc.x = 13.3;
-        this.evelynNpc.y = 6.25;
-        this.evelynNpc.dir = 'down';
         active.push(this.evelynNpc);
       } else if (area === 'exterior') {
         const friend = this.npcs.find(n => n.id === 'best_friend' || n.id === 'friend');
@@ -27527,6 +29542,26 @@
         this.syncParkNpcBubbles();
         active.push(this.chloeNpc, this.rowanNpc, this.jasperNpc);
       }
+
+      // Include NPCs currently traveling through or visiting this area on a building trip,
+      // and exclude home NPCs that are currently away on a trip.
+      const seen = new Set();
+      const filtered = [];
+      for (const npc of active) {
+        if (!npc || seen.has(npc)) continue;
+        if (npc.trip && this.getNpcArea(npc) !== area) continue;
+        seen.add(npc);
+        filtered.push(npc);
+      }
+      for (const npc of this.getAllKnownNpcs()) {
+        if (!npc || seen.has(npc) || !npc.trip) continue;
+        if (this.getNpcArea(npc) === area) {
+          seen.add(npc);
+          filtered.push(npc);
+        }
+      }
+      active.length = 0;
+      active.push(...filtered);
 
       const curDay = this.dayNumber || 1;
       active.forEach(npc => {

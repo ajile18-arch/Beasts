@@ -402,6 +402,10 @@
       const tourneyCtx = challenger?.tournamentContext;
       if (tourneyCtx?.type === 'park_monday_rr') {
         subtitleText = `Park Rnd ${tourneyCtx.round || 1}/3 vs ${challenger.name}`;
+      } else if (tourneyCtx?.type === 'booster_bash') {
+        subtitleText = `Booster Bash Rnd ${tourneyCtx.round || 1}/3 vs ${challenger.name}`;
+      } else if (challenger?.isTutorial) {
+        subtitleText = '🎓 Mythos Tutorial';
       } else if (challenger?.id === 'pluto') {
         subtitleText = 'vs. Pluto ($1.00 Wager)';
       } else if (challenger) {
@@ -432,12 +436,17 @@
       const p2Guaranteed = (customOpponentTeam && customOpponentTeam.length)
         ? customOpponentTeam.filter(id => GWENT_CARDS[id])
         : [];
+      const p2CustomDeck = (customOpponentTeam && customOpponentTeam.length)
+        ? customOpponentTeam.filter(id => GWENT_CARDS[id])
+        : this.getNpcSetDeck(challenger?.id);
 
-      this.startNewGwentMatch(p1Guaranteed, p2Guaranteed);
+      this.startNewGwentMatch(p1Guaranteed, p2Guaranteed, p2CustomDeck);
     }
 
     returnToOverworld() {
       if (this.aiTimeout) clearTimeout(this.aiTimeout);
+      this.tutorialState = null;
+      document.getElementById('gwent-tutorial-banner')?.classList.add('hidden');
       this.currentView = 'overworld';
       this.elWinnerModal?.classList.add('hidden');
       document.getElementById('winner-modal')?.classList.add('hidden');
@@ -482,21 +491,117 @@
     // -------------------------------------------------------------------------
     // Deck & Match Initialization
     // -------------------------------------------------------------------------
-    buildDeck(guaranteedIds = [], customDeckIds = null) {
-      const targetSize = 18;
+    // -------------------------------------------------------------------------
+    // NPC Set Decks (18–24 cards, <= 40 stars, high-star signature + same class)
+    // -------------------------------------------------------------------------
+    getNpcDeckArchetypes() {
+      return {
+        berto:        { signature: 'krythos_the_basilisk', role: 'Lizard',      targetSize: 19, filler: ['vampire_thrall', 'vampire_bat', 'goblin_soldier', 'goblin_archer', 'werewolf_pup'] },
+        maya:         { signature: 'manson_wolf_father',   role: 'Wolf Pack',   targetSize: 19, filler: ['gooba_goblin_king', 'goblin_soldier', 'goblin_archer', 'merfolk', 'rust_bucket'] },
+        nova:         { signature: 'mothman',              role: 'Monster',     targetSize: 19, filler: ['vampire_thrall', 'vampire_bat', 'merfolk', 'goblin_archer', 'werewolf_pup'] },
+        evelyn:       { signature: 'sea_dragon',           role: 'Water Tribe', targetSize: 20, filler: ['frost_skink', 'gooba_goblin_king', 'goblin_soldier', 'goblin_archer', 'werewolf_pup', 'rust_bucket'] },
+        jasper:       { signature: 'pyromanda',            role: 'Lizard',      targetSize: 19, filler: ['jersey_devil', 'goblin_soldier', 'goblin_archer', 'werewolf_pup', 'merfolk'] },
+        pluto:        { signature: 'scrap_heap',           role: 'Machine',     targetSize: 19, filler: ['orc_infantry', 'orc_slinger', 'goblin_soldier', 'goblin_archer', 'merfolk'] },
+        silas:        { signature: 'orc_infantry',         role: 'Orc Army',    targetSize: 19, filler: ['manson_wolf_father', 'scrap_heap', 'rust_bucket', 'goblin_soldier', 'goblin_archer'] },
+        best_friend:  { signature: 'gooba_goblin_king',    role: 'Goblin Army', targetSize: 19, filler: ['minerva_wolf_mother', 'werewolf_pup', 'rust_bucket', 'merfolk', 'vampire_bat'] },
+        friend:       { signature: 'gooba_goblin_king',    role: 'Goblin Army', targetSize: 19, filler: ['minerva_wolf_mother', 'werewolf_pup', 'rust_bucket', 'merfolk', 'vampire_bat'] },
+        friend_duel:  { signature: 'gooba_goblin_king',    role: 'Goblin Army', targetSize: 19, filler: ['minerva_wolf_mother', 'werewolf_pup', 'rust_bucket', 'merfolk', 'vampire_bat'] },
+        rowan:        { signature: 'jersey_devil',         role: 'Monster',     targetSize: 19, filler: ['vampire_thrall', 'vampire_bat', 'rust_bucket', 'goblin_soldier', 'goblin_archer'] },
+        chloe:        { signature: 'minerva_wolf_mother',  role: 'Wolf Pack',   targetSize: 18, filler: ['sea_dragon', 'merfolk', 'goblin_soldier', 'goblin_archer', 'frost_skink'] },
+        clara:        { signature: 'minerva_wolf_mother',  role: 'Wolf Pack',   targetSize: 18, filler: ['gooba_goblin_king', 'goblin_soldier', 'goblin_archer', 'merfolk', 'vampire_bat'] },
+        bram:         { signature: 'orc_slinger',          role: 'Orc Army',    targetSize: 19, filler: ['scrap_heap', 'rust_bucket', 'werewolf_pup', 'goblin_soldier', 'goblin_archer'] },
+        mayor_donald: { signature: 'krythos_the_basilisk', role: 'Lizard',      targetSize: 20, filler: ['orc_infantry', 'scrap_heap', 'merfolk', 'goblin_soldier', 'goblin_archer', 'rust_bucket'] },
+        mom:          { signature: 'sea_dragon',           role: 'Water Tribe', targetSize: 18, filler: ['minerva_wolf_mother', 'werewolf_pup', 'goblin_soldier', 'goblin_archer', 'rust_bucket'] },
+        shopkeeper:   { signature: 'mothman',              role: 'Monster',     targetSize: 19, filler: ['gooba_goblin_king', 'goblin_soldier', 'goblin_archer', 'merfolk', 'werewolf_pup'] },
+        chef_marco:   { signature: 'pyromanda',            role: 'Lizard',      targetSize: 18, filler: ['orc_infantry', 'merfolk', 'goblin_soldier', 'goblin_archer', 'rust_bucket'] },
+        shaun:        { signature: 'vampire_thrall',       role: 'Vampire',     targetSize: 18, filler: ['scrap_heap', 'rust_bucket', 'goblin_soldier', 'goblin_archer', 'werewolf_pup'] }
+      };
+    }
+
+    getNpcSetDeck(npcId) {
+      if (!npcId) return null;
+      const spec = this.getNpcDeckArchetypes()[npcId];
+      if (!spec) return null;
+
+      const maxStars = 40;
+      const minCards = 18;
+      const targetSize = Math.max(minCards, Math.min(24, spec.targetSize || 18));
+      const deck = [];
+      const counts = {};
+      let totalStars = 0;
+
+      const copyLimit = (id) => {
+        const def = GWENT_CARDS[id];
+        if (!def) return 0;
+        return CardReg.getMaxDeckCopies
+          ? CardReg.getMaxDeckCopies(def)
+          : ((Number(def.stars) || 1) >= 4 ? 1 : (def.maxDeckCopies ?? 3));
+      };
+
+      const tryAdd = (id, maxCopies = null) => {
+        const def = GWENT_CARDS[id];
+        if (!def || def.isToken || deck.length >= 24) return false;
+        const limit = maxCopies === null ? copyLimit(id) : Math.min(maxCopies, copyLimit(id));
+        if ((counts[id] || 0) >= limit) return false;
+        const stars = Math.max(1, Number(def.stars) || 1);
+        const remainingSlotsAfter = Math.max(0, minCards - (deck.length + 1));
+        // Reserve at least 1 star per remaining required card so we always reach 18+ cards under 40 stars
+        if (totalStars + stars + remainingSlotsAfter > maxStars) return false;
+        deck.push(id);
+        counts[id] = (counts[id] || 0) + 1;
+        totalStars += stars;
+        return true;
+      };
+
+      // 1. High-star signature card
+      if (spec.signature) tryAdd(spec.signature, copyLimit(spec.signature));
+
+      // 2. All cards of that same class (role), highest-star first
+      const sameClass = Object.values(GWENT_CARDS)
+        .filter(c => c && !c.isToken && c.role === spec.role)
+        .sort((a, b) => (b.stars || 1) - (a.stars || 1));
+      for (const c of sameClass) {
+        while (deck.length < targetSize && tryAdd(c.id)) {}
+      }
+
+      // 3. Deterministic themed filler cards, then any valid 1-star fallback if still under 18
+      for (const id of (spec.filler || [])) {
+        while (deck.length < targetSize && tryAdd(id)) {}
+      }
+      if (deck.length < minCards) {
+        const fallbacks = Object.values(GWENT_CARDS)
+          .filter(c => c && !c.isToken)
+          .sort((a, b) => (a.stars || 1) - (b.stars || 1));
+        for (const c of fallbacks) {
+          while (deck.length < minCards && tryAdd(c.id)) {}
+        }
+      }
+      return deck;
+    }
+
+    buildDeck(guaranteedIds = [], customDeckIds = null, maxStars = 40) {
+      const minCards = 18;
+      const maxCards = 24;
       const fillRandomToTarget = (baseIds) => {
         const result = [...baseIds];
         const counts = {};
-        result.forEach(id => { counts[id] = (counts[id] || 0) + 1; });
-        const allIds = Object.keys(GWENT_CARDS);
+        let totalStars = 0;
+        result.forEach(id => {
+          counts[id] = (counts[id] || 0) + 1;
+          totalStars += Math.max(1, Number(GWENT_CARDS[id]?.stars) || 1);
+        });
+        const allIds = Object.keys(GWENT_CARDS).filter(id => !GWENT_CARDS[id]?.isToken);
         let guard = 0;
-        while (result.length < targetSize && allIds.length > 0 && guard < 500) {
+        while (result.length < minCards && allIds.length > 0 && guard < 600) {
           guard++;
           const pick = allIds[Math.floor(Math.random() * allIds.length)];
-          const limit = CardReg.getMaxDeckCopies ? CardReg.getMaxDeckCopies(pick) : ((Number(GWENT_CARDS[pick]?.stars) || 1) >= 4 ? 1 : (GWENT_CARDS[pick]?.maxDeckCopies ?? 3));
-          if ((counts[pick] || 0) < limit) {
+          const stars = Math.max(1, Number(GWENT_CARDS[pick]?.stars) || 1);
+          const remAfter = Math.max(0, minCards - (result.length + 1));
+          const limit = CardReg.getMaxDeckCopies ? CardReg.getMaxDeckCopies(pick) : ((stars >= 4) ? 1 : (GWENT_CARDS[pick]?.maxDeckCopies ?? 3));
+          if ((counts[pick] || 0) < limit && (totalStars + stars + remAfter <= maxStars)) {
             result.push(pick);
             counts[pick] = (counts[pick] || 0) + 1;
+            totalStars += stars;
           }
         }
         return result;
@@ -504,19 +609,22 @@
 
       if (Array.isArray(customDeckIds) && customDeckIds.length > 0) {
         const customCounts = {};
+        let totalStars = 0;
         let pool = [];
         customDeckIds.forEach(id => {
-          if (!GWENT_CARDS[id]) return;
-          const limit = CardReg.getMaxDeckCopies ? CardReg.getMaxDeckCopies(id) : ((Number(GWENT_CARDS[id]?.stars) || 1) >= 4 ? 1 : (GWENT_CARDS[id]?.maxDeckCopies ?? 3));
-          if ((customCounts[id] || 0) < limit) {
+          if (!GWENT_CARDS[id] || pool.length >= maxCards) return;
+          const stars = Math.max(1, Number(GWENT_CARDS[id]?.stars) || 1);
+          const limit = CardReg.getMaxDeckCopies ? CardReg.getMaxDeckCopies(id) : ((stars >= 4) ? 1 : (GWENT_CARDS[id]?.maxDeckCopies ?? 3));
+          if ((customCounts[id] || 0) < limit && totalStars + stars <= maxStars) {
             pool.push(id);
             customCounts[id] = (customCounts[id] || 0) + 1;
+            totalStars += stars;
           }
         });
-        if (pool.length < targetSize) {
+        if (pool.length < minCards) {
           pool = fillRandomToTarget(pool);
         }
-        pool = pool.slice(0, targetSize);
+        pool = pool.slice(0, maxCards);
         for (let i = pool.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));
           [pool[i], pool[j]] = [pool[j], pool[i]];
@@ -524,7 +632,7 @@
         return pool.map((id, idx) => this.createCardInstance(id, `${id}_${Math.random().toString(36).slice(2, 7)}_${idx}`));
       }
 
-      // When no 18-card deck is built yet, generate a fresh random 18-card deck from all cards every match
+      // When no 18-card deck is built yet, generate a fresh random 18-card deck under 40 stars
       const uniqueGuaranteed = Array.from(new Set(guaranteedIds)).filter(id => GWENT_CARDS[id]);
       let pool = fillRandomToTarget(uniqueGuaranteed);
       const rest = pool.slice(uniqueGuaranteed.length);
@@ -532,7 +640,7 @@
         const j = Math.floor(Math.random() * (i + 1));
         [rest[i], rest[j]] = [rest[j], rest[i]];
       }
-      const finalIds = [...uniqueGuaranteed, ...rest].slice(0, targetSize);
+      const finalIds = [...uniqueGuaranteed, ...rest].slice(0, maxCards);
 
       return finalIds.map((id, idx) => this.createCardInstance(id, `${id}_${Math.random().toString(36).slice(2, 7)}_${idx}`));
     }
@@ -574,20 +682,30 @@
       };
     }
 
-    startNewGwentMatch(p1Guaranteed = [], p2Guaranteed = []) {
+    startNewGwentMatch(p1Guaranteed = [], p2Guaranteed = [], p2CustomDeck = null) {
       if (this.aiTimeout) clearTimeout(this.aiTimeout);
       this.overworld?.applyEquippedBoardTheme?.();
       this.isMatchOver = false;
       this.elWinnerModal?.classList.add('hidden');
       document.getElementById('gwent-round-overlay')?.classList.add('hidden');
       document.getElementById('gwent-optional-play-modal')?.remove();
+      document.getElementById('gwent-forced-pass-modal')?.remove();
 
+      const isTutorial = !!this.currentChallenger?.isTutorial;
       const playingDeckIds = (this.overworld?.playingDeck || []).filter(id => GWENT_CARDS[id]);
-      const p1Deck = this.buildDeck(p1Guaranteed, playingDeckIds);
-      const p2Deck = this.buildDeck(p2Guaranteed);
+      const p1Deck = isTutorial
+        ? ['goblin_soldier', 'orc_slinger', 'merfolk', 'rust_bucket', 'werewolf_pup', 'vampire_bat', 'goblin_archer'].map((id, idx) => this.createCardInstance(id, `tut_p1d_${idx}`))
+        : this.buildDeck(p1Guaranteed, playingDeckIds);
+      const p2Deck = isTutorial
+        ? ['goblin_soldier', 'werewolf_pup', 'merfolk', 'rust_bucket', 'vampire_thrall', 'orc_slinger'].map((id, idx) => this.createCardInstance(id, `tut_p2d_${idx}`))
+        : this.buildDeck(p2Guaranteed, p2CustomDeck);
 
-      const p1Hand = p1Deck.splice(0, 7);
-      const p2Hand = p2Deck.splice(0, 7);
+      const p1Hand = isTutorial
+        ? ['goblin_soldier', 'goblin_archer', 'orc_infantry', 'rust_bucket', 'werewolf_pup', 'merfolk', 'vampire_bat'].map((id, idx) => this.createCardInstance(id, `tut_p1h_${idx}`))
+        : p1Deck.splice(0, 7);
+      const p2Hand = isTutorial
+        ? ['goblin_soldier', 'orc_slinger', 'werewolf_pup', 'merfolk', 'vampire_thrall', 'rust_bucket'].map((id, idx) => this.createCardInstance(id, `tut_p2h_${idx}`))
+        : p2Deck.splice(0, 7);
 
       const playerName = (this.overworld?.playerName && this.overworld.playerName.trim())
         ? this.overworld.playerName.trim()
@@ -597,14 +715,14 @@
         ? this.currentChallenger.name
         : (this.gameMode === '2p' ? 'Player 2' : 'A.I.');
 
-      const firstTeam = Math.random() < 0.5 ? 1 : 2;
+      const firstTeam = isTutorial ? 1 : (Math.random() < 0.5 ? 1 : 2);
       const starterName = firstTeam === 1 ? playerName : oppName;
 
       this.state = {
         round: 1,
         turnTeam: firstTeam,
-        mulliganActive: true,
-        mulliganLeft: 2,
+        mulliganActive: !isTutorial,
+        mulliganLeft: isTutorial ? 0 : 2,
         mulliganSelectedUids: [],
         playedCardThisTurn: false,
         selectedHandUid: null,
@@ -633,19 +751,288 @@
             hand: p2Hand,
             graveyard: [],
             phoenixReborn: false,
-            rows: { melee: [], ranged: [] }
+            rows: {
+              melee: [],
+              ranged: []
+            }
           }
         }
       };
 
       this.elLog.innerHTML = '';
-      this.log(`🃏 Mythos Match started vs. ${oppName}! Draw 7 cards — up to 2 mulligans available.`, 'system');
-      this.log(`🪙 Coin flip: ${starterName} won the flip and will go first in Round 1!`, 'system');
-      if (p1Guaranteed.length) {
-        this.log(`✨ Signature cards in opening hand: ${p1Guaranteed.map(id => GWENT_CARDS[id]?.name).join(', ')}.`, 'system');
+      if (isTutorial) {
+        this.tutorialState = { active: true, step: 0 };
+        this.log(`🎓 Head-to-Head Tutorial started vs. ${oppName}! Follow the walkthrough at the top right.`, 'system');
+        this.applyTutorialStepState(0);
+        this.renderTutorialBanner();
+      } else {
+        this.tutorialState = null;
+        document.getElementById('gwent-tutorial-banner')?.classList.add('hidden');
+        this.log(`🃏 Mythos Match started vs. ${oppName}! Draw 7 cards — up to 2 mulligans available.`, 'system');
+        this.log(`🪙 Coin flip: ${starterName} won the flip and will go first in Round 1!`, 'system');
+        if (p1Guaranteed.length) {
+          this.log(`✨ Signature cards in opening hand: ${p1Guaranteed.map(id => GWENT_CARDS[id]?.name).join(', ')}.`, 'system');
+        }
       }
 
       this.render();
+    }
+
+    // -------------------------------------------------------------------------
+    // Comprehensive Head-to-Head Tutorial Walkthrough
+    // -------------------------------------------------------------------------
+    getTutorialSteps() {
+      const oppName = this.currentChallenger?.name || 'Rocky';
+      return [
+        {
+          title: '1. How Rounds Are Won (Total Power)',
+          body: `Welcome to a head-to-head <b>Mythos</b> walkthrough vs. <b>${oppName}</b>! Each player starts with <b>2 Gems</b> (Best of 3 rounds).<br><br>A round is won by whichever player has the <b>highest total Power of all their monsters</b> across both the <b>Melee</b> and <b>Ranged</b> rows when both players pass!`,
+          tip: 'Watch the score circles on the left: your total monster Power vs. Rocky\'s total monster Power determines who wins the round.'
+        },
+        {
+          title: '2. Whose Turn & Auto-End Turn',
+          body: `Notice the <b>highlighted player</b> — that shows whose turn it currently is!<br><br>Each turn, you can <b>play 1 card</b> from your hand and <b>attack</b> with ready monsters on your board if possible. If no card plays or attacks are possible, your turn <b>automatically ends</b>!`,
+          tip: 'Tactic: Always check for board attacks before ending your turn — once you have no plays or attacks left, control passes automatically.'
+        },
+        {
+          title: '3. Deploying to Melee & Ranged Rows',
+          body: `Monsters belong to either the front <b>Melee</b> row or back <b>Ranged</b> row.<br><br>Click <b>Orc Infantry</b> (or any card) in your hand and click your <b>Melee</b> row to deploy it — or click <b>Next ▸</b> to watch it deploy!`,
+          tip: 'Melee monsters go in the Melee row; Ranged monsters go in the Ranged row. Playing a card adds its Power directly to your round total.'
+        },
+        {
+          title: '4. Melee Cannot Attack Ranged!',
+          body: `${oppName} just played <b>Orc Slinger</b> into his <b>Ranged</b> row!<br><br><b>Key Rule:</b> Monsters on the <b>Melee row CANNOT attack the enemy Ranged row</b> — Melee units can only attack enemy Melee units!`,
+          tip: 'Tactic: Place fragile or high-value monsters in the Ranged row to keep them safe from enemy Melee attackers.'
+        },
+        {
+          title: '5. Ranged Sniping & Lowering Score',
+          body: `Unlike Melee units, <b>Ranged</b> monsters (like your <b>Goblin Archer</b>) can attack across rows!<br><br>Click your <b>Goblin Archer</b> on the Ranged row to strike ${oppName}'s <b>Orc Slinger</b>, or click <b>Next ▸</b> to continue.`,
+          tip: 'Tactic: Damaging or knocking out enemy monsters lowers their total Power for the round and disrupts their row.'
+        },
+        {
+          title: '6. Armor, Shields & Class Synergies',
+          body: `Look at your board:<br>• <b>Armor</b> absorbs damage before Power is lost.<br>• <b>Shield</b> (on <b>Rust Bucket</b>) blocks the first hit completely!<br>• Grouping matching classes (like <b>Goblin Army</b>) triggers bonus synergy effects.`,
+          tip: 'Tactic: Deploy Shielded or Armored monsters early to absorb enemy attacks while protecting your score.'
+        },
+        {
+          title: '7. Card Disadvantage Trap!',
+          body: `Look closely at this board:<br>${oppName} has <b>16 Power</b> on board and just <b>Passed</b> with <b>4 cards</b> left in hand. You have <b>10 Power</b> and <b>5 cards</b> left.<br><br><b>Warning:</b> You do <b>NOT</b> draw a full new hand each round! If you keep playing 2–3 cards just to hit 17+ and win Round 1, you'll enter Round 2 with only <b>2 cards vs. ${oppName}'s 4</b> — a fatal <b>Card Disadvantage</b>!`,
+          tip: 'Tactic: Never burn multiple cards to win a round when your opponent has already passed ahead unless you can win Rounds 2 & 3 too!'
+        },
+        {
+          title: '8. Passing to Keep Card Advantage',
+          body: `Instead of over-spending, click <b>🏳️ Pass</b> (or <b>Next ▸</b>) to concede Round 1 on purpose.<br><br>${oppName} takes Round 1 (spending 1 Gem's worth of cards), while you carry all <b>5 cards</b> into Round 2 against his <b>4 cards</b>!`,
+          tip: 'Tactic: Losing Round 1 while up on cards lets you dictate the pace and win Rounds 2 & 3!'
+        },
+        {
+          title: '9. Passing Ahead to Force Over-Extension',
+          body: `Now look at the reverse scenario: you are winning <b>18–6</b> with <b>4 cards</b> left each!<br><br>Even when winning by a large amount, it is often better to <b>Pass</b> than to keep playing cards! Passing forces ${oppName} to either give up the round OR <b>over-extend</b> by spending 2–3 cards to steal it — leaving him starved for cards in Rounds 2 & 3!`,
+          tip: 'Tactic: Do not "win-more" by dumping extra cards into a round you already control. Make your opponent pay to catch up!'
+        },
+        {
+          title: '10. Round 2 — Card Advantage in Action!',
+          body: `Now we're in <b>Round 2</b>! You kept <b>5 cards vs. ${oppName}'s 4</b>.<br><br>You've learned: <b>highlighted player = active turn</b> (play 1 card + attack, or auto-end), <b>total monster Power</b> wins rounds, <b>Melee cannot attack Ranged</b>, and <b>passing smartly prevents Card Disadvantage</b>. Finish playing out this match or return to ${oppName} to duel for real!`,
+          tip: 'Tip: You can click "🗺️ World" in the Menu anytime, or finish the match right here!',
+          isFinal: true
+        }
+      ];
+    }
+
+    applyTutorialStepState(stepIdx) {
+      if (!this.state) return;
+      const p1 = this.state.players[1];
+      const p2 = this.state.players[2];
+      const oppName = p2.name || 'Rocky';
+
+      // Ensure turn belongs to player during guided steps
+      this.state.turnTeam = 1;
+      this.state.playedCardThisTurn = false;
+      this.state.selectedHandUid = null;
+      this.state.selectedAttackerUid = null;
+      p1.passed = false;
+
+      if (stepIdx === 0) {
+        p1.rows = { melee: [], ranged: [] };
+        p2.rows = { melee: [], ranged: [] };
+        p2.passed = false;
+        this.log(`📖 Step 1: Total Power across Melee + Ranged wins each Best-of-3 round.`, 'system');
+      } else if (stepIdx === 1) {
+        this.log(`📖 Step 2: The highlighted player is active. Play 1 card + attack if possible; otherwise your turn auto-ends.`, 'system');
+      } else if (stepIdx === 2) {
+        if (p1.rows.melee.length === 0 && p1.rows.ranged.length === 0) {
+          this.log(`📖 Step 3: Select Orc Infantry from your hand and place it on the Melee row.`, 'system');
+        }
+      } else if (stepIdx === 3) {
+        // Ensure player has Orc Infantry on melee if they clicked Next without playing
+        if (p1.rows.melee.length === 0) {
+          const idx = p1.hand.findIndex(c => c.id === 'orc_infantry');
+          const card = idx !== -1 ? p1.hand.splice(idx, 1)[0] : this.createCardInstance('orc_infantry', 'tut_p1_orc');
+          p1.rows.melee.push(card);
+        }
+        if (p2.rows.ranged.length === 0) {
+          const idx2 = p2.hand.findIndex(c => c.id === 'orc_slinger');
+          const oppRanged = idx2 !== -1 ? p2.hand.splice(idx2, 1)[0] : this.createCardInstance('orc_slinger', 'tut_p2_slinger');
+          p2.rows.ranged.push(oppRanged);
+        }
+        this.log(`🌙 ${oppName} deployed Orc Slinger to the Ranged row! Melee units cannot attack Ranged units.`, 'team2');
+      } else if (stepIdx === 4) {
+        // Put Goblin Archer on player's ranged row so they can see Ranged targeting across rows
+        if (!p1.rows.ranged.some(c => c.id === 'goblin_archer')) {
+          const idx = p1.hand.findIndex(c => c.id === 'goblin_archer');
+          const archer = idx !== -1 ? p1.hand.splice(idx, 1)[0] : this.createCardInstance('goblin_archer', 'tut_p1_archer');
+          archer.attackedThisTurn = false;
+          p1.rows.ranged.push(archer);
+        }
+        if (p2.rows.melee.length === 0) {
+          p2.rows.melee.push(this.createCardInstance('goblin_soldier', 'tut_p2_gob'));
+        }
+        this.log(`☀️ Your Goblin Archer is on the Ranged row — Ranged units can strike any enemy row!`, 'team1');
+      } else if (stepIdx === 5) {
+        if (!p1.rows.melee.some(c => c.id === 'rust_bucket')) {
+          const idx = p1.hand.findIndex(c => c.id === 'rust_bucket');
+          const rb = idx !== -1 ? p1.hand.splice(idx, 1)[0] : this.createCardInstance('rust_bucket', 'tut_p1_rb');
+          p1.rows.melee.push(rb);
+        }
+        if (!p1.rows.melee.some(c => c.id === 'goblin_soldier')) {
+          const idx = p1.hand.findIndex(c => c.id === 'goblin_soldier');
+          const gs = idx !== -1 ? p1.hand.splice(idx, 1)[0] : this.createCardInstance('goblin_soldier', 'tut_p1_gs');
+          p1.rows.melee.push(gs);
+        }
+        this.log(`🛡️ Rust Bucket brings Shield (blocks first hit), and Goblin Soldier + Goblin Archer share Goblin Army synergy!`, 'system');
+      } else if (stepIdx === 6) {
+        // Set up clear Card Disadvantage example: Rocky 16 power & Passed with 4 cards; Player 10 power with 5 cards
+        p1.rows.melee = [
+          this.createCardInstance('orc_infantry', 'tut_cd_p1_1'),
+          this.createCardInstance('goblin_soldier', 'tut_cd_p1_2')
+        ];
+        p1.rows.melee[0].power = 6;
+        p1.rows.melee[1].power = 4;
+        p1.rows.ranged = [];
+        p1.hand = [
+          this.createCardInstance('werewolf_pup', 'tut_cd_h1'),
+          this.createCardInstance('merfolk', 'tut_cd_h2'),
+          this.createCardInstance('vampire_bat', 'tut_cd_h3'),
+          this.createCardInstance('goblin_archer', 'tut_cd_h4'),
+          this.createCardInstance('rust_bucket', 'tut_cd_h5')
+        ];
+        p2.rows.melee = [
+          this.createCardInstance('orc_infantry', 'tut_cd_p2_1'),
+          this.createCardInstance('goblin_soldier', 'tut_cd_p2_2')
+        ];
+        p2.rows.melee[0].power = 7;
+        p2.rows.melee[1].power = 4;
+        p2.rows.ranged = [
+          this.createCardInstance('orc_slinger', 'tut_cd_p2_3')
+        ];
+        p2.rows.ranged[0].power = 5;
+        p2.hand = [
+          this.createCardInstance('werewolf_pup', 'tut_cd_o1'),
+          this.createCardInstance('merfolk', 'tut_cd_o2'),
+          this.createCardInstance('vampire_thrall', 'tut_cd_o3'),
+          this.createCardInstance('rust_bucket', 'tut_cd_o4')
+        ];
+        p2.passed = true;
+        this.log(`⚠️ Card Disadvantage Example: ${oppName} leads 16–10 and Passed with 4 cards left. Don't burn your 5 cards chasing Round 1!`, 'system');
+      } else if (stepIdx === 7) {
+        this.log(`🏳️ Smart Play: Pass Round 1 to preserve your 5-card vs. 4-card advantage for Rounds 2 & 3!`, 'system');
+      } else if (stepIdx === 8) {
+        // Reverse example: Player is winning 18-6; passing forces Rocky to either concede or over-extend
+        p1.rows.melee = [
+          this.createCardInstance('orc_infantry', 'tut_oa_p1_1'),
+          this.createCardInstance('goblin_soldier', 'tut_oa_p1_2')
+        ];
+        p1.rows.melee[0].power = 8;
+        p1.rows.melee[1].power = 5;
+        p1.rows.ranged = [
+          this.createCardInstance('goblin_archer', 'tut_oa_p1_3')
+        ];
+        p1.rows.ranged[0].power = 5;
+        p1.hand = [
+          this.createCardInstance('werewolf_pup', 'tut_oa_h1'),
+          this.createCardInstance('merfolk', 'tut_oa_h2'),
+          this.createCardInstance('vampire_bat', 'tut_oa_h3'),
+          this.createCardInstance('rust_bucket', 'tut_oa_h4')
+        ];
+        p2.rows.melee = [
+          this.createCardInstance('goblin_soldier', 'tut_oa_p2_1')
+        ];
+        p2.rows.melee[0].power = 6;
+        p2.rows.ranged = [];
+        p2.hand = [
+          this.createCardInstance('werewolf_pup', 'tut_oa_o1'),
+          this.createCardInstance('merfolk', 'tut_oa_o2'),
+          this.createCardInstance('vampire_thrall', 'tut_oa_o3'),
+          this.createCardInstance('rust_bucket', 'tut_oa_o4')
+        ];
+        p2.passed = false;
+        this.log(`🎯 Leading 18–6! Passing now forces ${oppName} to either lose the round or over-extend 2–3 cards to steal it.`, 'system');
+      } else if (stepIdx === 9) {
+        // Transition to Round 2 with player holding 5 cards vs Rocky's 4 cards
+        this.state.round = 2;
+        p1.gems = 1;
+        p2.gems = 2;
+        p2.roundWins = 1;
+        p1.passed = false;
+        p2.passed = false;
+        p1.hand = [
+          this.createCardInstance('werewolf_pup', 'tut_r2_h1'),
+          this.createCardInstance('merfolk', 'tut_r2_h2'),
+          this.createCardInstance('vampire_bat', 'tut_r2_h3'),
+          this.createCardInstance('goblin_archer', 'tut_r2_h4'),
+          this.createCardInstance('rust_bucket', 'tut_r2_h5')
+        ];
+        p1.rows = { melee: [], ranged: [] };
+        p2.rows = { melee: [], ranged: [] };
+        this.log(`🔔 Round 2 Started! You kept 5 cards vs. ${oppName}'s 4 — you now hold Card Advantage!`, 'system');
+      }
+      this.render();
+    }
+
+    renderTutorialBanner() {
+      const banner = document.getElementById('gwent-tutorial-banner');
+      if (!banner) return;
+      if (!this.tutorialState?.active) {
+        banner.classList.add('hidden');
+        return;
+      }
+      const steps = this.getTutorialSteps();
+      const idx = Math.max(0, Math.min(steps.length - 1, this.tutorialState.step || 0));
+      const step = steps[idx];
+      const pillEl = document.getElementById('tut-step-pill');
+      const titleEl = document.getElementById('tut-title');
+      const bodyEl = document.getElementById('tut-body');
+      const tipEl = document.getElementById('tut-tip');
+      const nextBtn = document.getElementById('tut-btn-next');
+      if (pillEl) pillEl.textContent = `🎓 Tutorial • Step ${idx + 1}/${steps.length}`;
+      if (titleEl) titleEl.textContent = step.title;
+      if (bodyEl) bodyEl.innerHTML = step.body;
+      if (tipEl) tipEl.textContent = step.tip;
+      if (nextBtn) nextBtn.textContent = step.isFinal ? 'Finish Guide & Play! ▸' : 'Next ▸';
+      banner.classList.remove('hidden');
+    }
+
+    advanceTutorialStep() {
+      if (!this.tutorialState?.active) return;
+      const steps = this.getTutorialSteps();
+      if (this.tutorialState.step + 1 >= steps.length) {
+        this.closeTutorialBanner(true);
+        return;
+      }
+      this.tutorialState.step += 1;
+      if (window.sounds?.playClick) window.sounds.playClick();
+      this.applyTutorialStepState(this.tutorialState.step);
+      this.renderTutorialBanner();
+    }
+
+    closeTutorialBanner(markCompleted = true) {
+      if (this.tutorialState) {
+        this.tutorialState.active = false;
+      }
+      document.getElementById('gwent-tutorial-banner')?.classList.add('hidden');
+      if (markCompleted && this.overworld) {
+        this.overworld.hasCompletedTutorial = true;
+        this.overworld.saveWorldData?.(this.overworld.draftAppearance);
+      }
     }
 
     // -------------------------------------------------------------------------
@@ -1279,6 +1666,10 @@
       // Resolve Card Ability
       this.resolveCardAbility(team, card, targetRow, prePlayMyScore, prePlayOppScore, alliesOnBoardBefore);
 
+      if (team === 1 && this.tutorialState?.active && this.tutorialState.step === 2) {
+        this.advanceTutorialStep();
+      }
+
       this.render();
       this.checkAutoEndTurn(team);
     }
@@ -1290,6 +1681,7 @@
 
       this.state.pendingOptionalPlay = true;
       document.getElementById('gwent-optional-play-modal')?.remove();
+      document.getElementById('gwent-forced-pass-modal')?.remove();
 
       const overlay = document.createElement('div');
       overlay.id = 'gwent-optional-play-modal';
@@ -1371,6 +1763,7 @@
 
       this.state.pendingOptionalPlay = true;
       document.getElementById('gwent-optional-play-modal')?.remove();
+      document.getElementById('gwent-forced-pass-modal')?.remove();
 
       const overlay = document.createElement('div');
       overlay.id = 'gwent-optional-play-modal';
@@ -1436,6 +1829,7 @@
 
       this.state.pendingOptionalPlay = true;
       document.getElementById('gwent-optional-play-modal')?.remove();
+      document.getElementById('gwent-forced-pass-modal')?.remove();
 
       const overlay = document.createElement('div');
       overlay.id = 'gwent-optional-play-modal';
@@ -1614,6 +2008,11 @@
       const player = this.state.players[team];
       if (player.passed) return;
 
+      if (!this.state.playedCardThisTurn) {
+        this.showForcedPassWarning(team);
+        return;
+      }
+
       this.state.selectedHandUid = null;
       this.state.selectedAttackerUid = null;
       this.hideAbilityPopup();
@@ -1623,9 +2022,113 @@
       this.advanceTurn();
     }
 
+    showForcedPassWarning(team = this.state?.turnTeam) {
+      if (this.isMatchOver || !this.state || this.state.mulliganActive) return;
+      const player = this.state.players[team];
+      const oppTeam = team === 1 ? 2 : 1;
+      const opp = this.state.players[oppTeam];
+      if (!player || player.passed) return;
+
+      const myScore = this.getTotalScore(team);
+      const oppScore = this.getTotalScore(oppTeam);
+      const oppPassed = Boolean(opp?.passed);
+
+      let outcomeBadge = '';
+      let outcomeColor = '#fcd34d';
+      let outcomeBg = 'rgba(245, 158, 11, 0.14)';
+      let outcomeBorder = 'rgba(251, 191, 36, 0.55)';
+      let outcomeDetail = '';
+
+      if (myScore > oppScore) {
+        outcomeBadge = oppPassed ? '🏆 YOU WOULD WIN THIS ROUND' : '📈 CURRENTLY WINNING (AHEAD)';
+        outcomeColor = '#86efac';
+        outcomeBg = 'rgba(22, 163, 74, 0.16)';
+        outcomeBorder = 'rgba(74, 222, 128, 0.55)';
+        outcomeDetail = oppPassed
+          ? `${opp.name} has already passed. Passing now ends Round ${this.state.round} and you <b>WIN</b> (${myScore} vs ${oppScore})!`
+          : `You are ahead (${myScore} vs ${oppScore}) and would <b>WIN</b> if the round ended now, though ${opp.name} can still play cards.`;
+      } else if (myScore < oppScore) {
+        outcomeBadge = oppPassed ? '💀 YOU WOULD LOSE THIS ROUND' : '⚠️ CURRENTLY LOSING (BEHIND)';
+        outcomeColor = '#fca5a5';
+        outcomeBg = 'rgba(220, 38, 38, 0.16)';
+        outcomeBorder = 'rgba(248, 113, 113, 0.55)';
+        outcomeDetail = oppPassed
+          ? `${opp.name} has already passed. Passing now ends Round ${this.state.round} and you <b>LOSE</b> (${myScore} vs ${oppScore}), costing you a Life Gem!`
+          : `You are behind (${myScore} vs ${oppScore}) and would <b>LOSE</b> Round ${this.state.round} if forced to pass now (and ${opp.name} can still play more cards).`;
+      } else {
+        outcomeBadge = oppPassed ? '⚖️ ROUND WOULD END IN A DRAW' : '⚖️ CURRENTLY TIED (DRAW)';
+        outcomeColor = '#fde68a';
+        outcomeBg = 'rgba(234, 179, 8, 0.16)';
+        outcomeBorder = 'rgba(250, 204, 21, 0.55)';
+        outcomeDetail = oppPassed
+          ? `${opp.name} has already passed. Passing now ends Round ${this.state.round} in a <b>DRAW</b> (${myScore} – ${oppScore}) — both sides lose a Life Gem.`
+          : `The score is tied (${myScore} – ${oppScore}). A draw costs both sides a Life Gem, and ${opp.name} can still play cards.`;
+      }
+
+      document.getElementById('gwent-forced-pass-modal')?.remove();
+      window.soundFX?.playClick?.();
+
+      const overlay = document.createElement('div');
+      overlay.id = 'gwent-forced-pass-modal';
+      overlay.className = 'modal-overlay';
+      overlay.style.zIndex = '130';
+      overlay.innerHTML = `
+        <div style="max-width:460px; width:92%; background:linear-gradient(180deg,#231912,#120d09); border:2px solid #d97706; border-radius:14px; padding:20px; box-shadow:0 20px 54px rgba(0,0,0,0.88), inset 0 1px 0 rgba(254,243,199,0.14); color:#fef3c7;">
+          <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+            <span style="font-size:24px; line-height:1;">⚠️</span>
+            <div>
+              <div style="font-family:'Cinzel',serif; font-size:17px; font-weight:800; color:#fde68a; letter-spacing:0.4px;">FORCED PASS WARNING</div>
+              <div style="font-size:12px; color:#d6cbb8;">No card played from your hand this turn</div>
+            </div>
+          </div>
+          <p style="font-size:13.5px; line-height:1.45; color:#e7dcc8; margin:0 0 12px 0;">
+            You did not play a card this turn. Ending your turn now will <b>force you to pass</b> for the rest of Round ${this.state.round}.
+          </p>
+          <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.35); border:1px solid rgba(217,119,6,0.35); border-radius:10px; padding:10px 14px; margin-bottom:12px;">
+            <div style="text-align:center; flex:1;">
+              <div style="font-size:11px; color:#cbbba0; text-transform:uppercase;">${player.name}</div>
+              <div style="font-size:22px; font-weight:800; color:#fde68a;">${myScore}</div>
+            </div>
+            <div style="font-size:12px; font-weight:700; color:#a89880; padding:0 10px;">VS</div>
+            <div style="text-align:center; flex:1;">
+              <div style="font-size:11px; color:#cbbba0; text-transform:uppercase;">${opp.name}${oppPassed ? ' (Passed)' : ''}</div>
+              <div style="font-size:22px; font-weight:800; color:#93c5fd;">${oppScore}</div>
+            </div>
+          </div>
+          <div style="background:${outcomeBg}; border:1.5px solid ${outcomeBorder}; border-radius:10px; padding:10px 12px; margin-bottom:16px;">
+            <div style="font-size:12.5px; font-weight:800; color:${outcomeColor}; letter-spacing:0.3px; margin-bottom:4px;">${outcomeBadge}</div>
+            <div style="font-size:12.5px; line-height:1.4; color:#f5ebd6;">${outcomeDetail}</div>
+          </div>
+          <div style="display:flex; justify-content:flex-end; gap:10px; flex-wrap:wrap;">
+            <button type="button" id="btn-forced-pass-cancel" class="ui-btn secondary" style="padding:8px 14px;">Keep Playing</button>
+            <button type="button" id="btn-forced-pass-confirm" class="ui-btn primary-btn" style="padding:8px 16px; background:linear-gradient(135deg,#b45309,#d97706); border-color:#fbbf24;">Confirm Forced Pass</button>
+          </div>
+        </div>
+      `;
+
+      document.body.appendChild(overlay);
+
+      overlay.querySelector('#btn-forced-pass-cancel')?.addEventListener('click', () => {
+        window.soundFX?.playClick?.();
+        overlay.remove();
+      });
+      overlay.querySelector('#btn-forced-pass-confirm')?.addEventListener('click', () => {
+        overlay.remove();
+        this.passRound(team);
+      });
+    }
+
     passRound(team = this.state?.turnTeam) {
       if (this.isMatchOver || !this.state || this.state.mulliganActive) return;
       if (team !== this.state.turnTeam) return;
+
+      if (team === 1 && this.tutorialState?.active && [6, 7, 8].includes(this.tutorialState.step)) {
+        const nextStep = this.tutorialState.step === 8 ? 9 : 8;
+        this.tutorialState.step = nextStep;
+        this.applyTutorialStepState(nextStep);
+        this.renderTutorialBanner();
+        return;
+      }
 
       const player = this.state.players[team];
       if (player.passed) return;
@@ -1818,6 +2321,7 @@
       this.state.playedCardThisTurn = false;
       this.state.pendingOptionalPlay = false;
       document.getElementById('gwent-optional-play-modal')?.remove();
+      document.getElementById('gwent-forced-pass-modal')?.remove();
       this.state.selectedHandUid = null;
       this.state.selectedAttackerUid = null;
 
@@ -2020,8 +2524,26 @@
       const msgEl = document.getElementById('winner-message');
       if (titleEl) titleEl.textContent = winnerTitle;
 
-      // Preserve all Overworld challenger reward flows
-      if (this.currentChallenger?.id === 'pluto' && msgEl) {
+      // Preserve all Overworld challenger & tournament reward flows
+      if (this.currentChallenger?.isTutorial && msgEl) {
+        this.closeTutorialBanner(true);
+        const returnOverworldBtn = document.getElementById('btn-return-overworld');
+        if (returnOverworldBtn) returnOverworldBtn.innerHTML = '🏠 Return to Rocky\'s House';
+        msgEl.innerHTML = isPlayerVictory
+          ? `🎓 <b>Tutorial Complete!</b> You won the practice match against <b>${p2.name}</b> — head back to challenge him for real!`
+          : `🎓 <b>Tutorial Complete!</b> Great practice run against <b>${p2.name}</b> — now you're ready to challenge him for real!`;
+      } else if (this.currentChallenger?.tournamentContext?.type === 'booster_bash' && msgEl) {
+        document.getElementById('btn-rematch')?.classList.add('hidden');
+        const returnOverworldBtn = document.getElementById('btn-return-overworld');
+        if (returnOverworldBtn) returnOverworldBtn.innerHTML = '🃏 Return to Leo\'s Shop';
+        if (!this._parkTourneyMatchRecorded && this.overworld?.recordBoosterBashMatchResult) {
+          this._parkTourneyMatchRecorded = true;
+          this.overworld.recordBoosterBashMatchResult(isPlayerVictory);
+        }
+        msgEl.innerHTML = isPlayerVictory
+          ? `🏆 You defeated <b>${p2.name}</b> in Match ${this.currentChallenger.tournamentContext.round || 1}/3 of the <b>Booster Bash</b>!`
+          : `⚔️ <b>${p2.name}</b> won Match ${this.currentChallenger.tournamentContext.round || 1}/3 of the <b>Booster Bash</b>!`;
+      } else if (this.currentChallenger?.id === 'pluto' && msgEl) {
         if (isPlayerVictory) {
           const activeEvent = this.overworld?.getCurrentDayEvent?.();
           const isWagerTuesday = activeEvent?.id === 'wager_tuesday';
@@ -2093,13 +2615,13 @@
       }
 
       const activeEvent = this.overworld?.getCurrentDayEvent?.();
-      if (isPlayerVictory && activeEvent?.id === 'league_night' && this.overworld && msgEl) {
+      if (!this.currentChallenger?.isTutorial && isPlayerVictory && activeEvent?.id === 'league_night' && this.overworld && msgEl) {
         this.overworld.gold = Math.round(((this.overworld.gold || 0) + 1.50) * 100) / 100;
         this.overworld.updateHUDSaveInfo?.();
         msgEl.innerHTML += `<div style="margin-top: 10px; color: #93c5fd;">🏆 Friday Night Mythos League Bounty: +$1.50!</div>`;
       }
 
-      if (this.gameMode === 'ai' && this.overworld) {
+      if (!this.currentChallenger?.isTutorial && this.gameMode === 'ai' && this.overworld) {
         if (isPlayerVictory) {
           this.overworld.wins = (this.overworld.wins || 0) + 1;
         } else {
@@ -2225,6 +2747,9 @@
         && !(this.gameMode === 'ai' && this.state.turnTeam !== 1)
         && Boolean(selectedCard);
       [1, 2].forEach(team => {
+        const boardTotalEl = document.getElementById(`board-total-score-${team}`);
+        if (boardTotalEl) boardTotalEl.textContent = this.getTotalScore(team);
+
         ['melee', 'ranged'].forEach(rk => {
           const scoreEl = document.getElementById(`score-${team}-${rk}`);
           if (scoreEl) scoreEl.textContent = this.getRowScore(team, rk);
@@ -2652,6 +3177,8 @@
       document.getElementById('hud-btn-end-turn')?.addEventListener('click', () => this.endTurn());
       document.getElementById('btn-gwent-pass')?.addEventListener('click', () => this.passRound());
       document.getElementById('hud-btn-pass')?.addEventListener('click', () => this.passRound());
+      document.getElementById('tut-btn-next')?.addEventListener('click', () => this.advanceTutorialStep());
+      document.getElementById('tut-btn-skip')?.addEventListener('click', () => this.closeTutorialBanner(true));
       document.getElementById('btn-clear-log')?.addEventListener('click', () => {
         if (this.elLog) this.elLog.innerHTML = '';
       });
