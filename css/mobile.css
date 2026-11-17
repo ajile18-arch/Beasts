@@ -848,3 +848,86 @@ select {
   padding: 3px 1px !important;
   min-width: 0 !important;
 }
+
+/* ============================================================================
+   Adaptive Hardware Safe-Area & Phone-Size Margin System
+   Automatically adapts to notches, Dynamic Island, home bars, and screen sizes.
+   ============================================================================ */
+:root {
+  --sat: env(safe-area-inset-top, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  --mob-edge-x: 8px;
+  --mob-edge-y: 8px;
+}
+
+/* Compact phones (e.g. iPhone SE / mini) */
+@media (max-width: 380px) {
+  :root {
+    --mob-edge-x: 5px;
+    --mob-edge-y: 5px;
+  }
+}
+
+/* Large phones (e.g. Pro Max / Plus / Galaxy Ultra) */
+@media (min-width: 412px) and (orientation: portrait) {
+  :root {
+    --mob-edge-x: 12px;
+    --mob-edge-y: 10px;
+  }
+}
+
+/* Landscape phones with side notches / rounded corners */
+@media (orientation: landscape) and (max-height: 520px) {
+  :root {
+    --mob-edge-x: 10px;
+    --mob-edge-y: 6px;
+  }
+}
+
+.game-header {
+  padding-top: max(6px, var(--sat)) !important;
+  padding-left: calc(var(--mob-edge-x) + var(--sal)) !important;
+  padding-right: calc(var(--mob-edge-x) + var(--sar)) !important;
+}
+
+#overworld-view,
+#arena-view {
+  padding-left: var(--sal) !important;
+  padding-right: var(--sar) !important;
+}
+
+.ow-bottom-deck {
+  padding-left: calc(var(--mob-edge-x) + var(--sal)) !important;
+  padding-right: calc(var(--mob-edge-x) + var(--sar)) !important;
+  padding-bottom: calc(var(--mob-edge-y) + var(--sab)) !important;
+}
+
+.ow-clock-widget {
+  top: calc(8px + var(--sat)) !important;
+  left: calc(8px + var(--sal)) !important;
+}
+
+.gwent-hud-bar {
+  top: calc(6px + var(--sat)) !important;
+  left: calc(8px + var(--sal)) !important;
+  right: calc(8px + var(--sar)) !important;
+}
+
+.gwent-tutorial-banner {
+  top: calc(48px + var(--sat)) !important;
+  left: calc(var(--mob-edge-x) + var(--sal)) !important;
+  right: calc(var(--mob-edge-x) + var(--sar)) !important;
+}
+
+.gwent-hand-bar,
+.gwent-player-hand {
+  padding-left: calc(var(--mob-edge-x) + var(--sal)) !important;
+  padding-right: calc(var(--mob-edge-x) + var(--sar)) !important;
+  padding-bottom: calc(6px + var(--sab)) !important;
+}
+
+.ui-modal-backdrop {
+  padding: calc(10px + var(--sat)) calc(var(--mob-edge-x) + var(--sar)) calc(10px + var(--sab)) calc(var(--mob-edge-x) + var(--sal)) !important;
+}
