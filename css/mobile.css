@@ -219,6 +219,8 @@ select {
 
   /* Stretch 4-row battlefield to maximize board visibility */
   .gwent-battlefield {
+    width: 100% !important;
+    box-sizing: border-box !important;
     padding: 6px !important;
     gap: 4px !important;
     flex: 1 1 auto !important;
@@ -229,26 +231,32 @@ select {
   }
 
   .gwent-side {
-    gap: 6px !important;
+    position: relative !important;
+    gap: 4px !important;
     flex: 1 1 0 !important;
     min-height: 0 !important;
     width: 100% !important;
     display: flex !important;
-    flex-direction: row !important;
+    flex-direction: column !important;
     align-items: stretch !important;
   }
 
   .gwent-side-score-circle {
-    align-self: center !important;
-    width: 36px !important;
-    height: 36px !important;
-    font-size: 15px !important;
-    flex-shrink: 0 !important;
+    position: absolute !important;
+    left: 4px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    z-index: 5 !important;
+    width: 32px !important;
+    height: 32px !important;
+    font-size: 13.5px !important;
+    pointer-events: none !important;
   }
 
   .gwent-side-rows {
     flex: 1 1 0 !important;
     min-width: 0 !important;
+    min-height: 0 !important;
     width: 100% !important;
     display: flex !important;
     flex-direction: column !important;
@@ -258,7 +266,7 @@ select {
   .gwent-row {
     width: 100% !important;
     box-sizing: border-box !important;
-    padding: 4px 6px !important;
+    padding: 4px 6px 4px 40px !important;
     gap: 6px !important;
     min-height: 60px !important;
     max-height: none !important;
@@ -967,9 +975,38 @@ select {
 }
 
 .gwent-tutorial-banner {
-  top: calc(48px + var(--sat)) !important;
-  left: calc(var(--mob-edge-x) + var(--sal)) !important;
-  right: calc(var(--mob-edge-x) + var(--sar)) !important;
+  position: relative !important;
+  top: auto !important;
+  bottom: auto !important;
+  left: auto !important;
+  right: auto !important;
+  width: calc(100% - (var(--mob-edge-x) * 2)) !important;
+  margin: calc(40px + var(--sat)) auto 4px auto !important;
+  padding: 8px 10px !important;
+  flex-shrink: 0 !important;
+  max-height: 26dvh !important;
+  overflow-y: auto !important;
+  box-sizing: border-box !important;
+}
+
+.gwent-tutorial-banner.collapsed {
+  max-height: none !important;
+  overflow: visible !important;
+  padding: 6px 10px !important;
+}
+
+#arena-view:has(.gwent-tutorial-banner:not(.hidden)) .gwent-board-container {
+  padding-top: 4px !important;
+  flex: 1 1 0 !important;
+  min-height: 0 !important;
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  .gwent-tutorial-banner {
+    margin: calc(34px + var(--sat)) auto 2px auto !important;
+    max-height: 30dvh !important;
+    padding: 6px 10px !important;
+  }
 }
 
 .gwent-hand-bar,

@@ -801,6 +801,7 @@
         },
         {
           title: '4. Melee Cannot Attack Ranged!',
+          placement: 'bottom',
           body: `${oppName} just played <b>Orc Slinger</b> into his <b>Ranged</b> row!<br><br><b>Key Rule:</b> Monsters on the <b>Melee row CANNOT attack the enemy Ranged row</b> — Melee units can only attack enemy Melee units!`,
           tip: 'Tactic: Place fragile or high-value monsters in the Ranged row to keep them safe from enemy Melee attackers.'
         },
@@ -816,6 +817,7 @@
         },
         {
           title: '7. Card Disadvantage Trap!',
+          placement: 'bottom',
           body: `Look closely at this board:<br>${oppName} has <b>16 Power</b> on board and just <b>Passed</b> with <b>4 cards</b> left in hand. You have <b>10 Power</b> and <b>5 cards</b> left.<br><br><b>Warning:</b> You do <b>NOT</b> draw a full new hand each round! If you keep playing 2–3 cards just to hit 17+ and win Round 1, you'll enter Round 2 with only <b>2 cards vs. ${oppName}'s 4</b> — a fatal <b>Card Disadvantage</b>!`,
           tip: 'Tactic: Never burn multiple cards to win a round when your opponent has already passed ahead unless you can win Rounds 2 & 3 too!'
         },
@@ -1008,6 +1010,10 @@
       if (bodyEl) bodyEl.innerHTML = step.body;
       if (tipEl) tipEl.textContent = step.tip;
       if (nextBtn) nextBtn.textContent = step.isFinal ? 'Finish Guide & Play! ▸' : 'Next ▸';
+      banner.dataset.placement = step.placement || 'top';
+      banner.classList.remove('collapsed');
+      const collapseBtn = document.getElementById('tut-btn-collapse');
+      if (collapseBtn) collapseBtn.textContent = '▾';
       banner.classList.remove('hidden');
     }
 
@@ -3179,6 +3185,13 @@
       document.getElementById('hud-btn-pass')?.addEventListener('click', () => this.passRound());
       document.getElementById('tut-btn-next')?.addEventListener('click', () => this.advanceTutorialStep());
       document.getElementById('tut-btn-skip')?.addEventListener('click', () => this.closeTutorialBanner(true));
+      document.getElementById('tut-btn-collapse')?.addEventListener('click', () => {
+        const banner = document.getElementById('gwent-tutorial-banner');
+        const btn = document.getElementById('tut-btn-collapse');
+        if (!banner) return;
+        const isCollapsed = banner.classList.toggle('collapsed');
+        if (btn) btn.textContent = isCollapsed ? '▸' : '▾';
+      });
       document.getElementById('btn-clear-log')?.addEventListener('click', () => {
         if (this.elLog) this.elLog.innerHTML = '';
       });
