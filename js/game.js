@@ -446,6 +446,7 @@
     returnToOverworld() {
       if (this.aiTimeout) clearTimeout(this.aiTimeout);
       this.tutorialState = null;
+      this.clearTutorialFocusGlow();
       document.getElementById('gwent-tutorial-banner')?.classList.add('hidden');
       this.currentView = 'overworld';
       this.elWinnerModal?.classList.add('hidden');
@@ -785,56 +786,66 @@
       const oppName = this.currentChallenger?.name || 'Rocky';
       return [
         {
-          title: '1. How Rounds Are Won (Total Power)',
-          body: `Welcome to a head-to-head <b>Mythos</b> walkthrough vs. <b>${oppName}</b>! Each player starts with <b>2 Gems</b> (Best of 3 rounds).<br><br>A round is won by whichever player has the <b>highest total Power of all their monsters</b> across both the <b>Melee</b> and <b>Ranged</b> rows when both players pass!`,
-          tip: 'Watch the score circles on the left: your total monster Power vs. Rocky\'s total monster Power determines who wins the round.'
+          title: '1. How Rounds Are Won',
+          focusIds: ['board-total-score-1', 'board-total-score-2'],
+          body: `Best of 3 rounds (<b>2 Gems</b> each). When both players pass, the <b>highest total monster Power</b> (Melee + Ranged) wins the round!`,
+          tip: 'Look at the glowing score circles on the left — they add both your rows together.'
         },
         {
-          title: '2. Whose Turn & Auto-End Turn',
-          body: `Notice the <b>highlighted player</b> — that shows whose turn it currently is!<br><br>Each turn, you can <b>play 1 card</b> from your hand and <b>attack</b> with ready monsters on your board if possible. If no card plays or attacks are possible, your turn <b>automatically ends</b>!`,
-          tip: 'Tactic: Always check for board attacks before ending your turn — once you have no plays or attacks left, control passes automatically.'
+          title: '2. Active Turn & Auto-End',
+          focusIds: ['gwent-p1-box', 'hud-btn-end-turn'],
+          body: `The <b>highlighted player</b> is whose turn it is. Play <b>1 card</b> and <b>attack</b> if possible — if no plays or attacks remain, your turn <b>ends automatically</b>.`,
+          tip: 'Always check for board attacks before your turn finishes!'
         },
         {
-          title: '3. Deploying to Melee & Ranged Rows',
-          body: `Monsters belong to either the front <b>Melee</b> row or back <b>Ranged</b> row.<br><br>Click <b>Orc Infantry</b> (or any card) in your hand and click your <b>Melee</b> row to deploy it — or click <b>Next ▸</b> to watch it deploy!`,
-          tip: 'Melee monsters go in the Melee row; Ranged monsters go in the Ranged row. Playing a card adds its Power directly to your round total.'
+          title: '3. Playing to Melee & Ranged',
+          focusIds: ['gwent-row-1-melee'],
+          body: `Click <b>Orc Infantry</b> in your hand, then click your glowing <b>Melee row</b> to deploy it (or click <b>Next ▸</b>).`,
+          tip: 'Melee cards go in front; Ranged cards go in back. Each adds its Power to your total.'
         },
         {
-          title: '4. Melee Cannot Attack Ranged!',
+          title: '4. Melee Cannot Attack Ranged',
           placement: 'bottom',
-          body: `${oppName} just played <b>Orc Slinger</b> into his <b>Ranged</b> row!<br><br><b>Key Rule:</b> Monsters on the <b>Melee row CANNOT attack the enemy Ranged row</b> — Melee units can only attack enemy Melee units!`,
-          tip: 'Tactic: Place fragile or high-value monsters in the Ranged row to keep them safe from enemy Melee attackers.'
+          focusIds: ['gwent-row-2-ranged'],
+          body: `${oppName} played <b>Orc Slinger</b> in his <b>Ranged row</b>. <b>Melee monsters CANNOT attack the enemy Ranged row</b> — only Melee!`,
+          tip: 'Tactic: Hide fragile or high-value units in your Ranged row away from enemy Melee attackers.'
         },
         {
-          title: '5. Ranged Sniping & Lowering Score',
-          body: `Unlike Melee units, <b>Ranged</b> monsters (like your <b>Goblin Archer</b>) can attack across rows!<br><br>Click your <b>Goblin Archer</b> on the Ranged row to strike ${oppName}'s <b>Orc Slinger</b>, or click <b>Next ▸</b> to continue.`,
-          tip: 'Tactic: Damaging or knocking out enemy monsters lowers their total Power for the round and disrupts their row.'
+          title: '5. Ranged Attacks & Scoring',
+          focusIds: ['gwent-row-1-ranged'],
+          body: `<b>Ranged</b> units (like your <b>Goblin Archer</b>) can strike <b>either enemy row</b>! Click Goblin Archer to attack, or click <b>Next ▸</b>.`,
+          tip: 'Tactic: Damaging or defeating enemy monsters directly lowers their round total.'
         },
         {
-          title: '6. Armor, Shields & Class Synergies',
-          body: `Look at your board:<br>• <b>Armor</b> absorbs damage before Power is lost.<br>• <b>Shield</b> (on <b>Rust Bucket</b>) blocks the first hit completely!<br>• Grouping matching classes (like <b>Goblin Army</b>) triggers bonus synergy effects.`,
-          tip: 'Tactic: Deploy Shielded or Armored monsters early to absorb enemy attacks while protecting your score.'
+          title: '6. Armor, Shields & Synergies',
+          focusIds: ['gwent-row-1-melee'],
+          body: `• <b>Armor</b> absorbs hits before Power is lost.<br>• <b>Shield</b> (Rust Bucket) blocks the first hit.<br>• Matching classes (e.g. <b>Goblin Army</b>) trigger synergies.`,
+          tip: 'Tactic: Play Shielded or Armored units early to soak enemy attacks.'
         },
         {
-          title: '7. Card Disadvantage Trap!',
+          title: '7. Card Disadvantage Trap',
           placement: 'bottom',
-          body: `Look closely at this board:<br>${oppName} has <b>16 Power</b> on board and just <b>Passed</b> with <b>4 cards</b> left in hand. You have <b>10 Power</b> and <b>5 cards</b> left.<br><br><b>Warning:</b> You do <b>NOT</b> draw a full new hand each round! If you keep playing 2–3 cards just to hit 17+ and win Round 1, you'll enter Round 2 with only <b>2 cards vs. ${oppName}'s 4</b> — a fatal <b>Card Disadvantage</b>!`,
-          tip: 'Tactic: Never burn multiple cards to win a round when your opponent has already passed ahead unless you can win Rounds 2 & 3 too!'
+          focusIds: ['board-total-score-2', 'gwent-p2-hand-count'],
+          body: `${oppName} leads <b>16–10</b> and <b>Passed</b> with <b>4 cards</b> left. You have <b>5 cards</b> — and you do <b>NOT</b> draw a full new hand each round!`,
+          tip: 'Tactic: Burning 2–3 cards just to win Round 1 leaves you down 2 vs. 4 in Round 2 (Card Disadvantage)!'
         },
         {
-          title: '8. Passing to Keep Card Advantage',
-          body: `Instead of over-spending, click <b>🏳️ Pass</b> (or <b>Next ▸</b>) to concede Round 1 on purpose.<br><br>${oppName} takes Round 1 (spending 1 Gem's worth of cards), while you carry all <b>5 cards</b> into Round 2 against his <b>4 cards</b>!`,
-          tip: 'Tactic: Losing Round 1 while up on cards lets you dictate the pace and win Rounds 2 & 3!'
+          title: '8. Passing to Save Your Hand',
+          focusIds: ['hud-btn-pass', 'btn-gwent-pass'],
+          body: `Click <b>🏳️ Pass</b> (or <b>Next ▸</b>) to concede Round 1 on purpose and carry all <b>5 cards</b> into Round 2 against ${oppName}'s <b>4</b>!`,
+          tip: 'Tactic: Losing Round 1 with extra cards lets you control Rounds 2 & 3.'
         },
         {
-          title: '9. Passing Ahead to Force Over-Extension',
-          body: `Now look at the reverse scenario: you are winning <b>18–6</b> with <b>4 cards</b> left each!<br><br>Even when winning by a large amount, it is often better to <b>Pass</b> than to keep playing cards! Passing forces ${oppName} to either give up the round OR <b>over-extend</b> by spending 2–3 cards to steal it — leaving him starved for cards in Rounds 2 & 3!`,
-          tip: 'Tactic: Do not "win-more" by dumping extra cards into a round you already control. Make your opponent pay to catch up!'
+          title: '9. Passing Ahead (Force Over-Extend)',
+          focusIds: ['hud-btn-pass', 'btn-gwent-pass'],
+          body: `Now you lead <b>18–6</b>! Passing while far ahead forces ${oppName} to either give up the round OR <b>over-extend 2–3 cards</b> to steal it.`,
+          tip: 'Tactic: Don\'t waste extra cards on a round you already control!'
         },
         {
-          title: '10. Round 2 — Card Advantage in Action!',
-          body: `Now we're in <b>Round 2</b>! You kept <b>5 cards vs. ${oppName}'s 4</b>.<br><br>You've learned: <b>highlighted player = active turn</b> (play 1 card + attack, or auto-end), <b>total monster Power</b> wins rounds, <b>Melee cannot attack Ranged</b>, and <b>passing smartly prevents Card Disadvantage</b>. Finish playing out this match or return to ${oppName} to duel for real!`,
-          tip: 'Tip: You can click "🗺️ World" in the Menu anytime, or finish the match right here!',
+          title: '10. Round 2 — Card Advantage!',
+          focusIds: ['gwent-player-hand'],
+          body: `It's <b>Round 2</b> and you hold <b>5 cards vs. ${oppName}'s 4</b>! Finish this practice match or click <b>Skip</b> / <b>🗺️ World</b> to duel for real.`,
+          tip: 'Summary: Total Power wins rounds • Melee can\'t hit Ranged • Protect Card Advantage!',
           isFinal: true
         }
       ];
@@ -990,9 +1001,14 @@
       this.render();
     }
 
+    clearTutorialFocusGlow() {
+      document.querySelectorAll('.tut-focus-glow').forEach(el => el.classList.remove('tut-focus-glow'));
+    }
+
     renderTutorialBanner() {
       const banner = document.getElementById('gwent-tutorial-banner');
       if (!banner) return;
+      this.clearTutorialFocusGlow();
       if (!this.tutorialState?.active) {
         banner.classList.add('hidden');
         return;
@@ -1005,16 +1021,34 @@
       const bodyEl = document.getElementById('tut-body');
       const tipEl = document.getElementById('tut-tip');
       const nextBtn = document.getElementById('tut-btn-next');
-      if (pillEl) pillEl.textContent = `🎓 Tutorial • Step ${idx + 1}/${steps.length}`;
+      const prevBtn = document.getElementById('tut-btn-prev');
+      const progressFill = document.getElementById('tut-progress-fill');
+      if (pillEl) pillEl.textContent = `🎓 Step ${idx + 1} / ${steps.length}`;
       if (titleEl) titleEl.textContent = step.title;
       if (bodyEl) bodyEl.innerHTML = step.body;
       if (tipEl) tipEl.textContent = step.tip;
-      if (nextBtn) nextBtn.textContent = step.isFinal ? 'Finish Guide & Play! ▸' : 'Next ▸';
+      if (nextBtn) nextBtn.textContent = step.isFinal ? 'Finish & Play! ▸' : 'Next ▸';
+      if (prevBtn) prevBtn.disabled = idx === 0;
+      if (progressFill) progressFill.style.width = `${((idx + 1) / steps.length) * 100}%`;
       banner.dataset.placement = step.placement || 'top';
       banner.classList.remove('collapsed');
       const collapseBtn = document.getElementById('tut-btn-collapse');
-      if (collapseBtn) collapseBtn.textContent = '▾';
+      if (collapseBtn) collapseBtn.textContent = '👁️ View Board';
       banner.classList.remove('hidden');
+      if (Array.isArray(step.focusIds)) {
+        step.focusIds.forEach(id => {
+          document.getElementById(id)?.classList.add('tut-focus-glow');
+        });
+      }
+    }
+
+    prevTutorialStep() {
+      if (!this.tutorialState?.active) return;
+      if (this.tutorialState.step <= 0) return;
+      this.tutorialState.step -= 1;
+      if (window.sounds?.playClick) window.sounds.playClick();
+      this.applyTutorialStepState(this.tutorialState.step);
+      this.renderTutorialBanner();
     }
 
     advanceTutorialStep() {
@@ -1031,6 +1065,7 @@
     }
 
     closeTutorialBanner(markCompleted = true) {
+      this.clearTutorialFocusGlow();
       if (this.tutorialState) {
         this.tutorialState.active = false;
       }
@@ -3183,6 +3218,7 @@
       document.getElementById('hud-btn-end-turn')?.addEventListener('click', () => this.endTurn());
       document.getElementById('btn-gwent-pass')?.addEventListener('click', () => this.passRound());
       document.getElementById('hud-btn-pass')?.addEventListener('click', () => this.passRound());
+      document.getElementById('tut-btn-prev')?.addEventListener('click', () => this.prevTutorialStep());
       document.getElementById('tut-btn-next')?.addEventListener('click', () => this.advanceTutorialStep());
       document.getElementById('tut-btn-skip')?.addEventListener('click', () => this.closeTutorialBanner(true));
       document.getElementById('tut-btn-collapse')?.addEventListener('click', () => {
@@ -3190,7 +3226,7 @@
         const btn = document.getElementById('tut-btn-collapse');
         if (!banner) return;
         const isCollapsed = banner.classList.toggle('collapsed');
-        if (btn) btn.textContent = isCollapsed ? '▸' : '▾';
+        if (btn) btn.textContent = isCollapsed ? '📖 Show Guide' : '👁️ View Board';
       });
       document.getElementById('btn-clear-log')?.addEventListener('click', () => {
         if (this.elLog) this.elLog.innerHTML = '';

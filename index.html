@@ -181,10 +181,11 @@
 
       <!-- Interactive Tutorial Coach Overlay -->
       <div class="gwent-tutorial-banner hidden" id="gwent-tutorial-banner">
+        <div class="tut-progress-track"><div class="tut-progress-fill" id="tut-progress-fill"></div></div>
         <div class="tut-header-row">
-          <span class="tut-step-pill" id="tut-step-pill">🎓 Tutorial • Step 1/10</span>
+          <span class="tut-step-pill" id="tut-step-pill">🎓 Step 1 / 10</span>
           <div class="tut-header-btns">
-            <button type="button" class="tut-skip-btn" id="tut-btn-collapse" title="Minimize / Expand">▾</button>
+            <button type="button" class="tut-skip-btn" id="tut-btn-collapse" title="Toggle Board View">👁️ View Board</button>
             <button type="button" class="tut-skip-btn" id="tut-btn-skip">Skip</button>
           </div>
         </div>
@@ -192,6 +193,7 @@
         <div class="tut-body" id="tut-body"></div>
         <div class="tut-tip" id="tut-tip"></div>
         <div class="tut-actions">
+          <button type="button" class="ui-btn secondary tut-nav-btn" id="tut-btn-prev">◂ Back</button>
           <button type="button" class="ui-btn primary-btn tut-next-btn" id="tut-btn-next">Next ▸</button>
         </div>
       </div>

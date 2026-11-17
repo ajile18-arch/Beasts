@@ -982,9 +982,9 @@ select {
   right: auto !important;
   width: calc(100% - (var(--mob-edge-x) * 2)) !important;
   margin: calc(40px + var(--sat)) auto 4px auto !important;
-  padding: 8px 10px !important;
+  padding: 10px 12px !important;
   flex-shrink: 0 !important;
-  max-height: 26dvh !important;
+  max-height: 44dvh !important;
   overflow-y: auto !important;
   box-sizing: border-box !important;
 }
@@ -993,6 +993,12 @@ select {
   max-height: none !important;
   overflow: visible !important;
   padding: 6px 10px !important;
+  gap: 3px !important;
+}
+
+.gwent-tutorial-banner.collapsed .tut-progress-track,
+.gwent-tutorial-banner.collapsed .tut-actions {
+  margin-top: 0 !important;
 }
 
 #arena-view:has(.gwent-tutorial-banner:not(.hidden)) .gwent-board-container {
