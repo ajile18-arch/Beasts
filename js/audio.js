@@ -330,31 +330,58 @@ class SoundController {
   playFire() {
     if (!this.enabled) return;
     this.init();
-    // Noise buffer for flame roar
-    const bufferSize = this.ctx.sampleRate * 0.35;
+    const now = this.ctx.currentTime;
+    // Noise buffer for flame roar + sizzling crackle
+    const bufferSize = Math.floor(this.ctx.sampleRate * 0.52);
     const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
     const data = buffer.getChannelData(0);
     for (let i = 0; i < bufferSize; i++) {
       data[i] = Math.random() * 2 - 1;
     }
+
+    // Warm flame roar body
     const noise = this.ctx.createBufferSource();
     noise.buffer = buffer;
 
     const filter = this.ctx.createBiquadFilter();
     filter.type = 'bandpass';
-    filter.frequency.setValueAtTime(400, this.ctx.currentTime);
-    filter.frequency.exponentialRampToValueAtTime(1200, this.ctx.currentTime + 0.15);
-    filter.frequency.exponentialRampToValueAtTime(200, this.ctx.currentTime + 0.35);
+    filter.frequency.setValueAtTime(420, now);
+    filter.frequency.exponentialRampToValueAtTime(1200, now + 0.16);
+    filter.frequency.exponentialRampToValueAtTime(220, now + 0.45);
 
     const gain = this.ctx.createGain();
-    gain.gain.setValueAtTime(0.01, this.ctx.currentTime);
-    gain.gain.linearRampToValueAtTime(0.35, this.ctx.currentTime + 0.08);
-    gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.35);
+    gain.gain.setValueAtTime(0.01, now);
+    gain.gain.linearRampToValueAtTime(0.32, now + 0.08);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.45);
 
     noise.connect(filter);
     filter.connect(gain);
     gain.connect(this.ctx.destination);
-    noise.start();
+    noise.start(now);
+
+    // High-frequency sizzling ember hiss
+    const sizzle = this.ctx.createBufferSource();
+    const sizzleBuf = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+    const sData = sizzleBuf.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      // Sparse crackle spikes + fine sizzle noise
+      sData[i] = (Math.random() < 0.06 ? (Math.random() * 2 - 1) * 1.4 : (Math.random() * 2 - 1) * 0.45);
+    }
+    sizzle.buffer = sizzleBuf;
+
+    const hiFilter = this.ctx.createBiquadFilter();
+    hiFilter.type = 'highpass';
+    hiFilter.frequency.setValueAtTime(3200, now);
+
+    const sGain = this.ctx.createGain();
+    sGain.gain.setValueAtTime(0.01, now);
+    sGain.gain.linearRampToValueAtTime(0.24, now + 0.05);
+    sGain.gain.exponentialRampToValueAtTime(0.005, now + 0.52);
+
+    sizzle.connect(hiFilter);
+    hiFilter.connect(sGain);
+    sGain.connect(this.ctx.destination);
+    sizzle.start(now);
   }
 
   // Rock Barrier / Heavy Stone Impact
@@ -839,6 +866,120 @@ class SoundController {
     oGain.connect(this.ctx.destination);
     osc.start(now + 0.02);
     osc.stop(now + 0.14);
+  }
+
+  // Water / Ice Rush Splash
+  playWater() {
+    if (!this.enabled) return;
+    this.init();
+    const now = this.ctx.currentTime;
+    const bufferSize = Math.floor(this.ctx.sampleRate * 0.42);
+    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = Math.random() * 2 - 1;
+    }
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = buffer;
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.Q.value = 3.2;
+    filter.frequency.setValueAtTime(320, now);
+    filter.frequency.exponentialRampToValueAtTime(1450, now + 0.18);
+    filter.frequency.exponentialRampToValueAtTime(480, now + 0.42);
+
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.01, now);
+    gain.gain.linearRampToValueAtTime(0.28, now + 0.07);
+    gain.gain.exponentialRampToValueAtTime(0.005, now + 0.42);
+
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.ctx.destination);
+    noise.start(now);
+
+    // Shimmering ice/bubble chime
+    const osc = this.ctx.createOscillator();
+    const oGain = this.ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(520, now + 0.04);
+    osc.frequency.exponentialRampToValueAtTime(1080, now + 0.24);
+    oGain.gain.setValueAtTime(0.12, now + 0.04);
+    oGain.gain.exponentialRampToValueAtTime(0.005, now + 0.26);
+    osc.connect(oGain);
+    oGain.connect(this.ctx.destination);
+    osc.start(now + 0.04);
+    osc.stop(now + 0.26);
+  }
+
+  // Air / Wind Gust Whoosh
+  playAir() {
+    if (!this.enabled) return;
+    this.init();
+    const now = this.ctx.currentTime;
+    const bufferSize = Math.floor(this.ctx.sampleRate * 0.42);
+    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = Math.random() * 2 - 1;
+    }
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = buffer;
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.Q.value = 4.5;
+    filter.frequency.setValueAtTime(600, now);
+    filter.frequency.exponentialRampToValueAtTime(2200, now + 0.2);
+    filter.frequency.exponentialRampToValueAtTime(700, now + 0.42);
+
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.01, now);
+    gain.gain.linearRampToValueAtTime(0.24, now + 0.1);
+    gain.gain.exponentialRampToValueAtTime(0.005, now + 0.42);
+
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.ctx.destination);
+    noise.start(now);
+  }
+
+  // Metal / Machine Clang Strike
+  playMetal() {
+    if (!this.enabled) return;
+    this.init();
+    const now = this.ctx.currentTime;
+    [420, 690, 1140].forEach((freq, idx) => {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = idx === 0 ? 'square' : 'triangle';
+      osc.frequency.setValueAtTime(freq, now);
+      osc.frequency.exponentialRampToValueAtTime(freq * 0.78, now + 0.26);
+      gain.gain.setValueAtTime(0.16 / (idx + 1), now);
+      gain.gain.exponentialRampToValueAtTime(0.004, now + 0.26);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.26);
+    });
+  }
+
+  // Play class/element-matched attack sound
+  playElementAttack(element) {
+    if (!this.enabled) return;
+    this.playAttack();
+    const map = {
+      fire: () => this.playFire(),
+      water: () => this.playWater(),
+      air: () => this.playAir(),
+      metal: () => this.playMetal(),
+      poison: () => this.playPoison(),
+      earth: () => this.playRock(),
+      plant: () => this.playWhip()
+    };
+    const fn = map[element];
+    if (fn) fn();
   }
 
   // Metallic Armor Clank when an attack hits Armor

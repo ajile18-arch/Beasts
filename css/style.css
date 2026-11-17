@@ -12452,11 +12452,11 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
 }
 
 .gwent-attack-beam {
-  stroke-width: 5;
+  stroke-width: 7;
   stroke-linecap: round;
   fill: none;
-  filter: drop-shadow(0 0 8px currentColor);
-  animation: gwentBeamStrike 0.45s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  filter: drop-shadow(0 0 10px currentColor);
+  animation: gwentBeamStrike 1.1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 @keyframes gwentBeamStrike {
@@ -12464,13 +12464,72 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
     stroke-dashoffset: var(--beam-len, 300);
     opacity: 1;
   }
-  55% {
+  45% {
     stroke-dashoffset: 0;
     opacity: 1;
+  }
+  78% {
+    stroke-dashoffset: 0;
+    opacity: 0.95;
   }
   100% {
     stroke-dashoffset: 0;
     opacity: 0;
+  }
+}
+
+.gwent-attack-source-ring,
+.gwent-attack-target-ring {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  border-radius: 10px;
+  pointer-events: none;
+  z-index: 29;
+}
+
+.gwent-attack-source-ring {
+  border: 2.5px solid currentColor;
+  box-shadow: 0 0 18px currentColor, inset 0 0 10px currentColor;
+  animation: gwentAttackRingPulse 1.1s ease-out forwards;
+}
+
+.gwent-attack-target-ring {
+  border: 3px dashed currentColor;
+  box-shadow: 0 0 22px currentColor, inset 0 0 14px currentColor;
+  animation: gwentAttackTargetPulse 1.1s ease-out forwards;
+}
+
+@keyframes gwentAttackRingPulse {
+  0% {
+    opacity: 0.95;
+    transform: translate(-50%, -50%) scale(0.95);
+  }
+  25%, 75% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.05);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@keyframes gwentAttackTargetPulse {
+  0%, 35% {
+    opacity: 0.55;
+    transform: translate(-50%, -50%) scale(1.08);
+  }
+  50% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(0.96);
+  }
+  78% {
+    opacity: 0.9;
+    transform: translate(-50%, -50%) scale(1.02);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1);
   }
 }
 
@@ -12484,7 +12543,7 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.95), 0 0 12px rgba(239, 68, 68, 0.85);
   pointer-events: none;
   z-index: 31;
-  animation: gwentDmgFloat 0.65s ease-out forwards;
+  animation: gwentDmgFloat 1.1s ease-out forwards;
 }
 
 @keyframes gwentDmgFloat {

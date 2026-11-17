@@ -1481,13 +1481,9 @@
       attacker.attackedThisTurn = true;
       this.state.selectedAttackerUid = null;
 
-      // Trigger line animation & attack sound before re-rendering
+      // Trigger line animation & class/element-matched attack sound before re-rendering
       this.playAttackLineAnimation(attacker.uid, targetCard.uid, dmg, attacker.element);
-      window.soundFX?.playAttack?.();
-      if (attacker.element === 'fire') window.soundFX?.playFire?.();
-      else if (attacker.element === 'poison') window.soundFX?.playPoison?.();
-      else if (attacker.element === 'plant') window.soundFX?.playWhip?.();
-      else if (attacker.element === 'earth') window.soundFX?.playRock?.();
+      window.soundFX?.playElementAttack?.(attacker.element);
 
       const logType = attackerTeam === 1 ? 'team1' : 'team2';
       const hitTwice = Boolean(
@@ -1555,18 +1551,22 @@
       };
     }
 
-    spawnAttackBeam(battlefield, x1, y1, x2, y2, element = 'fire', durationMs = 680) {
-      const len = Math.max(10, Math.hypot(x2 - x1, y2 - y1));
+    getElementBeamColor(element = 'fire') {
       const colors = {
         fire: '#fb923c',
-        earth: '#fbbf24',
+        earth: '#eab308',
         plant: '#4ade80',
         poison: '#c084fc',
-        air: '#38bdf8',
-        water: '#22d3ee',
-        metal: '#f87171'
+        air: '#bae6fd',
+        water: '#06b6d4',
+        metal: '#cbd5e1'
       };
-      const strokeColor = colors[element] || '#f87171';
+      return colors[element] || '#f87171';
+    }
+
+    spawnAttackBeam(battlefield, x1, y1, x2, y2, element = 'fire', durationMs = 1150) {
+      const len = Math.max(10, Math.hypot(x2 - x1, y2 - y1));
+      const strokeColor = this.getElementBeamColor(element);
 
       const svgNS = 'http://www.w3.org/2000/svg';
       const svg = document.createElementNS(svgNS, 'svg');
@@ -1588,12 +1588,29 @@
       setTimeout(() => svg.remove(), durationMs);
     }
 
+    spawnAttackRing(battlefield, metrics, className, color, durationMs = 1150) {
+      if (!battlefield || !metrics) return;
+      const ring = document.createElement('div');
+      ring.className = className;
+      ring.style.color = color;
+      ring.style.left = `${metrics.x}px`;
+      ring.style.top = `${metrics.y}px`;
+      ring.style.width = `${metrics.width + 10}px`;
+      ring.style.height = `${metrics.height + 10}px`;
+      battlefield.appendChild(ring);
+      setTimeout(() => ring.remove(), durationMs);
+    }
+
     playAttackLineAnimation(attackerUid, targetUid, dmg, element = 'fire') {
       const src = this.getBattlefieldCardMetrics(attackerUid);
       const tgt = this.getBattlefieldCardMetrics(targetUid);
       if (!src || !tgt) return;
 
-      this.spawnAttackBeam(src.battlefield, src.x, src.y, tgt.x, tgt.y, element, 680);
+      const durationMs = 1150;
+      const color = this.getElementBeamColor(element);
+      this.spawnAttackRing(src.battlefield, src, 'gwent-attack-source-ring', color, durationMs);
+      this.spawnAttackRing(src.battlefield, tgt, 'gwent-attack-target-ring', color, durationMs);
+      this.spawnAttackBeam(src.battlefield, src.x, src.y, tgt.x, tgt.y, element, durationMs);
 
       const dmgPop = document.createElement('div');
       dmgPop.className = 'gwent-dmg-pop';
@@ -1604,7 +1621,7 @@
 
       setTimeout(() => {
         dmgPop.remove();
-      }, 680);
+      }, durationMs);
     }
 
     playAbilitySourceFlare(sourceMetrics, label = '🔥 Ember Volley', durationMs = 820) {
@@ -2548,7 +2565,7 @@
         if (this.isMatchOver || !this.state || this.state.turnTeam !== 2) return;
         this.executeBoardAttack(2, attacker.uid, 1, target.card, target.rowKey);
         this.runAiAttacksAndEnd();
-      }, 950);
+      }, 1250);
     }
 
     // -------------------------------------------------------------------------
