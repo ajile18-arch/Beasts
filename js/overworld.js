@@ -1,4 +1,4 @@
-﻿/**
+/**
  * MYTHOS — Open-World RPG Overworld Engine
  * - Interior: Inspired directly by the cutaway room reference (slate-blue void,
  *   chamfered wood-capped walls, cream plaster wall with subtle stone cracks,
@@ -280,6 +280,20 @@
           intEntry: { x: 12.35, y: 5.55 },
           intExit: { x: 12.35, y: 9.45 },
           spots: [{ x: 8.5, y: 7.4, dir: 'left' }, { x: 6.2, y: 7.8, dir: 'up' }]
+        },
+        fire_station_interior: {
+          area: 'fire_station_interior',
+          name: 'Oakhaven Fire Department',
+          extDoor: { x: 6.10, y: 27.45 },
+          intEntry: { x: 13.30, y: 9.75 },
+          spots: [{ x: 11.4, y: 7.4, dir: 'down' }, { x: 6.2, y: 9.4, dir: 'up' }]
+        },
+        police_station_interior: {
+          area: 'police_station_interior',
+          name: 'Oakhaven Police Department',
+          extDoor: { x: 9.90, y: 27.45 },
+          intEntry: { x: 7.90, y: 9.75 },
+          spots: [{ x: 10.6, y: 6.4, dir: 'down' }, { x: 6.0, y: 8.2, dir: 'up' }]
         }
       };
       this.AREA_PORTALS = {
@@ -293,7 +307,9 @@
         clara_interior: { extDoor: { x: -3.30, y: 9.25 }, intEntry: { x: 9.8, y: 9.15 } },
         bram_interior: { extDoor: { x: -7.80, y: 9.25 }, intEntry: { x: 9.8, y: 9.15 } },
         mayor_2f_interior: { extDoor: { x: -13.80, y: 9.25 }, intEntry: { x: 12.35, y: 5.55 }, intExit: { x: 12.35, y: 9.45 } },
-        school_interior: { extDoor: { x: 23.65, y: 27.85 }, intEntry: { x: 3.15, y: 7.05 } }
+        school_interior: { extDoor: { x: 23.65, y: 27.85 }, intEntry: { x: 3.15, y: 7.05 } },
+        fire_station_interior: { extDoor: { x: 6.10, y: 27.45 }, intEntry: { x: 13.30, y: 9.75 } },
+        police_station_interior: { extDoor: { x: 9.90, y: 27.45 }, intEntry: { x: 7.90, y: 9.75 } }
       };
 
       // Scripted intro cutscene beats where the clock is frozen
@@ -385,6 +401,8 @@
       this.bertoNpc = this.createBertoNpc();
       this.shaunNpc = this.createShaunNpc();
       this.evelynNpc = this.createEvelynNpc();
+      this.fireChiefNpc = this.createFireChiefNpc();
+      this.policeChiefNpc = this.createPoliceChiefNpc();
       this.syncParkNpcBubbles();
       this.npcs = [
         this.createFriendNpc(this.friendName),
@@ -746,6 +764,65 @@
           pantsColor: 'khaki',
           hatStyle: 'none'
         })
+      };
+    }
+
+    createStaticNpcSprite(spriteKey) {
+      const ow = this;
+      return {
+        draw(ctx, cx, footY, dir, walkTick, spriteScale = 2.0) {
+          let activeKey = spriteKey;
+          if (dir === 'up' && ow.isImgReady(`${spriteKey}_back`)) {
+            activeKey = `${spriteKey}_back`;
+          } else if ((dir === 'left' || dir === 'right') && ow.isImgReady(`${spriteKey}_side`)) {
+            activeKey = `${spriteKey}_side`;
+          }
+          if (!ow.isImgReady(activeKey)) return;
+          const img = ow.owSprites[activeKey];
+          const targetH = Math.round(28 * spriteScale);
+          const targetW = Math.round(targetH * (img.width / img.height));
+          const bob = walkTick > 0 ? Math.abs(Math.sin(walkTick * 1.4)) * 3 : 0;
+          const tilt = walkTick > 0 ? Math.sin(walkTick * 1.4) * 0.04 : 0;
+          ctx.save();
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.28)';
+          ctx.beginPath();
+          ctx.ellipse(cx, footY - 2, Math.round(targetW * 0.34), Math.round(4 * spriteScale * 0.55), 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.translate(cx, Math.round(footY - bob));
+          if (tilt) ctx.rotate(tilt);
+          if (dir === 'left') ctx.scale(-1, 1);
+          ctx.imageSmoothingEnabled = true;
+          ctx.drawImage(img, Math.round(-targetW / 2), -targetH, targetW, targetH);
+          ctx.restore();
+        }
+      };
+    }
+
+    createFireChiefNpc() {
+      return {
+        id: 'fire_chief',
+        name: 'Chief Blaze',
+        x: 11.4,
+        y: 7.4,
+        dir: 'down',
+        walkTick: 0,
+        bubble: '🚒',
+        hangoutSpot: { area: 'fire_station_interior', x: 11.4, y: 7.4, dir: 'down', radius: 6, label: 'Oakhaven Fire Department' },
+        sprite: this.createStaticNpcSprite('npc_fire_chief')
+      };
+    }
+
+    createPoliceChiefNpc() {
+      return {
+        id: 'police_chief',
+        name: 'Chief Miller',
+        x: 10.6,
+        y: 6.4,
+        dir: 'down',
+        walkTick: 0,
+        bubble: '🚓',
+        hangoutSpot: { area: 'police_station_interior', x: 10.6, y: 6.4, dir: 'down', radius: 6, label: 'Oakhaven Police Department' },
+        sprite: this.createStaticNpcSprite('npc_police_chief')
       };
     }
 
@@ -1112,6 +1189,460 @@
         : `Hold (long-click) to pin "${ctx.title}" to your Notebook`;
     }
 
+    normalizeQuestState(raw) {
+      const src = (raw && typeof raw === 'object') ? raw : {};
+      return {
+        accepted: { ...(src.accepted || {}) },
+        completed: { ...(src.completed || {}) },
+        claimed: { ...(src.claimed || {}) },
+        visitedAreas: { ...(src.visitedAreas || {}) },
+        patrolNpcs: { ...(src.patrolNpcs || {}) }
+      };
+    }
+
+    addQuestInventoryItem(item) {
+      if (!Array.isArray(this.inventory)) this.inventory = [];
+      if (!this.inventory.some(i => i && i.id === item.id)) {
+        this.inventory.push({ ...item, qty: item.qty || 1 });
+      }
+      this.updateHUDSaveInfo?.();
+    }
+
+    removeQuestInventoryItem(itemId) {
+      if (!Array.isArray(this.inventory)) return;
+      this.inventory = this.inventory.filter(i => i && i.id !== itemId);
+      this.updateHUDSaveInfo?.();
+    }
+
+    getQuestDefinitions() {
+      const qs = this.questState || this.normalizeQuestState(null);
+      const buildingAreas = [
+        'interior', 'friend_interior', 'card_shop_interior', 'pluto_interior',
+        'nova_interior', 'silas_interior', 'maya_interior', 'clara_interior',
+        'bram_interior', 'mayor_interior', 'mayor_2f_interior', 'restaurant_interior',
+        'corner_store_interior', 'fire_station_interior', 'police_station_interior',
+        'school_interior'
+      ];
+      const visitedBuildingsCount = buildingAreas.filter(a => qs.visitedAreas?.[a]).length;
+      const patrolCount = Object.keys(qs.patrolNpcs || {}).length;
+      const hasHandcuffs = Array.isArray(this.inventory) && this.inventory.some(i => i && i.id === 'quest_handcuffs' && (i.qty || 0) > 0);
+      const hasTreats = Array.isArray(this.inventory) && this.inventory.some(i => i && i.id === 'quest_clara_treats' && (i.qty || 0) > 0);
+
+      return [
+        {
+          id: 'q_lost_handcuffs',
+          icon: '⛓️',
+          giverNpc: 'mom',
+          giverLabel: 'Mom (Home)',
+          turnInNpc: 'police_chief',
+          turnInLabel: 'Police Chief Miller (Police Station)',
+          title: 'Lost Handcuffs',
+          desc: "Mom found Chief Miller's spare handcuffs in the laundry! Deliver them to Police Chief Miller at the Oakhaven Police Station.",
+          target: 1,
+          rewardGold: 5,
+          rewardRel: 4,
+          progress: () => ((qs.claimed?.q_lost_handcuffs || hasHandcuffs) ? 1 : 0)
+        },
+        {
+          id: 'q_neighborhood_patrol',
+          icon: '🚓',
+          giverNpc: 'police_chief',
+          giverLabel: 'Police Chief Miller (Police Station)',
+          turnInNpc: 'police_chief',
+          turnInLabel: 'Police Chief Miller (Police Station)',
+          title: 'Neighborhood Patrol',
+          desc: 'Chief Miller asked you to check in with 3 different townsfolk around Oakhaven, then report back to him.',
+          target: 3,
+          rewardGold: 5,
+          rewardRel: 4,
+          progress: () => Math.min(3, patrolCount)
+        },
+        {
+          id: 'q_cottage_delivery',
+          icon: '🧁',
+          giverNpc: 'clara',
+          giverLabel: "Clara (Clara's Cottage)",
+          turnInNpc: 'maya',
+          turnInLabel: "Maya (Maya's Greenhouse)",
+          title: 'Cottage Delivery',
+          desc: "Deliver Clara's Fresh Baked Treats from Clara's Cottage to Maya at Maya's Greenhouse.",
+          target: 1,
+          rewardGold: 0,
+          rewardBoosterPacks: 1,
+          rewardRel: 4,
+          progress: () => ((qs.claimed?.q_cottage_delivery || hasTreats) ? 1 : 0)
+        },
+        {
+          id: 'q_town_ambassador',
+          icon: '🎩',
+          giverNpc: 'mayor',
+          giverLabel: "Mayor Donald (Mayor's Study)",
+          turnInNpc: 'mayor',
+          turnInLabel: "Mayor Donald (Mayor's Study)",
+          title: 'Town Ambassador',
+          desc: 'Mayor Donald wants you to visit 10 different Oakhaven buildings and report back to him in his study.',
+          target: 10,
+          rewardGold: 10,
+          rewardRel: 4,
+          progress: () => Math.min(10, visitedBuildingsCount)
+        }
+      ];
+    }
+
+    acceptNpcQuest(questId) {
+      if (!this.questState) this.questState = this.normalizeQuestState(null);
+      if (this.questState.accepted[questId]) return false;
+      this.questState.accepted[questId] = true;
+
+      if (questId === 'q_lost_handcuffs') {
+        this.addQuestInventoryItem({
+          id: 'quest_handcuffs',
+          name: "Chief Miller's Handcuffs",
+          qty: 1,
+          icon: '⛓️',
+          cardImg: 'Sprites/Overworld/quest_handcuffs.jpg',
+          type: 'quest_item',
+          desc: "<b>Chief Miller's Handcuffs</b> — Found by Mom! Return these to Police Chief Miller at the Oakhaven Police Department."
+        });
+      } else if (questId === 'q_cottage_delivery') {
+        this.addQuestInventoryItem({
+          id: 'quest_clara_treats',
+          name: "Clara's Fresh Baked Treats",
+          qty: 1,
+          icon: '🧁',
+          type: 'quest_item',
+          desc: "<b>Clara's Fresh Baked Treats</b> — Warm cinnamon honey-tarts from Clara's Cottage. Deliver them to Maya at Maya's Greenhouse!"
+        });
+      }
+
+      const q = this.getQuestDefinitions().find(d => d.id === questId);
+      this.evaluateQuests(true);
+      this.saveWorldData?.(this.draftAppearance);
+      if (q) {
+        this.showAutosaveIndicator?.(`📜 Quest Accepted: ${q.title}!`);
+      }
+      return true;
+    }
+
+    turnInNpcQuest(questId) {
+      if (!this.questState) this.questState = this.normalizeQuestState(null);
+      const q = this.getQuestDefinitions().find(d => d.id === questId);
+      if (!q || !this.questState.accepted[questId] || this.questState.claimed[questId]) return false;
+      if (q.progress() < q.target) return false;
+
+      if (questId === 'q_lost_handcuffs') {
+        this.removeQuestInventoryItem('quest_handcuffs');
+      } else if (questId === 'q_cottage_delivery') {
+        this.removeQuestInventoryItem('quest_clara_treats');
+        this.gainDialogueRelationship?.('clara', 2, 'completed delivery');
+      }
+
+      this.questState.completed[questId] = true;
+      this.questState.claimed[questId] = true;
+      if (q.rewardGold > 0) {
+        this.gold = (this.gold || 0) + q.rewardGold;
+      }
+      if (q.rewardBoosterPacks > 0) {
+        this.addInventoryItem?.({
+          id: 'unopened_base_pack',
+          name: 'Unopened Mythos Base Card Pack',
+          qty: q.rewardBoosterPacks,
+          icon: '🃏',
+          cardImg: 'Cards/Mythos_Card_Back.png',
+          type: 'booster_pack',
+          desc: `<b>Unopened Mythos Base Set Booster Pack (1st Edition)</b> — Reward from completing "${q.title}"!`
+        });
+      }
+      if (q.turnInNpc && q.rewardRel) {
+        this.gainDialogueRelationship?.(q.turnInNpc, q.rewardRel, `completed "${q.title}"`);
+      }
+      if (window.sounds?.playHeal) window.sounds.playHeal();
+      else if (window.sounds?.playClick) window.sounds.playClick();
+
+      this.evaluateQuests(true);
+      this.saveWorldData?.(this.draftAppearance);
+      const rewardParts = [];
+      if (q.rewardGold > 0) rewardParts.push(`+$${q.rewardGold}`);
+      if (q.rewardBoosterPacks > 0) rewardParts.push(`+${q.rewardBoosterPacks} Booster Pack`);
+      this.showAutosaveIndicator?.(`🎁 Quest Complete: ${q.title}! (${rewardParts.join(', ')})`);
+      return true;
+    }
+
+    getNpcQuestPromptSignature(npcId) {
+      const qs = this.questState || this.normalizeQuestState(null);
+      return this.getQuestDefinitions()
+        .filter(q => q.giverNpc === npcId || q.turnInNpc === npcId)
+        .map(q => `${q.id}:${qs.accepted[q.id] ? 1 : 0}:${q.progress() >= q.target ? 1 : 0}:${qs.claimed[q.id] ? 1 : 0}`)
+        .join('|');
+    }
+
+    getNpcQuestChoices(npcId) {
+      if (!this.questState) this.questState = this.normalizeQuestState(null);
+      const qs = this.questState;
+      const defs = this.getQuestDefinitions();
+      const out = [];
+
+      defs.forEach(q => {
+        const isAccepted = !!qs.accepted[q.id];
+        const isClaimed = !!qs.claimed[q.id];
+        const isReady = q.progress() >= q.target;
+
+        // Turn-in choice if accepted, ready, and not yet claimed
+        if (q.turnInNpc === npcId && isAccepted && !isClaimed && isReady) {
+          if (q.id === 'q_lost_handcuffs') {
+            out.push({
+              label: `📜 [Turn In] "Here are your lost handcuffs, Chief Miller!" (+$${q.rewardGold})`,
+              primary: true,
+              isQuestAction: true,
+              questDoneLabel: '✅ Handcuffs Returned (+$5)',
+              onSelect: (el) => {
+                this.turnInNpcQuest(q.id);
+                el.innerHTML = `<b>Chief Miller:</b> "Well I'll be — my spare handcuffs! Thank you kindly for bringing these back! Here's <b>$${q.rewardGold}</b> for your trouble!"`;
+              }
+            });
+          } else if (q.id === 'q_neighborhood_patrol') {
+            out.push({
+              label: `📜 [Turn In] "I checked in with 3 townsfolk on patrol, Chief!" (+$${q.rewardGold})`,
+              primary: true,
+              isQuestAction: true,
+              questDoneLabel: '✅ Patrol Reported (+$5)',
+              onSelect: (el) => {
+                this.turnInNpcQuest(q.id);
+                el.innerHTML = `<b>Chief Miller:</b> "Mighty fine patrol work, deputy! Oakhaven's lucky to have you. Here's <b>$${q.rewardGold}</b> for the assist!"`;
+              }
+            });
+          } else if (q.id === 'q_cottage_delivery') {
+            out.push({
+              label: `📜 [Turn In] "Clara sent over these fresh baked treats for you!" (🎁 Booster Pack)`,
+              primary: true,
+              isQuestAction: true,
+              questDoneLabel: '✅ Treats Delivered (+1 Booster Pack)',
+              onSelect: (el) => {
+                this.turnInNpcQuest(q.id);
+                el.innerHTML = `<b>Maya:</b> "Oh, warm cinnamon honey-tarts from Clara! They smell heavenly — thank you for bringing them over! Please take this <b>Mythos Booster Pack</b> as a thank-you!"`;
+              }
+            });
+          } else if (q.id === 'q_town_ambassador') {
+            out.push({
+              label: `📜 [Turn In] "I toured 10 Oakhaven buildings as Town Ambassador!" (+$${q.rewardGold})`,
+              primary: true,
+              isQuestAction: true,
+              questDoneLabel: '✅ Ambassador Report Turned In (+$10)',
+              onSelect: (el) => {
+                this.turnInNpcQuest(q.id);
+                el.innerHTML = `<b>Mayor Donald:</b> "Splendid work! Knowing every corner of Oakhaven makes you a true ambassador. Please accept this <b>$${q.rewardGold}</b> civic stipend!"`;
+              }
+            });
+          }
+          return;
+        }
+
+        // Accept choice if this NPC gives the quest and it isn't accepted yet
+        if (q.giverNpc === npcId && !isAccepted && !isClaimed) {
+          if (q.id === 'q_lost_handcuffs') {
+            out.push({
+              label: `📜 [Quest] "Need help with anything around the house, Mom?"`,
+              primary: true,
+              isQuestAction: true,
+              questDoneLabel: '✅ Accepted: Lost Handcuffs',
+              onSelect: (el) => {
+                this.acceptNpcQuest(q.id);
+                el.innerHTML = `<b>Mom:</b> "Actually, yes! I found <b>Chief Miller's Handcuffs</b> when he stopped by earlier. Could you return them to him at the <b>Police Station</b>? <i>(Added Chief Miller's Handcuffs to your Inventory!)</i>"`;
+              }
+            });
+          } else if (q.id === 'q_neighborhood_patrol') {
+            out.push({
+              label: `📜 [Quest] "Got any patrol work I can help with, Chief?"`,
+              primary: true,
+              isQuestAction: true,
+              questDoneLabel: '✅ Accepted: Neighborhood Patrol',
+              onSelect: (el) => {
+                this.acceptNpcQuest(q.id);
+                el.innerHTML = `<b>Chief Miller:</b> "You bet! Stroll around Oakhaven, check in with <b>3 different townsfolk</b>, and report back to me here at the station!"`;
+              }
+            });
+          } else if (q.id === 'q_cottage_delivery') {
+            out.push({
+              label: `📜 [Quest] "Need help delivering any baked goods, Clara?"`,
+              primary: true,
+              isQuestAction: true,
+              questDoneLabel: '✅ Accepted: Cottage Delivery',
+              onSelect: (el) => {
+                this.acceptNpcQuest(q.id);
+                el.innerHTML = `<b>Clara:</b> "Oh, what timing! Could you bring these <b>Fresh Baked Treats</b> over to <b>Maya at Maya's Greenhouse</b>? <i>(Added Fresh Baked Treats to your Inventory!)</i>"`;
+              }
+            });
+          } else if (q.id === 'q_town_ambassador') {
+            out.push({
+              label: `📜 [Quest] "Is there any civic task I can help with, Mayor?"`,
+              primary: true,
+              isQuestAction: true,
+              questDoneLabel: '✅ Accepted: Town Ambassador',
+              onSelect: (el) => {
+                this.acceptNpcQuest(q.id);
+                el.innerHTML = `<b>Mayor Donald:</b> "Indeed! Visit <b>10 different Oakhaven buildings</b> to meet our shopkeepers and neighbors, then report back to me here!"`;
+              }
+            });
+          }
+        }
+      });
+
+      return out;
+    }
+
+    evaluateQuests(silent = false) {
+      if (!this.questState) this.questState = this.normalizeQuestState(null);
+      if (this.currentArea) {
+        this.questState.visitedAreas[this.currentArea] = true;
+      }
+      const defs = this.getQuestDefinitions();
+      let newlyReady = null;
+      defs.forEach(q => {
+        if (!this.questState.accepted[q.id] || this.questState.claimed[q.id]) return;
+        const cur = q.progress();
+        if (cur >= q.target && !this.questState.completed[q.id]) {
+          this.questState.completed[q.id] = true;
+          newlyReady = q;
+        }
+      });
+      this.updateQuestBadgeCount(defs);
+      if (newlyReady && !silent) {
+        this.showAutosaveIndicator?.(`📜 Quest Ready: ${newlyReady.title}! Return to ${newlyReady.turnInLabel}.`);
+      }
+      const modal = document.getElementById('quest-log-modal');
+      if (modal && !modal.classList.contains('hidden')) {
+        this.renderQuestModal();
+      }
+    }
+
+    recordQuestNpcTalked(npcId) {
+      if (!npcId) return;
+      if (!this.questState) this.questState = this.normalizeQuestState(null);
+      const id = String(npcId).trim();
+      if (!id) return;
+      if (this.questState.accepted?.q_neighborhood_patrol && !this.questState.claimed?.q_neighborhood_patrol && id !== 'police_chief') {
+        if (!this.questState.patrolNpcs[id]) {
+          this.questState.patrolNpcs[id] = true;
+          this.evaluateQuests(false);
+        }
+      }
+    }
+
+    updateQuestBadgeCount(defs = null) {
+      const list = defs || this.getQuestDefinitions();
+      const qs = this.questState || this.normalizeQuestState(null);
+      let readyCount = 0;
+      let activeCount = 0;
+      list.forEach(q => {
+        if (!qs.accepted[q.id] || qs.claimed[q.id]) return;
+        activeCount++;
+        if (q.progress() >= q.target || qs.completed[q.id]) readyCount++;
+      });
+      const badgeEl = document.getElementById('quest-badge-count');
+      if (badgeEl) {
+        badgeEl.textContent = readyCount > 0 ? `${readyCount}!` : String(activeCount);
+        badgeEl.style.background = readyCount > 0 ? '#16a34a' : '';
+      }
+    }
+
+    toggleQuestModal(force) {
+      const modal = document.getElementById('quest-log-modal');
+      if (!modal) return;
+      const shouldOpen = force !== undefined ? !!force : modal.classList.contains('hidden');
+      if (shouldOpen) {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        document.getElementById('header-menu-dropdown')?.classList.add('hidden');
+        document.getElementById('btn-header-menu')?.setAttribute('aria-expanded', 'false');
+        this.evaluateQuests(true);
+        this.renderQuestModal();
+        modal.classList.remove('hidden');
+      } else {
+        modal.classList.add('hidden');
+      }
+    }
+
+    renderQuestModal() {
+      const listEl = document.getElementById('quest-entries-list');
+      if (!listEl) return;
+      const defs = this.getQuestDefinitions();
+      const qs = this.questState || this.normalizeQuestState(null);
+      const tab = this.questLogTab || 'active';
+
+      const enriched = defs.map(q => {
+        const isAccepted = !!qs.accepted[q.id];
+        const isClaimed = !!qs.claimed[q.id];
+        const cur = q.progress();
+        const isReady = isAccepted && !isClaimed && (cur >= q.target || !!qs.completed[q.id]);
+        return { ...q, cur: Math.min(q.target, cur), isAccepted, isReady, isClaimed };
+      });
+
+      const activeList = enriched.filter(q => q.isAccepted && !q.isClaimed);
+      const completedList = enriched.filter(q => q.isClaimed);
+      activeList.sort((a, b) => (b.isReady ? 1 : 0) - (a.isReady ? 1 : 0));
+
+      const activeCountEl = document.getElementById('quest-tab-active-count');
+      const compCountEl = document.getElementById('quest-tab-completed-count');
+      const summaryEl = document.getElementById('quest-log-summary-pill');
+      if (activeCountEl) activeCountEl.textContent = String(activeList.length);
+      if (compCountEl) compCountEl.textContent = String(completedList.length);
+      if (summaryEl) summaryEl.textContent = `${completedList.length} / ${enriched.length} Completed`;
+
+      document.querySelectorAll('#quest-log-tabs .notebook-tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.questTab === tab);
+      });
+
+      const shown = tab === 'completed' ? completedList : activeList;
+      if (shown.length === 0) {
+        const unacceptedHints = enriched
+          .filter(q => !q.isAccepted && !q.isClaimed)
+          .map(q => `• <b>${q.giverLabel}</b>`)
+          .join('<br>');
+        listEl.innerHTML = `<div style="text-align:center; padding: 22px 14px; color: #cbd5e1; font-size: 13px; line-height: 1.6;">${
+          tab === 'completed'
+            ? 'No completed NPC quests yet. Talk to townsfolk around Oakhaven to accept quests!'
+            : (unacceptedHints
+                ? `<div style="color:#fdba74; font-weight:700; margin-bottom:6px;">No active quests yet!</div>Talk to these townsfolk to accept quests:<br><div style="margin-top:6px; color:#94a3b8;">${unacceptedHints}</div>`
+                : 'All NPC quests in Oakhaven are complete! Great job, Adventurer!')
+        }</div>`;
+        return;
+      }
+
+      listEl.innerHTML = '';
+      shown.forEach(q => {
+        const pct = Math.max(0, Math.min(100, Math.round((q.cur / q.target) * 100)));
+        const rewardText = [
+          q.rewardGold > 0 ? `+$${q.rewardGold}` : '',
+          q.rewardBoosterPacks > 0 ? 'Booster Pack' : ''
+        ].filter(Boolean).join(' &amp; ');
+        const card = document.createElement('div');
+        card.style.cssText = `background: rgba(15, 23, 42, 0.78); border: 1px solid ${q.isReady ? 'rgba(52, 211, 153, 0.7)' : 'rgba(148, 163, 184, 0.25)'}; border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px;`;
+        card.innerHTML = `
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="font-size:20px;">${q.icon}</span>
+              <div>
+                <div style="font-weight:700; color:#f8fafc; font-size:14px;">${q.title}</div>
+                <div style="font-size:11px; color:#fdba74; font-weight:600;">From: ${q.giverLabel}</div>
+              </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; justify-content:flex-end;">
+              <span style="background:rgba(245, 158, 11, 0.16); border:1px solid rgba(251, 191, 36, 0.45); color:#fde68a; font-size:12px; font-weight:700; padding:3px 8px; border-radius:999px;">🎁 ${rewardText}</span>
+              ${q.isClaimed
+                ? '<span style="color:#4ade80; font-size:12px; font-weight:700;">✅ Completed</span>'
+                : (q.isReady
+                    ? `<span style="color:#34d399; font-size:11.5px; font-weight:700;">Return to ${q.turnInLabel}</span>`
+                    : `<span style="color:#94a3b8; font-size:12px; font-weight:600;">${q.cur} / ${q.target}</span>`)}
+            </div>
+          </div>
+          <div style="font-size:12.5px; color:#cbd5e1; line-height:1.4;">${q.desc}</div>
+          <div style="height:6px; background:rgba(51,65,85,0.8); border-radius:999px; overflow:hidden;">
+            <div style="height:100%; width:${pct}%; background:${(q.isReady || q.isClaimed) ? '#10b981' : '#f59e0b'}; transition:width 0.25s ease;"></div>
+          </div>
+        `;
+        listEl.appendChild(card);
+      });
+    }
+
     toggleNotebookModal(force) {
       const modal = document.getElementById('notebook-modal');
       if (!modal) return;
@@ -1359,6 +1890,61 @@
       this.advanceClock(dtMs / this.REAL_MS_PER_GAME_MINUTE);
     }
 
+    parseEventStartMinuteFromText(text, fallbackMinute = 540) {
+      const m = String(text || '').match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)/i);
+      if (!m) return fallbackMinute;
+      let hr = parseInt(m[1], 10);
+      const min = parseInt(m[2] || '0', 10);
+      const ampm = m[3].toLowerCase();
+      if (ampm === 'pm' && hr < 12) hr += 12;
+      if (ampm === 'am' && hr === 12) hr = 0;
+      return Math.max(0, Math.min(1439, hr * 60 + min));
+    }
+
+    checkPinnedReminders() {
+      const curDay = this.dayNumber || 1;
+      const nowTotal = this.getTotalGameMinutes();
+      const nowDayMin = this.timeOfDayMinutes || 0;
+      const todayName = (this.getCurrentDayName?.() || '').toLowerCase();
+      if (!this._sentEventReminders) this._sentEventReminders = new Set();
+
+      this.checkMissedMeetupPenalties();
+
+      // 1. Pinned Meetups (1 hour = 60 game minutes ahead)
+      (this.scheduledMeetups || []).forEach(m => {
+        if (!m || m.status !== 'scheduled' || m.reminderSent) return;
+        if (!this.isNotebookNotePinned(`meetup_${m.id}`)) return;
+        const startMin = this.getMeetupStartGameMinute(m);
+        const diff = startMin - nowTotal;
+        if (diff > 0 && diff <= 60) {
+          m.reminderSent = true;
+          if (window.sounds?.playCollect) window.sounds.playCollect();
+          this.showAutosaveIndicator?.(
+            `⏰ Reminder: Meetup with ${m.npcName} (${m.cardName}) at ${m.shortVenueLabel} starts in 1 hour!`
+          );
+          this.saveWorldData(this.draftAppearance);
+        }
+      });
+
+      // 2. Pinned Calendar / Dialogue Events (1 hour ahead)
+      this.getNotebookNotes().forEach(note => {
+        if (!note || !note.pinned || note.category !== 'event') return;
+        const text = `${note.title || ''} ${note.body || ''}`;
+        const lower = text.toLowerCase();
+        const dayMatch = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].find(d => lower.includes(d));
+        if (dayMatch && todayName && dayMatch !== todayName) return;
+
+        const startMin = this.parseEventStartMinuteFromText(text, 540); // Default 9:00 AM for all-day events
+        const diff = startMin - nowDayMin;
+        const remKey = `${curDay}:${note.id}`;
+        if (diff > 0 && diff <= 60 && !this._sentEventReminders.has(remKey)) {
+          this._sentEventReminders.add(remKey);
+          if (window.sounds?.playCollect) window.sounds.playCollect();
+          this.showAutosaveIndicator?.(`⏰ Event in 1 hour: ${note.icon || '📅'} ${note.title}`);
+        }
+      });
+    }
+
     advanceClock(gameMinutes) {
       if (!(gameMinutes > 0)) return;
       const prevHour = Math.floor(this.timeOfDayMinutes / 60);
@@ -1370,6 +1956,7 @@
       }
       this.timeOfDayMinutes = t;
       this.syncTimeOfDayPhase(true);
+      this.checkPinnedReminders();
       // Persist the clock once per in-game hour (every 2 real minutes) and roll hourly NPC trips
       if (Math.floor(t / 60) !== prevHour) {
         this.onInGameHourPassed();
@@ -1417,6 +2004,7 @@
       const m = (Number(hour) || 0) * 60 + (Number(minute) || 0);
       this.timeOfDayMinutes = ((m % 1440) + 1440) % 1440;
       this.syncTimeOfDayPhase(false);
+      this.checkPinnedReminders();
       this.updateClockHUD(true);
       this.saveWorldData(this.draftAppearance);
     }
@@ -1502,6 +2090,14 @@
       this.notebookNotes = Array.isArray(this.worldSave?.notebookNotes)
         ? this.worldSave.notebookNotes.map(n => ({ ...n }))
         : [];
+      this.npcRelationships = (this.worldSave?.npcRelationships && typeof this.worldSave.npcRelationships === 'object')
+        ? { ...this.worldSave.npcRelationships }
+        : {};
+      this.npcDialogueGainLog = (this.worldSave?.npcDialogueGainLog && typeof this.worldSave.npcDialogueGainLog === 'object')
+        ? { ...this.worldSave.npcDialogueGainLog }
+        : {};
+      this.questState = this.normalizeQuestState(this.worldSave?.questState);
+      this.questLogTab = 'active';
       this.notebookTab = 'pinned';
       this.notebookCategoryFilter = 'all';
       this._activePinNoteContext = null;
@@ -1831,7 +2427,43 @@
       }, []);
     }
 
+    checkMissedMeetupPenalties() {
+      const list = this.scheduledMeetups || [];
+      if (!list.length) return;
+      const curDay = this.dayNumber || 1;
+      const curWin = this.getCurrentMeetupWindowId();
+      let changed = false;
+      list.forEach(m => {
+        if (m.status === 'scheduled' && !m.missedPenalized && this.isMeetupMissed(m, curDay, curWin)) {
+          m.missedPenalized = true;
+          changed = true;
+          const nbNote = this.getNotebookNotes().find(n => n.id === `meetup_${m.id}`);
+          if (nbNote) {
+            nbNote.pinned = false;
+            if (!nbNote.title.startsWith('❌ ')) {
+              nbNote.title = `❌ Missed: ${nbNote.title}`;
+            }
+            nbNote.updatedAt = Date.now();
+          }
+          if (window.sounds?.playError) window.sounds.playError();
+          this.showAutosaveIndicator?.(
+            `❌ Missed Meetup: You missed your meetup with ${m.npcName} (${m.cardName}) at ${m.shortVenueLabel}.`
+          );
+          this.changeRelationship(m.npcId, -8, 'missed meetup');
+        }
+      });
+      if (changed) {
+        this.updateNotebookBadgeCount?.();
+        const nbModal = document.getElementById('notebook-modal');
+        if (nbModal && !nbModal.classList.contains('hidden')) {
+          this.renderNotebookModal?.();
+        }
+        this.saveWorldData(this.draftAppearance);
+      }
+    }
+
     updateMeetupBadgeCount() {
+      this.checkMissedMeetupPenalties();
       const badge = document.getElementById('market-meetups-count');
       if (!badge) return;
       const active = (this.scheduledMeetups || []).filter(m => m.status === 'scheduled');
@@ -2595,7 +3227,7 @@
       if (window.sounds?.playClick) window.sounds.playClick();
       this.saveWorldData(this.draftAppearance);
       this.renderMarketApp();
-      this.showAutosaveIndicator(`📣 Listed ${cand.cardName} for ${this.formatMoney(askingPrice)}! Watch for buyer replies.`);
+      this.showAutosaveIndicator(`📣 Listed ${cand.cardName} on Card Exchange! Watch for buyer replies.`);
       return { ok: true, listing };
     }
 
@@ -2841,7 +3473,6 @@
           </div>
         `;
       } else {
-        const waitInfo = this.getSellListingWaitInfo(this.sellDraftPrice, selected.fairValue);
         const chipsHtml = candidates.map(c => {
           const activeCls = c.beastId === selected.beastId ? 'active' : '';
           return `
@@ -2854,42 +3485,23 @@
             </button>
           `;
         }).join('');
-
         composer.innerHTML = `
           <div style="display:flex; justify-content:space-between; align-items:center;">
             <span style="font-size:11px; font-weight:800; color:#f8fafc;">📝 List a Card for Sale</span>
-            <span style="font-size:10px; color:#94a3b8;">Fair Value: <b style="color:#4ade80;">${this.formatMoney(selected.fairValue)}</b></span>
           </div>
           <div class="phone-sell-card-strip">${chipsHtml}</div>
-          <div style="font-size:10px; color:#93c5fd; font-weight:800; text-transform:uppercase; letter-spacing:0.4px;">Asking Price</div>
-          <div class="phone-neg-offer-row">
-            <button type="button" class="phone-neg-step-btn" data-sell-step="-0.50">-$0.50</button>
-            <button type="button" class="phone-neg-step-btn" data-sell-step="-0.25">-$0.25</button>
-            <input type="number" step="0.25" min="0.25" id="phone-sell-price-input" class="phone-neg-input" value="${Number(this.sellDraftPrice).toFixed(2)}" />
-            <button type="button" class="phone-neg-step-btn" data-sell-step="0.25">+$0.25</button>
-            <button type="button" class="phone-neg-step-btn" data-sell-step="0.50">+$0.50</button>
+          <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(15,23,42,0.75); border:1px solid #334155; border-radius:9px; padding:7px 10px;">
+            <div>
+              <div style="font-size:10px; color:#94a3b8; font-weight:700; text-transform:uppercase; letter-spacing:0.4px;">📊 Current Market Price</div>
+              <div style="font-size:10px; color:#cbd5e1; margin-top:2px;">Buyers will make offers — negotiate price in chat.</div>
+            </div>
+            <div style="font-size:14px; font-weight:800; color:#4ade80;">${this.formatMoney(selected.fairValue)}</div>
           </div>
-          <div class="phone-sell-wait-pill ${waitInfo.tier}" id="phone-sell-wait-preview">${waitInfo.badge}</div>
           <div id="phone-sell-composer-msg" style="font-size:10px; color:#fca5a5;" class="hidden"></div>
           <button type="button" class="phone-neg-btn-accept" id="btn-post-sell-listing" style="padding:8px 10px; border-radius:9px; font-size:11.5px; font-weight:800; cursor:pointer;">
-            📣 Post ${selected.cardName} Listing (${this.formatMoney(this.sellDraftPrice)})
+            📣 Post ${selected.cardName} Listing
           </button>
         `;
-
-        const updatePricePreview = (nextVal) => {
-          const safe = Math.max(0.25, Math.round((Number.isNaN(nextVal) ? selected.fairValue : nextVal) * 100) / 100);
-          this.sellDraftPrice = safe;
-          const info = this.getSellListingWaitInfo(safe, selected.fairValue);
-          const waitPill = composer.querySelector('#phone-sell-wait-preview');
-          const postBtn = composer.querySelector('#btn-post-sell-listing');
-          if (waitPill) {
-            waitPill.className = `phone-sell-wait-pill ${info.tier}`;
-            waitPill.textContent = info.badge;
-          }
-          if (postBtn) {
-            postBtn.textContent = `📣 Post ${selected.cardName} Listing (${this.formatMoney(safe)})`;
-          }
-        };
 
         composer.querySelectorAll('[data-sell-beast]').forEach(btn => {
           btn.addEventListener('click', () => {
@@ -2904,28 +3516,8 @@
           });
         });
 
-        const priceInput = composer.querySelector('#phone-sell-price-input');
-        if (priceInput) {
-          priceInput.addEventListener('input', () => {
-            const val = parseFloat(priceInput.value);
-            if (!Number.isNaN(val)) updatePricePreview(val);
-          });
-        }
-
-        composer.querySelectorAll('[data-sell-step]').forEach(btn => {
-          btn.addEventListener('click', () => {
-            if (window.sounds?.playClick) window.sounds.playClick();
-            const delta = parseFloat(btn.getAttribute('data-sell-step')) || 0;
-            const cur = priceInput ? parseFloat(priceInput.value) : this.sellDraftPrice;
-            const next = Math.max(0.25, Math.round(((Number.isNaN(cur) ? selected.fairValue : cur) + delta) * 100) / 100);
-            if (priceInput) priceInput.value = next.toFixed(2);
-            updatePricePreview(next);
-          });
-        });
-
         composer.querySelector('#btn-post-sell-listing')?.addEventListener('click', () => {
-          const val = priceInput ? parseFloat(priceInput.value) : this.sellDraftPrice;
-          const res = this.createPlayerSellListing(selected.beastId, val);
+          const res = this.createPlayerSellListing(selected.beastId, selected.fairValue);
           if (!res.ok) {
             const errEl = composer.querySelector('#phone-sell-composer-msg');
             if (errEl) {
@@ -3224,20 +3816,19 @@
       const scheduledDay = useExistingSlot ? (existingMeetup.scheduledDay || curDay) : curDay;
       const scheduledWindow = useExistingSlot ? (existingMeetup.scheduledWindow || curWin) : curWin;
 
-      const venuePrice = this.getVenueAdjustedPrice(basePrice, venueType, item.type);
       const listingMeta = item.isPlayerListing
-        ? { isPlayerListing: true, fairValue: item.fairValue || basePrice, venueType }
+        ? { isPlayerListing: true, fairValue: item.fairValue || basePrice, venueType: 'landmark' }
         : null;
-      const bounds = this.computeNegotiationBounds(item.type, venuePrice, listingMeta);
+      const bounds = this.computeNegotiationBounds(item.type, basePrice, listingMeta);
       const target = this.getMeetupTargetDetails(npcId, venueType, landmarkId);
 
       const openingMsg = existingMeetup
-        ? `Rescheduling ${item.cardName} (${this.formatMoney(existingMeetup.agreedPrice)})! Pick a new day or switch places for an updated quote.`
+        ? `Rescheduling ${item.cardName} (${this.formatMoney(existingMeetup.agreedPrice)})! Pick a new day or meeting spot.`
         : (item.isPlayerListing
-            ? `Saw your ${item.cardName} listing for ${this.formatMoney(basePrice)}! Delivering to my house adds +25%, or -20% if I come to yours. Right now for ${target.shortVenueLabel} I can offer ${this.formatMoney(bounds.openOffer)} — what's your counter?`
+            ? `Saw your ${item.cardName} listing! Pick where we'd meet and send over what you're looking for.`
             : (isBuy
-                ? `Hey! My ${item.cardName} runs cheaper at my house (-20%), fair at landmarks, or +25% if I come to yours. Right now at ${target.shortVenueLabel} I'm asking ${this.formatMoney(bounds.openOffer)} — what's your offer?`
-                : `I'd love your ${item.cardName}! Delivering to my house pays a +25% bonus, or -20% if I have to come to yours. Starting at ${this.formatMoney(bounds.openOffer)} for ${target.shortVenueLabel} — counter me!`));
+                ? `${item.cardName} is up for trade. Link cards from your Inventory or adjust cash, pick a meeting spot, and send your offer.`
+                : `I'd love your ${item.cardName}! Pick a meeting spot and send over your asking price.`));
 
       this.activeNegotiation = {
         listingId: item.id,
@@ -3261,6 +3852,10 @@
         npcFairTarget: bounds.fairTarget,
         npcWalkAwayLimit: bounds.walkLimit,
         playerDraftOffer: bounds.draftOffer,
+        offeredCards: Array.isArray(existingMeetup?.offeredCards)
+          ? [...existingMeetup.offeredCards, null, null, null].slice(0, 3)
+          : [null, null, null],
+        sellBagPickerSlot: null,
         patience: 3,
         maxPatience: 3,
         status: existingMeetup ? 'agreed' : 'negotiating',
@@ -3272,36 +3867,24 @@
     }
 
     recalculateNegotiationForVenue(neg) {
-      const venuePrice = this.getVenueAdjustedPrice(neg.basePrice, neg.venueType, neg.type);
-      const listingMeta = neg.isPlayerListing
-        ? { isPlayerListing: true, fairValue: neg.fairValue || neg.basePrice, venueType: neg.venueType }
-        : null;
-      const bounds = this.computeNegotiationBounds(neg.type, venuePrice, listingMeta);
       const target = this.getMeetupTargetDetails(neg.npcId, neg.venueType, neg.landmarkId);
-
-      neg.venuePrice = bounds.venuePrice;
-      neg.npcCurrentOffer = bounds.openOffer;
-      neg.npcFairTarget = bounds.fairTarget;
-      neg.npcWalkAwayLimit = bounds.walkLimit;
-      neg.playerDraftOffer = bounds.draftOffer;
-      neg.patience = neg.maxPatience;
-      neg.status = 'negotiating';
-      neg.agreedPrice = null;
-
-      const reason = neg.type === 'buy'
-        ? (neg.venueType === 'player_house'
-            ? 'Travel to your house adds +25%'
-            : (neg.venueType === 'npc_house'
-                ? 'Meeting at my house cuts the rate by -20%'
-                : `Meeting at ${target.shortVenueLabel} keeps the standard landmark price`))
-        : (neg.venueType === 'npc_house'
-            ? 'Delivering to my house adds a +25% delivery bonus'
-            : (neg.venueType === 'player_house'
-                ? 'Having me come to your house reduces the payout by -20%'
-                : `Meeting at ${target.shortVenueLabel} keeps the standard landmark payout`));
+      if (neg.status !== 'negotiating') {
+        const listingMeta = neg.isPlayerListing
+          ? { isPlayerListing: true, fairValue: neg.fairValue || neg.basePrice, venueType: 'landmark' }
+          : null;
+        const bounds = this.computeNegotiationBounds(neg.type, neg.basePrice, listingMeta);
+        neg.venuePrice = bounds.venuePrice;
+        neg.npcCurrentOffer = bounds.openOffer;
+        neg.npcFairTarget = bounds.fairTarget;
+        neg.npcWalkAwayLimit = bounds.walkLimit;
+        neg.playerDraftOffer = bounds.draftOffer;
+        neg.patience = neg.maxPatience;
+        neg.status = 'negotiating';
+        neg.agreedPrice = null;
+      }
       neg.messages.push({
         sender: 'npc',
-        text: `${reason}! Updated opening offer for ${target.shortVenueLabel}: ${this.formatMoney(neg.npcCurrentOffer)}.`
+        text: `${target.shortVenueLabel} works as a meeting spot. Send your offer whenever you're ready.`
       });
     }
 
@@ -3323,23 +3906,83 @@
         scheduledWindow: neg.scheduledWindow || this.getCurrentMeetupWindowId()
       });
 
-      const dayButtonsHtml = slots.map(s => {
-        const active = (neg.scheduledDay === s.dayNum && (neg.scheduledWindow || this.getCurrentMeetupWindowId()) === s.windowId) ? 'active' : '';
-        return `
-          <button class="phone-neg-pill ${active}" data-day="${s.dayNum}" data-window="${s.windowId}">
-            <span>${s.icon} ${s.rangeLabel}</span>
-            <small>${s.relTitle} (Day ${s.dayNum})</small>
-          </button>
-        `;
+      const offeredCards = Array.isArray(neg.offeredCards) ? neg.offeredCards : [null, null, null];
+      const offeredCardsValue = offeredCards.reduce((sum, c) => sum + (c ? (Number(c.fairValue) || 0) : 0), 0);
+      const relIcon = this.getRelationshipTier?.(neg.npcId)?.icon || '';
+
+      const dayOptionsHtml = slots.map(s => {
+        const selected = (neg.scheduledDay === s.dayNum && (neg.scheduledWindow || this.getCurrentMeetupWindowId()) === s.windowId) ? 'selected' : '';
+        return `<option value="${s.dayNum}|${s.windowId}" ${selected}>${s.icon} ${s.relTitle} (${s.rangeLabel})</option>`;
       }).join('');
 
+      const latestNpcMsg = [...(neg.messages || [])].reverse().find(m => m.sender === 'npc')?.text
+        || `Put together whatever cards and cash you think are fair and send it over.`;
+
+      const dialogueBoxHtml = `
+        <div style="background:rgba(15,23,42,0.75); border:1px solid #334155; border-radius:10px; padding:9px 10px;">
+          <div style="font-size:10px; font-weight:800; color:#94a3b8; margin-bottom:3px;">${neg.npcAvatar} ${neg.npcName} ${relIcon}</div>
+          <div style="font-size:11.5px; color:#f8fafc; line-height:1.35;">"${latestNpcMsg.replace(/^"|"$/g, '')}"</div>
+        </div>
+      `;
+
       const landmarksHtml = neg.venueType === 'landmark'
-        ? `<div class="phone-neg-grid-3">${this.getKnownMarketLandmarks().map(lm => `
-            <button class="phone-neg-pill ${neg.landmarkId === lm.id ? 'active' : ''}" data-landmark="${lm.id}">
-              <span>${lm.icon} ${lm.shortName}</span>
-            </button>
-          `).join('')}</div>`
+        ? `<select id="phone-neg-landmark-select" class="phone-neg-landmark-select">
+            ${this.getKnownMarketLandmarks().map(lm => `
+              <option value="${lm.id}" ${neg.landmarkId === lm.id ? 'selected' : ''}>${lm.icon} ${lm.shortName}</option>
+            `).join('')}
+          </select>`
         : '';
+
+      const sellBagSlotsHtml = isBuy
+        ? `
+          <div class="phone-neg-section">
+            <div class="phone-neg-label">
+              <span>Offer Cards (from Inventory)</span>
+              <span>${this.formatMoney(offeredCardsValue)} in cards</span>
+            </div>
+            <div class="phone-neg-slots-grid">
+              ${offeredCards.map((card, idx) => card
+                ? `<button type="button" class="phone-neg-slot filled" data-card-slot="${idx}">
+                    <span class="phone-neg-slot-name">${card.cardName}</span>
+                    <span class="phone-neg-slot-val">${this.formatMoney(card.fairValue)}</span>
+                  </button>`
+                : `<button type="button" class="phone-neg-slot" data-card-slot="${idx}">
+                    <span style="font-size:13px; font-weight:800; color:#38bdf8;">+</span>
+                    <span>Add Card</span>
+                  </button>`
+              ).join('')}
+            </div>
+          </div>
+        `
+        : '';
+
+      let sellBagDrawerHtml = '';
+      if (isBuy && neg.sellBagPickerSlot !== null && neg.sellBagPickerSlot !== undefined) {
+        const candidates = this.getAvailableBackpackSellCandidates();
+        const usedIds = new Set(offeredCards.map((c, i) => (c && i !== neg.sellBagPickerSlot ? c.beastId : null)).filter(Boolean));
+        sellBagDrawerHtml = `
+          <div class="phone-neg-sellbag-drawer" id="phone-neg-sellbag-drawer">
+            <div class="phone-neg-label">
+              <span>🎒 Pick Card from Inventory (Slot ${neg.sellBagPickerSlot + 1})</span>
+              <button type="button" id="btn-sellbag-close" style="background:none;border:none;color:#94a3b8;cursor:pointer;font-weight:800;">✕</button>
+            </div>
+            ${candidates.length === 0
+              ? `<div style="font-size:10.5px; color:#94a3b8;">No unreserved cards in your Inventory right now.</div>`
+              : candidates.map(c => {
+                  const used = usedIds.has(c.beastId);
+                  return `
+                    <button type="button" class="phone-neg-sellbag-item" data-pick-beast="${c.beastId}" ${used ? 'disabled' : ''}>
+                      <span><b>${c.cardName}</b> <small style="color:#94a3b8;">(${c.element})</small></span>
+                      <span style="font-weight:800;">${this.formatMoney(c.fairValue)}</span>
+                    </button>
+                  `;
+                }).join('')}
+            ${offeredCards[neg.sellBagPickerSlot]
+              ? `<button type="button" id="btn-sellbag-clear" class="phone-neg-btn-cancel" style="padding:5px;border-radius:7px;font-size:10px;font-weight:700;cursor:pointer;">Remove Card from Slot</button>`
+              : ''}
+          </div>
+        `;
+      }
 
       const statusHeaderText = neg.status === 'agreed'
         ? `🤝 Agreed: ${this.formatMoney(neg.agreedPrice)}`
@@ -3353,35 +3996,72 @@
 
       let controlsHtml = '';
       if (neg.status === 'negotiating') {
-        const lowFundsNote = isBuy && (this.gold || 0) < neg.npcCurrentOffer
-          ? `<div style="font-size:10px; color:#fbbf24;">Note: Wallet is ${this.formatMoney(this.gold || 0)} — you can schedule ahead and earn cash before meetup day!</div>`
+        const marketPrice = this.roundQuarterDollar(Math.max(0.5, Number(neg.fairValue || neg.basePrice) || 1));
+        const minCash = isBuy ? 0 : 0.25;
+        const maxCash = isBuy
+          ? Math.max(2, this.roundQuarterDollar(marketPrice * 2))
+          : Math.max(2, this.roundQuarterDollar(marketPrice * 2 - minCash));
+        const clampedCash = Math.max(minCash, Math.min(maxCash, Number(neg.playerDraftOffer) || 0));
+        const totalOfferVal = Math.round(((isBuy ? offeredCardsValue : 0) + clampedCash) * 100) / 100;
+        const lowFundsNote = isBuy && (this.gold || 0) < clampedCash
+          ? `<div style="font-size:10px; color:#fbbf24;">Wallet: ${this.formatMoney(this.gold || 0)} — you can still schedule ahead and earn cash before meetup!</div>`
           : '';
         controlsHtml = `
           ${lowFundsNote}
-          <div class="phone-neg-offer-row">
-            <button class="phone-neg-step-btn" data-step="-0.50">-$0.50</button>
-            <button class="phone-neg-step-btn" data-step="-0.25">-$0.25</button>
-            <input type="number" step="0.25" min="0.25" id="market-counter-input" class="phone-neg-input" value="${Number(neg.playerDraftOffer).toFixed(2)}" />
-            <button class="phone-neg-step-btn" data-step="0.25">+$0.25</button>
-            <button class="phone-neg-step-btn" data-step="0.50">+$0.50</button>
+          ${sellBagSlotsHtml}
+          ${sellBagDrawerHtml}
+          <div class="phone-neg-section" style="border-top:1px solid #334155; padding-top:8px;">
+            <div style="display:flex; justify-content:space-between; align-items:baseline; font-size:11px;">
+              <span style="color:#cbd5e1; font-weight:700;">${isBuy ? '+ Cash Sweetener' : 'Your Asking Price'}</span>
+              <span id="phone-neg-cash-readout" style="font-weight:800; font-size:13px; color:#f8fafc;">${this.formatMoney(clampedCash)}</span>
+            </div>
+            <input type="range" id="phone-neg-cash-slider" class="phone-neg-slider" min="${minCash}" max="${maxCash}" step="0.25" value="${clampedCash}" />
+            <div style="display:flex; justify-content:space-between; font-size:10px; color:#94a3b8;">
+              <span>${this.formatMoney(minCash)}</span>
+              <span id="phone-neg-total-summary" style="color:#e2e8f0; font-weight:700;">Total Offer: ${this.formatMoney(totalOfferVal)}</span>
+              <span>${this.formatMoney(maxCash)}</span>
+            </div>
           </div>
+          <div class="phone-neg-section" style="border-top:1px solid #334155; padding-top:8px;">
+            <div class="phone-neg-label">
+              <span>Meetup Location &amp; Time</span>
+              <select id="phone-neg-day-select" class="phone-neg-landmark-select" style="width:auto; margin-top:0; padding:3px 6px; font-size:10px;">
+                ${dayOptionsHtml}
+              </select>
+            </div>
+            <div class="phone-neg-grid-3">
+              <button class="phone-neg-pill ${neg.venueType === 'npc_house' ? 'active' : ''}" data-venue="npc_house">
+                <span>🏠 ${neg.npcName.split(' ')[0]}'s</span>
+              </button>
+              <button class="phone-neg-pill ${neg.venueType === 'landmark' ? 'active' : ''}" data-venue="landmark">
+                <span>📍 Midpoint</span>
+              </button>
+              <button class="phone-neg-pill ${neg.venueType === 'player_house' ? 'active' : ''}" data-venue="player_house">
+                <span>🏡 Yours</span>
+              </button>
+            </div>
+            ${landmarksHtml}
+          </div>
+          ${dialogueBoxHtml}
           <div class="phone-neg-actions-row">
-            <button class="phone-neg-btn-send" id="btn-neg-send">💬 Counter Offer</button>
-            <button class="phone-neg-btn-accept" id="btn-neg-accept">🤝 Accept ${this.formatMoney(neg.npcCurrentOffer)}</button>
+            <button class="phone-neg-btn-send" id="btn-neg-send">📨 Send Offer</button>
+            <button class="phone-neg-btn-accept" id="btn-neg-accept" style="flex:0.75;">🤝 ${this.formatMoney(neg.npcCurrentOffer)}</button>
           </div>
         `;
       } else if (neg.status === 'agreed') {
         controlsHtml = `
-          <div style="font-size:11px; color:#86efac; background:rgba(16,185,129,0.12); border:1px solid rgba(52,211,153,0.4); border-radius:8px; padding:6px 8px;">
-            ✅ Deal Agreed at <b>${this.formatMoney(neg.agreedPrice)}</b> for <b>${activeWinLabel}</b> @ <b>${target.shortVenueLabel}</b>!
+          ${dialogueBoxHtml}
+          <div style="font-size:11px; color:#86efac; background:rgba(16,185,129,0.12); border:1px solid rgba(52,211,153,0.4); border-radius:8px; padding:7px 9px;">
+            ✅ Deal Agreed at <b>${this.formatMoney(neg.agreedPrice)}</b>${offeredCards.some(Boolean) ? ` + ${offeredCards.filter(Boolean).length} card(s)` : ''} for <b>${activeWinLabel}</b> @ <b>${target.shortVenueLabel}</b>!
           </div>
           <div class="phone-neg-actions-row">
             <button class="phone-neg-btn-accept" id="btn-neg-confirm">📅 Confirm &amp; Schedule Meetup</button>
-            <button class="phone-neg-btn-cancel" id="btn-neg-reopen">💬 Re-negotiate</button>
+            <button class="phone-neg-btn-cancel" id="btn-neg-reopen" style="flex:0.55;">💬 Edit</button>
           </div>
         `;
       } else {
         controlsHtml = `
+          ${dialogueBoxHtml}
           <div style="font-size:10.5px; color:#fca5a5;">${neg.npcName} paused talks. Switch meeting place or reopen negotiation!</div>
           <div class="phone-neg-actions-row">
             <button class="phone-neg-btn-send" id="btn-neg-reopen">🔄 Re-open Negotiation</button>
@@ -3391,47 +4071,21 @@
 
       pane.innerHTML = `
         <div class="phone-neg-section">
-          <div style="display:flex; justify-content:space-between; align-items:center; gap:6px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:6px; padding-bottom:6px; border-bottom:1px solid #334155;">
             <button class="phone-neg-step-btn" id="btn-neg-back">‹ Listings</button>
-            <div style="text-align:right;">
-              <div style="font-size:12px; font-weight:800; color:#f8fafc;">${isBuy ? '🛒 Buy' : '💰 Sell'} ${neg.cardName}</div>
-              <div style="font-size:10px; color:#94a3b8;">${neg.npcAvatar} with ${neg.npcName} • Base ${this.formatMoney(neg.basePrice)}</div>
-            </div>
+            <div style="font-size:11px; font-weight:800; color:#e2e8f0;">${neg.npcAvatar} ${neg.npcName} ${relIcon}</div>
           </div>
         </div>
 
-        <div class="phone-neg-section">
-          <div class="phone-neg-label"><span>1. Choose Meetup Time</span><span>${activeWinLabel}</span></div>
-          <div class="phone-neg-grid-4">${dayButtonsHtml}</div>
+        <div style="display:flex; align-items:center; justify-content:space-between; background:rgba(30,41,59,0.85); border:1px solid #334155; border-radius:10px; padding:8px 10px;">
+          <div>
+            <div style="font-size:12.5px; font-weight:800; color:#f8fafc;">${isBuy ? '🛒' : '💰'} ${neg.cardName}</div>
+            <div style="font-size:10px; color:#94a3b8;">${isBuy ? 'Asking Value' : 'Base Value'}: ~${this.formatMoney(neg.basePrice)}</div>
+          </div>
+          <span style="font-size:18px;">🃏</span>
         </div>
 
-        <div class="phone-neg-section">
-          <div class="phone-neg-label"><span>2. Choose Meetup Place</span><span>${this.formatMoney(neg.venuePrice)} base</span></div>
-          <div class="phone-neg-grid-3">
-            <button class="phone-neg-pill ${neg.venueType === 'npc_house' ? 'active' : ''}" data-venue="npc_house">
-              <span>🏠 NPC's House</span>
-              <small class="cheaper">${this.formatMoney(npcPrice)} (${isBuy ? 'Less' : 'More'})</small>
-            </button>
-            <button class="phone-neg-pill ${neg.venueType === 'landmark' ? 'active' : ''}" data-venue="landmark">
-              <span>⛲ Landmark</span>
-              <small>${this.formatMoney(landmarkPrice)} (Base)</small>
-            </button>
-            <button class="phone-neg-pill ${neg.venueType === 'player_house' ? 'active' : ''}" data-venue="player_house">
-              <span>🏡 Your House</span>
-              <small class="pricier">${this.formatMoney(homePrice)} (${isBuy ? 'More' : 'Less'})</small>
-            </button>
-          </div>
-          ${landmarksHtml}
-        </div>
-
-        <div class="phone-neg-section">
-          <div class="phone-neg-label">
-            <span>3. Price Negotiation</span>
-            <span>${statusHeaderText}</span>
-          </div>
-          <div class="phone-neg-chat" id="phone-neg-chat-log">${chatHtml}</div>
-          ${controlsHtml}
-        </div>
+        ${controlsHtml}
       `;
 
       const chatLog = pane.querySelector('#phone-neg-chat-log');
@@ -3443,13 +4097,12 @@
         this.renderMarketApp();
       });
 
-      pane.querySelectorAll('[data-day]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          if (window.sounds?.playClick) window.sounds.playClick();
-          neg.scheduledDay = Number(btn.getAttribute('data-day'));
-          neg.scheduledWindow = btn.getAttribute('data-window') || this.getCurrentMeetupWindowId();
-          this.renderNegotiationPane();
-        });
+      pane.querySelector('#phone-neg-day-select')?.addEventListener('change', (e) => {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        const [d, w] = String(e.target.value || '').split('|');
+        neg.scheduledDay = Number(d) || neg.scheduledDay;
+        neg.scheduledWindow = w || neg.scheduledWindow || this.getCurrentMeetupWindowId();
+        this.renderNegotiationPane();
       });
 
       pane.querySelectorAll('[data-venue]').forEach(btn => {
@@ -3464,48 +4117,76 @@
         });
       });
 
-      pane.querySelectorAll('[data-landmark]').forEach(btn => {
+      pane.querySelector('#phone-neg-landmark-select')?.addEventListener('change', (e) => {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        const newLm = e.target.value;
+        if (newLm && newLm !== neg.landmarkId) {
+          neg.landmarkId = newLm;
+          this.recalculateNegotiationForVenue(neg);
+          this.renderNegotiationPane();
+        }
+      });
+
+      pane.querySelectorAll('[data-card-slot]').forEach(btn => {
         btn.addEventListener('click', () => {
           if (window.sounds?.playClick) window.sounds.playClick();
-          const newLm = btn.getAttribute('data-landmark');
-          if (newLm !== neg.landmarkId) {
-            neg.landmarkId = newLm;
-            this.recalculateNegotiationForVenue(neg);
-            this.renderNegotiationPane();
-          }
+          const idx = Number(btn.getAttribute('data-card-slot'));
+          neg.sellBagPickerSlot = (neg.sellBagPickerSlot === idx) ? null : idx;
+          this.renderNegotiationPane();
         });
       });
 
-      const counterInput = pane.querySelector('#market-counter-input');
-      if (counterInput) {
-        counterInput.addEventListener('input', () => {
-          const val = parseFloat(counterInput.value);
-          if (!Number.isNaN(val)) neg.playerDraftOffer = val;
+      pane.querySelector('#btn-sellbag-close')?.addEventListener('click', () => {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        neg.sellBagPickerSlot = null;
+        this.renderNegotiationPane();
+      });
+
+      pane.querySelector('#btn-sellbag-clear')?.addEventListener('click', () => {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        if (neg.sellBagPickerSlot !== null && Array.isArray(neg.offeredCards)) {
+          neg.offeredCards[neg.sellBagPickerSlot] = null;
+        }
+        neg.sellBagPickerSlot = null;
+        this.renderNegotiationPane();
+      });
+
+      pane.querySelectorAll('[data-pick-beast]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          if (window.sounds?.playClick) window.sounds.playClick();
+          const beastId = btn.getAttribute('data-pick-beast');
+          const cand = this.getAvailableBackpackSellCandidates().find(c => c.beastId === beastId);
+          if (cand && neg.sellBagPickerSlot !== null) {
+            if (!Array.isArray(neg.offeredCards)) neg.offeredCards = [null, null, null];
+            neg.offeredCards[neg.sellBagPickerSlot] = {
+              beastId: cand.beastId,
+              cardName: cand.cardName,
+              fairValue: cand.fairValue
+            };
+          }
+          neg.sellBagPickerSlot = null;
+          this.renderNegotiationPane();
         });
-        counterInput.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter') {
-            e.preventDefault();
-            this.submitNegotiationOffer(counterInput.value);
-          } else if (e.key === 'Escape') {
-            counterInput.blur();
+      });
+
+      const cashSlider = pane.querySelector('#phone-neg-cash-slider');
+      if (cashSlider) {
+        cashSlider.addEventListener('input', () => {
+          const val = parseFloat(cashSlider.value) || 0;
+          neg.playerDraftOffer = val;
+          const readout = pane.querySelector('#phone-neg-cash-readout');
+          if (readout) readout.textContent = this.formatMoney(val);
+          const totalEl = pane.querySelector('#phone-neg-total-summary');
+          if (totalEl) {
+            const cardVal = isBuy ? offeredCardsValue : 0;
+            totalEl.textContent = `Total Offer: ${this.formatMoney(cardVal + val)}`;
           }
         });
       }
 
-      pane.querySelectorAll('[data-step]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          if (window.sounds?.playClick) window.sounds.playClick();
-          const delta = parseFloat(btn.getAttribute('data-step')) || 0;
-          const curVal = counterInput ? parseFloat(counterInput.value) : neg.playerDraftOffer;
-          const next = Math.max(0.25, Math.round(((Number.isNaN(curVal) ? neg.playerDraftOffer : curVal) + delta) * 100) / 100);
-          neg.playerDraftOffer = next;
-          if (counterInput) counterInput.value = next.toFixed(2);
-        });
-      });
-
       pane.querySelector('#btn-neg-send')?.addEventListener('click', () => {
         if (window.sounds?.playClick) window.sounds.playClick();
-        const raw = counterInput ? counterInput.value : neg.playerDraftOffer;
+        const raw = cashSlider ? cashSlider.value : neg.playerDraftOffer;
         this.submitNegotiationOffer(raw);
       });
 
@@ -3530,53 +4211,74 @@
       const neg = this.activeNegotiation;
       if (!neg || neg.status !== 'negotiating') return;
 
+      const isBuy = neg.type === 'buy';
+      const offeredCards = isBuy ? (neg.offeredCards || []).filter(Boolean) : [];
+      const cardsValue = offeredCards.reduce((sum, c) => sum + (Number(c.fairValue) || 0), 0);
+
       const parsed = parseFloat(rawOffer);
-      if (Number.isNaN(parsed) || parsed <= 0) {
+      if (Number.isNaN(parsed) || parsed < 0 || (parsed === 0 && offeredCards.length === 0)) {
         if (window.sounds?.playError) window.sounds.playError();
         return;
       }
 
-      const offer = this.roundQuarterDollar(parsed);
-      neg.playerDraftOffer = offer;
+      const cashOffer = this.roundQuarterDollar(parsed);
+      neg.playerDraftOffer = cashOffer;
+      const offer = Math.round((cashOffer + cardsValue) * 100) / 100;
+      const rapportLeeway = isBuy ? ((this.getRelationship(neg.npcId) - 50) * 0.03) : 0;
+      const effectiveOffer = offer + rapportLeeway;
       const target = this.getMeetupTargetDetails(neg.npcId, neg.venueType, neg.landmarkId);
-      neg.messages.push({ sender: 'player', text: `How about ${this.formatMoney(offer)}?` });
+      const offerDesc = offeredCards.length > 0
+        ? `${offeredCards.map(c => c.cardName).join(' + ')}${cashOffer > 0 ? ` + ${this.formatMoney(cashOffer)}` : ''} (${this.formatMoney(offer)} value)`
+        : this.formatMoney(cashOffer);
+      neg.messages.push({ sender: 'player', text: `How about ${offerDesc}?` });
 
-      const isBuy = neg.type === 'buy';
-      const immediateOk = isBuy ? (offer >= neg.npcCurrentOffer) : (offer <= neg.npcCurrentOffer);
-      const fairOk = isBuy ? (offer >= neg.npcFairTarget) : (offer <= neg.npcFairTarget);
-      const withinWalkLimit = isBuy ? (offer >= neg.npcWalkAwayLimit) : (offer <= neg.npcWalkAwayLimit);
+      const venueMult = isBuy
+        ? (neg.venueType === 'npc_house' ? 0.85 : (neg.venueType === 'player_house' ? 1.20 : 1.0))
+        : (neg.venueType === 'npc_house' ? 1.15 : (neg.venueType === 'player_house' ? 0.85 : 1.0));
+      const adjCurrent = this.roundQuarterDollar(neg.npcCurrentOffer * venueMult);
+      const adjFair = this.roundQuarterDollar(neg.npcFairTarget * venueMult);
+      const adjWalk = this.roundQuarterDollar(neg.npcWalkAwayLimit * venueMult);
+
+      const immediateOk = isBuy ? (effectiveOffer >= adjCurrent) : (cashOffer <= adjCurrent);
+      const fairOk = isBuy ? (effectiveOffer >= adjFair) : (cashOffer <= adjFair);
+      const withinWalkLimit = isBuy ? (effectiveOffer >= adjWalk) : (cashOffer <= adjWalk);
 
       if (immediateOk || fairOk) {
-        neg.agreedPrice = offer;
+        neg.agreedPrice = cashOffer;
         neg.status = 'agreed';
+        this.changeRelationship(neg.npcId, 2, 'fair trade deal');
         neg.messages.push({
           sender: 'npc',
-          text: `Deal! ${this.formatMoney(offer)} sounds great for ${target.shortVenueLabel}. Confirm the meetup when ready!`
+          text: `Deal! ${offerDesc} sounds great for ${target.shortVenueLabel}. Confirm the meetup when ready!`
         });
         if (window.sounds?.playCollect) window.sounds.playCollect();
       } else if (withinWalkLimit) {
         let counter;
         if (isBuy) {
-          counter = Math.min(this.roundQuarterDollar((neg.npcCurrentOffer + offer) / 2), neg.npcCurrentOffer - 0.25);
-          counter = Math.max(offer, neg.npcWalkAwayLimit, counter);
+          counter = Math.min(this.roundQuarterDollar((adjCurrent + offer) / 2), adjCurrent - 0.25);
+          counter = Math.max(offer, adjWalk, counter);
         } else {
-          counter = Math.max(this.roundQuarterDollar((neg.npcCurrentOffer + offer) / 2), neg.npcCurrentOffer + 0.25);
-          counter = Math.min(offer, neg.npcWalkAwayLimit, counter);
+          counter = Math.max(this.roundQuarterDollar((adjCurrent + cashOffer) / 2), adjCurrent + 0.25);
+          counter = Math.min(cashOffer, adjWalk, counter);
         }
         if (counter === offer) {
-          neg.agreedPrice = offer;
+          neg.agreedPrice = cashOffer;
           neg.status = 'agreed';
+          this.changeRelationship(neg.npcId, 2, 'fair trade deal');
           neg.messages.push({
             sender: 'npc',
-            text: `You drive a smart bargain — let's lock in ${this.formatMoney(offer)} at ${target.shortVenueLabel}!`
+            text: `You drive a smart bargain — let's lock in ${offerDesc} at ${target.shortVenueLabel}!`
           });
           if (window.sounds?.playCollect) window.sounds.playCollect();
         } else {
+          const neededCash = Math.max(0, this.roundQuarterDollar(counter - cardsValue));
           neg.npcCurrentOffer = counter;
-          neg.playerDraftOffer = counter;
+          neg.playerDraftOffer = isBuy ? neededCash : counter;
           neg.messages.push({
             sender: 'npc',
-            text: `${this.formatMoney(offer)} is a bit tight — can you meet me at ${this.formatMoney(counter)}?`
+            text: isBuy && offeredCards.length > 0
+              ? `With those cards, could you do ${this.formatMoney(neededCash)} cash (${this.formatMoney(counter)} total)?`
+              : `${this.formatMoney(offer)} is a bit tight — can you meet me at ${this.formatMoney(counter)}?`
           });
         }
       } else {
@@ -3584,6 +4286,7 @@
         if (window.sounds?.playError) window.sounds.playError();
         if (neg.patience <= 0) {
           neg.status = 'walked';
+          this.changeRelationship(neg.npcId, -3, 'lowball offer');
           neg.messages.push({
             sender: 'npc',
             text: `No can do — ${this.formatMoney(offer)} is too far from my ${this.formatMoney(neg.npcWalkAwayLimit)} limit. Try switching places or reopen talks!`
@@ -3609,6 +4312,7 @@
       if (!neg || neg.status !== 'negotiating') return;
       neg.agreedPrice = neg.npcCurrentOffer;
       neg.status = 'agreed';
+      this.changeRelationship(neg.npcId, 2, 'accepted offer');
       neg.messages.push({
         sender: 'player',
         text: `Agreed — ${this.formatMoney(neg.agreedPrice)} works for me!`
@@ -3627,7 +4331,7 @@
 
     confirmAgreedMeetup() {
       const neg = this.activeNegotiation;
-      if (!neg || neg.status !== 'agreed' || !neg.agreedPrice) return;
+      if (!neg || neg.status !== 'agreed' || neg.agreedPrice === null || neg.agreedPrice === undefined) return;
 
       const target = this.getMeetupTargetDetails(neg.npcId, neg.venueType, neg.landmarkId);
       const meetupRecord = {
@@ -3643,6 +4347,7 @@
         fairValue: neg.fairValue || null,
         basePrice: neg.basePrice,
         agreedPrice: neg.agreedPrice,
+        offeredCards: neg.type === 'buy' ? (neg.offeredCards || []).filter(Boolean) : [],
         scheduledDay: neg.scheduledDay,
         scheduledWindow: neg.scheduledWindow || this.getCurrentMeetupWindowId(),
         venueType: target.venueType,
@@ -3686,6 +4391,9 @@
       this.scheduledMeetups = (this.scheduledMeetups || []).filter(m => m.id !== meetupId);
       this.deleteNotebookNote(`meetup_${meetupId}`);
       if (m) {
+        if (m.status === 'scheduled') {
+          this.changeRelationship(m.npcId, -4, 'cancelled meetup');
+        }
         const npc = this.getMeetupRealNpc(m.npcId);
         if (npc && npc.trip?.meetupId === meetupId) {
           this.startNpcReturnFromTrip(npc);
@@ -3704,6 +4412,17 @@
       }
 
       if (m.type === 'buy') {
+        const offeredCards = Array.isArray(m.offeredCards) ? m.offeredCards : [];
+        for (const oc of offeredCards) {
+          const invIdx = (this.inventory || []).findIndex(i => i.beastId === oc.beastId && (i.qty || 1) > 0);
+          if (invIdx === -1) {
+            if (window.sounds?.playError) window.sounds.playError();
+            return {
+              ok: false,
+              message: `You need ${oc.cardName} in your Inventory to complete this trade!`
+            };
+          }
+        }
         if ((this.gold || 0) < m.agreedPrice) {
           if (window.sounds?.playError) window.sounds.playError();
           return {
@@ -3711,6 +4430,14 @@
             message: `You need ${this.formatMoney(m.agreedPrice)} to complete this trade (Wallet: ${this.formatMoney(this.gold || 0)}). Earn more cash and talk to me again today!`
           };
         }
+        offeredCards.forEach(oc => {
+          const invIdx = (this.inventory || []).findIndex(i => i.beastId === oc.beastId && (i.qty || 1) > 0);
+          if (invIdx !== -1) {
+            const item = this.inventory[invIdx];
+            if ((item.qty || 1) > 1) item.qty -= 1;
+            else this.inventory.splice(invIdx, 1);
+          }
+        });
         this.gold = Math.round(((this.gold || 0) - m.agreedPrice) * 100) / 100;
         if (!this.phoneListingsBought.includes(m.listingId)) {
           this.phoneListingsBought.push(m.listingId);
@@ -3735,6 +4462,7 @@
           }
         }
         if (window.sounds?.playCollect) window.sounds.playCollect();
+        this.changeRelationship(m.npcId, 6, 'honored card meetup');
         this.saveWorldData(this.draftAppearance);
         this.updateHUDSaveInfo();
         this.renderInventoryModal?.();
@@ -3782,6 +4510,7 @@
         }
       }
       if (window.sounds?.playCoins) window.sounds.playCoins();
+      this.changeRelationship(m.npcId, 6, 'honored card meetup');
       this.saveWorldData(this.draftAppearance);
       this.updateHUDSaveInfo();
       this.renderInventoryModal?.();
@@ -5323,6 +6052,7 @@
 
       this.saveWorldData(this.draftAppearance);
       this.updateHUDSaveInfo();
+      this.changeRelationship('leo', 2, 'shop purchase');
       this.renderShopModal();
       this.renderInventoryModal();
 
@@ -5387,6 +6117,7 @@
 
       this.saveWorldData(this.draftAppearance);
       this.updateHUDSaveInfo();
+      this.changeRelationship('leo', 2, 'shop purchase');
       this.renderShopModal();
       this.renderInventoryModal();
 
@@ -5446,6 +6177,7 @@
 
       this.saveWorldData(this.draftAppearance);
       this.updateHUDSaveInfo();
+      this.changeRelationship('leo', 2, 'shop purchase');
       this.renderShopModal();
       this.renderInventoryModal();
 
@@ -5891,6 +6623,7 @@
       this.bertoRewardPending = Boolean(won);
       if (won) {
         this.wins = (this.wins || 0) + 1;
+        this.evaluateQuests?.(false);
       } else {
         this.losses = (this.losses || 0) + 1;
       }
@@ -6231,6 +6964,7 @@
         playerMatch.loserId = playerWon ? oppId : 'player';
         playerMatch.hpMargin = margin;
         playerMatch.completed = true;
+        this.changeRelationship(oppId, 2, 'tournament match');
       }
 
       const participants = this.getParkTourneyParticipants();
@@ -6801,6 +7535,9 @@
       else bb.losses += 1;
       bb.lastWon = !!won;
       bb.phase = 'post_battle';
+      if (bb.activeNpc?.id) {
+        this.changeRelationship(bb.activeNpc.id, 2, 'Booster Bash duel');
+      }
     }
 
     dismissBoosterBashPostBattle() {
@@ -6864,8 +7601,10 @@
         }
         if (this.plutoBattleResult === 'won') {
           if (window.sounds?.playVictory) window.sounds.playVictory();
+          this.changeRelationship('pluto', 3, 'good duel');
         } else if (this.plutoBattleResult === 'lost') {
           if (window.sounds?.playHit) window.sounds.playHit();
+          this.changeRelationship('pluto', 2, 'good sport');
         }
         this.activeDialogueNpc = 'pluto';
         this.updateFreeRoamPrompt();
@@ -6877,6 +7616,7 @@
         }
         if (this.bertoBattleResult === 'won') {
           if (window.sounds?.playVictory) window.sounds.playVictory();
+          this.changeRelationship('berto', -4, 'bruised ego');
           this.bertoBattleResult = null;
           this.bertoRewardPending = true;
           this.activeDialogueNpc = null;
@@ -6886,6 +7626,7 @@
         }
         if (this.bertoBattleResult === 'lost') {
           if (window.sounds?.playHit) window.sounds.playHit();
+          this.changeRelationship('berto', 2, 'enjoyed the win');
         }
         this.activeDialogueNpc = 'berto';
         this.updateFreeRoamPrompt();
@@ -6893,6 +7634,7 @@
       }
       if (challenger?.id === 'nova' || challenger?.id === 'silas' || challenger?.id === 'maya' || challenger?.id === 'evelyn') {
         if (window.sounds?.playVictory) window.sounds.playVictory();
+        this.changeRelationship(challenger.id, 3, 'good duel');
         this.activeDialogueNpc = challenger.id;
         this.updateFreeRoamPrompt();
         return;
@@ -7220,7 +7962,7 @@
               <div class="binder-trad-name" title="${c.name}">${c.name}</div>
               <div class="binder-trad-actions">
                 <button type="button" class="binder-xfer-btn to-binder" title="Return 1 copy to Binder Sleeves">📖 Binder</button>
-                <button type="button" class="binder-xfer-btn to-bag" title="Pull 1 copy to Sell/Trade Bag">🎒 Sell</button>
+                <button type="button" class="binder-xfer-btn to-bag" title="Pull 1 copy to Inventory">🎒 Sell</button>
               </div>
             `;
             this.attachTradCardLongPress(slot.querySelector('.binder-trad-art-wrap'), c);
@@ -7315,7 +8057,7 @@
               <div class="binder-trad-name" title="${displayName}">${displayName}</div>
               <div class="binder-trad-actions">
                 <button type="button" class="binder-xfer-btn to-deck" title="Move 1 copy to Playing Deck (+${stars}★)">+🃏 Deck</button>
-                <button type="button" class="binder-xfer-btn to-bag" title="Pull 1 copy to Sell/Trade Bag">🎒 Sell</button>
+                <button type="button" class="binder-xfer-btn to-bag" title="Pull 1 copy to Inventory">🎒 Sell</button>
               </div>
             `;
 
@@ -7333,7 +8075,7 @@
               ev.stopPropagation();
               this.removeCardFromBinder(i);
               if (hintEl) {
-                hintEl.innerHTML = `🎒 Moved <b>${displayName}</b> to your <b>Sell/Trade Bag</b> — ready to sell at Leo's Shop or on your Phone!`;
+                hintEl.innerHTML = `🎒 Moved <b>${displayName}</b> to your <b>Inventory</b> — ready to sell at Leo's Shop or on your Phone!`;
               }
             });
           } else {
@@ -7356,13 +8098,13 @@
         });
       }
 
-      // 3. Render Bottom Drawer Tab 2: Sell/Trade Bag (Loose Inventory Cards, Unopened Packs & Board Themes)
+      // 3. Render Bottom Drawer Tab 2: Inventory (Loose Inventory Cards, Unopened Packs & Board Themes)
       if (bagGridEl) {
         bagGridEl.innerHTML = '';
         if (bagItems.length === 0) {
           bagGridEl.innerHTML = `
             <div style="grid-column: 1 / -1; padding: 18px; text-align: center; color: #f3e8d2; font-size: 12px;">
-              Your <b>🎒 Sell/Trade Bag</b> has no loose cards or packs right now.<br>
+              Your <b>🎒 Inventory</b> has no loose cards, packs, or items right now.<br>
               <span style="opacity:0.85;">Pull cards here using <b>🎒 Sell</b> from your Playing Deck or Binder Sleeves whenever you want to sell them at Leo's Card Shop or list them on your Phone!</span>
             </div>
           `;
@@ -7408,6 +8150,18 @@
                 this.setEquippedBoardTheme(isEquipped ? 'classic' : themeId, true);
                 this.renderBinderModal();
               });
+            } else if (item.type === 'quest_item') {
+              slotEl.innerHTML = `
+                <div class="binder-trad-art-wrap" draggable="false">
+                  ${item.cardImg
+                    ? `<img src="${item.cardImg}" alt="${displayName}" class="binder-trad-art-img" draggable="false">`
+                    : `<div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-size:42px;background:rgba(15,23,42,0.85);border-radius:8px;">${item.icon || '📜'}</div>`}
+                </div>
+                <div class="binder-trad-name" title="${displayName}">${displayName}</div>
+                <div class="binder-trad-actions">
+                  <span style="flex:1;text-align:center;font-size:11px;font-weight:700;color:#fdba74;padding:3px 4px;">📜 Quest Item</span>
+                </div>
+              `;
             } else {
               const cleanId = String(item.beastId || item.id || '').replace(/^card_/, '');
               const gwentDef = reg[cleanId];
@@ -7713,7 +8467,7 @@
       const inDeckCount = (this.playingDeck || []).filter(id => id === cardId).length;
       if (availableCount <= 0) {
         if (window.sounds?.playClick) window.sounds.playClick();
-        return { ok: false, message: `⚠️ You have no spare copies of ${cardDef.name} left in your Binder or Sell/Trade Bag.` };
+        return { ok: false, message: `⚠️ You have no spare copies of ${cardDef.name} left in your Binder or Inventory.` };
       }
 
       const maxPerDeck = window.MythosGwentCards?.getMaxDeckCopies
@@ -7758,7 +8512,7 @@
       const statusEl = document.getElementById('playing-deck-status');
       const hintEl = document.getElementById('binder-hint-text');
       const msg = cardDef
-        ? `Returned <b>${cardDef.name}</b> from Playing Deck to your <b>${dest === 'binder' ? '📖 Binder Sleeves' : '🎒 Sell/Trade Bag'}</b>.`
+        ? `Returned <b>${cardDef.name}</b> from Playing Deck to your <b>${dest === 'binder' ? '📖 Binder Sleeves' : '🎒 Inventory'}</b>.`
         : '';
       if (statusEl && msg) statusEl.innerHTML = msg;
       if (hintEl && msg) hintEl.innerHTML = msg;
@@ -7832,7 +8586,7 @@
       const stats = this.getPlayingDeckStats();
       const msg = stats.cardCount > 0
         ? `✨ Filled Playing Deck with <b>${stats.cardCount}/${stats.maxCards} cards</b> (<b>${stats.totalStars}/${stats.maxStars}★</b>).`
-        : '⚠️ No owned Mythos cards found in your Binder or Sell/Trade Bag yet.';
+        : '⚠️ No owned Mythos cards found in your Binder or Inventory yet.';
       const statusEl = document.getElementById('playing-deck-status');
       const hintEl = document.getElementById('binder-hint-text');
       if (statusEl) statusEl.innerHTML = msg;
@@ -8618,12 +9372,15 @@
         .filter(Boolean);
       this.deckStorageMigrated = true;
 
+      const shouldTriggerIntroChallenge = !!(st.isStarterPack || !this.hasOpenedStarterPack || (this.storyState && this.storyState !== 'free_roam'));
       this.hasOpenedStarterPack = true;
-      this.storyState = 'friend_challenges_after_pack';
-      this.excitedBounceTicks = 110;
-      if (this.npcs[0]) {
-        this.npcs[0].bubble = '⚔️';
-        this.npcs[0].dir = 'left';
+      if (shouldTriggerIntroChallenge) {
+        this.storyState = 'friend_challenges_after_pack';
+        this.excitedBounceTicks = 110;
+        if (this.npcs[0]) {
+          this.npcs[0].bubble = '⚔️';
+          this.npcs[0].dir = 'left';
+        }
       }
       if (this.shopkeeperNpc) {
         this.shopkeeperNpc.bubble = '🤩';
@@ -8654,6 +9411,7 @@
       this.dayNumber = 1;
       this.timeOfDayMinutes = this.NEW_GAME_START_MINUTE;
       this.syncTimeOfDayPhase(false);
+      this.checkPinnedReminders();
       this.updateClockHUD(true);
       this.hasMomBoosterMoney = false;
       this.migratedMom25 = false;
@@ -8680,8 +9438,13 @@
       this.registeredTournaments = [];
       this.hasCompletedTutorial = false;
       this.notebookNotes = [];
+      this.npcRelationships = {};
+      this.npcDialogueGainLog = {};
+      this.questState = this.normalizeQuestState(null);
+      this.questLogTab = 'active';
       this._activePinNoteContext = null;
       this.updateNotebookBadgeCount?.();
+      this.updateQuestBadgeCount?.();
       this.lastParkTourneyCompletedDay = 0;
       this.bertoBattledDay = 0;
       this.bertoBattledOutcome = null;
@@ -8893,11 +9656,11 @@
 
     isNpc(interactable) {
       if (!interactable) return false;
-      if (interactable.isMeetupVisitor) return true;
+      if (interactable.isMeetupVisitor || interactable.trip) return true;
       const id = interactable.id;
       if (typeof id === 'string' && id.startsWith('meetup_')) return true;
       const friend = this.getFriendNpc();
-      return id === 'friend' || id === 'best_friend' || id === 'friend_duel' || id === 'booster_bash_challenger' || id === 'mom' || id === 'shopkeeper' || id === 'pluto' || id === 'nova' || id === 'silas' || id === 'maya' || id === 'clara' || id === 'bram' || id === 'mayor_donald' || id === 'chef_marco' || id === 'berto' || id === 'shaun' || id === 'evelyn' || id === 'chloe' || id === 'rowan' || id === 'jasper' || interactable === friend || interactable === this.shopkeeperNpc || interactable === this.plutoNpc || interactable === this.novaNpc || interactable === this.silasNpc || interactable === this.mayaNpc || interactable === this.claraNpc || interactable === this.bramNpc || interactable === this.mayorNpc || interactable === this.chefNpc || interactable === this.bertoNpc || interactable === this.shaunNpc || interactable === this.evelynNpc || interactable === this.chloeNpc || interactable === this.rowanNpc || interactable === this.jasperNpc;
+      return id === 'friend' || id === 'best_friend' || id === 'friend_duel' || id === 'booster_bash_challenger' || id === 'mom' || id === 'shopkeeper' || id === 'pluto' || id === 'nova' || id === 'silas' || id === 'maya' || id === 'clara' || id === 'bram' || id === 'mayor_donald' || id === 'chef_marco' || id === 'berto' || id === 'shaun' || id === 'evelyn' || id === 'chloe' || id === 'rowan' || id === 'jasper' || id === 'fire_chief' || id === 'police_chief' || interactable === friend || interactable === this.shopkeeperNpc || interactable === this.plutoNpc || interactable === this.novaNpc || interactable === this.silasNpc || interactable === this.mayaNpc || interactable === this.claraNpc || interactable === this.bramNpc || interactable === this.mayorNpc || interactable === this.chefNpc || interactable === this.bertoNpc || interactable === this.shaunNpc || interactable === this.evelynNpc || interactable === this.chloeNpc || interactable === this.rowanNpc || interactable === this.jasperNpc || interactable === this.fireChiefNpc || interactable === this.policeChiefNpc;
     }
 
     startTalkingToNpc(npcId) {
@@ -8925,6 +9688,7 @@
 
     closeDialogue() {
       this.activeDialogueNpc = null;
+      this._questReplyNpcId = null;
       this._justCompletedMeetup = null;
       this.clearPendingBattleResults();
       this.clearActivePinNoteContext();
@@ -8951,6 +9715,9 @@
     }
 
     renderDialogueUI() {
+      if (this.activeDialogueNpc) {
+        this.recordQuestNpcTalked(this.activeDialogueNpc);
+      }
       const bar = document.getElementById('ow-dialog-bar');
       const speakerEl = document.getElementById('ow-speaker-tag');
       const textEl = document.getElementById('ow-dialog-text');
@@ -9149,6 +9916,179 @@
       this.updateMobileActionLabel();
     }
 
+    normalizeRelationshipNpcId(npcId) {
+      const raw = String(npcId || '').trim().toLowerCase();
+      if (!raw) return '';
+      if (raw === 'best_friend' || raw === 'friend' || raw === 'friend_interior' || raw === 'rocky') return 'rocky';
+      if (raw === 'shopkeeper' || raw === 'leo' || raw === 'card_shop') return 'leo';
+      if (raw === 'mayor_donald' || raw === 'mayor') return 'mayor';
+      if (raw === 'booster_bash_challenger') {
+        const activeId = this.boosterBash?.activeNpc?.id;
+        return activeId ? this.normalizeRelationshipNpcId(activeId) : 'booster_bash_challenger';
+      }
+      return raw;
+    }
+
+    getDefaultRelationship(npcId) {
+      const key = this.normalizeRelationshipNpcId(npcId);
+      const defaults = {
+        mom: 85,
+        rocky: 75,
+        berto: 25
+      };
+      return defaults[key] ?? 50;
+    }
+
+    getRelationship(npcId) {
+      const key = this.normalizeRelationshipNpcId(npcId);
+      if (!key) return 50;
+      const stored = this.npcRelationships?.[key];
+      const val = typeof stored === 'number' && Number.isFinite(stored)
+        ? stored
+        : this.getDefaultRelationship(key);
+      return Math.max(0, Math.min(100, Math.round(val)));
+    }
+
+    getRelationshipTier(npcId) {
+      const score = this.getRelationship(npcId);
+      if (score >= 80) return { id: 'close', label: 'Close', icon: '💛' };
+      if (score >= 60) return { id: 'friendly', label: 'Friendly', icon: '🙂' };
+      if (score >= 40) return { id: 'neutral', label: 'Neutral', icon: '' };
+      if (score >= 25) return { id: 'cool', label: 'Guarded', icon: '😒' };
+      return { id: 'hostile', label: 'Cold', icon: '💢' };
+    }
+
+    changeRelationship(npcId, delta, reason = '') {
+      const key = this.normalizeRelationshipNpcId(npcId);
+      if (!key || !Number.isFinite(delta) || delta === 0) return this.getRelationship(key);
+      if (!this.npcRelationships || typeof this.npcRelationships !== 'object') {
+        this.npcRelationships = {};
+      this.npcDialogueGainLog = {};
+      }
+      const prevScore = this.getRelationship(key);
+      const prevTier = this.getRelationshipTier(key).id;
+      const nextScore = Math.max(0, Math.min(100, Math.round(prevScore + delta)));
+      this.npcRelationships[key] = nextScore;
+      const nextTier = this.getRelationshipTier(key);
+      this.saveWorldData(this.draftAppearance);
+
+      const actualDelta = nextScore - prevScore;
+      if (actualDelta !== 0 && (Math.abs(actualDelta) >= 2 || prevTier !== nextTier.id)) {
+        const displayName = key === 'rocky'
+          ? (this.getFriendNpc()?.name || this.friendName || 'Rocky')
+          : key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        const cue = actualDelta > 0
+          ? `${nextTier.icon || '🙂'} ${displayName} seems warmer toward you${reason ? ` (${reason})` : ''}.`
+          : `${nextTier.icon || '😒'} ${displayName} seems put off${reason ? ` (${reason})` : ''}.`;
+        this.showAutosaveIndicator?.(cue);
+      }
+      return nextScore;
+    }
+
+    gainDialogueRelationship(npcId, delta, reason = '') {
+      const key = this.normalizeRelationshipNpcId(npcId);
+      if (!key || !Number.isFinite(delta) || delta === 0) return 0;
+      if (delta < 0) {
+        this.changeRelationship(key, delta, reason);
+        return delta;
+      }
+      const MAX_DAILY_DIALOGUE_GAIN = 3;
+      const curDay = this.dayNumber || 1;
+      if (!this.npcDialogueGainLog || typeof this.npcDialogueGainLog !== 'object') {
+        this.npcDialogueGainLog = {};
+      }
+      const entry = this.npcDialogueGainLog[key];
+      const gainedToday = (entry && entry.day === curDay) ? (Number(entry.gained) || 0) : 0;
+      const remaining = Math.max(0, MAX_DAILY_DIALOGUE_GAIN - gainedToday);
+      if (remaining <= 0) return 0;
+      const applied = Math.min(delta, remaining);
+      this.npcDialogueGainLog[key] = { day: curDay, gained: gainedToday + applied };
+      this.changeRelationship(key, applied, reason);
+      return applied;
+    }
+
+    getRelationshipDialogueLine(npcId, speakerName = '') {
+      const key = this.normalizeRelationshipNpcId(npcId);
+      const tier = this.getRelationshipTier(key).id;
+      if (tier === 'neutral') return null;
+
+      const friendName = this.getFriendNpc()?.name || this.friendName || 'Rocky';
+      const name = speakerName || (key === 'rocky' ? friendName : key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()));
+
+      const bank = {
+        rocky: {
+          close: `"Best duo in Oakhaven, hands down! Always stoked to hang out or duel with you."`,
+          friendly: `"Hey! Good seeing you — ready to get into some Mythos trouble today?"`,
+          cool: `"Oh, hey... Look, I'm still a little sore about earlier, alright?"`,
+          hostile: `"Honestly? I'm not really in the mood to talk right now."`
+        },
+        mom: {
+          close: `"I'm so proud of how kind and dedicated you've been lately, sweetheart!"`,
+          friendly: `"There's my favorite duelist! Make sure you're taking breaks too, okay?"`,
+          cool: `"Hmm... you've been a bit distant lately. Everything alright?"`,
+          hostile: `"We need to have a serious talk about how you've been acting around town."`
+        },
+        leo: {
+          close: `"My best regular! You're practically part of the card shop family now."`,
+          friendly: `"Always great to see a familiar face at the counter!"`,
+          cool: `"Keep it brief, kid. I've got inventory to sort."`,
+          hostile: `"Don't cause any trouble in my shop. Buy something or move along."`
+        },
+        berto: {
+          close: `"Alright, alright... I'll admit it. You're actually the real deal. Don't let it go to your head!"`,
+          friendly: `"Heh, not bad seeing you around. Maybe you're worth a proper rematch after all."`,
+          cool: `"Tch. What do you want? Don't waste my time unless you can actually play."`,
+          hostile: `"Get out of my face before I embarrass you in front of everyone again."`
+        },
+        pluto: {
+          close: `"Yo! You're one of the few people in town I actually trust with my deck tech."`,
+          friendly: `"Hey, glad you dropped by! Always fun theorycrafting with you."`,
+          cool: `"Uh, hey. Kinda busy tweaking my builds right now..."`,
+          hostile: `"Look, I don't really want to trade or chat with you today."`
+        },
+        nova: {
+          close: `"The stars must've aligned — I was just hoping you'd stop by!"`,
+          friendly: `"Hey there! Your deck energy has been looking super sharp lately."`,
+          cool: `"Oh... hi. Sorry, I'm a little preoccupied right now."`,
+          hostile: `"Please give me some space. I'm not up for talking to you."`
+        },
+        silas: {
+          close: `"Good to see you, friend. You've earned real respect around here."`,
+          friendly: `"Hey! Always nice catching up with you."`,
+          cool: `"Hmm. Something on your mind? Make it quick."`,
+          hostile: `"I'd rather not deal with you right now."`
+        },
+        maya: {
+          close: `"Yay, you're here! Talking cards with you is always the highlight of my day!"`,
+          friendly: `"Hi! So glad to see you — how's the collection coming along?"`,
+          cool: `"Oh... hi. I'm kinda in the middle of something."`,
+          hostile: `"Honestly, please don't bother me right now."`
+        },
+        fire_chief: {
+          close: `"Good to see you, kid! You've got the heart of a true Oakhaven firefighter."`,
+          friendly: `"Hey there! Station's ship-shape today — thanks for dropping by!"`,
+          cool: `"Stay clear of the apparatus bays if you're just messing around."`,
+          hostile: `"Look, we're on duty. Don't waste our time."`
+        },
+        police_chief: {
+          close: `"Always glad to see our most trustworthy duelist in Oakhaven!"`,
+          friendly: `"Afternoon, citizen! Everything's quiet on Willow Way today."`,
+          cool: `"Keep your nose clean and stay out of trouble, alright?"`,
+          hostile: `"Move along unless you've got official business at the precinct."`
+        }
+      };
+
+      const generic = {
+        close: `"Always a pleasure seeing you! You're one of my favorite people in Oakhaven."`,
+        friendly: `"Hey! Nice running into you today."`,
+        cool: `"Oh, it's you. What do you need?"`,
+        hostile: `"I really don't want to talk to you right now."`
+      };
+
+      const line = bank[key]?.[tier] || generic[tier];
+      return `<b>${name}:</b> ${line}`;
+    }
+
     renderNpcChoicePrompt({
       npcId,
       altActiveIds = null,
@@ -9173,17 +10113,39 @@
         || (Array.isArray(altActiveIds) && altActiveIds.includes(this.activeDialogueNpc));
 
       if (isActive) {
+        const relTier = this.getRelationshipTier(npcId);
+        const effectivePromptKey = `${promptKey}_rel_${relTier.id}`;
         bar.classList.remove('hidden', 'tv-broadcast', 'talk-icon-only');
         bar.classList.toggle('top-position', !!topPosition);
         speakerEl.textContent = speakerText;
+        if (relTier.icon) {
+          const badge = document.createElement('span');
+          badge.className = `ow-rel-badge ow-rel-${relTier.id}`;
+          badge.title = `Rapport: ${relTier.label}`;
+          badge.textContent = relTier.icon;
+          speakerEl.appendChild(badge);
+        }
         speakerEl.className = speakerClass;
         challengeBtn.classList.remove('ow-talk-btn');
         challengeBtn.title = '';
-        if (this.lastShopPromptKey !== promptKey) {
-          this.lastShopPromptKey = promptKey;
+        if (this.lastShopPromptKey !== effectivePromptKey && this._questReplyNpcId !== npcId) {
+          this.lastShopPromptKey = effectivePromptKey;
+          if (this.storyState === 'free_roam') {
+            const normId = this.normalizeRelationshipNpcId(npcId);
+            const talkKey = `${this.dayNumber || 1}:${normId}`;
+            if (!this._dailyTalkedNpcs) this._dailyTalkedNpcs = new Set();
+            if (normId && !this._dailyTalkedNpcs.has(talkKey)) {
+              this._dailyTalkedNpcs.add(talkKey);
+              this.gainDialogueRelationship(normId, 1);
+            }
+          }
           choicesEl.innerHTML = '';
-          textEl.innerHTML = greetingHtml;
           const cleanSpeaker = this.stripNoteHtml(speakerText).replace(/^[^\w]+/, '').trim() || npcId;
+          const relLine = this.getRelationshipDialogueLine(npcId, cleanSpeaker);
+          const fullGreetingHtml = relLine
+            ? `<div class="ow-rel-line ow-rel-${relTier.id}">${relLine}</div>${greetingHtml}`
+            : greetingHtml;
+          textEl.innerHTML = fullGreetingHtml;
           const cleanGreeting = this.stripNoteHtml(greetingHtml);
           if (cleanGreeting) {
             this.setActivePinNoteContext({
@@ -9197,7 +10159,9 @@
           } else {
             this.clearActivePinNoteContext();
           }
-          choices.forEach((choice, cIdx) => {
+          const questChoices = this.getNpcQuestChoices ? this.getNpcQuestChoices(npcId) : [];
+          const mergedChoices = [...questChoices, ...choices];
+          mergedChoices.forEach((choice, cIdx) => {
             const btn = document.createElement('button');
             btn.type = 'button';
             btn.className = `ow-choice-btn${choice.primary ? ' primary' : ''}`;
@@ -9215,6 +10179,11 @@
                 window.sounds.playClick();
               }
               const isLeaveChoice = !!(choice.isLeave || /\(Leave\)|👋/i.test(choice.label || ''));
+              if (choice.isQuestAction) {
+                this._questReplyNpcId = npcId;
+                btn.disabled = true;
+                btn.innerHTML = choice.questDoneLabel || '✅ Done!';
+              }
               if (choice.onSelect) choice.onSelect(textEl, btn);
               if (isLeaveChoice && this.activeDialogueNpc) {
                 this.closeDialogue();
@@ -9262,6 +10231,7 @@
         this.syncActivePinNoteButton();
       } else {
         this.lastShopPromptKey = null;
+        this._questReplyNpcId = null;
         this.clearActivePinNoteContext();
         bar.classList.remove('talk-icon-only', 'tv-broadcast');
         bar.classList.add('hidden');
@@ -10603,6 +11573,87 @@
           challengeBtn.classList.remove('ow-talk-btn');
           bar.classList.add('hidden');
         }
+      } else if (this.currentArea === 'fire_station_interior') {
+        const pName = this.draftAppearance?.name || 'Asher';
+        const chief = this.fireChiefNpc;
+        const distToChief = chief ? Math.hypot(this.player.x - chief.x, this.player.y - chief.y) : 999;
+        if (distToChief < 1.55) {
+          this.nearInteractable = chief;
+          this.renderNpcChoicePrompt({
+            npcId: 'fire_chief',
+            promptKey: `fire_chief_dialogue_${pName}`,
+            speakerText: '🚒 CHIEF BLAZE — OAKHAVEN FIRE DEPT.',
+            speakerClass: 'ow-speaker-tag friend',
+            talkPromptHtml: `Press <b>Talk</b> to speak with <b>Chief Blaze</b>.`,
+            greetingHtml: `<b>Chief Blaze:</b> "Welcome to the <b>Oakhaven Fire Department</b>, ${pName}! Both engines are fueled, polished, and ready to roll."`,
+            choices: [
+              {
+                label: `1. 🚒 "Those fire engines look awesome!"`,
+                onSelect: (el) => {
+                  this.gainDialogueRelationship('fire_chief', 2, 'complimented engines');
+                  el.innerHTML = `<b>Chief Blaze:</b> "Ha! Takes a lot of elbow grease to keep 'em shining like that. Glad you appreciate classic Oakhaven steel, ${pName}!"`;
+                }
+              },
+              {
+                label: `2. 🪜 "Can I slide down the brass pole?"`,
+                onSelect: (el) => {
+                  el.innerHTML = `<b>Chief Blaze:</b> "Haha, safety rules say firefighters only—but if you ever join the volunteer squad, you'll get first dibs!"`;
+                }
+              },
+              {
+                label: `3. 👋 "Catch you later, Chief! (Leave)"`,
+                onSelect: () => this.closeDialogue()
+              }
+            ]
+          });
+        } else {
+          this.lastShopPromptKey = null;
+          this.nearInteractable = null;
+          this.activeDialogueNpc = null;
+          challengeBtn.classList.remove('ow-talk-btn');
+          bar.classList.add('hidden');
+        }
+      } else if (this.currentArea === 'police_station_interior') {
+        const pName = this.draftAppearance?.name || 'Asher';
+        const chief = this.policeChiefNpc;
+        const distToChief = chief ? Math.hypot(this.player.x - chief.x, this.player.y - chief.y) : 999;
+        if (distToChief < 1.55) {
+          this.nearInteractable = chief;
+          this.renderNpcChoicePrompt({
+            npcId: 'police_chief',
+            promptKey: `police_chief_dialogue_${pName}`,
+            speakerText: '🚓 CHIEF MILLER — OAKHAVEN POLICE DEPT.',
+            speakerClass: 'ow-speaker-tag friend',
+            talkPromptHtml: `Press <b>Talk</b> to speak with <b>Chief Miller</b>.`,
+            greetingHtml: `<b>Chief Miller:</b> "Howdy, ${pName}! Welcome to the <b>Oakhaven Police Department</b>. Holding cells are empty and Willow Way is peaceful."`,
+            choices: [
+              {
+                label: `1. 📌 "Anything unusual on the clue board?"`,
+                onSelect: (el) => {
+                  this.gainDialogueRelationship('police_chief', 2, 'checked in');
+                  el.innerHTML = `<b>Chief Miller:</b> "Just keeping tabs on rare card trades around town! Folks have been gathering near Central Park and Oakhaven Blvd."`;
+                }
+              },
+              {
+                label: `2. 🚓 "Thanks for keeping Oakhaven safe!"`,
+                onSelect: (el) => {
+                  this.gainDialogueRelationship('police_chief', 2, 'kind words');
+                  el.innerHTML = `<b>Chief Miller:</b> "Appreciate that, ${pName}! Good neighbors like you make my job easy."`;
+                }
+              },
+              {
+                label: `3. 👋 "Have a good shift, Chief! (Leave)"`,
+                onSelect: () => this.closeDialogue()
+              }
+            ]
+          });
+        } else {
+          this.lastShopPromptKey = null;
+          this.nearInteractable = null;
+          this.activeDialogueNpc = null;
+          challengeBtn.classList.remove('ow-talk-btn');
+          bar.classList.add('hidden');
+        }
       } else if (this.currentArea === 'school_interior') {
         const pName = this.draftAppearance?.name || 'Asher';
         const evelyn = this.evelynNpc;
@@ -10890,39 +11941,12 @@
             `<b>"${pName}'s House"</b> — Your family mailbox. No new mail since morning.`
           );
         } else if (distFriendDoor < 1.1) {
-          if (this.hasOpenedStarterPack) {
-            this.activeDialogueNpc = null;
-            challengeBtn.classList.remove('ow-talk-btn');
-            this.nearInteractable = { id: 'friend_door', name: `${fName}'s Front Door` };
-            bar.classList.remove('hidden', 'tv-broadcast');
-            speakerEl.textContent = `🚪 ${fName.toUpperCase()}'S HOUSE`;
-            speakerEl.className = 'ow-speaker-tag friend';
-            const doorKey = `friend_door_ready_${fName}`;
-            if (this.lastShopPromptKey !== doorKey) {
-              this.lastShopPromptKey = doorKey;
-              textEl.innerHTML = `<b>${fName} (from inside):</b> "Come on in, ${pName}!! Walk through the front door to my table or click below to start our <b>MYTHOS Battle</b> right now!"`;
-              choicesEl.innerHTML = '';
-              const battleDoorBtn = document.createElement('button');
-              battleDoorBtn.type = 'button';
-              battleDoorBtn.className = 'ow-choice-btn';
-              battleDoorBtn.innerHTML = `⚔️ "I'm ready, ${fName}! Let's battle in <b>MYTHOS</b>!"`;
-              battleDoorBtn.addEventListener('click', (ev) => {
-                ev.stopPropagation();
-                this.triggerDuel(this.getFriendNpc());
-              });
-              choicesEl.appendChild(battleDoorBtn);
-            }
-            choicesEl.classList.remove('hidden');
-            challengeBtn.textContent = `⚔️ Battle ${fName}!`;
-            challengeBtn.classList.remove('hidden');
-          } else {
-            showStaticPrompt(
-              'friend_door',
-              `${fName}'s Front Door`,
-              `🚪 ${fName.toUpperCase()}'S HOUSE`,
-              `${fName}: "We don't need anything from my house right now — let's follow the road south and walk two blocks east to Leo's Card Shop!"`
-            );
-          }
+          showStaticPrompt(
+            'friend_door',
+            `${fName}'s Front Door`,
+            `🚪 ${fName.toUpperCase()}'S HOUSE`,
+            `<b>${fName}'s House</b> — Step up to the front door to enter.`
+          );
         } else if (distRoadSign < 1.05) {
           showStaticPrompt(
             'road_sign',
@@ -11071,6 +12095,7 @@
         }
       } else {
         this.lastShopPromptKey = null;
+        this._questReplyNpcId = null;
         this.nearInteractable = null;
         this.activeDialogueNpc = null;
         this.clearPendingBattleResults();
@@ -11079,11 +12104,18 @@
         challengeBtn.classList.remove('ow-talk-btn');
         bar.classList.add('hidden');
       }
-      // If no area-specific prompt matched, check for any nearby NPC out on a building trip
-      if (!this.nearInteractable && this.storyState === 'free_roam') {
-        const tripNpc = this.getActiveNpcsForArea(this.currentArea).find(
-          n => n && n.trip && Math.hypot(this.player.x - n.x, this.player.y - n.y) < 1.15
-        );
+      // Check for any nearby NPC out on a building trip (takes priority over static furniture/signs)
+      if ((!this.nearInteractable || !this.isNpc(this.nearInteractable)) && this.storyState === 'free_roam') {
+        let tripNpc = null;
+        let bestTripDist = 1.55;
+        this.getActiveNpcsForArea(this.currentArea).forEach(n => {
+          if (!n || !n.trip) return;
+          const d = Math.hypot(this.player.x - n.x, this.player.y - n.y);
+          if (d < bestTripDist) {
+            bestTripDist = d;
+            tripNpc = n;
+          }
+        });
         if (tripNpc) {
           this.nearInteractable = tripNpc;
           const altIds = tripNpc.id === 'best_friend' ? ['friend', 'best_friend', this.friendName] : [];
@@ -11791,6 +12823,9 @@
         bertoBattledOutcome: this.bertoBattledOutcome || null,
         lastParkTourneyResult: this.lastParkTourneyResult || null,
         activeParkTourney: this.activeParkTourney || null,
+        npcRelationships: { ...(this.npcRelationships || {}) },
+        npcDialogueGainLog: { ...(this.npcDialogueGainLog || {}) },
+        questState: this.normalizeQuestState(this.questState),
         updatedAt: new Date().toLocaleDateString()
       };
       this.worldSave = saveObj;
@@ -11836,9 +12871,10 @@
       const openBinderBtn = document.getElementById('btn-open-binder');
       if (openBinderBtn) {
         openBinderBtn.classList.remove('locked');
-        openBinderBtn.title = 'Open Binder, Playing Deck & Sell/Trade Bag (Key: B or I)';
+        openBinderBtn.title = 'Open Binder, Playing Deck & Inventory (Key: B or I)';
         openBinderBtn.innerHTML = `<img src="Sprites/Overworld/binder_tome_icon.png" class="hud-backpack-img" alt=""> Binder <span id="binder-badge-count" class="inv-badge-pill">${totalUnifiedBinderCount}</span>`;
       }
+      this.evaluateQuests?.(true);
       if (locPill) {
         const pName = this.draftAppearance?.name || 'Asher';
         const wName = this.draftAppearance?.worldName || 'Oakhaven';
@@ -11871,6 +12907,10 @@
           areaLabel = `🏛️ Oakhaven Convention Center`;
         } else if (this.currentArea === 'school_interior') {
           areaLabel = `🏫 Oakhaven Elementary`;
+        } else if (this.currentArea === 'fire_station_interior') {
+          areaLabel = `🚒 Oakhaven Fire Department`;
+        } else if (this.currentArea === 'police_station_interior') {
+          areaLabel = `🚓 Oakhaven Police Department`;
         } else if (this.currentArea === 'apartment_hall_interior') {
           areaLabel = `🏢 Oakhaven Apartments — Main Hall`;
         } else if (this.currentArea === 'apt_1_interior') {
@@ -11922,6 +12962,8 @@
         else if (this.currentArea === 'corner_store_interior') shortArea = `🛒 Market`;
         else if (this.currentArea === 'convention_center_interior') shortArea = `🏛️ Expo Hall`;
         else if (this.currentArea === 'school_interior') shortArea = `🏫 School`;
+        else if (this.currentArea === 'fire_station_interior') shortArea = `🚒 Fire Dept.`;
+        else if (this.currentArea === 'police_station_interior') shortArea = `🚓 Police Dept.`;
         else if (this.currentArea === 'apartment_hall_interior') shortArea = `🏢 Apt. Hall`;
         else if (this.currentArea === 'apt_1_interior') shortArea = `🚪 Apt. 101`;
         else if (this.currentArea === 'apt_2_interior') shortArea = `🚪 Apt. 102`;
@@ -11955,7 +12997,7 @@
       }
       if (hdrMobBinderBtn) {
         hdrMobBinderBtn.classList.remove('locked');
-        hdrMobBinderBtn.title = 'Open Binder, Playing Deck & Sell/Trade Bag';
+        hdrMobBinderBtn.title = 'Open Binder, Playing Deck & Inventory';
       }
       if (hdrMobDeckBadge) {
         hdrMobDeckBadge.textContent = String((this.playingDeck || []).length);
@@ -12071,6 +13113,19 @@
         editCharBtn.addEventListener('click', () => {
           if (window.sounds?.playClick) window.sounds.playClick();
           this.openCharacterCreator(false);
+        });
+      }
+
+      const saveWorldBtn = document.getElementById('btn-save-world');
+      if (saveWorldBtn) {
+        saveWorldBtn.addEventListener('click', () => {
+          if (window.sounds?.playCollect) window.sounds.playCollect();
+          else if (window.sounds?.playClick) window.sounds.playClick();
+          this.saveWorldData(this.draftAppearance);
+          this.refreshIntroScreen?.();
+          this.showAutosaveIndicator('💾 Game Saved!');
+          document.getElementById('header-menu-dropdown')?.classList.add('hidden');
+          document.getElementById('btn-header-menu')?.setAttribute('aria-expanded', 'false');
         });
       }
 
@@ -12416,6 +13471,23 @@
       if (openNotebookBtn) {
         openNotebookBtn.addEventListener('click', () => this.toggleNotebookModal(true));
       }
+
+      // Quest Log Handlers
+      document.getElementById('btn-open-quests')?.addEventListener('click', () => this.toggleQuestModal(true));
+      document.getElementById('btn-close-quests')?.addEventListener('click', () => this.toggleQuestModal(false));
+      document.getElementById('btn-done-quests')?.addEventListener('click', () => this.toggleQuestModal(false));
+      const questModal = document.getElementById('quest-log-modal');
+      if (questModal) {
+        questModal.addEventListener('click', (e) => {
+          if (e.target === questModal) this.toggleQuestModal(false);
+        });
+      }
+      document.querySelectorAll('#quest-log-tabs .notebook-tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          this.questLogTab = btn.dataset.questTab || 'active';
+          this.renderQuestModal();
+        });
+      });
       const closeNotebookBtn = document.getElementById('btn-close-notebook');
       if (closeNotebookBtn) {
         closeNotebookBtn.addEventListener('click', () => this.toggleNotebookModal(false));
@@ -13035,6 +14107,7 @@
       // Guard against NaN/invalid saved coordinates & ensure valid canvas size
       if (!Number.isFinite(this.player.x)) this.player.x = 9.8;
       if (!Number.isFinite(this.player.y)) this.player.y = 9.4;
+      this.ensurePlayerUnstuck();
       if (this.canvas) {
         if (!this.canvas.width) this.canvas.width = this.COLS * this.TILE;
         if (!this.canvas.height) this.canvas.height = this.ROWS * this.TILE;
@@ -13331,6 +14404,11 @@
           this.toggleNotebookModal();
           return;
         }
+        if (k === 'q') {
+          e.preventDefault();
+          this.toggleQuestModal();
+          return;
+        }
         const wakeModal = document.getElementById('morning-wake-modal');
         if (wakeModal && !wakeModal.classList.contains('hidden')) {
           if (k === ' ' || k === 'enter' || k === 'escape') {
@@ -13341,6 +14419,7 @@
         }
         const overlayModalCloseOrder = [
           { id: 'park-tournament-modal', close: () => this.toggleParkTournamentModal(false) },
+          { id: 'quest-log-modal', close: () => this.toggleQuestModal(false) },
           { id: 'notebook-modal', close: () => this.toggleNotebookModal(false) },
           { id: 'phone-modal', close: () => this.togglePhoneModal(false) },
           { id: 'calendar-modal', close: () => this.toggleCalendarModal(false) },
@@ -13569,6 +14648,32 @@
             yOffset: 0.55
           },
           {
+            active: this.currentArea === 'fire_station_interior',
+            npc: this.fireChiefNpc,
+            talkId: 'fire_chief',
+            tapRadius: 1.25,
+            reachRadius: 1.6,
+            yOffset: 0
+          },
+          {
+            active: this.currentArea === 'police_station_interior',
+            npc: this.policeChiefNpc,
+            talkId: 'police_chief',
+            tapRadius: 1.25,
+            reachRadius: 1.6,
+            yOffset: 0
+          },
+          ...this.getActiveNpcsForArea(this.currentArea)
+            .filter(n => n && n.trip)
+            .map(n => ({
+              active: true,
+              npc: n,
+              talkId: n.id,
+              tapRadius: 1.25,
+              reachRadius: 1.6,
+              yOffset: 0
+            })),
+          {
             active: this.currentArea === 'exterior',
             npc: this.chloeNpc,
             talkId: 'chloe',
@@ -13765,7 +14870,39 @@
       }
     }
 
-    isBlocked(tx, ty, ignoreNpc = null) {
+    ensurePlayerUnstuck() {
+      if (!this.player || !this.isBlocked(this.player.x, this.player.y)) return false;
+      const originX = this.player.x;
+      const originY = this.player.y;
+      const radii = [0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 2.5];
+      const steps = 16;
+      for (const r of radii) {
+        for (let i = 0; i < steps; i++) {
+          const angle = (i / steps) * Math.PI * 2;
+          const cx = originX + Math.cos(angle) * r;
+          const cy = originY + Math.sin(angle) * r;
+          if (!this.isBlocked(cx, cy)) {
+            this.player.x = cx;
+            this.player.y = cy;
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+
+    isNpcBlockingPoint(tx, ty, npc, fromX = null, fromY = null) {
+      const nextDist = Math.hypot(tx - npc.x, ty - npc.y);
+      if (nextDist >= 0.65) return false;
+      if (fromX !== null && fromY !== null) {
+        const currDist = Math.hypot(fromX - npc.x, fromY - npc.y);
+        // Allow stepping away if the player is already overlapping this NPC
+        if (currDist < 0.65 && nextDist > currDist + 1e-6) return false;
+      }
+      return true;
+    }
+
+    isBlocked(tx, ty, ignoreNpc = null, fromX = null, fromY = null) {
       if (this.currentArea === 'interior') {
         // Cutaway room floor bounds
         if (tx < 2.2 || tx > 13.8 || ty < 4.15 || ty > 10.35) return true;
@@ -13780,7 +14917,7 @@
         // NPC collision (only Mom blocks movement when Mike/AJ is following you!)
         for (const n of this.npcs) {
           if (n === ignoreNpc || n.following) continue;
-          if (Math.hypot(tx - n.x, ty - n.y) < 0.65) return true;
+          if (this.isNpcBlockingPoint(tx, ty, n, fromX, fromY)) return true;
         }
         return false;
       } else if (this.currentArea === 'friend_interior') {
@@ -13794,7 +14931,7 @@
         if (Math.hypot(tx - 5.5, ty - 6.8) < 1.18) return true;
         for (const n of this.npcs) {
           if (n === ignoreNpc || n.id !== 'best_friend') continue;
-          if (Math.hypot(tx - n.x, ty - n.y) < 0.65) return true;
+          if (this.isNpcBlockingPoint(tx, ty, n, fromX, fromY)) return true;
         }
         return false;
       } else if (this.currentArea === 'card_shop_interior') {
@@ -13940,6 +15077,30 @@
           if (tx >= b.x1 && tx <= b.x2 && ty >= b.y1 && ty <= b.y2) return true;
         }
         return false;
+      } else if (this.currentArea === 'fire_station_interior') {
+        // Cutaway Fire Station floor bounds (16 x 12 room matching fire_station_interior.png)
+        if (tx < 1.25 || tx > 14.75 || ty < 4.75 || ty > 10.55) return true;
+        // Left Fire Engine (x: 2.8..5.2, y: 4.7..8.8)
+        if (tx >= 2.8 && tx <= 5.2 && ty <= 8.85) return true;
+        // Right Fire Engine (x: 7.2..9.6, y: 4.7..8.8)
+        if (tx >= 7.2 && tx <= 9.6 && ty <= 8.85) return true;
+        // Brass Fireman's Pole Pad (x: 12.8..14.2, y: 5.0..6.2)
+        if (tx >= 12.8 && tx <= 14.2 && ty >= 5.0 && ty <= 6.2) return true;
+        // Wooden Dispatch Desk & Chair (x: 12.6..14.75, y: 7.1..8.75)
+        if (tx >= 12.6 && ty >= 7.1 && ty <= 8.75) return true;
+        return false;
+      } else if (this.currentArea === 'police_station_interior') {
+        // Cutaway Police Station floor bounds (16 x 12 room matching police_station_interior.png)
+        if (tx < 1.25 || tx > 14.75 || ty < 4.75 || ty > 10.55) return true;
+        // Left Wrought-Iron Holding Cells (x: 1.25..5.4, y: 4.75..6.75)
+        if (tx <= 5.4 && ty <= 6.75) return true;
+        // Center Reception & Dispatch Desk (x: 6.4..9.8, y: 5.0..6.85)
+        if (tx >= 6.4 && tx <= 9.8 && ty >= 5.0 && ty <= 6.85) return true;
+        // Upper-Right Officer Desk (x: 12.6..14.75, y: 5.2..6.8)
+        if (tx >= 12.6 && ty >= 5.2 && ty <= 6.8) return true;
+        // Lower-Right Officer Desk (x: 12.6..14.75, y: 7.3..9.0)
+        if (tx >= 12.6 && ty >= 7.3 && ty <= 9.0) return true;
+        return false;
       } else if (this.currentArea === 'school_interior') {
         // Oakhaven Elementary Interior (22 x 14 Cutaway Hall & Main Classroom Wing)
         // Allow stepping into the West Entrance Doors threshold to exit cleanly back outside
@@ -14005,6 +15166,9 @@
         }
         if (tx >= -24.35 && tx <= -23.45 && ty >= 26.55 && ty <= 27.0) return true; // West plaza planter
         if (tx >= -16.55 && tx <= -15.65 && ty >= 26.55 && ty <= 27.0) return true; // East plaza planter
+
+        if (tx >= 1.8 && tx <= 6.8 && ty >= 23.6 && ty <= 27.08) return true; // Oakhaven Fire Station
+        if (tx >= 7.4 && tx <= 12.4 && ty >= 23.6 && ty <= 27.08) return true; // Oakhaven Police Station
 
         // Shaun's Corner Market (NW corner of Willow Way & N-S Paved Road: x: -5.5..-1.3, y: 23.9..26.7)
         if (tx >= -5.5 && tx <= -1.3 && ty >= 23.9 && ty <= 26.7) {
@@ -14750,7 +15914,8 @@
       // Urban Paved Avenue (Oakhaven Blvd), Willow Way, West Roundabout Ave & Roundabout
       if (inBox(-0.35, 0.00, 0.70, 33.50)) return true;   // N-S Oakhaven Blvd
       if (Math.hypot(tx - 0.175, ty - 32.85) <= 1.75) return true; // Roundabout
-      if (inBox(-21.45, 32.30, 0.70, 33.40)) return true; // West Roundabout Ave (Bistro)
+      if (inBox(-21.45, 32.30, 15.70, 33.40)) return true; // Oakhaven Blvd (4 blocks West & 3 blocks East of Roundabout)
+      if (inBox(14.65, 27.05, 15.70, 33.40)) return true;  // East N-S Connector linking Willow Way East & Oakhaven Blvd
       if (inBox(-24.50, 27.05, 24.50, 28.20)) return true;// Willow Way & School Drop-Off Lane
 
       // Building Entry Aprons & Plazas
@@ -14984,8 +16149,8 @@
         const stepY = (wdy / dist) * move;
         const prevX = this.player.x;
         const prevY = this.player.y;
-        if (!this.isBlocked(this.player.x + stepX, this.player.y)) this.player.x += stepX;
-        if (!this.isBlocked(this.player.x, this.player.y + stepY)) this.player.y += stepY;
+        if (!this.isBlocked(this.player.x + stepX, this.player.y, null, this.player.x, this.player.y)) this.player.x += stepX;
+        if (!this.isBlocked(this.player.x, this.player.y + stepY, null, this.player.x, this.player.y)) this.player.y += stepY;
         const actualMove = Math.hypot(this.player.x - prevX, this.player.y - prevY);
         remaining -= move;
         if (actualMove < move * 0.25) {
@@ -15207,7 +16372,8 @@
         this.shopkeeperNpc, this.plutoNpc, this.novaNpc, this.silasNpc,
         this.mayaNpc, this.claraNpc, this.bramNpc, this.mayorNpc,
         this.chefNpc, this.shaunNpc, this.evelynNpc, this.chloeNpc,
-        this.rowanNpc, this.jasperNpc, this.bertoNpc
+        this.rowanNpc, this.jasperNpc, this.bertoNpc,
+        this.fireChiefNpc, this.policeChiefNpc
       ].forEach(add);
       return list;
     }
@@ -15697,8 +16863,8 @@
         const speed = this.currentArea === 'exterior' ? 0.042 : 0.046;
         const nx = this.player.x + dx * speed;
         const ny = this.player.y + dy * speed;
-        if (!this.isBlocked(nx, this.player.y)) this.player.x = nx;
-        if (!this.isBlocked(this.player.x, ny)) this.player.y = ny;
+        if (!this.isBlocked(nx, this.player.y, null, this.player.x, this.player.y)) this.player.x = nx;
+        if (!this.isBlocked(this.player.x, ny, null, this.player.x, this.player.y)) this.player.y = ny;
         moved = true;
       }
 
@@ -16151,6 +17317,54 @@
           this.player.x = 23.65;
           this.player.y = 27.85;
           this.player.dir = 'left';
+          this.player.targetX = null;
+          this.player.targetY = null;
+          this.areaTransitionCooldown = 25;
+          this.updateHUDSaveInfo();
+        } else if (this.currentArea === 'exterior' && this.player.x >= 5.65 && this.player.x <= 6.55 && this.player.y >= 26.85 && this.player.y <= 27.35) {
+          // Enter Oakhaven Fire Department via the right-side personnel door
+          if (window.sounds?.playMove) window.sounds.playMove();
+          this.currentArea = 'fire_station_interior';
+          this.player.x = 13.30;
+          this.player.y = 9.75;
+          this.player.dir = 'up';
+          this.player.targetX = null;
+          this.player.targetY = null;
+          this.areaTransitionCooldown = 25;
+          this.cameraX = 0;
+          this.cameraY = 0;
+          this.updateHUDSaveInfo();
+        } else if (this.currentArea === 'fire_station_interior' && this.player.x >= 12.4 && this.player.x <= 14.2 && this.player.y >= 10.25) {
+          // Exit Oakhaven Fire Department via the bottom-right OAKHAVEN mat
+          if (window.sounds?.playMove) window.sounds.playMove();
+          this.currentArea = 'exterior';
+          this.player.x = 6.10;
+          this.player.y = 27.45;
+          this.player.dir = 'down';
+          this.player.targetX = null;
+          this.player.targetY = null;
+          this.areaTransitionCooldown = 25;
+          this.updateHUDSaveInfo();
+        } else if (this.currentArea === 'exterior' && this.player.x >= 9.45 && this.player.x <= 10.35 && this.player.y >= 26.85 && this.player.y <= 27.35) {
+          // Enter Oakhaven Police Department via the centered arched double doors
+          if (window.sounds?.playMove) window.sounds.playMove();
+          this.currentArea = 'police_station_interior';
+          this.player.x = 7.90;
+          this.player.y = 9.75;
+          this.player.dir = 'up';
+          this.player.targetX = null;
+          this.player.targetY = null;
+          this.areaTransitionCooldown = 25;
+          this.cameraX = 0;
+          this.cameraY = 0;
+          this.updateHUDSaveInfo();
+        } else if (this.currentArea === 'police_station_interior' && this.player.x >= 7.0 && this.player.x <= 8.8 && this.player.y >= 10.25) {
+          // Exit Oakhaven Police Department via the centered OAKHAVEN mat
+          if (window.sounds?.playMove) window.sounds.playMove();
+          this.currentArea = 'exterior';
+          this.player.x = 9.90;
+          this.player.y = 27.45;
+          this.player.dir = 'down';
           this.player.targetX = null;
           this.player.targetY = null;
           this.areaTransitionCooldown = 25;
@@ -18876,7 +20090,7 @@
         'cottage_player', 'cottage_friend', 'cottage_pluto',
         'cottage_nova', 'cottage_silas', 'cottage_maya',
         'card_shop', 'shop_banner', 'convention_center', 'oakhaven_apartments',
-        'school_exterior', 'school_bus',
+        'school_exterior', 'school_bus', 'police_station', 'fire_station', 'fire_station_interior', 'police_station_interior', 'npc_fire_chief', 'npc_fire_chief_back', 'npc_fire_chief_side', 'npc_police_chief', 'npc_police_chief_back', 'npc_police_chief_side',
         'playground_ground', 'playground_fort', 'playground_swingset',
         'playground_seesaw', 'playground_spinner', 'playground_hoop',
         'tree_green', 'tree_autumn', 'tree_autumn_small',
@@ -23600,6 +24814,46 @@
     // =========================================================================
     // OAKHAVEN ELEMENTARY SCHOOL INTERIOR (22 x 14 Tiles - West Door Lobby & Classroom)
     // =========================================================================
+    renderPoliceStationInterior() {
+      const ctx = this.ctx;
+      const W = this.canvas.width;
+      const H = this.canvas.height;
+      ctx.fillStyle = '#1c1917';
+      ctx.fillRect(0, 0, W, H);
+      if (this.isImgReady('police_station_interior')) {
+        const img = this.owSprites.police_station_interior;
+        const scale = Math.min(W / img.width, H / img.height);
+        const dw = Math.round(img.width * scale);
+        const dh = Math.round(img.height * scale);
+        const dx = Math.round((W - dw) / 2);
+        const dy = Math.round((H - dh) / 2);
+        ctx.save();
+        ctx.imageSmoothingEnabled = true;
+        ctx.drawImage(img, dx, dy, dw, dh);
+        ctx.restore();
+      }
+    }
+
+    renderFireStationInterior() {
+      const ctx = this.ctx;
+      const W = this.canvas.width;
+      const H = this.canvas.height;
+      ctx.fillStyle = '#1c1917';
+      ctx.fillRect(0, 0, W, H);
+      if (this.isImgReady('fire_station_interior')) {
+        const img = this.owSprites.fire_station_interior;
+        const scale = Math.min(W / img.width, H / img.height);
+        const dw = Math.round(img.width * scale);
+        const dh = Math.round(img.height * scale);
+        const dx = Math.round((W - dw) / 2);
+        const dy = Math.round((H - dh) / 2);
+        ctx.save();
+        ctx.imageSmoothingEnabled = true;
+        ctx.drawImage(img, dx, dy, dw, dh);
+        ctx.restore();
+      }
+    }
+
     renderSchoolInterior() {
       const ctx = this.ctx;
       const S = this.TILE; // 64px
@@ -25235,6 +26489,7 @@
       const westExitEndX = Math.round(-21.45 * S); // 4 city blocks (4 x 5 tiles) west of roundabout
       const willowWestEndX = Math.round(-24.5 * S); // Extends Willow Way to the Convention Center plaza
       const willowEastEndX = Math.round(15.70 * S); // Extends Willow Way 3 city blocks (3 x 5 tiles) east of Oakhaven Blvd
+      const eastExitEndX = willowEastEndX;          // 3 city blocks east of roundabout, connecting north to Willow Way East
       const westExitY = Math.round(rbCy - oakhavenWestTurnW / 2);
       const northWestPavedY = Math.round(27.60 * S - oakhavenWestTurnW / 2); // 1 city block (5.25 tiles) north of Oakhaven Blvd
 
@@ -25268,9 +26523,40 @@
         ctx.fillRect(x, y, w, h);
       };
 
+      const eastConnX = Math.round(eastExitEndX - oakhavenWestTurnW);
+      const eastBendR = Math.round(1.6 * S);
+      const eastCurveCx = Math.round(eastConnX + oakhavenWestTurnW / 2 - eastBendR);
+      const eastCurveCy = Math.round(westExitY + oakhavenWestTurnW / 2 - eastBendR);
+
       drawUrbanPavedRoad(oakhavenWestTurnX, 0, oakhavenWestTurnW, southPavedEndY);
-      drawUrbanPavedRoadH(westExitEndX, westExitY, rbCx - westExitEndX, oakhavenWestTurnW);
+      drawUrbanPavedRoadH(westExitEndX, westExitY, eastCurveCx - westExitEndX, oakhavenWestTurnW);
       drawUrbanPavedRoadH(willowWestEndX, northWestPavedY, willowEastEndX - willowWestEndX, oakhavenWestTurnW);
+      drawUrbanPavedRoad(eastConnX, northWestPavedY, oakhavenWestTurnW, eastCurveCy - northWestPavedY);
+
+      // Curved 90-degree asphalt bend connecting Oakhaven Blvd East smoothly north into the East Connector
+      ctx.save();
+      ctx.lineCap = 'butt';
+      ctx.beginPath();
+      ctx.arc(eastCurveCx, eastCurveCy, eastBendR, Math.PI / 2, 0, true);
+      ctx.strokeStyle = '#94a3b8';
+      ctx.lineWidth = oakhavenWestTurnW;
+      ctx.stroke();
+      ctx.strokeStyle = '#64748b';
+      ctx.lineWidth = oakhavenWestTurnW - 10;
+      ctx.stroke();
+      ctx.strokeStyle = this.urbanRoadPattern || '#444d5c';
+      ctx.lineWidth = oakhavenWestTurnW - 14;
+      ctx.stroke();
+      ctx.strokeStyle = '#fde047';
+      ctx.lineWidth = 4;
+      ctx.setLineDash([13, 13]);
+      ctx.stroke();
+      ctx.restore();
+
+      // Open top corner seams where the East N-S Connector joins Willow Way East
+      ctx.fillStyle = this.urbanRoadPattern || '#444d5c';
+      ctx.fillRect(eastConnX + 7, northWestPavedY + 7, Math.round(oakhavenWestTurnW - 14), Math.round(oakhavenWestTurnW - 7));
+      ctx.fillRect(eastConnX - 6, northWestPavedY + 7, 14, Math.round(oakhavenWestTurnW - 14));
       // Open 4-way intersection box so Willow Way (West & East) merges seamlessly into Oakhaven Blvd
       ctx.fillStyle = this.urbanRoadPattern || '#444d5c';
       ctx.fillRect(Math.round(oakhavenWestTurnX - 6), northWestPavedY + 7, Math.round(oakhavenWestTurnW + 12), Math.round(oakhavenWestTurnW - 14));
@@ -25287,6 +26573,7 @@
       ctx.fillStyle = this.urbanRoadPattern || '#444d5c';
       ctx.fillRect(Math.round(oakhavenWestTurnX + 7), Math.round(rbCy - rbOuterR - 4), Math.round(oakhavenWestTurnW - 14), 24);
       ctx.fillRect(Math.round(rbCx - rbOuterR - 4), westExitY + 7, 24, Math.round(oakhavenWestTurnW - 14));
+      ctx.fillRect(Math.round(rbCx + rbOuterR - 20), westExitY + 7, 24, Math.round(oakhavenWestTurnW - 14));
       // Dashed yellow circular lane line
       ctx.save();
       ctx.strokeStyle = '#fde047';
@@ -25349,6 +26636,20 @@
           ctx.fillRect(cx, Math.round(sy), 14, 6);
         }
         const ly = northWestPavedY - 6;
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(cx + 4, ly - 26, 4, 28);
+        ctx.fillStyle = '#fef08a';
+        ctx.fillRect(cx + 2, ly - 31, 8, 6);
+      });
+
+      // 3 City-Block Crosswalk Markers & Streetlight Corners along Oakhaven Blvd East (3 blocks east of Roundabout)
+      [5.45 * S, 10.45 * S, 13.15 * S].forEach(bx => {
+        const cx = Math.round(bx);
+        ctx.fillStyle = '#e2e8f0';
+        for (let sy = westExitY + 10; sy < westExitY + oakhavenWestTurnW - 10; sy += 11) {
+          ctx.fillRect(cx, Math.round(sy), 14, 6);
+        }
+        const ly = westExitY - 6;
         ctx.fillStyle = '#1e293b';
         ctx.fillRect(cx + 4, ly - 26, 4, 28);
         ctx.fillStyle = '#fef08a';
@@ -26983,11 +28284,98 @@
         }
       };
 
+      const drawOakhavenCivicSafetyStations = () => {
+        const tod = this.settings?.timeOfDay;
+        const isLit = tod === 'afternoon' || tod === 'night';
+        const glowMult = tod === 'night' ? 1.0 : 0.72;
+        const roadTopY = Math.round(27.08 * S);
+
+        // 1. Oakhaven Fire Station (North side of Willow Way East, just east of Oakhaven Lane: x = 1.8..6.8)
+        if (this.isImgReady('fire_station')) {
+          const fImg = this.owSprites.fire_station;
+          const dw = Math.round(5.0 * S);
+          const dh = Math.round(dw * (fImg.height / fImg.width));
+          const dx = Math.round(1.80 * S);
+          const dy = Math.round(roadTopY - dh + 2);
+          ctx.save();
+          ctx.imageSmoothingEnabled = true;
+          ctx.drawImage(fImg, dx, dy, dw, dh);
+          if (isLit) {
+            ctx.globalCompositeOperation = 'lighter';
+            const fireLights = [
+              [0.35, 0.80, 44, 0.48, '251, 191, 36'],
+              [0.60, 0.80, 44, 0.48, '251, 191, 36'],
+              [0.48, 0.68, 30, 0.55, '253, 224, 71'],
+              [0.79, 0.78, 28, 0.55, '253, 224, 71'],
+              [0.92, 0.78, 28, 0.55, '253, 224, 71'],
+              [0.58, 0.49, 36, 0.26, '254, 240, 138'],
+              [0.29, 0.49, 24, 0.36, '253, 224, 71'],
+              [0.40, 0.49, 24, 0.36, '253, 224, 71'],
+              [0.85, 0.49, 24, 0.36, '253, 224, 71']
+            ];
+            fireLights.forEach(([fx, fy, gr, ga, rgb]) => {
+              const gx = dx + dw * fx;
+              const gy = dy + dh * fy;
+              const glow = ctx.createRadialGradient(gx, gy, 2, gx, gy, gr);
+              glow.addColorStop(0, `rgba(${rgb}, ${(ga * glowMult).toFixed(3)})`);
+              glow.addColorStop(1, `rgba(${rgb}, 0)`);
+              ctx.fillStyle = glow;
+              ctx.beginPath();
+              ctx.arc(gx, gy, gr, 0, Math.PI * 2);
+              ctx.fill();
+            });
+          }
+          ctx.restore();
+        }
+
+        // 2. Oakhaven Police Station (East of Fire Department along Willow Way East: x = 7.4..12.4)
+        if (this.isImgReady('police_station')) {
+          const pImg = this.owSprites.police_station;
+          const dw = Math.round(5.0 * S);
+          const dh = Math.round(dw * (pImg.height / pImg.width));
+          const dx = Math.round(7.40 * S);
+          const dy = Math.round(roadTopY - dh + 2);
+          ctx.save();
+          ctx.imageSmoothingEnabled = true;
+          ctx.drawImage(pImg, dx, dy, dw, dh);
+          if (isLit) {
+            ctx.globalCompositeOperation = 'lighter';
+            const policeLights = [
+              [0.375, 0.72, 34, 0.58, '56, 189, 248'],
+              [0.625, 0.72, 34, 0.58, '56, 189, 248'],
+              [0.50, 0.80, 38, 0.42, '253, 224, 71'],
+              [0.50, 0.52, 34, 0.24, '254, 240, 138'],
+              [0.14, 0.53, 24, 0.34, '253, 224, 71'],
+              [0.24, 0.53, 24, 0.34, '253, 224, 71'],
+              [0.75, 0.53, 24, 0.34, '253, 224, 71'],
+              [0.86, 0.53, 24, 0.34, '253, 224, 71'],
+              [0.14, 0.80, 26, 0.36, '253, 224, 71'],
+              [0.24, 0.80, 26, 0.36, '253, 224, 71'],
+              [0.75, 0.80, 26, 0.36, '253, 224, 71'],
+              [0.86, 0.80, 26, 0.36, '253, 224, 71']
+            ];
+            policeLights.forEach(([fx, fy, gr, ga, rgb]) => {
+              const gx = dx + dw * fx;
+              const gy = dy + dh * fy;
+              const glow = ctx.createRadialGradient(gx, gy, 2, gx, gy, gr);
+              glow.addColorStop(0, `rgba(${rgb}, ${(ga * glowMult).toFixed(3)})`);
+              glow.addColorStop(1, `rgba(${rgb}, 0)`);
+              ctx.fillStyle = glow;
+              ctx.beginPath();
+              ctx.arc(gx, gy, gr, 0, Math.PI * 2);
+              ctx.fill();
+            });
+          }
+          ctx.restore();
+        }
+      };
+
       drawOakhavenBistro();
       drawOakhavenApartments();
       drawWillowWayCornerStore();
       drawWillowWayConventionCenter();
       drawWillowWaySchoolCampus();
+      drawOakhavenCivicSafetyStations();
 
       // Organic Raised 3/4 Turf-Lip & Rounded Stone Curb Edges along Grass-to-Road Borders
       const drawStoneCurbH = (cx, cy, cw, side = 'bot') => {
@@ -29531,6 +30919,12 @@
       } else if (area === 'school_interior') {
         if (!this.evelynNpc) this.evelynNpc = this.createEvelynNpc();
         active.push(this.evelynNpc);
+      } else if (area === 'fire_station_interior') {
+        if (!this.fireChiefNpc) this.fireChiefNpc = this.createFireChiefNpc();
+        active.push(this.fireChiefNpc);
+      } else if (area === 'police_station_interior') {
+        if (!this.policeChiefNpc) this.policeChiefNpc = this.createPoliceChiefNpc();
+        active.push(this.policeChiefNpc);
       } else if (area === 'exterior') {
         const friend = this.npcs.find(n => n.id === 'best_friend' || n.id === 'friend');
         if (friend && friend.following && !this.friendWaitingAtHouse) {
@@ -29657,6 +31051,10 @@
         this.renderConventionCenterInterior();
       } else if (this.currentArea === 'school_interior') {
         this.renderSchoolInterior();
+      } else if (this.currentArea === 'fire_station_interior') {
+        this.renderFireStationInterior();
+      } else if (this.currentArea === 'police_station_interior') {
+        this.renderPoliceStationInterior();
       } else {
         this.renderCraftsmanExterior();
       }

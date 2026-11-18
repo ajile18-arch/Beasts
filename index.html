@@ -33,7 +33,7 @@
             <span class="hdr-mob-emoji">📱</span>
             <span id="hdr-mob-phone-badge" class="hdr-mob-badge hidden">!</span>
           </button>
-          <button type="button" id="btn-hdr-mob-binder" class="ui-btn primary-btn header-mob-icon-btn header-mob-binder-unified" title="Open Binder, Playing Deck &amp; Sell/Trade Bag">
+          <button type="button" id="btn-hdr-mob-binder" class="ui-btn primary-btn header-mob-icon-btn header-mob-binder-unified" title="Open Binder, Playing Deck &amp; Inventory">
             <img src="Sprites/Overworld/binder_tome_icon.png" class="hdr-mob-img" alt="Binder">
             <span class="hdr-mob-btn-label">Binder</span>
             <span id="hdr-mob-binder-badge" class="hdr-mob-badge">0</span>
@@ -51,11 +51,13 @@
           <div class="overworld-toolbar header-menu-section" id="overworld-toolbar">
             <button id="btn-open-calendar" class="ui-btn primary-btn calendar-toolbar-btn" style="padding: 4px 10px; font-size: 12px; background: linear-gradient(135deg, #059669, #10b981); border-color: #34d399;" title="Town Weekly Calendar & Daily Events (Key: C)">📅 <span id="calendar-btn-day-label">Monday</span> • Day <span id="calendar-btn-day-num">1</span></button>
             <button id="btn-open-notebook" class="ui-btn primary-btn notebook-toolbar-btn" style="padding: 4px 10px; font-size: 12px; background: linear-gradient(135deg, #b45309, #d97706); border-color: #fbbf24;" title="Adventurer's Notebook — Pinned Events, Signs & Dialogue (Key: N)">📓 Notebook <span id="notebook-badge-count" class="inv-badge-pill">0</span></button>
+            <button id="btn-open-quests" class="ui-btn primary-btn quest-toolbar-btn" style="padding: 4px 10px; font-size: 12px; background: linear-gradient(135deg, #7c2d12, #ea580c); border-color: #fdba74;" title="Quest Log — Active Quests, Progress & Rewards (Key: Q)">📜 Quest Log <span id="quest-badge-count" class="inv-badge-pill">0</span></button>
             <button id="btn-open-phone" class="ui-btn primary-btn phone-toolbar-btn" style="padding: 4px 10px; font-size: 12px; background: linear-gradient(135deg, #4f46e5, #6366f1); border-color: #818cf8;" title="Mythos Mobile Smartphone (Key: P)">📱 Phone <span id="phone-alert-badge" class="phone-badge-pill hidden">!</span></button>
             <button id="btn-open-inventory" class="ui-btn primary-btn backpack-toolbar-btn hidden" title="Open Adventurer Backpack & Inventory (Key: I)"><img src="Sprites/Overworld/backpack_icon.png" class="hud-backpack-img" alt=""> Backpack <span id="inv-badge-count" class="inv-badge-pill">0</span></button>
-            <button id="btn-open-binder" class="ui-btn primary-btn binder-toolbar-btn" style="padding: 4px 10px; font-size: 12px; background: linear-gradient(135deg, #5c3322, #331a12); border-color: #fbbf24;" title="Open Binder, Playing Deck &amp; Sell/Trade Bag (Key: B or I)"><img src="Sprites/Overworld/binder_tome_icon.png" class="hud-backpack-img" alt=""> Binder <span id="binder-badge-count" class="inv-badge-pill">0</span></button>
+            <button id="btn-open-binder" class="ui-btn primary-btn binder-toolbar-btn" style="padding: 4px 10px; font-size: 12px; background: linear-gradient(135deg, #5c3322, #331a12); border-color: #fbbf24;" title="Open Binder, Playing Deck &amp; Inventory (Key: B or I)"><img src="Sprites/Overworld/binder_tome_icon.png" class="hud-backpack-img" alt=""> Binder <span id="binder-badge-count" class="inv-badge-pill">0</span></button>
             <button id="btn-open-playing-deck" class="ui-btn primary-btn deck-toolbar-btn hidden" style="padding: 4px 10px; font-size: 12px; background: linear-gradient(135deg, #78350f, #b45309); border-color: #fbbf24;" title="Build the Playing Deck you take into Mythos battles">🃏 Playing Deck <span id="deck-badge-count" class="inv-badge-pill">0</span></button>
             <button id="btn-open-creator" class="ui-btn secondary" style="padding: 4px 10px; font-size: 12px;" title="Customize Character or World Save">👤 Character</button>
+            <button id="btn-save-world" class="ui-btn secondary" style="padding: 4px 10px; font-size: 12px;" title="Save your current game progress">💾 Save</button>
           </div>
 
           <!-- Match & Audio Controls -->
@@ -955,7 +957,7 @@
               <img src="Sprites/Overworld/binder_tome_icon.png" class="binder-tome-header-icon" alt="Binder">
               <div>
                 <h2 class="binder-title" id="binder-main-title">BINDER</h2>
-                <p class="binder-sub" id="binder-sub-title">Playing Deck (18–24 Cards • Max 40★) • Binder Sleeves &amp; Sell/Trade Bag • Hold card to zoom</p>
+                <p class="binder-sub" id="binder-sub-title">Playing Deck (18–24 Cards • Max 40★) • Binder Sleeves &amp; Inventory • Hold card to zoom</p>
               </div>
             </div>
             <div class="binder-header-actions">
@@ -988,12 +990,12 @@
               </div>
             </div>
 
-            <!-- BOTTOM HALF: Open Leather Binder Sleeves & Sell/Trade Bag Drawer -->
+            <!-- BOTTOM HALF: Open Leather Binder Sleeves & Inventory Drawer -->
             <div class="binder-drawer-section" id="binder-drawer-section">
-              <div class="binder-tray-bar binder-section-header binder-drawer-header" id="binder-drawer-header" role="button" tabindex="0" aria-expanded="true" title="Click to minimize or expand Binder Sleeves &amp; Sell/Trade Bag">
+              <div class="binder-tray-bar binder-section-header binder-drawer-header" id="binder-drawer-header" role="button" tabindex="0" aria-expanded="true" title="Click to minimize or expand Binder Sleeves &amp; Inventory">
                 <span class="binder-tray-title">
                   <span class="binder-collapse-chevron" id="binder-drawer-chevron" aria-hidden="true">▾</span>
-                  <span id="binder-drawer-header-label">📖 Binder Sleeves &amp; Sell/Trade Bag</span>
+                  <span id="binder-drawer-header-label">📖 Binder Sleeves &amp; Inventory</span>
                   <span class="binder-tray-summary-pill" id="binder-drawer-summary-pill">0 / 36 • 🎒 0</span>
                 </span>
                 <span class="binder-drawer-mode-pill" id="binder-drawer-mode-pill">🔒 Protected from Sale</span>
@@ -1006,7 +1008,7 @@
                       📖 Binder Sleeves (<span id="binder-tab-sleeves-count">0</span>)
                     </button>
                     <button type="button" class="binder-drawer-tab" id="btn-binder-tab-bag" data-tab="bag">
-                      🎒 Sell/Trade Bag (<span id="binder-tab-bag-count">0</span>)
+                      🎒 Inventory (<span id="binder-tab-bag-count">0</span>)
                     </button>
                   </div>
 
@@ -1025,7 +1027,7 @@
                   <!-- Dynamically populated with 9 sleeve slots per page -->
                 </div>
 
-                <!-- Tab 2: Loose Sell/Trade Bag (Inventory Cards, Unopened Packs & Gear) -->
+                <!-- Tab 2: Loose Inventory (Inventory Cards, Unopened Packs & Gear) -->
                 <div class="binder-grid hidden" id="binder-bag-grid">
                   <!-- Dynamically populated with sellable loose cards & booster packs -->
                 </div>
@@ -1035,7 +1037,7 @@
 
           <div class="binder-footer">
             <div class="binder-hint" id="binder-hint-text">
-              💡 <b>Tip:</b> Hold-click any card to view its <b>Traditional Card Art</b> closer. Pull cards to <b>🎒 Sell/Trade Bag</b> to sell at Leo's Shop or on your Phone!
+              💡 <b>Tip:</b> Hold-click any card to view its <b>Traditional Card Art</b> closer. Pull cards to <b>🎒 Inventory</b> to sell at Leo's Shop or on your Phone!
             </div>
             <div class="binder-page-nav" id="binder-page-nav">
               <button type="button" class="binder-page-btn" id="btn-binder-prev-page" title="Previous Page">◀ Prev</button>
@@ -1675,6 +1677,39 @@
       <div class="calendar-modal-footer">
         <div class="calendar-tip">💡 <em>Tip: <strong>Long-click / hold</strong> on any dialogue or sign to pin it! Agreed meetups appear automatically.</em></div>
         <button id="btn-done-notebook" class="ui-btn primary-btn" style="min-width: 110px;">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quest Log Modal -->
+  <div id="quest-log-modal" class="ui-modal-backdrop hidden">
+    <div class="calendar-modal-card notebook-modal-card">
+      <div class="calendar-modal-header notebook-modal-header" style="background: linear-gradient(135deg, rgba(124, 45, 18, 0.92), rgba(154, 52, 18, 0.88)); border-bottom-color: rgba(251, 146, 60, 0.35);">
+        <div class="calendar-header-title">
+          <span class="calendar-header-icon">📜</span>
+          <div>
+            <h2 class="calendar-title">Quest Log</h2>
+            <div class="calendar-subtitle" id="quest-log-subtitle">Complete town adventures, Mythos duels &amp; collection goals for rewards</div>
+          </div>
+        </div>
+        <button id="btn-close-quests" class="calendar-close-btn" title="Close (Esc)">✕</button>
+      </div>
+
+      <div class="notebook-toolbar-row">
+        <div class="notebook-tabs" id="quest-log-tabs">
+          <button type="button" class="notebook-tab-btn active" data-quest-tab="active">🗺️ Active (<span id="quest-tab-active-count">0</span>)</button>
+          <button type="button" class="notebook-tab-btn" data-quest-tab="completed">✅ Completed (<span id="quest-tab-completed-count">0</span>)</button>
+        </div>
+        <div id="quest-log-summary-pill" style="font-size: 12px; color: #fdba74; font-weight: 700;">0 / 0 Claimed</div>
+      </div>
+
+      <div id="quest-entries-list" class="notebook-entries-list" style="display: flex; flex-direction: column; gap: 10px; padding: 12px 16px; max-height: 55vh; overflow-y: auto;">
+        <!-- Populated dynamically -->
+      </div>
+
+      <div class="calendar-modal-footer">
+        <div class="calendar-tip">💡 <em>Tip: Press <strong>Q</strong> anytime in Oakhaven or open <strong>Menu → Quest Log</strong> to check progress &amp; claim rewards!</em></div>
+        <button id="btn-done-quests" class="ui-btn primary-btn" style="min-width: 110px;">Done</button>
       </div>
     </div>
   </div>

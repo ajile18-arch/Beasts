@@ -1214,7 +1214,11 @@
       const targets = [];
       ['melee', 'ranged'].forEach(rk => {
         if (this.canCardAttackTargetRow(attackerTeam, attackerUid, rk)) {
-          (rows[rk] || []).forEach(c => targets.push({ card: c, rowKey: rk }));
+          (rows[rk] || []).forEach(c => {
+            if (!(c.unattackableTurns > 0)) {
+              targets.push({ card: c, rowKey: rk });
+            }
+          });
         }
       });
       return targets;
@@ -1476,6 +1480,7 @@
       if (!this.canCardAttackTargetRow(attackerTeam, attackerUid, targetRow)) return;
       const attacker = this.getAllBoardCards(attackerTeam).find(c => c.uid === attackerUid);
       if (!attacker || attacker.attackedThisTurn) return;
+      if (targetCard?.unattackableTurns > 0) return;
 
       const dmg = Math.max(1, attacker.power);
       attacker.attackedThisTurn = true;
@@ -1816,7 +1821,7 @@
       document.body.appendChild(overlay);
     }
 
-    promptEnemyTargetChoice({ team, logType, sourceName, title, candidates = [], onSelect }) {
+    promptEnemyTargetChoice({ team, logType, sourceName, title, subtitle = null, skipLog = null, accentColor = '#38bdf8', candidates = [], onSelect }) {
       if (!this.state || !Array.isArray(candidates) || candidates.length === 0) return;
 
       this.state.pendingOptionalPlay = true;
@@ -1842,9 +1847,9 @@
       }).join('');
 
       overlay.innerHTML = `
-        <div style="max-width:560px; width:100%; background:#0f172a; border:2px solid #38bdf8; border-radius:14px; padding:18px; box-shadow:0 18px 48px rgba(0,0,0,0.7); color:#e0f2fe;">
-          <div style="font-size:16px; font-weight:800; color:#7dd3fc; margin-bottom:6px;">${title}</div>
-          <div style="font-size:13px; color:#bae6fd; margin-bottom:14px;">Choose an enemy unit for <strong>${sourceName}</strong> to freeze for its next turn:</div>
+        <div style="max-width:560px; width:100%; background:#0f172a; border:2px solid ${accentColor}; border-radius:14px; padding:18px; box-shadow:0 18px 48px rgba(0,0,0,0.7); color:#e0f2fe;">
+          <div style="font-size:16px; font-weight:800; color:${accentColor}; margin-bottom:6px;">${title}</div>
+          <div style="font-size:13px; color:#bae6fd; margin-bottom:14px;">${subtitle || `Choose an enemy unit for <strong>${sourceName}</strong> to freeze for its next turn:`}</div>
           <div style="display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin-bottom:14px;">${cardsHtml}</div>
           <div style="display:flex; justify-content:flex-end;">
             <button type="button" id="btn-enemy-target-skip" class="ui-btn" style="padding:7px 14px; background:rgba(71,85,105,0.45); border:1px solid #94a3b8; border-radius:8px; color:#e2e8f0; font-size:12px; font-weight:700;">Skip</button>
@@ -1873,7 +1878,7 @@
       overlay.querySelector('#btn-enemy-target-skip')?.addEventListener('click', () => {
         cleanup();
         window.soundFX?.playClick?.();
-        this.log(`❄️ ${sourceName} held its Freeze in reserve.`, logType);
+        this.log(skipLog || `❄️ ${sourceName} held its Freeze in reserve.`, logType);
         this.render();
         this.checkAutoEndTurn(team);
       });
@@ -1946,7 +1951,28 @@
       document.body.appendChild(overlay);
     }
 
-    damageUnit(targetCard, amount, ownerTeam, rowKey) {
+    damageUnit(targetCard, amount, ownerTeam, rowKey, _fromDeflect = false) {
+      if (amount > 0 && targetCard?.deflectOnce && !_fromDeflect) {
+        targetCard.deflectOnce = false;
+        const oppTeam = ownerTeam === 1 ? 2 : 1;
+        const oppRows = this.state?.players?.[oppTeam]?.rows;
+        const oppTargets = [];
+        if (oppRows) {
+          ['melee', 'ranged'].forEach(rk => {
+            (oppRows[rk] || []).forEach(c => oppTargets.push({ card: c, rowKey: rk }));
+          });
+        }
+        window.soundFX?.playShieldBreak?.();
+        if (oppTargets.length > 0) {
+          const pick = oppTargets[Math.floor(Math.random() * oppTargets.length)];
+          this.log(`🪞 ${targetCard.name}'s Hex Mirror deflected ${amount} damage back to ${pick.card.name}!`, 'system');
+          this.damageUnit(pick.card, amount, oppTeam, pick.rowKey, true);
+        } else {
+          this.log(`🪞 ${targetCard.name}'s Hex Mirror deflected the attack into thin air!`, 'system');
+        }
+        return;
+      }
+
       const battlefield = document.getElementById('gwent-battlefield');
       const tgtEl = battlefield?.querySelector(`.gwent-card[data-uid="${targetCard.uid}"]`);
 
@@ -2261,6 +2287,14 @@
 
       ['melee', 'ranged'].forEach(rk => {
         const rowArr = player.rows?.[rk] || [];
+        rowArr.forEach(c => {
+          if (c && c.unattackableTurns > 0) {
+            c.unattackableTurns -= 1;
+            if (c.unattackableTurns === 0) {
+              this.log(`✨ ${c.name}'s Innocent Ward wore off — she can now be attacked.`, logType);
+            }
+          }
+        });
         for (let i = 0; i < rowArr.length - 1; i++) {
           if (rowArr[i]?.id === 'mothman' && rowArr[i + 1]) {
             rowArr[i + 1].armor = (rowArr[i + 1].armor || 0) + 1;

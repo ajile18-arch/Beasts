@@ -657,6 +657,394 @@
         const rArmor = (oppRows.ranged || []).reduce((s, c) => s + (c.armor || 0), 0);
         return 4 + 2 + Math.max(mArmor, rArmor);
       }
+    },
+
+    lothar_vampire_prince: {
+      id: 'lothar_vampire_prince',
+      name: 'Lothar, Vampire Prince',
+      role: 'Vampire',
+      element: 'poison',
+      stars: 5,
+      rarity: 'gold',
+      border: 'decorative-gold',
+      maxDeckCopies: 1,
+      row: 'melee',
+      basePower: 5,
+      armor: 2,
+      cardImg: 'Cards/Lothar_Vampire_Prince_Card.jpg',
+      traditionalCardImg: 'Cards/Lothar_Vampire_Prince_Traditional.jpg',
+      abilityTitle: 'Blood Thrall',
+      abilityDesc: 'When played, turns a 1★ or 2★ enemy creature to your side of the board for the rest of the round.',
+      passiveTitle: 'Deck Limit: 1',
+      passiveDesc: 'Limited to 1 copy per playing deck.',
+      effects: [],
+      onPlay(ctx) {
+        const { game, team, oppTeam, card, logType } = ctx;
+        const myPlayer = game.state?.players?.[team];
+        const oppPlayer = game.state?.players?.[oppTeam];
+        if (!myPlayer || !oppPlayer) return;
+        const eligible = [];
+        ['melee', 'ranged'].forEach(rk => {
+          (oppPlayer.rows[rk] || []).forEach(c => {
+            const def = CARDS[c.id];
+            const stars = Number(c.stars ?? def?.stars ?? 0);
+            if (stars === 1 || stars === 2) {
+              eligible.push({ card: c, rowKey: rk });
+            }
+          });
+        });
+        if (eligible.length === 0) {
+          game.log(`🧛 ${card.name}'s Blood Thrall found no 1★ or 2★ enemy creatures to turn.`, logType);
+          return;
+        }
+        const turnEnemyToAlly = (chosen) => {
+          if (!chosen || !chosen.card) return;
+          const rk = chosen.rowKey || 'melee';
+          const list = oppPlayer.rows[rk] || [];
+          const idx = list.findIndex(c => c.uid === chosen.card.uid);
+          if (idx === -1) return;
+          const [turned] = list.splice(idx, 1);
+          if (!turned._originalOwnerTeam) turned._originalOwnerTeam = oppTeam;
+          myPlayer.rows[rk].push(turned);
+          window.soundFX?.playPoison?.();
+          game.log(`🧛 ${card.name} turned ${turned.name} (${turned.power}) to your side for the rest of the round!`, logType);
+        };
+        if (game.gameMode === 'ai' && team === 2) {
+          eligible.sort((a, b) => (b.card.power || 0) - (a.card.power || 0));
+          turnEnemyToAlly(eligible[0]);
+        } else {
+          game.promptEnemyTargetChoice({
+            team,
+            logType,
+            sourceName: card.name,
+            title: '🧛 Blood Thrall — Turn an Enemy Creature',
+            subtitle: `Choose a 1★ or 2★ enemy creature for <strong>${card.name}</strong> to turn to your side for the rest of the round:`,
+            skipLog: `🧛 ${card.name} held Blood Thrall in reserve.`,
+            accentColor: '#f43f5e',
+            candidates: eligible,
+            onSelect: turnEnemyToAlly
+          });
+        }
+      },
+      aiScore(ctx) {
+        const { game, oppTeam } = ctx;
+        const oppRows = game.state?.players?.[oppTeam]?.rows;
+        let bestEnemy = 0;
+        if (oppRows) {
+          ['melee', 'ranged'].forEach(rk => {
+            (oppRows[rk] || []).forEach(c => {
+              const s = Number(c.stars ?? CARDS[c.id]?.stars ?? 0);
+              if (s === 1 || s === 2) bestEnemy = Math.max(bestEnemy, c.power || 0);
+            });
+          });
+        }
+        return 5 + 2 + bestEnemy * 2;
+      }
+    },
+
+    oscar_orc_giant: {
+      id: 'oscar_orc_giant',
+      name: 'Oscar, Orc Giant',
+      role: 'Orc Army',
+      element: 'metal',
+      stars: 5,
+      rarity: 'gold',
+      border: 'decorative-gold',
+      maxDeckCopies: 1,
+      row: 'melee',
+      basePower: 7,
+      armor: 1,
+      cardImg: 'Cards/Oscar_Orc_Giant_Card.jpg',
+      traditionalCardImg: 'Cards/Oscar_Orc_Giant_Traditional.jpg',
+      abilityTitle: "Titan's Rally",
+      abilityDesc: 'Whenever an Orc Army card is deployed to his row, Oscar is healed to full health.',
+      passiveTitle: 'Deck Limit: 1',
+      passiveDesc: 'Limited to 1 copy per playing deck.',
+      effects: [],
+      aiScore() {
+        return 7 + 1 + 2;
+      }
+    },
+
+    armantha_the_witch: {
+      id: 'armantha_the_witch',
+      name: 'Armantha the Witch',
+      role: 'Witch',
+      element: 'magic',
+      stars: 4,
+      rarity: 'gold',
+      border: 'decorative-gold',
+      maxDeckCopies: 1,
+      row: 'agile',
+      basePower: 3,
+      armor: 3,
+      deflectOnce: true,
+      cardImg: 'Cards/Armantha_the_Witch_Card.jpg',
+      traditionalCardImg: 'Cards/Armantha_the_Witch_Traditional.jpg',
+      abilityTitle: 'Hex Mirror',
+      abilityDesc: 'Deflects the first attack sent at her back to a random enemy in either lane.',
+      passiveTitle: 'Deck Limit: 1',
+      passiveDesc: 'Limited to 1 copy per playing deck.',
+      effects: [],
+      onPlay(ctx) {
+        if (ctx?.card) ctx.card.deflectOnce = true;
+        const { game, team, card, logType } = ctx || {};
+        const myRows = game?.state?.players?.[team]?.rows;
+        if (myRows && card) {
+          const hasZavela = ['melee', 'ranged'].some(rk => (myRows[rk] || []).some(c => c.id === 'zavela_the_witch'));
+          if (hasZavela) {
+            card.shield = true;
+            playSound('heal');
+            game.log(`🔰 Zavela's Coven Ward granted a Shield to ${card.name}!`, logType);
+          }
+        }
+      },
+      aiScore() {
+        return 3 + 3 + 3;
+      }
+    },
+
+    zavela_the_witch: {
+      id: 'zavela_the_witch',
+      name: 'Zavela the Witch',
+      role: 'Witch',
+      element: 'magic',
+      stars: 4,
+      rarity: 'gold',
+      border: 'decorative-gold',
+      maxDeckCopies: 1,
+      row: 'ranged',
+      basePower: 2,
+      armor: 3,
+      cardImg: 'Cards/Zavela_the_Witch_Card.jpg',
+      traditionalCardImg: 'Cards/Zavela_the_Witch_Traditional.jpg',
+      abilityTitle: 'Coven Ward',
+      abilityDesc: 'Grants a Shield to Armantha the Witch when Zavela is deployed or when Armantha is played.',
+      passiveTitle: 'Deck Limit: 1',
+      passiveDesc: 'Limited to 1 copy per playing deck.',
+      effects: [],
+      onPlay(ctx) {
+        const { game, team, card, logType } = ctx || {};
+        const myRows = game?.state?.players?.[team]?.rows;
+        if (!myRows) return;
+        let shielded = 0;
+        ['melee', 'ranged'].forEach(rk => {
+          (myRows[rk] || []).forEach(c => {
+            if (c && c.id === 'armantha_the_witch') {
+              c.shield = true;
+              shielded++;
+            }
+          });
+        });
+        if (shielded > 0) {
+          playSound('heal');
+          game.log(`🔰 ${card.name}'s Coven Ward granted a Shield to Armantha the Witch!`, logType);
+        } else {
+          game.log(`🌿 ${card.name} readies Coven Ward for Armantha the Witch.`, logType);
+        }
+      },
+      aiScore(ctx) {
+        const { game, team } = ctx || {};
+        const myRows = game?.state?.players?.[team]?.rows;
+        const hasArmantha = myRows && ['melee', 'ranged'].some(rk => (myRows[rk] || []).some(c => c.id === 'armantha_the_witch'));
+        return 2 + 3 + (hasArmantha ? 3 : 1);
+      }
+    },
+
+    the_nieces: {
+      id: 'the_nieces',
+      name: 'The Nieces',
+      role: 'Witch',
+      element: 'magic',
+      stars: 2,
+      rarity: 'silver',
+      border: 'silver',
+      maxDeckCopies: 2,
+      row: 'melee',
+      basePower: 3,
+      armor: 0,
+      cardImg: 'Cards/The_Nieces_Card.jpg',
+      traditionalCardImg: 'Cards/The_Nieces_Traditional.jpg',
+      abilityTitle: 'Triple Mischief',
+      abilityDesc: 'Deals 1 damage to 3 random enemies when played (+1 damage per other Witch on your board).',
+      passiveTitle: 'Deck Limit: 2',
+      passiveDesc: 'Limited to 2 copies per playing deck.',
+      effects: [],
+      onPlay(ctx) {
+        const { game, team, oppTeam, card, logType } = ctx || {};
+        const myRows = game?.state?.players?.[team]?.rows;
+        const oppRows = game?.state?.players?.[oppTeam]?.rows;
+        if (!oppRows) return;
+
+        let otherWitches = 0;
+        if (myRows) {
+          ['melee', 'ranged'].forEach(rk => {
+            (myRows[rk] || []).forEach(c => {
+              if (c && c.role === 'Witch' && c.uid !== card?.uid) otherWitches++;
+            });
+          });
+        }
+        const dmg = 1 + otherWitches;
+
+        const pool = [];
+        ['melee', 'ranged'].forEach(rk => {
+          (oppRows[rk] || []).forEach(u => {
+            if (u) pool.push({ unit: u, rowKey: rk });
+          });
+        });
+        if (pool.length === 0) return;
+
+        for (let i = pool.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [pool[i], pool[j]] = [pool[j], pool[i]];
+        }
+        const picks = pool.slice(0, 3);
+        playSound('magic');
+        picks.forEach(p => game.damageUnit(p.unit, dmg, oppTeam, p.rowKey));
+        game.log(`✨ ${card.name}'s Triple Mischief dealt ${dmg} damage to ${picks.length} enemy unit(s)!`, logType);
+      },
+      aiScore(ctx) {
+        const { game, team, oppTeam } = ctx || {};
+        const myRows = game?.state?.players?.[team]?.rows;
+        const oppRows = game?.state?.players?.[oppTeam]?.rows;
+        let otherWitches = 0;
+        if (myRows) {
+          ['melee', 'ranged'].forEach(rk => {
+            (myRows[rk] || []).forEach(c => {
+              if (c && c.role === 'Witch') otherWitches++;
+            });
+          });
+        }
+        const enemyCount = oppRows ? ((oppRows.melee?.length || 0) + (oppRows.ranged?.length || 0)) : 0;
+        return 3 + Math.min(3, enemyCount) * (1 + otherWitches);
+      }
+    },
+
+    baby_lucia: {
+      id: 'baby_lucia',
+      name: 'Baby Lucia',
+      role: 'Witch',
+      element: 'magic',
+      stars: 2,
+      rarity: 'silver',
+      border: 'silver',
+      maxDeckCopies: 2,
+      row: 'melee',
+      basePower: 1,
+      armor: 0,
+      cardImg: 'Cards/Baby_Lucia_Card.jpg',
+      traditionalCardImg: 'Cards/Baby_Lucia_Traditional.jpg',
+      abilityTitle: 'Innocent Ward',
+      abilityDesc: 'Unattackable through 3 turns after being played.',
+      passiveTitle: 'Deck Limit: 2',
+      passiveDesc: 'Limited to 2 copies per playing deck.',
+      effects: [],
+      onPlay(ctx) {
+        const { game, card, logType } = ctx || {};
+        if (!card) return;
+        card.unattackableTurns = 3;
+        playSound('magic');
+        game?.log(`✨ ${card.name} is protected by Innocent Ward and cannot be attacked for 3 turns!`, logType);
+      },
+      aiScore() {
+        return 1 + 2;
+      }
+    },
+
+    jank: {
+      id: 'jank',
+      name: 'Jank',
+      role: 'Machine',
+      element: 'metal',
+      stars: 3,
+      rarity: 'silver',
+      border: 'silver',
+      maxDeckCopies: 2,
+      row: 'agile',
+      basePower: 2,
+      armor: 4,
+      cardImg: 'Cards/Jank_Card.jpg',
+      traditionalCardImg: 'Cards/Jank_Traditional.jpg',
+      abilityTitle: 'Jury-Rig',
+      abilityDesc: 'Grants Resilience to Scrap Heap when deployed while Scrap Heap is on your board.',
+      passiveTitle: 'Deck Limit: 2',
+      passiveDesc: 'Limited to 2 copies per playing deck.',
+      effects: [],
+      onPlay(ctx) {
+        const { game, team, card, logType } = ctx || {};
+        const myRows = game?.state?.players?.[team]?.rows;
+        if (!myRows) return;
+        let granted = 0;
+        ['melee', 'ranged'].forEach(rk => {
+          (myRows[rk] || []).forEach(c => {
+            if (c && c.id === 'scrap_heap') {
+              c.resilient = true;
+              granted++;
+            }
+          });
+        });
+        if (granted > 0) {
+          playSound('metal');
+          game.log(`🛡️ ${card.name}'s Jury-Rig granted Resilience to Scrap Heap!`, logType);
+        } else {
+          game.log(`⚙️ ${card.name} sparked to life, but no Scrap Heap was on the board.`, logType);
+        }
+      },
+      aiScore(ctx) {
+        const { game, team } = ctx || {};
+        const myRows = game?.state?.players?.[team]?.rows;
+        const hasScrapHeap = myRows && ['melee', 'ranged'].some(rk => (myRows[rk] || []).some(c => c.id === 'scrap_heap'));
+        return 2 + 4 + (hasScrapHeap ? 3 : 0);
+      }
+    },
+
+    jallopy: {
+      id: 'jallopy',
+      name: 'Jallopy',
+      role: 'Machine',
+      element: 'metal',
+      stars: 5,
+      rarity: 'gold',
+      border: 'decorative-gold',
+      maxDeckCopies: 1,
+      row: 'ranged',
+      basePower: 4,
+      armor: 2,
+      cardImg: 'Cards/Jallopy_Card.jpg',
+      traditionalCardImg: 'Cards/Jallopy_Traditional.jpg',
+      abilityTitle: 'Spare Bolts',
+      abilityDesc: 'Grants +2 Armor to all allied Machines on your board when played.',
+      passiveTitle: 'Deck Limit: 1',
+      passiveDesc: 'Limited to 1 copy per playing deck.',
+      effects: [],
+      onPlay(ctx) {
+        const { game, team, card, logType } = ctx || {};
+        const myRows = game?.state?.players?.[team]?.rows;
+        if (!myRows) return;
+        let buffed = 0;
+        ['melee', 'ranged'].forEach(rk => {
+          (myRows[rk] || []).forEach(c => {
+            if (c && c.role === 'Machine' && c.uid !== card?.uid) {
+              c.armor = (c.armor || 0) + 2;
+              buffed++;
+            }
+          });
+        });
+        if (buffed > 0) {
+          playSound('metal');
+          game.log(`🔩 ${card.name}'s Spare Bolts granted +2 Armor to ${buffed} allied Machine(s) on your board!`, logType);
+        } else {
+          game.log(`⚙️ ${card.name} rattled into position with Spare Bolts ready.`, logType);
+        }
+      },
+      aiScore(ctx) {
+        const { game, team } = ctx || {};
+        const myRows = game?.state?.players?.[team]?.rows;
+        const alliedMachines = myRows
+          ? ['melee', 'ranged'].reduce((sum, rk) => sum + (myRows[rk] || []).filter(c => c && c.role === 'Machine').length, 0)
+          : 0;
+        return 4 + 2 + alliedMachines * 2;
+      }
     }
   };
 
@@ -683,7 +1071,15 @@
       'sea_dragon',
       'pyromanda',
       'frost_skink', 'frost_skink',
-      'krythos_the_basilisk'
+      'krythos_the_basilisk',
+      'lothar_vampire_prince',
+      'oscar_orc_giant',
+      'armantha_the_witch',
+      'zavela_the_witch',
+      'the_nieces', 'the_nieces',
+      'baby_lucia', 'baby_lucia',
+      'jank', 'jank',
+      'jallopy'
     ]
   };
 
@@ -714,6 +1110,22 @@
     const myRows = game.state.players[team].rows;
     const oppRows = game.state.players[oppTeam].rows;
     const effects = cardDef?.effects || [];
+
+    // Passive: Oscar, Orc Giant heals to full health whenever an Orc Army card is deployed to his row
+    const playedRole = cardDef?.role || card?.role;
+    if (playedRole === 'Orc Army' && targetRow && myRows[targetRow]) {
+      myRows[targetRow].forEach(ally => {
+        if (ally && ally.id === 'oscar_orc_giant' && ally.uid !== card?.uid) {
+          const fullPower = Number(ally.basePower) || 7;
+          if ((ally.power || 0) < fullPower) {
+            const healed = fullPower - (ally.power || 0);
+            ally.power = fullPower;
+            playSound('heal');
+            game.log(`🛡️ ${ally.name}'s Titan's Rally healed him by +${healed} back to full health (${fullPower})!`, logType);
+          }
+        }
+      });
+    }
 
     effects.forEach(eff => {
       switch (eff.type) {
@@ -922,6 +1334,22 @@
     const myRows = game.state.players[team].rows;
     const oppRows = game.state.players[oppTeam].rows;
     const effects = cardDef?.effects || [];
+
+    // Passive: Oscar, Orc Giant heals to full health whenever an Orc Army card is deployed to his row
+    const playedRole = cardDef?.role || card?.role;
+    if (playedRole === 'Orc Army' && targetRow && myRows[targetRow]) {
+      myRows[targetRow].forEach(ally => {
+        if (ally && ally.id === 'oscar_orc_giant' && ally.uid !== card?.uid) {
+          const fullPower = Number(ally.basePower) || 7;
+          if ((ally.power || 0) < fullPower) {
+            const healed = fullPower - (ally.power || 0);
+            ally.power = fullPower;
+            playSound('heal');
+            game.log(`🛡️ ${ally.name}'s Titan's Rally healed him by +${healed} back to full health (${fullPower})!`, logType);
+          }
+        }
+      });
+    }
 
     effects.forEach(eff => {
       switch (eff.type) {
