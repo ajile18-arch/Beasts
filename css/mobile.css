@@ -412,15 +412,6 @@ select {
     padding: 0 3px !important;
   }
 
-  .gwent-card.board-card .gwent-card-hp {
-    top: 2px !important;
-    right: 2px !important;
-    width: 22px !important;
-    height: 20px !important;
-    font-size: 9px !important;
-    padding: 0 !important;
-  }
-
   .gwent-card.board-card .gwent-card-defenses {
     bottom: 14px !important;
     right: 2px !important;
@@ -506,15 +497,6 @@ select {
     height: 20px !important;
     font-size: 11px !important;
     padding: 0 3px !important;
-  }
-
-  .gwent-player-hand .gwent-card .gwent-card-hp {
-    top: 2px !important;
-    right: 2px !important;
-    width: 24px !important;
-    height: 22px !important;
-    font-size: 10px !important;
-    padding: 0 !important;
   }
 
   .gwent-player-hand .gwent-card .gwent-card-defenses {

@@ -59,7 +59,8 @@
 
     if (bestIdx === -1) return;
 
-    if (optional && !(game.gameMode === 'ai' && team === 2) && typeof game.promptOptionalHandPlay === 'function') {
+    const isAi = game.isAiTeam ? game.isAiTeam(team) : (game.gameMode === 'ai' && team === 2);
+    if (optional && !isAi && typeof game.promptOptionalHandPlay === 'function') {
       game.promptOptionalHandPlay({
         team,
         targetRow,
@@ -73,6 +74,7 @@
     }
 
     const [bonusCard] = player.hand.splice(bestIdx, 1);
+    if (game._simSummoningSickness) bonusCard.attackedThisTurn = true;
     const bonusRow = bonusCard.row === 'agile'
       ? (targetRow || 'ranged')
       : (bonusCard.row || 'melee');
@@ -107,7 +109,6 @@
       rarity: 'bronze',
       row: 'melee',
       basePower: 1,
-      baseHp: 4,
       armor: 0,
       cardImg: 'Cards/Goblin_Soldier_Card.jpg',
       traditionalCardImg: 'Cards/Goblin_Soldier_Traditional.jpg',
@@ -129,7 +130,6 @@
       rarity: 'bronze',
       row: 'ranged',
       basePower: 1,
-      baseHp: 3,
       armor: 0,
       cardImg: 'Cards/Goblin_Archer_Card.jpg',
       traditionalCardImg: 'Cards/Goblin_Archer_Traditional.jpg',
@@ -167,7 +167,6 @@
       border: 'silver',
       row: 'melee',
       basePower: 2,
-      baseHp: 5,
       armor: 2,
       cardImg: 'Cards/Orc_Infantry_Card.jpg',
       traditionalCardImg: 'Cards/Orc_Infantry_Traditional.jpg',
@@ -190,7 +189,6 @@
       border: 'silver',
       row: 'ranged',
       basePower: 2,
-      baseHp: 4,
       armor: 1,
       cardImg: 'Cards/Orc_Slinger_Card.jpg',
       traditionalCardImg: 'Cards/Orc_Slinger_Traditional.jpg',
@@ -213,7 +211,6 @@
       border: 'bronze',
       row: 'melee',
       basePower: 2,
-      baseHp: 4,
       armor: 0,
       cardImg: 'Cards/Werewolf_Pup_Card.jpg',
       traditionalCardImg: 'Cards/Werewolf_Pup_Traditional.jpg',
@@ -236,7 +233,6 @@
       border: 'gold',
       row: 'melee',
       basePower: 3,
-      baseHp: 6,
       armor: 2,
       cardImg: 'Cards/Minerva_Wolf_Mother_Card.jpg',
       traditionalCardImg: 'Cards/Minerva_Wolf_Mother_Traditional.jpg',
@@ -258,8 +254,7 @@
       rarity: 'bronze',
       border: 'bronze',
       row: 'melee',
-      basePower: 2,
-      baseHp: 5,
+      basePower: 1,
       armor: 2,
       resilient: true,
       cardImg: 'Cards/Rust_Bucket_Card.jpg',
@@ -281,7 +276,6 @@
       border: 'silver',
       row: 'melee',
       basePower: 2,
-      baseHp: 6,
       armor: 2,
       shield: true,
       cardImg: 'Cards/Scrap_Heap_Card.jpg',
@@ -304,7 +298,6 @@
       maxDeckCopies: 1,
       row: 'agile',
       basePower: 4,
-      baseHp: 7,
       armor: 0,
       boostRoleAbility: { role: 'Wolf Pack', amount: 1 },
       cardImg: 'Cards/Manson_Wolf_Father_Card.jpg',
@@ -326,7 +319,6 @@
       border: 'silver',
       row: 'melee',
       basePower: 2,
-      baseHp: 5,
       armor: 0,
       lifestealHeal: true,
       cardImg: 'Cards/Vampire_Thrall_Card.jpg',
@@ -348,7 +340,6 @@
       border: 'bronze',
       row: 'agile',
       basePower: 2,
-      baseHp: 3,
       armor: 0,
       spawnOnDeath: { cardId: 'vampire_bat', count: 2, spawnPower: 1 },
       cardImg: 'Cards/Vampire_Bat_Card.jpg',
@@ -370,7 +361,6 @@
       border: 'decorative-gold',
       row: 'ranged',
       basePower: 5,
-      baseHp: 8,
       armor: 2,
       cardImg: 'Cards/Gooba_Goblin_King_Card.jpg',
       traditionalCardImg: 'Cards/Gooba_Goblin_King_Traditional.jpg',
@@ -414,7 +404,6 @@
       maxDeckCopies: 2,
       row: 'agile',
       basePower: 3,
-      baseHp: 6,
       armor: 1,
       cardImg: 'Cards/Mothman_Card.jpg',
       traditionalCardImg: 'Cards/Mothman_Traditional.jpg',
@@ -442,7 +431,6 @@
       maxDeckCopies: 1,
       row: 'agile',
       basePower: 2,
-      baseHp: 5,
       armor: 0,
       onKillPowerGain: 1,
       onKillMaxBonus: 3,
@@ -469,7 +457,6 @@
       maxDeckCopies: 3,
       row: 'agile',
       basePower: 1,
-      baseHp: 4,
       armor: 1,
       doubleHitIfRowRole: 'Water Tribe',
       cardImg: 'Cards/Merfolk_Card.jpg',
@@ -497,7 +484,6 @@
       border: 'gold',
       row: 'agile',
       basePower: 3,
-      baseHp: 7,
       armor: 4,
       allowsMeleeWaterTribeToAttackRanged: true,
       cardImg: 'Cards/Sea_Dragon_Card.jpg',
@@ -523,23 +509,23 @@
       stars: 3,
       rarity: 'gold',
       border: 'gold',
-      row: 'ranged',
-      basePower: 4,
-      baseHp: 6,
-      armor: 2,
-      endOfTurnRandomAttacks: { count: 3, damage: 1 },
+      maxDeckCopies: 2,
+      row: 'melee',
+      basePower: 2,
+      armor: 1,
+      endOfTurnRandomAttacks: { count: 2, damage: 1 },
       cardImg: 'Cards/PyroManda_Card.jpg',
       traditionalCardImg: 'Cards/PyroManda_Traditional.jpg',
       abilityTitle: 'Ember Volley',
-      abilityDesc: 'At the end of your turn, performs 3 attacks dealing 1 damage each to random enemy units.',
-      passiveTitle: 'Ranged Barrage',
-      passiveDesc: 'Fires 3x 1-damage ember strikes at random enemies at turn end.',
+      abilityDesc: 'At the end of your turn, performs 2 attacks dealing 1 damage each to random enemy units.',
+      passiveTitle: 'Ember Barrage',
+      passiveDesc: 'Fires 2x 1-damage ember strikes at random enemies at turn end.',
       effects: [],
       estimateAiValue(rowKey, ctx) {
         const { game, team } = ctx;
         const oppTeam = team === 1 ? 2 : 1;
         const hasEnemies = game.getAllBoardCards(oppTeam).length > 0;
-        return 4 + 1 + (hasEnemies ? 3 : 0);
+        return 2 + 1 + (hasEnemies ? 2 : 0);
       }
     },
 
@@ -553,7 +539,6 @@
       border: 'silver',
       row: 'melee',
       basePower: 2,
-      baseHp: 5,
       armor: 1,
       cardImg: 'Cards/Frost_Skink_Card.jpg',
       traditionalCardImg: 'Cards/Frost_Skink_Traditional.jpg',
@@ -584,7 +569,7 @@
               window.soundFX?.playShieldBreak?.();
               game.log(`❄️ ${card.name} froze ${targetCard.name}! It cannot attack on its next turn.`, logType);
             };
-            if (game.gameMode === 'ai' && team === 2) {
+            if (game.isAiTeam ? game.isAiTeam(team) : (game.gameMode === 'ai' && team === 2)) {
               const nonFrozen = enemies.filter(e => !(e.card.frozenTurns > 0));
               const pool = nonFrozen.length > 0 ? nonFrozen : enemies;
               pool.sort((a, b) => b.card.power - a.card.power);
@@ -621,7 +606,6 @@
       maxDeckCopies: 1,
       row: 'melee',
       basePower: 4,
-      baseHp: 8,
       armor: 4,
       cardImg: 'Cards/Krythos_the_Basilisk_Card.jpg',
       traditionalCardImg: 'Cards/Krythos_the_Basilisk_Traditional.jpg',
@@ -654,7 +638,7 @@
             game.log(`🦎 ${card.name}'s Corrosive Gaze stripped ${stripped} Armor from the enemy ${rk === 'melee' ? 'Melee' : 'Ranged'} row!`, logType);
           }
         };
-        if (game.gameMode === 'ai' && team === 2) {
+        if (game.isAiTeam ? game.isAiTeam(team) : (game.gameMode === 'ai' && team === 2)) {
           stripRow(rowArmor('melee') >= rowArmor('ranged') ? 'melee' : 'ranged');
         } else {
           game.promptEnemyRowChoice({
@@ -689,7 +673,6 @@
       maxDeckCopies: 1,
       row: 'melee',
       basePower: 5,
-      baseHp: 8,
       armor: 2,
       cardImg: 'Cards/Lothar_Vampire_Prince_Card.jpg',
       traditionalCardImg: 'Cards/Lothar_Vampire_Prince_Traditional.jpg',
@@ -729,7 +712,7 @@
           window.soundFX?.playPoison?.();
           game.log(`🧛 ${card.name} turned ${turned.name} (${turned.power}) to your side for the rest of the round!`, logType);
         };
-        if (game.gameMode === 'ai' && team === 2) {
+        if (game.isAiTeam ? game.isAiTeam(team) : (game.gameMode === 'ai' && team === 2)) {
           eligible.sort((a, b) => (b.card.power || 0) - (a.card.power || 0));
           turnEnemyToAlly(eligible[0]);
         } else {
@@ -772,8 +755,7 @@
       border: 'decorative-gold',
       maxDeckCopies: 1,
       row: 'melee',
-      basePower: 4,
-      baseHp: 6,
+      basePower: 7,
       armor: 1,
       cardImg: 'Cards/Oscar_Orc_Giant_Card.jpg',
       traditionalCardImg: 'Cards/Oscar_Orc_Giant_Traditional.jpg',
@@ -798,7 +780,6 @@
       maxDeckCopies: 1,
       row: 'agile',
       basePower: 3,
-      baseHp: 6,
       armor: 3,
       deflectOnce: true,
       cardImg: 'Cards/Armantha_the_Witch_Card.jpg',
@@ -837,7 +818,6 @@
       maxDeckCopies: 1,
       row: 'ranged',
       basePower: 2,
-      baseHp: 6,
       armor: 3,
       cardImg: 'Cards/Zavela_the_Witch_Card.jpg',
       traditionalCardImg: 'Cards/Zavela_the_Witch_Traditional.jpg',
@@ -885,7 +865,6 @@
       maxDeckCopies: 2,
       row: 'melee',
       basePower: 3,
-      baseHp: 5,
       armor: 0,
       cardImg: 'Cards/The_Nieces_Card.jpg',
       traditionalCardImg: 'Cards/The_Nieces_Traditional.jpg',
@@ -955,7 +934,6 @@
       maxDeckCopies: 2,
       row: 'melee',
       basePower: 1,
-      baseHp: 3,
       armor: 0,
       cardImg: 'Cards/Baby_Lucia_Card.jpg',
       traditionalCardImg: 'Cards/Baby_Lucia_Traditional.jpg',
@@ -987,7 +965,6 @@
       maxDeckCopies: 2,
       row: 'agile',
       basePower: 2,
-      baseHp: 6,
       armor: 4,
       cardImg: 'Cards/Jank_Card.jpg',
       traditionalCardImg: 'Cards/Jank_Traditional.jpg',
@@ -1035,7 +1012,6 @@
       maxDeckCopies: 1,
       row: 'ranged',
       basePower: 4,
-      baseHp: 8,
       armor: 2,
       cardImg: 'Cards/Jallopy_Card.jpg',
       traditionalCardImg: 'Cards/Jallopy_Traditional.jpg',
@@ -1143,12 +1119,12 @@
     if (playedRole === 'Orc Army' && targetRow && myRows[targetRow]) {
       myRows[targetRow].forEach(ally => {
         if (ally && ally.id === 'oscar_orc_giant' && ally.uid !== card?.uid) {
-          const fullHp = Number(ally.baseHp) || Number(ally.basePower) || 10;
-          if ((ally.hp || 0) < fullHp) {
-            const healed = fullHp - (ally.hp || 0);
-            ally.hp = fullHp;
+          const fullPower = Number(ally.basePower) || 7;
+          if ((ally.power || 0) < fullPower) {
+            const healed = fullPower - (ally.power || 0);
+            ally.power = fullPower;
             playSound('heal');
-            game.log(`🛡️ ${ally.name}'s Titan's Rally healed him by +${healed} back to full health (${fullHp} HP)!`, logType);
+            game.log(`🛡️ ${ally.name}'s Titan's Rally healed him by +${healed} back to full health (${fullPower} Power)!`, logType);
           }
         }
       });
@@ -1236,7 +1212,6 @@
               const match = eff.roles ? allowedRoles.includes(c.role) : allowedRoles.includes(c.element);
               if ((!eff.excludeSelf || c.uid !== card.uid) && match) {
                 c.power += eff.amount;
-                c.hp = (c.hp ?? c.baseHp ?? 0) + eff.amount;
                 count++;
               }
             });
@@ -1293,14 +1268,13 @@
             (myRows[rk] || []).forEach(c => {
               if ((!eff.excludeSelf || c.uid !== card.uid) && allowedRoles.includes(c.role)) {
                 c.power *= 2;
-                c.hp = (c.hp ?? c.baseHp ?? 0) * 2;
                 count++;
               }
             });
           });
           if (count > 0) {
             playSound(eff.sound || 'howl');
-            game.log(`${eff.label || '🐺 Howl'} doubled the Attack & Health of ${count} Wolf Pack unit(s)!`, logType);
+            game.log(`${eff.label || '🐺 Howl'} doubled the Power of ${count} Wolf Pack unit(s)!`, logType);
           }
           break;
         }
@@ -1349,10 +1323,9 @@
       return cardDef.aiScore(ctx);
     }
 
-    const baseHpVal = card.hp ?? card.baseHp ?? card.power;
-    let est = baseHpVal + card.power * 0.5;
+    let est = card.power;
     if (cardDef?.resilient && game.state?.round < 3) {
-      est += baseHpVal + (card.armor || 0) * 0.5;
+      est += card.power + (card.armor || 0) * 0.5;
     }
     if (cardDef?.shield) {
       est += 2;
@@ -1373,9 +1346,9 @@
     if (playedRole === 'Orc Army' && rowKey && myRows[rowKey]) {
       myRows[rowKey].forEach(ally => {
         if (ally && ally.id === 'oscar_orc_giant' && ally.uid !== card?.uid) {
-          const fullHp = Number(ally.baseHp) || Number(ally.basePower) || 10;
-          if ((ally.hp || 0) < fullHp) {
-            est += fullHp - (ally.hp || 0);
+          const fullPower = Number(ally.basePower) || 7;
+          if ((ally.power || 0) < fullPower) {
+            est += fullPower - (ally.power || 0);
           }
         }
       });

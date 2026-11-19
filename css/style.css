@@ -11874,61 +11874,6 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   box-shadow: 0 0 10px rgba(239, 68, 68, 0.55);
 }
 
-.gwent-card-hp {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  width: 30px;
-  height: 28px;
-  padding: 0;
-  color: #fff1f2;
-  font-family: 'Cinzel', serif;
-  font-size: 11px;
-  font-weight: 900;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-shadow: 0 1px 3px #000;
-  z-index: 3;
-}
-
-.gwent-card-hp-heart {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  fill: #7f1d1d;
-  stroke: #f87171;
-  stroke-width: 2.2;
-  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.9));
-  pointer-events: none;
-  z-index: 0;
-}
-
-.gwent-card-hp .gwent-card-stat-num {
-  margin-top: -2px;
-}
-
-.gwent-card-hp.boosted {
-  color: #dcfce7;
-}
-
-.gwent-card-hp.boosted .gwent-card-hp-heart {
-  fill: #14532d;
-  stroke: #4ade80;
-  filter: drop-shadow(0 0 8px rgba(34, 197, 94, 0.7));
-}
-
-.gwent-card-hp.damaged {
-  color: #fecaca;
-}
-
-.gwent-card-hp.damaged .gwent-card-hp-heart {
-  fill: #450a0a;
-  stroke: #ef4444;
-  filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.85));
-}
-
 .gwent-card-defenses {
   position: absolute;
   bottom: 16px;

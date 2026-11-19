@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mythos Card Simulator — Balance & Trend Analytics</title>
+  <style>
+    :root {
+      --bg: #0f0d0a;
+      --panel: #1a1510;
+      --panel-2: #241d16;
+      --border: #4a3a28;
+      --gold: #f59e0b;
+      --gold-light: #fde68a;
+      --text: #f3eadc;
+      --muted: #a89984;
+      --green: #4ade80;
+      --red: #f87171;
+      --blue: #60a5fa;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 24px;
+      background: radial-gradient(circle at top, #1f1811 0%, var(--bg) 65%);
+      color: var(--text);
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      min-height: 100vh;
+    }
+    .container {
+      max-width: 1320px;
+      margin: 0 auto;
+    }
+    header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 20px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--border);
+    }
+    h1 {
+      margin: 0;
+      font-size: 24px;
+      color: var(--gold-light);
+      letter-spacing: 0.4px;
+    }
+    .subtitle {
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 4px;
+    }
+    .back-link {
+      color: var(--gold-light);
+      text-decoration: none;
+      border: 1px solid var(--border);
+      background: var(--panel);
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .back-link:hover { border-color: var(--gold); }
+
+    .card-panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px;
+      margin-bottom: 18px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+    }
+    .controls-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 14px;
+      align-items: end;
+    }
+    .field label {
+      display: block;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    select, input[type="number"], input[type="text"] {
+      width: 100%;
+      padding: 9px 11px;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 13px;
+    }
+    select:focus, input:focus {
+      outline: none;
+      border-color: var(--gold);
+    }
+    .preset-row {
+      display: flex;
+      gap: 6px;
+      margin-top: 6px;
+      flex-wrap: wrap;
+    }
+    .preset-count {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 4px 9px;
+      border-radius: 6px;
+      font-size: 11px;
+      cursor: pointer;
+    }
+    .preset-count:hover {
+      border-color: var(--gold);
+      color: var(--gold-light);
+    }
+    .actions-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    button.btn-primary {
+      background: linear-gradient(180deg, #d97706, #b45309);
+      border: 1px solid #f59e0b;
+      color: #fffbeb;
+      font-weight: 700;
+      padding: 10px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    button.btn-primary:hover:not(:disabled) { filter: brightness(1.1); }
+    button.btn-primary:disabled { opacity: 0.55; cursor: not-allowed; }
+    button.btn-secondary {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-weight: 600;
+      padding: 10px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    button.btn-secondary:hover:not(:disabled) { border-color: var(--gold); }
+    button.btn-secondary:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    .progress-wrap {
+      margin-top: 14px;
+    }
+    .progress-track {
+      height: 10px;
+      background: var(--panel-2);
+      border-radius: 999px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #d97706, #fbbf24);
+      transition: width 0.08s linear;
+    }
+    .progress-text {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 6px;
+    }
+    .hidden { display: none !important; }
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .kpi-box {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+    }
+    .kpi-lbl {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--muted);
+      font-weight: 700;
+    }
+    .kpi-val {
+      font-size: 26px;
+      font-weight: 800;
+      color: var(--gold-light);
+      margin: 4px 0;
+    }
+    .kpi-sub {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .breakdowns-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+    .section-title {
+      margin: 0 0 12px 0;
+      font-size: 15px;
+      color: var(--gold-light);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .bar-row {
+      display: grid;
+      grid-template-columns: 105px 1fr 54px 72px;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      font-size: 12px;
+    }
+    .bar-label {
+      color: var(--text);
+      text-transform: capitalize;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .bar-track {
+      height: 10px;
+      background: var(--panel-2);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .bar-fill {
+      height: 100%;
+      border-radius: 999px;
+    }
+    .bar-fill.high { background: #22c55e; }
+    .bar-fill.mid, .bar-fill.neutral { background: #eab308; }
+    .bar-fill.low { background: #ef4444; }
+    .bar-val { font-weight: 700; text-align: right; }
+    .bar-val.high { color: var(--green); }
+    .bar-val.low { color: var(--red); }
+    .bar-count { color: var(--muted); text-align: right; font-size: 11px; }
+
+    .table-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 12px;
+      align-items: center;
+    }
+    .table-toolbar select, .table-toolbar input {
+      width: auto;
+      min-width: 150px;
+    }
+    .table-wrap {
+      overflow-x: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    th, td {
+      padding: 9px 10px;
+      border-bottom: 1px solid rgba(74, 58, 40, 0.55);
+      text-align: left;
+      white-space: nowrap;
+    }
+    th {
+      color: var(--muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      user-select: none;
+    }
+    th:hover { color: var(--gold-light); }
+    th.sorted-desc::after { content: ' ▼'; color: var(--gold); }
+    th.sorted-asc::after { content: ' ▲'; color: var(--gold); }
+    th.num, td.num { text-align: right; }
+    td.cap { text-transform: capitalize; }
+    tr:hover td { background: rgba(245, 158, 11, 0.06); }
+
+    .wr-pill {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 12px;
+    }
+    .wr-pill.high { background: rgba(34, 197, 94, 0.16); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.4); }
+    .wr-pill.mid { background: rgba(234, 179, 8, 0.14); color: #fde047; border: 1px solid rgba(234, 179, 8, 0.35); }
+    .wr-pill.low { background: rgba(239, 68, 68, 0.16); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); }
+    .wr-pill.neutral { color: var(--muted); }
+    .pos { color: var(--green); font-weight: 700; }
+    .neg { color: var(--red); font-weight: 700; }
+
+    .alerts-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .alert-pill {
+      background: rgba(245, 158, 11, 0.08);
+      border: 1px solid rgba(245, 158, 11, 0.35);
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 13px;
+      line-height: 1.4;
+    }
+    .macro-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+      margin-top: 12px;
+    }
+    .insight-item {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+    }
+    .insight-lbl {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--muted);
+      font-weight: 700;
+    }
+    .insight-val {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--gold-light);
+      margin: 4px 0;
+    }
+    .insight-sub {
+      font-size: 11px;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div>
+        <h1>⚔️ Mythos Batch Simulator & Trend Analyzer</h1>
+        <div class="subtitle">Runs full Best-of-3 AI vs AI matches using the live <code>BeastsGame</code> engine &amp; <code>MythosGwentCards</code> rules.</div>
+      </div>
+      <a class="back-link" href="index.html">← Back to Game</a>
+    </header>
+
+    <section class="card-panel">
+      <div class="controls-grid">
+        <div class="field">
+          <label for="sim-deck-1">Team 1 Deck</label>
+          <select id="sim-deck-1"></select>
+        </div>
+        <div class="field">
+          <label for="sim-pass-1">Team 1 Passing Technique</label>
+          <select id="sim-pass-1">
+            <option value="standard">⚖️ Standard AI (Concede -16 / Tempo +14)</option>
+            <option value="never_early">🔥 Never Pass Early (All-In)</option>
+            <option value="r1_tempo_bleed">⚡ R1 Tempo Pass (Pass Ahead +8)</option>
+            <option value="r1_dry_pass">🏳️ R1 Dry Pass (0-Card Fold)</option>
+            <option value="r1_concede_behind">🛡️ Fast Concede (Pass Behind -8)</option>
+            <option value="r2_bleed">🩸 R2 Bleed (Push After R1 Win)</option>
+            <option value="r1_two_card_bait">🎣 2-Card Bait &amp; Bail (R1)</option>
+            <option value="r2_dry_pass_after_r1_win">🕊️ R2 Dry-Pass After R1 Win</option>
+            <option value="r1_resilient_bail">🪨 Resilient Carryover Bail (R1)</option>
+            <option value="hand_advantage_lock">🃏 Strict Card-Advantage Lock</option>
+            <option value="micro_lead_pass">🤏 Micro-Lead Pass (+1 in R1)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="sim-deck-2">Team 2 Deck</label>
+          <select id="sim-deck-2"></select>
+        </div>
+        <div class="field">
+          <label for="sim-pass-2">Team 2 Passing Technique</label>
+          <select id="sim-pass-2">
+            <option value="standard">⚖️ Standard AI (Concede -16 / Tempo +14)</option>
+            <option value="never_early">🔥 Never Pass Early (All-In)</option>
+            <option value="r1_tempo_bleed">⚡ R1 Tempo Pass (Pass Ahead +8)</option>
+            <option value="r1_dry_pass">🏳️ R1 Dry Pass (0-Card Fold)</option>
+            <option value="r1_concede_behind">🛡️ Fast Concede (Pass Behind -8)</option>
+            <option value="r2_bleed">🩸 R2 Bleed (Push After R1 Win)</option>
+            <option value="r1_two_card_bait">🎣 2-Card Bait &amp; Bail (R1)</option>
+            <option value="r2_dry_pass_after_r1_win">🕊️ R2 Dry-Pass After R1 Win</option>
+            <option value="r1_resilient_bail">🪨 Resilient Carryover Bail (R1)</option>
+            <option value="hand_advantage_lock">🃏 Strict Card-Advantage Lock</option>
+            <option value="micro_lead_pass">🤏 Micro-Lead Pass (+1 in R1)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="sim-count">Number of Games</label>
+          <input type="number" id="sim-count" min="1" max="10000" value="250">
+          <div class="preset-row">
+            <button type="button" class="preset-count" data-count="50">50</button>
+            <button type="button" class="preset-count" data-count="250">250</button>
+            <button type="button" class="preset-count" data-count="500">500</button>
+            <button type="button" class="preset-count" data-count="1000">1,000</button>
+          </div>
+        </div>
+        <div class="actions-row">
+          <button type="button" id="btn-run-sim" class="btn-primary">▶ Run Simulation</button>
+          <button type="button" id="btn-stop-sim" class="btn-secondary" disabled>■ Stop</button>
+        </div>
+      </div>
+
+      <div style="margin-top:12px; display:flex; align-items:center; gap:16px; flex-wrap:wrap; font-size:13px;">
+        <label style="display:flex; align-items:center; gap:7px; cursor:pointer; color:var(--gold-light);">
+          <input type="checkbox" id="sim-summoning-sickness" style="width:auto; accent-color:var(--gold);">
+          <span>🧪 Test Rule: <strong>Summoning Sickness</strong> (units cannot attack on the turn played)</span>
+        </label>
+        <label style="display:flex; align-items:center; gap:7px; cursor:pointer; color:var(--gold-light);">
+          <input type="checkbox" id="sim-prev-loser-draw3" style="width:auto; accent-color:var(--gold);">
+          <span>🃏 Test Rule: <strong>R2 Loser Also Draws 3 in R3</strong></span>
+        </label>
+      </div>
+
+      <div id="sim-progress-wrap" class="progress-wrap hidden">
+        <div class="progress-track"><div id="sim-progress-bar" class="progress-bar"></div></div>
+        <div id="sim-progress-text" class="progress-text">Starting...</div>
+      </div>
+    </section>
+
+    <div id="results-section" class="hidden">
+      <section class="kpi-grid">
+        <div class="kpi-box">
+          <div class="kpi-lbl">Games Simulated</div>
+          <div class="kpi-val" id="kpi-games">0</div>
+          <div class="kpi-sub" id="kpi-speed">—</div>
+        </div>
+        <div class="kpi-box">
+          <div class="kpi-lbl">Team 1 Win Rate</div>
+          <div class="kpi-val" id="kpi-p1-win">—</div>
+          <div class="kpi-sub" id="kpi-p1-sub">—</div>
+        </div>
+        <div class="kpi-box">
+          <div class="kpi-lbl">1st-Mover Advantage</div>
+          <div class="kpi-val" id="kpi-first-win">—</div>
+          <div class="kpi-sub" id="kpi-first-sub">—</div>
+        </div>
+        <div class="kpi-box">
+          <div class="kpi-lbl">Avg Rounds / Match</div>
+          <div class="kpi-val" id="kpi-rounds">—</div>
+          <div class="kpi-sub" id="kpi-rounds-sub">—</div>
+        </div>
+        <div class="kpi-box">
+          <div class="kpi-lbl">Avg Round 1 Score</div>
+          <div class="kpi-val" id="kpi-scores">—</div>
+          <div class="kpi-sub" id="kpi-scores-sub">—</div>
+        </div>
+      </section>
+
+      <section class="card-panel">
+        <h2 class="section-title">🚨 Exploit &amp; Win-Condition Alerts</h2>
+        <div id="exploit-alerts" class="alerts-list"></div>
+        <div id="macro-insights" class="macro-grid"></div>
+      </section>
+
+      <section class="card-panel">
+        <h2 class="section-title">🏳️ Passing Technique Analytics</h2>
+        <div class="breakdowns-grid" style="margin-bottom:8px;">
+          <div>
+            <h3 style="margin:0 0 10px 0; font-size:13px; color:var(--muted); text-transform:uppercase;">Round 1 Pass Timing (Turns Played Before Passing)</h3>
+            <div id="pass-timing-breakdown"></div>
+          </div>
+          <div>
+            <h3 style="margin:0 0 10px 0; font-size:13px; color:var(--muted); text-transform:uppercase;">Strategic Pass Context (Match Win Rate)</h3>
+            <div id="pass-context-breakdown"></div>
+          </div>
+        </div>
+        <div id="pass-hand-summary" class="subtitle" style="margin-top:6px;"></div>
+      </section>
+
+      <section class="breakdowns-grid">
+        <div class="card-panel">
+          <h2 class="section-title">💥 Top 2-Card Combos (Synergy Lift)</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Card Pair</th>
+                  <th class="num">Games</th>
+                  <th class="num">Combo WR</th>
+                  <th class="num">Synergy Lift</th>
+                </tr>
+              </thead>
+              <tbody id="combo-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card-panel">
+          <h2 class="section-title">⚡ Best Round-1 Openers</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Opening Card</th>
+                  <th class="num">Games</th>
+                  <th class="num">Match WR</th>
+                </tr>
+              </thead>
+              <tbody id="opener-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card-panel">
+          <h2 class="section-title">📚 Multi-Copy Stacking (1 vs 2+ Copies)</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Card</th>
+                  <th class="num">1 Copy WR</th>
+                  <th class="num">2+ Copies WR</th>
+                  <th class="num">Lift</th>
+                </tr>
+              </thead>
+              <tbody id="stack-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="breakdowns-grid">
+        <div class="card-panel">
+          <h2 class="section-title">🏷️ Role / Faction Win Rate (When Played)</h2>
+          <div id="role-breakdown"></div>
+        </div>
+        <div class="card-panel">
+          <h2 class="section-title">✨ Element Win Rate (When Played)</h2>
+          <div id="element-breakdown"></div>
+        </div>
+        <div class="card-panel">
+          <h2 class="section-title">★ Star-Tier Win Rate (When Played)</h2>
+          <div id="star-breakdown"></div>
+        </div>
+      </section>
+
+      <section class="card-panel">
+        <div class="section-title">
+          <span>🃏 Card Performance Leaderboard</span>
+          <div class="actions-row">
+            <button type="button" id="btn-export-csv" class="btn-secondary">⬇ Export CSV</button>
+            <button type="button" id="btn-export-json" class="btn-secondary">⬇ Export JSON</button>
+          </div>
+        </div>
+
+        <div class="table-toolbar">
+          <input type="text" id="filter-search" placeholder="Search card or role...">
+          <select id="filter-role"></select>
+          <select id="filter-element"></select>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th data-sort="name">Card</th>
+                <th data-sort="role">Role</th>
+                <th data-sort="element">Element</th>
+                <th data-sort="stars" class="num">Stars</th>
+                <th data-sort="basePower" class="num">Base Pwr / Armor</th>
+                <th data-sort="timesPlayed" class="num">Times Played</th>
+                <th data-sort="deckAppearances" class="num">Decks Seen</th>
+                <th data-sort="deckWr" class="num">In-Deck WR</th>
+                <th data-sort="playedWr" class="num sorted-desc">Played WR</th>
+                <th data-sort="delta" class="num">Delta vs 50%</th>
+              </tr>
+            </thead>
+            <tbody id="card-table-body"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    window.MYTHOS_HEADLESS_SIM = true;
+  </script>
+  <script src="js/gwent_cards.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/simulator.js"></script>
+</body>
+</html>

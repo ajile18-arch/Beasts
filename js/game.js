@@ -348,15 +348,23 @@
   // Main Gwent Engine + Overworld Bridge
   // ---------------------------------------------------------------------------
   class BeastsGame {
-    constructor() {
+    constructor(options = {}) {
       this.VERSION = '2.75';
-      this.gameMode = 'ai'; // 'ai' | '2p'
+      this.headless = Boolean(options?.headless);
+      this.gameMode = options?.gameMode || 'ai'; // 'ai' | '2p' | 'sim'
       this.currentView = 'overworld';
       this.currentChallenger = null;
       this.isMatchOver = false;
+      this.winnerTeam = null;
       this.aiTimeout = null;
 
       this.state = null;
+      if (this.headless) {
+        this.elWinnerModal = null;
+        this.elLog = null;
+        return;
+      }
+
       this.elWinnerModal = document.getElementById('winner-modal');
       this.elLog = document.getElementById('combat-log');
 
@@ -372,6 +380,10 @@
       } else {
         this.enterMythosArena();
       }
+    }
+
+    isAiTeam(team) {
+      return this.gameMode === 'sim' || (this.gameMode === 'ai' && team === 2);
     }
 
     // -------------------------------------------------------------------------
@@ -661,8 +673,6 @@
         row: tmpl.row,
         basePower: tmpl.basePower,
         power: tmpl.basePower,
-        baseHp: tmpl.baseHp ?? (tmpl.basePower + 2),
-        hp: tmpl.baseHp ?? (tmpl.basePower + 2),
         armor: tmpl.armor || 0,
         cardImg: tmpl.cardImg,
         abilityTitle: tmpl.abilityTitle,
@@ -1167,9 +1177,9 @@
       this.log(`⚔️ Mulligan complete! ${starterName} moves first in Round 1.`, 'system');
       this.render();
 
-      if (this.gameMode === 'ai' && this.state.turnTeam === 2) {
+      if (!this.headless && this.gameMode === 'ai' && this.state.turnTeam === 2) {
         this.aiTimeout = setTimeout(() => this.runAiTurn(), 1300);
-      } else {
+      } else if (!this.headless) {
         this.checkAutoEndTurn(this.state.turnTeam);
       }
     }
@@ -1179,7 +1189,7 @@
     // -------------------------------------------------------------------------
     getRowScore(team, rowKey) {
       const cards = this.state.players[team].rows[rowKey];
-      return cards.reduce((sum, c) => sum + Math.max(0, c.hp ?? c.power), 0);
+      return cards.reduce((sum, c) => sum + Math.max(0, c.power), 0);
     }
 
     getTotalScore(team) {
@@ -1219,14 +1229,20 @@
 
     canCardAttackTargetRow(attackerTeam, attackerUid, targetRow) {
       const attackerRow = this.getCardRowKey(attackerTeam, attackerUid);
-      if (attackerRow === 'melee' && targetRow === 'ranged') {
+      if (targetRow === 'ranged') {
+        const oppTeam = attackerTeam === 1 ? 2 : 1;
+        const oppMelee = this.state?.players?.[oppTeam]?.rows?.melee || [];
+        const attackerRowList = this.state?.players?.[attackerTeam]?.rows?.[attackerRow] || [];
+        const attacker = attackerRowList.find(c => c.uid === attackerUid);
         const meleeRow = this.state?.players?.[attackerTeam]?.rows?.melee || [];
-        const attacker = meleeRow.find(c => c.uid === attackerUid);
-        const hasSeaDragon = meleeRow.some(c => c.id === 'sea_dragon' || c.allowsMeleeWaterTribeToAttackRanged);
-        if (attacker && (attacker.id === 'sea_dragon' || attacker.allowsMeleeWaterTribeToAttackRanged || (hasSeaDragon && attacker.role === 'Water Tribe'))) {
-          return true;
+        const hasSeaDragon = attackerRow === 'melee' && meleeRow.some(c => c.id === 'sea_dragon' || c.allowsMeleeWaterTribeToAttackRanged);
+        const isTidal = attacker && (attacker.id === 'sea_dragon' || attacker.allowsMeleeWaterTribeToAttackRanged || (hasSeaDragon && attacker.role === 'Water Tribe'));
+        if (oppMelee.length > 0 && !isTidal) {
+          return false;
         }
-        return false;
+        if (attackerRow === 'melee' && !isTidal) {
+          return false;
+        }
       }
       return true;
     }
@@ -1296,7 +1312,8 @@
         return false;
       }
       if (team !== this.state.turnTeam) return false;
-      if (this.gameMode === 'ai' && team === 2) return false;
+      if (this.headless) return false;
+      if (this.isAiTeam(team)) return false;
       const player = this.state.players?.[team];
       if (!player || player.passed) return false;
       if (this.hasAnyAvailableAction(team)) return false;
@@ -1460,7 +1477,12 @@
           return;
         }
         if (attacker && !this.canCardAttackTargetRow(activeTeam, attacker.uid, rowKey)) {
-          this.log(`⚔️ Melee row cards cannot attack the opponent's Ranged row!`, activeTeam === 1 ? 'team1' : 'team2');
+          const oppMelee = this.state?.players?.[ownerTeam]?.rows?.melee || [];
+          if (rowKey === 'ranged' && oppMelee.length > 0) {
+            this.log(`🛡️ Opponent's Melee row protects their Ranged row — clear Melee first!`, activeTeam === 1 ? 'team1' : 'team2');
+          } else {
+            this.log(`⚔️ Melee row cards cannot attack the opponent's Ranged row!`, activeTeam === 1 ? 'team1' : 'team2');
+          }
           return;
         }
         this.executeBoardAttack(activeTeam, this.state.selectedAttackerUid, ownerTeam, card, rowKey);
@@ -1470,7 +1492,6 @@
     executeAllyBoost(team, sourceCard, targetCard) {
       const amt = sourceCard.boostRoleAbility?.amount || 1;
       targetCard.power += amt;
-      targetCard.hp = (targetCard.hp ?? targetCard.baseHp ?? 0) + amt;
       targetCard.mansonBoostedThisTurn = true;
 
       const battlefield = document.getElementById('gwent-battlefield');
@@ -1539,11 +1560,11 @@
         }
       }
 
-      if (attacker.lifestealHeal && attacker.hp < attacker.baseHp) {
+      if (attacker.lifestealHeal && attacker.power < attacker.basePower) {
         const rawHeal = Math.max(1, Math.floor(dmg / 2));
-        const healed = Math.min(attacker.baseHp - attacker.hp, rawHeal);
+        const healed = Math.min(attacker.basePower - attacker.power, rawHeal);
         if (healed > 0) {
-          attacker.hp += healed;
+          attacker.power += healed;
           const battlefield = document.getElementById('gwent-battlefield');
           const atkEl = battlefield?.querySelector(`.gwent-card[data-uid="${attacker.uid}"]`);
           if (battlefield && atkEl) {
@@ -1655,7 +1676,7 @@
     }
 
     playAbilitySourceFlare(sourceMetrics, label = '🔥 Ember Volley', durationMs = 820) {
-      if (!sourceMetrics?.battlefield) return;
+      if (this.headless || !sourceMetrics?.battlefield) return;
       const { battlefield, x, y, width, height } = sourceMetrics;
 
       const halo = document.createElement('div');
@@ -1680,7 +1701,7 @@
     }
 
     playEmberProjectileAnimation(sourceMetrics, targetMetrics, element = 'fire', delayMs = 0) {
-      if (!sourceMetrics?.battlefield || !targetMetrics) return;
+      if (this.headless || !sourceMetrics?.battlefield || !targetMetrics) return;
       const { battlefield, x: x1, y: y1 } = sourceMetrics;
       const { x: x2, y: y2 } = targetMetrics;
 
@@ -1735,6 +1756,9 @@
       const alliesOnBoardBefore = this.getAllBoardCards(team).length;
 
       player.hand.splice(idx, 1);
+      if (this._simSummoningSickness) {
+        card.attackedThisTurn = true;
+      }
       if (typeof insertIndex === 'number' && !Number.isNaN(insertIndex)) {
         const clampedIdx = Math.max(0, Math.min(player.rows[targetRow].length, insertIndex));
         player.rows[targetRow].splice(clampedIdx, 0, card);
@@ -2038,9 +2062,9 @@
       }
       if (amount > 0) {
         window.soundFX?.playHit?.();
-        targetCard.hp = Math.max(0, (targetCard.hp ?? targetCard.baseHp ?? 0) - amount);
+        targetCard.power = Math.max(0, targetCard.power - amount);
       }
-      if (targetCard.hp <= 0) {
+      if (targetCard.power <= 0) {
         const rowArr = this.state.players[ownerTeam].rows[rowKey];
         const i = rowArr.indexOf(targetCard);
         if (i !== -1) rowArr.splice(i, 1);
@@ -2064,8 +2088,6 @@
             if (spawned) {
               spawned.power = spawnPower;
               spawned.basePower = spawnPower;
-              spawned.hp = spawnPower;
-              spawned.baseHp = spawnPower;
               spawned.armor = 0;
               spawned.isSpawnedCopy = true;
               spawned.isToken = true;
@@ -2082,7 +2104,7 @@
       let best = null;
       allowedRows.forEach(rk => {
         this.state.players[oppTeam].rows[rk].forEach(c => {
-          if (!best || (c.hp ?? c.power) > (best.card.hp ?? best.card.power)) {
+          if (!best || c.power > best.card.power) {
             best = { card: c, rowKey: rk };
           }
         });
@@ -2244,6 +2266,25 @@
       const player = this.state.players[team];
       if (player.passed) return;
 
+      if (this.headless && Array.isArray(this._simPassEvents)) {
+        const oppTeam = team === 1 ? 2 : 1;
+        const myScore = this.getTotalScore(team);
+        const oppScore = this.getTotalScore(oppTeam);
+        this._simPassEvents.push({
+          round: this.state.round,
+          team,
+          myScore,
+          oppScore,
+          ahead: myScore > oppScore,
+          behind: myScore < oppScore,
+          tied: myScore === oppScore,
+          turnsPlayed: player.turnsThisRound || 0,
+          handLeft: player.hand.length,
+          oppPassed: Boolean(this.state.players[oppTeam]?.passed),
+          autoOutOfCards: player.hand.length === 0
+        });
+      }
+
       player.passed = true;
       this.state.selectedHandUid = null;
       this.state.selectedAttackerUid = null;
@@ -2299,9 +2340,9 @@
 
       this.render();
 
-      if (this.gameMode === 'ai' && this.state.turnTeam === 2 && !this.isMatchOver) {
+      if (!this.headless && this.gameMode === 'ai' && this.state.turnTeam === 2 && !this.isMatchOver) {
         this.aiTimeout = setTimeout(() => this.runAiTurn(), 1300);
-      } else {
+      } else if (!this.headless) {
         this.checkAutoEndTurn(this.state.turnTeam);
       }
     }
@@ -2347,7 +2388,7 @@
         const rowArr = [...(player.rows?.[rk] || [])];
         rowArr.forEach(card => {
           const spec = card?.endOfTurnRandomAttacks;
-          if (!spec || (card.hp ?? card.power) <= 0) return;
+          if (!spec || card.power <= 0) return;
           const count = spec.count || 3;
           const dmg = spec.damage || 1;
           const sourceMetrics = this.getBattlefieldCardMetrics(card.uid);
@@ -2359,7 +2400,7 @@
             const candidates = [];
             ['melee', 'ranged'].forEach(ork => {
               (oppRows[ork] || []).forEach(enemy => {
-                if (enemy && (enemy.hp ?? enemy.power) > 0) {
+                if (enemy && enemy.power > 0) {
                   candidates.push({ card: enemy, rowKey: ork });
                 }
               });
@@ -2422,16 +2463,57 @@
         overlay.classList.remove('hidden');
       }
 
+      if (this.state.round === 1) {
+        this.state.round1LoserTeam = s1 > s2 ? 2 : (s2 > s1 ? 1 : null);
+      }
+      this.state.lastRoundLoserTeam = s1 > s2 ? 2 : (s2 > s1 ? 1 : null);
+
       this.render();
 
-      setTimeout(() => {
+      const proceedNext = () => {
         if (overlay) overlay.classList.add('hidden');
         if (p1.gems <= 0 || p2.gems <= 0) {
           this.finishMatch(p1.gems > p2.gems ? 1 : (p2.gems > p1.gems ? 2 : 2));
         } else {
-          this.startNextRound(s1 >= s2 ? 1 : 2);
+          let nextStarter = s1 >= s2 ? 1 : 2;
+          if (this.headless && this._simStarterMode) {
+            if (this._simStarterMode === 'loser') {
+              nextStarter = s1 > s2 ? 2 : (s2 > s1 ? 1 : (this.state.round % 2 === 0 ? 1 : 2));
+            } else if (this._simStarterMode === 'alternate') {
+              nextStarter = this._simLastRoundStarter === 1 ? 2 : 1;
+            } else if (this._simStarterMode === 'random') {
+              nextStarter = Math.random() < 0.5 ? 1 : 2;
+            }
+            this._simLastRoundStarter = nextStarter;
+          }
+          this.startNextRound(nextStarter);
         }
-      }, 1700);
+      };
+
+      if (this.headless) {
+        if (Array.isArray(this._simRoundScores)) {
+          const b1 = this.getAllBoardCards(1);
+          const b2 = this.getAllBoardCards(2);
+          const maxP = (arr) => arr.reduce((m, c) => Math.max(m, c.power || 0), 0);
+          const resCount = (arr) => arr.filter(c => c.resilient).length;
+          this._simRoundScores.push({
+            round: this.state.round,
+            s1,
+            s2,
+            p1HandAfter: p1.hand.length,
+            p2HandAfter: p2.hand.length,
+            p1MaxPwr: maxP(b1),
+            p2MaxPwr: maxP(b2),
+            p1BoardCount: b1.length,
+            p2BoardCount: b2.length,
+            p1Resilient: resCount(b1),
+            p2Resilient: resCount(b2)
+          });
+        }
+        proceedNext();
+      } else {
+        setTimeout(proceedNext, 1700);
+      }
     }
 
     startNextRound(startingTeam) {
@@ -2460,7 +2542,6 @@
               this.log(`🛡️ ${p.name}'s ${c.name} is Resilient and stays on the battlefield!`, team === 1 ? 'team1' : 'team2');
             } else {
               c.power = c.basePower;
-              c.hp = c.baseHp ?? (c.basePower + 2);
               c.armor = GWENT_CARDS[c.id]?.armor || 0;
               c.shield = Boolean(GWENT_CARDS[c.id]?.shield);
               c.mansonBoostedThisTurn = false;
@@ -2484,19 +2565,39 @@
           }
         }
 
-        // Draw 2 cards for the new round
-        const drawn = p.deck.splice(0, 2);
+        // Round 1 loser draws 3 cards entering Round 2; Round 3 draws 2 cards (or _simR3DrawCount / _simFillHandTo5 if testing)
+        const isR1LoserDraw = this.state.round === 2 && this.state.round1LoserTeam === team;
+        const isPrevLoserDraw = this._simPrevLoserDraw3 && this.state.lastRoundLoserTeam === team;
+        let drawCount = (isR1LoserDraw || isPrevLoserDraw) ? 3 : 2;
+        if (this.state.round === 3 && typeof this._simR3DrawCount === 'number') {
+          drawCount = this._simR3DrawCount;
+        }
+        if (this._simBothDraw3) {
+          drawCount = 3;
+        }
+        if (this._simFillHandTo5) {
+          drawCount = Math.max(0, 5 - p.hand.length);
+        }
+        const drawn = p.deck.splice(0, drawCount);
         p.hand.push(...drawn);
       });
 
       window.soundFX?.playCardFlipReveal?.(false);
       const starterName = this.state.players[startingTeam]?.name || 'Player 1';
-      this.log(`🃏 Round ${this.state.round} begins! Both players drew up to 2 cards. ${starterName} goes first.`, 'system');
+      if (this.state.round === 2 && this.state.round1LoserTeam) {
+        const loserTeam = this.state.round1LoserTeam;
+        const winnerTeam = loserTeam === 1 ? 2 : 1;
+        const loserName = this.state.players[loserTeam]?.name || 'Round 1 Loser';
+        const winnerName = this.state.players[winnerTeam]?.name || 'Round 1 Winner';
+        this.log(`🃏 Round 2 begins! ${loserName} drew up to 3 cards and ${winnerName} drew up to 2 cards. ${starterName} goes first.`, 'system');
+      } else {
+        this.log(`🃏 Round ${this.state.round} begins! Both players drew up to 2 cards. ${starterName} goes first.`, 'system');
+      }
       this.render();
 
-      if (this.gameMode === 'ai' && this.state.turnTeam === 2) {
+      if (!this.headless && this.gameMode === 'ai' && this.state.turnTeam === 2) {
         this.aiTimeout = setTimeout(() => this.runAiTurn(), 1300);
-      } else {
+      } else if (!this.headless) {
         this.checkAutoEndTurn(this.state.turnTeam);
       }
     }
@@ -2614,14 +2715,12 @@
       const attacker = readyAttackers[0];
       const oppTargets = this.getValidAttackTargets(2, attacker.uid);
       const dmg = Math.max(1, attacker.power);
-      // Prefer a target that will be destroyed, otherwise the highest-HP target
+      // Prefer a target that will be destroyed, otherwise the highest-power target
       oppTargets.sort((a, b) => {
-        const aHp = a.card.hp ?? a.card.power;
-        const bHp = b.card.hp ?? b.card.power;
-        const aKills = (a.card.armor <= 0 && aHp <= dmg) ? 1 : 0;
-        const bKills = (b.card.armor <= 0 && bHp <= dmg) ? 1 : 0;
+        const aKills = (a.card.armor <= 0 && a.card.power <= dmg) ? 1 : 0;
+        const bKills = (b.card.armor <= 0 && b.card.power <= dmg) ? 1 : 0;
         if (bKills !== aKills) return bKills - aKills;
-        return bHp - aHp;
+        return b.card.power - a.card.power;
       });
       const target = oppTargets[0];
 
@@ -2632,11 +2731,282 @@
       }, 1250);
     }
 
+    /**
+     * Synchronous AI turn for either team (1 or 2), used by the batch simulator.
+     */
+    runAiTurnSync(team) {
+      if (this.isMatchOver || !this.state || this.state.turnTeam !== team) return;
+      const oppTeam = team === 1 ? 2 : 1;
+      const me = this.state.players[team];
+      const opp = this.state.players[oppTeam];
+
+      if (me.passed) {
+        this.advanceTurn();
+        return;
+      }
+
+      if (me.hand.length === 0) {
+        // Still use any ready board attackers before passing
+        this._runAiBoardActionsSync(team, oppTeam);
+        if (!this.isMatchOver && this.state.turnTeam === team && !me.passed) {
+          this.passRound(team);
+        }
+        return;
+      }
+
+      const myScore = this.getTotalScore(team);
+      const oppScore = this.getTotalScore(oppTeam);
+      const passProfile = (this._simPassProfiles && this._simPassProfiles[team]) || 'standard';
+
+      // 1. If opponent already passed and AI is ahead, pass immediately
+      if (opp.passed && myScore > oppScore) {
+        this.passRound(team);
+        return;
+      }
+
+      // Profile-specific passing rules (when opponent hasn't passed yet)
+      if (!opp.passed) {
+        if (passProfile === 'r1_dry_pass' && this.state.round === 1) {
+          this.passRound(team);
+          return;
+        }
+        if (passProfile === 'r1_two_card_bait' && this.state.round === 1 && (me.turnsThisRound || 0) >= 2) {
+          this.passRound(team);
+          return;
+        }
+        if (passProfile === 'r2_dry_pass_after_r1_win' && this.state.round === 2 && me.gems === 2 && opp.gems === 1) {
+          this.passRound(team);
+          return;
+        }
+        if (passProfile === 'r1_resilient_bail' && this.state.round === 1 && this.getAllBoardCards(team).some(c => c.resilient)) {
+          this.passRound(team);
+          return;
+        }
+        if (passProfile === 'hand_advantage_lock' && me.gems === 2 && me.hand.length < opp.hand.length) {
+          this.passRound(team);
+          return;
+        }
+        if (passProfile === 'micro_lead_pass' && this.state.round === 1 && (me.turnsThisRound || 0) >= 1 && myScore > oppScore) {
+          this.passRound(team);
+          return;
+        }
+        if (passProfile === 'r1_concede_behind' && me.gems === 2 && (oppScore - myScore >= 8)) {
+          this.passRound(team);
+          return;
+        }
+        if (passProfile === 'r1_tempo_bleed' && this.state.round === 1 && (myScore - oppScore >= 8) && me.hand.length <= 6) {
+          this.passRound(team);
+          return;
+        }
+        if (passProfile === 'r2_bleed' && this.state.round === 2 && me.gems === 2 && opp.gems === 1) {
+          // Push Round 2 aggressively after winning Round 1: never pass early
+        } else if (passProfile !== 'never_early') {
+          // 2. Standard concede: Round 1 or 2 (AI still has 2 gems) and trailing by 16+ with fewer/equal cards
+          if (me.gems === 2 && (oppScore - myScore >= 16) && me.hand.length <= opp.hand.length) {
+            this.passRound(team);
+            return;
+          }
+          // 3. Standard tempo pass: ahead by 14+ in Round 1
+          if (this.state.round === 1 && (myScore - oppScore >= 14) && me.hand.length <= 5) {
+            this.passRound(team);
+            return;
+          }
+        }
+      }
+
+      // 4. Pick best card & row
+      let bestChoice = null;
+      let bestValue = -999;
+
+      me.hand.forEach(card => {
+        const candidateRows = card.row === 'agile' ? ['melee', 'ranged'] : [card.row];
+        candidateRows.forEach(rk => {
+          const est = CardReg.estimateCardValue(card, rk, {
+            game: this,
+            team,
+            oppTeam,
+            myScore,
+            oppScore
+          });
+
+          if (opp.passed) {
+            const needed = (oppScore - myScore) + 1;
+            if (est >= needed) {
+              const efficiency = 100 - est;
+              if (efficiency > bestValue) {
+                bestValue = efficiency;
+                bestChoice = { card, row: rk };
+              }
+            }
+          } else if (est > bestValue) {
+            bestValue = est;
+            bestChoice = { card, row: rk };
+          }
+        });
+      });
+
+      if (!bestChoice) {
+        if (opp.passed) {
+          this.passRound(team);
+          return;
+        }
+        const fallback = me.hand[0];
+        bestChoice = { card: fallback, row: fallback.row === 'agile' ? 'melee' : fallback.row };
+      }
+
+      if (Array.isArray(this._simCardsPlayed)) {
+        this._simCardsPlayed.push({
+          id: bestChoice.card.id,
+          team,
+          round: this.state.round
+        });
+      }
+
+      this.playCardToRow(team, bestChoice.card.uid, bestChoice.row);
+      this._runAiBoardActionsSync(team, oppTeam);
+
+      if (!this.isMatchOver && this.state.turnTeam === team && !me.passed) {
+        this.advanceTurn();
+      }
+    }
+
+    _runAiBoardActionsSync(team, oppTeam) {
+      let guard = 0;
+      while (!this.isMatchOver && guard < 30) {
+        guard++;
+        const booster = this.getAllBoardCards(team).find(c => this.getBoostableAlliesFor(c, team).length > 0);
+        if (!booster) break;
+        const allyTarget = this.getBoostableAlliesFor(booster, team)[0];
+        this.executeAllyBoost(team, booster, allyTarget);
+      }
+
+      guard = 0;
+      while (!this.isMatchOver && guard < 40) {
+        guard++;
+        if (!this.canTeamAttackThisTurn(team)) break;
+        const readyAttackers = this.getAllBoardCards(team).filter(
+          c => !c.attackedThisTurn && this.getValidAttackTargets(team, c.uid).length > 0
+        );
+        if (readyAttackers.length === 0) break;
+
+        const attacker = readyAttackers[0];
+        const oppTargets = this.getValidAttackTargets(team, attacker.uid);
+        const dmg = Math.max(1, attacker.power);
+        oppTargets.sort((a, b) => {
+          const aKills = (a.card.armor <= 0 && a.card.power <= dmg) ? 1 : 0;
+          const bKills = (b.card.armor <= 0 && b.card.power <= dmg) ? 1 : 0;
+          if (bKills !== aKills) return bKills - aKills;
+          return b.card.power - a.card.power;
+        });
+        const target = oppTargets[0];
+        this.executeBoardAttack(team, attacker.uid, oppTeam, target.card, target.rowKey);
+      }
+    }
+
+    /**
+     * Runs a complete Best-of-3 AI vs AI match synchronously and returns telemetry.
+     */
+    simulateMatch({ deck1 = null, deck2 = null, name1 = 'P1 AI', name2 = 'P2 AI', starterTeam = null, passProfile1 = 'standard', passProfile2 = 'standard', summoningSickness = false, prevLoserDraw3 = false, r3DrawCount = 2, fillHandTo5 = false, bothDraw3 = false, starterMode = 'winner', startHandSize = 7 } = {}) {
+      this.headless = true;
+      this.gameMode = 'sim';
+      this.isMatchOver = false;
+      this.winnerTeam = null;
+      this._simRoundScores = [];
+      this._simCardsPlayed = [];
+      this._simPassEvents = [];
+      this._simPassProfiles = { 1: passProfile1, 2: passProfile2 };
+      this._simSummoningSickness = Boolean(summoningSickness);
+      this._simPrevLoserDraw3 = Boolean(prevLoserDraw3);
+      this._simR3DrawCount = typeof r3DrawCount === 'number' ? r3DrawCount : 2;
+      this._simFillHandTo5 = Boolean(fillHandTo5);
+      this._simBothDraw3 = Boolean(bothDraw3);
+      this._simStarterMode = starterMode || 'winner';
+
+      const p1Deck = this.buildDeck([], deck1);
+      const p2Deck = this.buildDeck([], deck2);
+      const p1DeckIds = p1Deck.map(c => c.id);
+      const p2DeckIds = p2Deck.map(c => c.id);
+
+      const handCount = Math.max(3, Math.min(12, Number(startHandSize) || 7));
+      const p1Hand = p1Deck.splice(0, handCount);
+      const p2Hand = p2Deck.splice(0, handCount);
+      const firstTeam = (starterTeam === 1 || starterTeam === 2) ? starterTeam : (Math.random() < 0.5 ? 1 : 2);
+      this._simLastRoundStarter = firstTeam;
+
+      this.state = {
+        round: 1,
+        turnTeam: firstTeam,
+        mulliganActive: false,
+        mulliganLeft: 0,
+        mulliganSelectedUids: [],
+        playedCardThisTurn: false,
+        selectedHandUid: null,
+        selectedAttackerUid: null,
+        inspectedCard: null,
+        players: {
+          1: {
+            name: name1,
+            gems: 2,
+            roundWins: 0,
+            passed: false,
+            turnsThisRound: 0,
+            deck: p1Deck,
+            hand: p1Hand,
+            graveyard: [],
+            phoenixReborn: false,
+            rows: { melee: [], ranged: [] }
+          },
+          2: {
+            name: name2,
+            gems: 2,
+            roundWins: 0,
+            passed: false,
+            turnsThisRound: 0,
+            deck: p2Deck,
+            hand: p2Hand,
+            graveyard: [],
+            phoenixReborn: false,
+            rows: { melee: [], ranged: [] }
+          }
+        }
+      };
+
+      let steps = 0;
+      while (!this.isMatchOver && steps < 250) {
+        steps++;
+        this.runAiTurnSync(this.state.turnTeam);
+      }
+
+      if (!this.isMatchOver) {
+        const g1 = this.state.players[1].gems;
+        const g2 = this.state.players[2].gems;
+        this.winnerTeam = g1 >= g2 ? 1 : 2;
+        this.isMatchOver = true;
+      }
+
+      return {
+        winner: this.winnerTeam,
+        firstTeam,
+        steps,
+        hitStepLimit: steps >= 250,
+        roundsPlayed: this._simRoundScores.length || this.state.round,
+        roundScores: this._simRoundScores,
+        p1Gems: this.state.players[1].gems,
+        p2Gems: this.state.players[2].gems,
+        p1DeckIds,
+        p2DeckIds,
+        cardsPlayed: this._simCardsPlayed,
+        passEvents: this._simPassEvents
+      };
+    }
+
     // -------------------------------------------------------------------------
     // Match End & Overworld Rewards Integration
     // -------------------------------------------------------------------------
     finishMatch(winningTeam) {
       this.isMatchOver = true;
+      this.winnerTeam = winningTeam;
+      if (this.headless) return;
       const isPlayerVictory = winningTeam === 1;
       const p1 = this.state.players[1];
       const p2 = this.state.players[2];
@@ -2766,7 +3136,7 @@
     // Rendering
     // -------------------------------------------------------------------------
     render() {
-      if (!this.state) return;
+      if (this.headless || !this.state) return;
       const p1 = this.state.players[1];
       const p2 = this.state.players[2];
       const s1 = this.getTotalScore(1);
@@ -3069,9 +3439,6 @@
       el.dataset.uid = card.uid;
 
       const powerClass = card.power > card.basePower ? 'boosted' : (card.power < card.basePower ? 'damaged' : '');
-      const hpVal = card.hp ?? card.baseHp ?? card.power;
-      const baseHpVal = card.baseHp ?? card.basePower;
-      const hpClass = hpVal > baseHpVal ? 'boosted' : (hpVal < baseHpVal ? 'damaged' : '');
       const armorHtml = card.armor > 0 ? `<div class="gwent-card-armor">🛡️${card.armor}</div>` : '';
       const shieldHtml = card.shield ? `<div class="gwent-card-shield-badge" title="Shield: Ignores next instance of damage">🔰</div>` : '';
       const defensesHtml = (card.armor > 0 || card.shield)
@@ -3081,18 +3448,7 @@
 
       el.innerHTML = `
         <img class="gwent-card-art" src="${card.cardImg}" alt="${card.name}">
-        <div class="gwent-card-hp ${hpClass}" title="Health: ${hpVal}">
-          <svg class="gwent-card-hp-heart" viewBox="0 0 32 30" aria-hidden="true">
-            <path d="M16 27.5C16 27.5 3 19.2 3 10.2C3 5.8 6.4 2.5 10.5 2.5C13.1 2.5 15.1 3.9 16 5.8C16.9 3.9 18.9 2.5 21.5 2.5C25.6 2.5 29 5.8 29 10.2C29 19.2 16 27.5 16 27.5Z"/>
-          </svg>
-          <span class="gwent-card-stat-num">${hpVal}</span>
-        </div>
-        <div class="gwent-card-power ${powerClass}" title="Attack: ${card.power}">
-          <svg class="gwent-card-atk-sword" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M19.5 3.5L15.8 4.2L7.5 12.5L5.8 10.8L4.4 12.2L6.8 14.6L3.5 17.9L6.1 20.5L9.4 17.2L11.8 19.6L13.2 18.2L11.5 16.5L19.8 8.2L20.5 4.5Z"/>
-          </svg>
-          <span class="gwent-card-stat-num">${card.power}</span>
-        </div>
+        <div class="gwent-card-power ${powerClass}" title="Power: ${card.power}">${card.power}</div>
         <div class="gwent-card-row-badge" title="${ROW_LABELS[card.row]}">${ROW_ICONS[card.row]}</div>
         ${defensesHtml}
         ${iceBorderHtml}
@@ -3166,8 +3522,6 @@
       }
 
       const pwrVal = card.power ?? card.basePower;
-      const hpVal = card.hp ?? card.baseHp ?? (card.basePower + 2);
-      const baseHpVal = card.baseHp ?? (card.basePower + 2);
       const armorVal = card.armor || 0;
       const def = window.MythosGwentCards?.CARDS?.[card.id];
       const tradImg = card.traditionalCardImg || def?.traditionalCardImg || null;
@@ -3179,10 +3533,10 @@
       if (tradImg) {
         dialog.classList.add('has-traditional-img');
         if (liveBadge) {
-          const isModified = pwrVal !== card.basePower || hpVal !== baseHpVal;
+          const isModified = pwrVal !== card.basePower;
           liveBadge.classList.toggle('hidden', !isModified);
           if (isModified) {
-            liveBadge.textContent = `⚔️ ${pwrVal} ATK • ❤️ ${hpVal} HP`;
+            liveBadge.textContent = `⚔️ ${pwrVal} PWR`;
           }
         }
       } else if (liveBadge) {
@@ -3202,12 +3556,6 @@
       if (pwrEl) {
         pwrEl.textContent = pwrVal;
         pwrEl.className = 'stat-val ' + (pwrVal > card.basePower ? 'boosted' : (pwrVal < card.basePower ? 'damaged' : ''));
-      }
-
-      const hpEl = document.getElementById('gwent-modal-hp');
-      if (hpEl) {
-        hpEl.textContent = hpVal;
-        hpEl.className = 'stat-val ' + (hpVal > baseHpVal ? 'boosted' : (hpVal < baseHpVal ? 'damaged' : ''));
       }
 
       const armorEl = document.getElementById('gwent-modal-armor');
@@ -3259,9 +3607,7 @@
       const rowTag = document.getElementById('status-moves-tag');
       if (rowTag) rowTag.textContent = `${ROW_ICONS[card.row]} ${ROW_LABELS[card.row]}`;
       const pwrEl = document.getElementById('inspect-power');
-      const hpVal = card.hp ?? card.baseHp ?? (card.basePower + 2);
-      const baseHpVal = card.baseHp ?? (card.basePower + 2);
-      if (pwrEl) pwrEl.textContent = `ATK: ${card.power} (Base ${card.basePower}) • HP: ${hpVal}/${baseHpVal}`;
+      if (pwrEl) pwrEl.textContent = `Power: ${card.power} (Base ${card.basePower})`;
       const rarEl = document.getElementById('inspect-rarity');
       if (rarEl) rarEl.textContent = `${card.stars}★ ${card.rarity.toUpperCase()}`;
 
@@ -3294,7 +3640,7 @@
     }
 
     log(message, type = 'system') {
-      if (!this.elLog) return;
+      if (this.headless || !this.elLog) return;
       const entry = document.createElement('div');
       entry.className = `log-entry ${type}`;
       entry.textContent = message;
@@ -3578,6 +3924,8 @@
   window.BeastsGame = BeastsGame;
 
   window.addEventListener('DOMContentLoaded', () => {
-    window.game = new BeastsGame();
+    if (!window.MYTHOS_HEADLESS_SIM) {
+      window.game = new BeastsGame();
+    }
   });
 })();
