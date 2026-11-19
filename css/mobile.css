@@ -412,11 +412,29 @@ select {
     padding: 0 3px !important;
   }
 
-  .gwent-card.board-card .gwent-card-armor {
+  .gwent-card.board-card .gwent-card-hp {
     top: 2px !important;
     right: 2px !important;
+    width: 22px !important;
+    height: 20px !important;
+    font-size: 9px !important;
+    padding: 0 !important;
+  }
+
+  .gwent-card.board-card .gwent-card-defenses {
+    bottom: 14px !important;
+    right: 2px !important;
+    gap: 2px !important;
+  }
+
+  .gwent-card.board-card .gwent-card-armor {
     font-size: 8px !important;
     padding: 1px 3px !important;
+  }
+
+  .gwent-card.board-card .gwent-card-shield-badge {
+    font-size: 9px !important;
+    padding: 1px !important;
   }
 
   .gwent-card.board-card .gwent-card-row-badge {
@@ -424,7 +442,7 @@ select {
     height: 14px !important;
     font-size: 8px !important;
     bottom: 14px !important;
-    right: 2px !important;
+    left: 2px !important;
   }
 
   .gwent-card.board-card .gwent-card-name-strip {
@@ -490,11 +508,29 @@ select {
     padding: 0 3px !important;
   }
 
-  .gwent-player-hand .gwent-card .gwent-card-armor {
-    top: 3px !important;
+  .gwent-player-hand .gwent-card .gwent-card-hp {
+    top: 2px !important;
+    right: 2px !important;
+    width: 24px !important;
+    height: 22px !important;
+    font-size: 10px !important;
+    padding: 0 !important;
+  }
+
+  .gwent-player-hand .gwent-card .gwent-card-defenses {
+    bottom: 16px !important;
     right: 3px !important;
+    gap: 2px !important;
+  }
+
+  .gwent-player-hand .gwent-card .gwent-card-armor {
     font-size: 8.5px !important;
     padding: 1px 4px !important;
+  }
+
+  .gwent-player-hand .gwent-card .gwent-card-shield-badge {
+    font-size: 10px !important;
+    padding: 1px !important;
   }
 
   .gwent-player-hand .gwent-card .gwent-card-row-badge {
@@ -502,7 +538,7 @@ select {
     height: 16px !important;
     font-size: 9px !important;
     bottom: 16px !important;
-    right: 3px !important;
+    left: 3px !important;
   }
 
   .gwent-player-hand .gwent-card .gwent-card-name-strip {

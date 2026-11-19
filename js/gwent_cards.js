@@ -107,6 +107,7 @@
       rarity: 'bronze',
       row: 'melee',
       basePower: 1,
+      baseHp: 3,
       armor: 0,
       cardImg: 'Cards/Goblin_Soldier_Card.jpg',
       traditionalCardImg: 'Cards/Goblin_Soldier_Traditional.jpg',
@@ -128,6 +129,7 @@
       rarity: 'bronze',
       row: 'ranged',
       basePower: 1,
+      baseHp: 2,
       armor: 0,
       cardImg: 'Cards/Goblin_Archer_Card.jpg',
       traditionalCardImg: 'Cards/Goblin_Archer_Traditional.jpg',
@@ -165,6 +167,7 @@
       border: 'silver',
       row: 'melee',
       basePower: 2,
+      baseHp: 4,
       armor: 2,
       cardImg: 'Cards/Orc_Infantry_Card.jpg',
       traditionalCardImg: 'Cards/Orc_Infantry_Traditional.jpg',
@@ -187,6 +190,7 @@
       border: 'silver',
       row: 'ranged',
       basePower: 2,
+      baseHp: 3,
       armor: 1,
       cardImg: 'Cards/Orc_Slinger_Card.jpg',
       traditionalCardImg: 'Cards/Orc_Slinger_Traditional.jpg',
@@ -209,6 +213,7 @@
       border: 'bronze',
       row: 'melee',
       basePower: 2,
+      baseHp: 3,
       armor: 0,
       cardImg: 'Cards/Werewolf_Pup_Card.jpg',
       traditionalCardImg: 'Cards/Werewolf_Pup_Traditional.jpg',
@@ -231,6 +236,7 @@
       border: 'gold',
       row: 'melee',
       basePower: 3,
+      baseHp: 5,
       armor: 2,
       cardImg: 'Cards/Minerva_Wolf_Mother_Card.jpg',
       traditionalCardImg: 'Cards/Minerva_Wolf_Mother_Traditional.jpg',
@@ -253,6 +259,7 @@
       border: 'bronze',
       row: 'melee',
       basePower: 1,
+      baseHp: 4,
       armor: 2,
       resilient: true,
       cardImg: 'Cards/Rust_Bucket_Card.jpg',
@@ -274,6 +281,7 @@
       border: 'silver',
       row: 'melee',
       basePower: 2,
+      baseHp: 5,
       armor: 2,
       shield: true,
       cardImg: 'Cards/Scrap_Heap_Card.jpg',
@@ -296,6 +304,7 @@
       maxDeckCopies: 1,
       row: 'agile',
       basePower: 4,
+      baseHp: 6,
       armor: 0,
       boostRoleAbility: { role: 'Wolf Pack', amount: 1 },
       cardImg: 'Cards/Manson_Wolf_Father_Card.jpg',
@@ -317,6 +326,7 @@
       border: 'silver',
       row: 'melee',
       basePower: 2,
+      baseHp: 4,
       armor: 0,
       lifestealHeal: true,
       cardImg: 'Cards/Vampire_Thrall_Card.jpg',
@@ -338,6 +348,7 @@
       border: 'bronze',
       row: 'agile',
       basePower: 2,
+      baseHp: 2,
       armor: 0,
       spawnOnDeath: { cardId: 'vampire_bat', count: 2, spawnPower: 1 },
       cardImg: 'Cards/Vampire_Bat_Card.jpg',
@@ -359,6 +370,7 @@
       border: 'decorative-gold',
       row: 'ranged',
       basePower: 5,
+      baseHp: 7,
       armor: 2,
       cardImg: 'Cards/Gooba_Goblin_King_Card.jpg',
       traditionalCardImg: 'Cards/Gooba_Goblin_King_Traditional.jpg',
@@ -402,6 +414,7 @@
       maxDeckCopies: 2,
       row: 'agile',
       basePower: 3,
+      baseHp: 5,
       armor: 1,
       cardImg: 'Cards/Mothman_Card.jpg',
       traditionalCardImg: 'Cards/Mothman_Traditional.jpg',
@@ -429,6 +442,7 @@
       maxDeckCopies: 1,
       row: 'agile',
       basePower: 2,
+      baseHp: 4,
       armor: 0,
       onKillPowerGain: 1,
       onKillMaxBonus: 3,
@@ -455,6 +469,7 @@
       maxDeckCopies: 3,
       row: 'agile',
       basePower: 1,
+      baseHp: 3,
       armor: 1,
       doubleHitIfRowRole: 'Water Tribe',
       cardImg: 'Cards/Merfolk_Card.jpg',
@@ -482,6 +497,7 @@
       border: 'gold',
       row: 'agile',
       basePower: 3,
+      baseHp: 6,
       armor: 4,
       allowsMeleeWaterTribeToAttackRanged: true,
       cardImg: 'Cards/Sea_Dragon_Card.jpg',
@@ -509,6 +525,7 @@
       border: 'gold',
       row: 'ranged',
       basePower: 4,
+      baseHp: 5,
       armor: 2,
       endOfTurnRandomAttacks: { count: 3, damage: 1 },
       cardImg: 'Cards/PyroManda_Card.jpg',
@@ -536,6 +553,7 @@
       border: 'silver',
       row: 'melee',
       basePower: 2,
+      baseHp: 4,
       armor: 1,
       cardImg: 'Cards/Frost_Skink_Card.jpg',
       traditionalCardImg: 'Cards/Frost_Skink_Traditional.jpg',
@@ -603,6 +621,7 @@
       maxDeckCopies: 1,
       row: 'melee',
       basePower: 4,
+      baseHp: 7,
       armor: 4,
       cardImg: 'Cards/Krythos_the_Basilisk_Card.jpg',
       traditionalCardImg: 'Cards/Krythos_the_Basilisk_Traditional.jpg',
@@ -670,6 +689,7 @@
       maxDeckCopies: 1,
       row: 'melee',
       basePower: 5,
+      baseHp: 7,
       armor: 2,
       cardImg: 'Cards/Lothar_Vampire_Prince_Card.jpg',
       traditionalCardImg: 'Cards/Lothar_Vampire_Prince_Traditional.jpg',
@@ -753,6 +773,7 @@
       maxDeckCopies: 1,
       row: 'melee',
       basePower: 7,
+      baseHp: 10,
       armor: 1,
       cardImg: 'Cards/Oscar_Orc_Giant_Card.jpg',
       traditionalCardImg: 'Cards/Oscar_Orc_Giant_Traditional.jpg',
@@ -777,6 +798,7 @@
       maxDeckCopies: 1,
       row: 'agile',
       basePower: 3,
+      baseHp: 5,
       armor: 3,
       deflectOnce: true,
       cardImg: 'Cards/Armantha_the_Witch_Card.jpg',
@@ -815,6 +837,7 @@
       maxDeckCopies: 1,
       row: 'ranged',
       basePower: 2,
+      baseHp: 5,
       armor: 3,
       cardImg: 'Cards/Zavela_the_Witch_Card.jpg',
       traditionalCardImg: 'Cards/Zavela_the_Witch_Traditional.jpg',
@@ -862,6 +885,7 @@
       maxDeckCopies: 2,
       row: 'melee',
       basePower: 3,
+      baseHp: 4,
       armor: 0,
       cardImg: 'Cards/The_Nieces_Card.jpg',
       traditionalCardImg: 'Cards/The_Nieces_Traditional.jpg',
@@ -931,6 +955,7 @@
       maxDeckCopies: 2,
       row: 'melee',
       basePower: 1,
+      baseHp: 3,
       armor: 0,
       cardImg: 'Cards/Baby_Lucia_Card.jpg',
       traditionalCardImg: 'Cards/Baby_Lucia_Traditional.jpg',
@@ -962,6 +987,7 @@
       maxDeckCopies: 2,
       row: 'agile',
       basePower: 2,
+      baseHp: 5,
       armor: 4,
       cardImg: 'Cards/Jank_Card.jpg',
       traditionalCardImg: 'Cards/Jank_Traditional.jpg',
@@ -1009,6 +1035,7 @@
       maxDeckCopies: 1,
       row: 'ranged',
       basePower: 4,
+      baseHp: 7,
       armor: 2,
       cardImg: 'Cards/Jallopy_Card.jpg',
       traditionalCardImg: 'Cards/Jallopy_Traditional.jpg',
@@ -1116,12 +1143,12 @@
     if (playedRole === 'Orc Army' && targetRow && myRows[targetRow]) {
       myRows[targetRow].forEach(ally => {
         if (ally && ally.id === 'oscar_orc_giant' && ally.uid !== card?.uid) {
-          const fullPower = Number(ally.basePower) || 7;
-          if ((ally.power || 0) < fullPower) {
-            const healed = fullPower - (ally.power || 0);
-            ally.power = fullPower;
+          const fullHp = Number(ally.baseHp) || Number(ally.basePower) || 10;
+          if ((ally.hp || 0) < fullHp) {
+            const healed = fullHp - (ally.hp || 0);
+            ally.hp = fullHp;
             playSound('heal');
-            game.log(`🛡️ ${ally.name}'s Titan's Rally healed him by +${healed} back to full health (${fullPower})!`, logType);
+            game.log(`🛡️ ${ally.name}'s Titan's Rally healed him by +${healed} back to full health (${fullHp} HP)!`, logType);
           }
         }
       });
@@ -1209,6 +1236,7 @@
               const match = eff.roles ? allowedRoles.includes(c.role) : allowedRoles.includes(c.element);
               if ((!eff.excludeSelf || c.uid !== card.uid) && match) {
                 c.power += eff.amount;
+                c.hp = (c.hp ?? c.baseHp ?? 0) + eff.amount;
                 count++;
               }
             });
@@ -1265,13 +1293,14 @@
             (myRows[rk] || []).forEach(c => {
               if ((!eff.excludeSelf || c.uid !== card.uid) && allowedRoles.includes(c.role)) {
                 c.power *= 2;
+                c.hp = (c.hp ?? c.baseHp ?? 0) * 2;
                 count++;
               }
             });
           });
           if (count > 0) {
             playSound(eff.sound || 'howl');
-            game.log(`${eff.label || '🐺 Howl'} doubled the power of ${count} Wolf Pack unit(s)!`, logType);
+            game.log(`${eff.label || '🐺 Howl'} doubled the Attack & Health of ${count} Wolf Pack unit(s)!`, logType);
           }
           break;
         }
@@ -1316,10 +1345,14 @@
     if (typeof cardDef?.estimateAiValue === 'function') {
       return cardDef.estimateAiValue(rowKey, ctx);
     }
+    if (typeof cardDef?.aiScore === 'function') {
+      return cardDef.aiScore(ctx);
+    }
 
-    let est = card.power;
+    const baseHpVal = card.hp ?? card.baseHp ?? card.power;
+    let est = baseHpVal + card.power * 0.5;
     if (cardDef?.resilient && game.state?.round < 3) {
-      est += card.power + (card.armor || 0) * 0.5;
+      est += baseHpVal + (card.armor || 0) * 0.5;
     }
     if (cardDef?.shield) {
       est += 2;
@@ -1335,17 +1368,14 @@
     const oppRows = game.state.players[oppTeam].rows;
     const effects = cardDef?.effects || [];
 
-    // Passive: Oscar, Orc Giant heals to full health whenever an Orc Army card is deployed to his row
+    // Passive valuation: Oscar, Orc Giant heals to full health whenever an Orc Army card is deployed to his row
     const playedRole = cardDef?.role || card?.role;
-    if (playedRole === 'Orc Army' && targetRow && myRows[targetRow]) {
-      myRows[targetRow].forEach(ally => {
+    if (playedRole === 'Orc Army' && rowKey && myRows[rowKey]) {
+      myRows[rowKey].forEach(ally => {
         if (ally && ally.id === 'oscar_orc_giant' && ally.uid !== card?.uid) {
-          const fullPower = Number(ally.basePower) || 7;
-          if ((ally.power || 0) < fullPower) {
-            const healed = fullPower - (ally.power || 0);
-            ally.power = fullPower;
-            playSound('heal');
-            game.log(`🛡️ ${ally.name}'s Titan's Rally healed him by +${healed} back to full health (${fullPower})!`, logType);
+          const fullHp = Number(ally.baseHp) || Number(ally.basePower) || 10;
+          if ((ally.hp || 0) < fullHp) {
+            est += fullHp - (ally.hp || 0);
           }
         }
       });

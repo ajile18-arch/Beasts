@@ -616,7 +616,8 @@
           if (!GWENT_CARDS[id] || pool.length >= maxCards) return;
           const stars = Math.max(1, Number(GWENT_CARDS[id]?.stars) || 1);
           const limit = CardReg.getMaxDeckCopies ? CardReg.getMaxDeckCopies(id) : ((stars >= 4) ? 1 : (GWENT_CARDS[id]?.maxDeckCopies ?? 3));
-          if ((customCounts[id] || 0) < limit && totalStars + stars <= maxStars) {
+          const remAfter = Math.max(0, minCards - (pool.length + 1));
+          if ((customCounts[id] || 0) < limit && totalStars + stars + remAfter <= maxStars) {
             pool.push(id);
             customCounts[id] = (customCounts[id] || 0) + 1;
             totalStars += stars;
@@ -660,6 +661,8 @@
         row: tmpl.row,
         basePower: tmpl.basePower,
         power: tmpl.basePower,
+        baseHp: tmpl.baseHp ?? (tmpl.basePower + 2),
+        hp: tmpl.baseHp ?? (tmpl.basePower + 2),
         armor: tmpl.armor || 0,
         cardImg: tmpl.cardImg,
         abilityTitle: tmpl.abilityTitle,
@@ -683,6 +686,20 @@
       };
     }
 
+    getBinderCardIds() {
+      const ids = [];
+      (this.overworld?.binderSlots || []).forEach(slot => {
+        if (!slot) return;
+        const id = slot.beastId || (slot.id && slot.id.startsWith('card_') ? slot.id.replace('card_', '') : null);
+        if (!id || !GWENT_CARDS[id] || GWENT_CARDS[id].isToken) return;
+        const qty = Math.max(1, Number(slot.qty) || 1);
+        for (let i = 0; i < qty; i++) {
+          ids.push(id);
+        }
+      });
+      return ids;
+    }
+
     startNewGwentMatch(p1Guaranteed = [], p2Guaranteed = [], p2CustomDeck = null) {
       if (this.aiTimeout) clearTimeout(this.aiTimeout);
       this.overworld?.applyEquippedBoardTheme?.();
@@ -694,9 +711,16 @@
 
       const isTutorial = !!this.currentChallenger?.isTutorial;
       const playingDeckIds = (this.overworld?.playingDeck || []).filter(id => GWENT_CARDS[id]);
+      let effectivePlayerDeckIds = playingDeckIds;
+      if (!isTutorial && effectivePlayerDeckIds.length < 18) {
+        const binderIds = this.getBinderCardIds();
+        if (effectivePlayerDeckIds.length + binderIds.length >= 18) {
+          effectivePlayerDeckIds = [...effectivePlayerDeckIds, ...binderIds];
+        }
+      }
       const p1Deck = isTutorial
         ? ['goblin_soldier', 'orc_slinger', 'merfolk', 'rust_bucket', 'werewolf_pup', 'vampire_bat', 'goblin_archer'].map((id, idx) => this.createCardInstance(id, `tut_p1d_${idx}`))
-        : this.buildDeck(p1Guaranteed, playingDeckIds);
+        : this.buildDeck(p1Guaranteed, effectivePlayerDeckIds);
       const p2Deck = isTutorial
         ? ['goblin_soldier', 'werewolf_pup', 'merfolk', 'rust_bucket', 'vampire_thrall', 'orc_slinger'].map((id, idx) => this.createCardInstance(id, `tut_p2d_${idx}`))
         : this.buildDeck(p2Guaranteed, p2CustomDeck);
@@ -1155,7 +1179,7 @@
     // -------------------------------------------------------------------------
     getRowScore(team, rowKey) {
       const cards = this.state.players[team].rows[rowKey];
-      return cards.reduce((sum, c) => sum + Math.max(0, c.power), 0);
+      return cards.reduce((sum, c) => sum + Math.max(0, c.hp ?? c.power), 0);
     }
 
     getTotalScore(team) {
@@ -1446,6 +1470,7 @@
     executeAllyBoost(team, sourceCard, targetCard) {
       const amt = sourceCard.boostRoleAbility?.amount || 1;
       targetCard.power += amt;
+      targetCard.hp = (targetCard.hp ?? targetCard.baseHp ?? 0) + amt;
       targetCard.mansonBoostedThisTurn = true;
 
       const battlefield = document.getElementById('gwent-battlefield');
@@ -1514,11 +1539,11 @@
         }
       }
 
-      if (attacker.lifestealHeal && attacker.power < attacker.basePower) {
+      if (attacker.lifestealHeal && attacker.hp < attacker.baseHp) {
         const rawHeal = Math.max(1, Math.floor(dmg / 2));
-        const healed = Math.min(attacker.basePower - attacker.power, rawHeal);
+        const healed = Math.min(attacker.baseHp - attacker.hp, rawHeal);
         if (healed > 0) {
-          attacker.power += healed;
+          attacker.hp += healed;
           const battlefield = document.getElementById('gwent-battlefield');
           const atkEl = battlefield?.querySelector(`.gwent-card[data-uid="${attacker.uid}"]`);
           if (battlefield && atkEl) {
@@ -1526,14 +1551,14 @@
             const aRect = atkEl.getBoundingClientRect();
             const pop = document.createElement('div');
             pop.className = 'gwent-dmg-pop boost-pop';
-            pop.textContent = `+${healed} 🩸`;
+            pop.textContent = `+${healed} ❤️`;
             pop.style.left = `${(aRect.left + aRect.width / 2) - bfRect.left}px`;
             pop.style.top = `${(aRect.top + aRect.height / 2) - bfRect.top}px`;
             battlefield.appendChild(pop);
             setTimeout(() => pop.remove(), 680);
           }
           window.soundFX?.playHeal?.();
-          this.log(`🩸 ${attacker.name} drained ${healed} Power to heal itself!`, logType);
+          this.log(`🩸 ${attacker.name} drained ${healed} HP to heal itself!`, logType);
         }
       }
 
@@ -2013,9 +2038,9 @@
       }
       if (amount > 0) {
         window.soundFX?.playHit?.();
-        targetCard.power = Math.max(0, targetCard.power - amount);
+        targetCard.hp = Math.max(0, (targetCard.hp ?? targetCard.baseHp ?? 0) - amount);
       }
-      if (targetCard.power <= 0) {
+      if (targetCard.hp <= 0) {
         const rowArr = this.state.players[ownerTeam].rows[rowKey];
         const i = rowArr.indexOf(targetCard);
         if (i !== -1) rowArr.splice(i, 1);
@@ -2039,6 +2064,8 @@
             if (spawned) {
               spawned.power = spawnPower;
               spawned.basePower = spawnPower;
+              spawned.hp = spawnPower;
+              spawned.baseHp = spawnPower;
               spawned.armor = 0;
               spawned.isSpawnedCopy = true;
               spawned.isToken = true;
@@ -2055,7 +2082,7 @@
       let best = null;
       allowedRows.forEach(rk => {
         this.state.players[oppTeam].rows[rk].forEach(c => {
-          if (!best || c.power > best.card.power) {
+          if (!best || (c.hp ?? c.power) > (best.card.hp ?? best.card.power)) {
             best = { card: c, rowKey: rk };
           }
         });
@@ -2320,7 +2347,7 @@
         const rowArr = [...(player.rows?.[rk] || [])];
         rowArr.forEach(card => {
           const spec = card?.endOfTurnRandomAttacks;
-          if (!spec || card.power <= 0) return;
+          if (!spec || (card.hp ?? card.power) <= 0) return;
           const count = spec.count || 3;
           const dmg = spec.damage || 1;
           const sourceMetrics = this.getBattlefieldCardMetrics(card.uid);
@@ -2332,7 +2359,7 @@
             const candidates = [];
             ['melee', 'ranged'].forEach(ork => {
               (oppRows[ork] || []).forEach(enemy => {
-                if (enemy && enemy.power > 0) {
+                if (enemy && (enemy.hp ?? enemy.power) > 0) {
                   candidates.push({ card: enemy, rowKey: ork });
                 }
               });
@@ -2433,6 +2460,7 @@
               this.log(`🛡️ ${p.name}'s ${c.name} is Resilient and stays on the battlefield!`, team === 1 ? 'team1' : 'team2');
             } else {
               c.power = c.basePower;
+              c.hp = c.baseHp ?? (c.basePower + 2);
               c.armor = GWENT_CARDS[c.id]?.armor || 0;
               c.shield = Boolean(GWENT_CARDS[c.id]?.shield);
               c.mansonBoostedThisTurn = false;
@@ -2586,12 +2614,14 @@
       const attacker = readyAttackers[0];
       const oppTargets = this.getValidAttackTargets(2, attacker.uid);
       const dmg = Math.max(1, attacker.power);
-      // Prefer a target that will be destroyed, otherwise the highest-power target
+      // Prefer a target that will be destroyed, otherwise the highest-HP target
       oppTargets.sort((a, b) => {
-        const aKills = (a.card.armor <= 0 && a.card.power <= dmg) ? 1 : 0;
-        const bKills = (b.card.armor <= 0 && b.card.power <= dmg) ? 1 : 0;
+        const aHp = a.card.hp ?? a.card.power;
+        const bHp = b.card.hp ?? b.card.power;
+        const aKills = (a.card.armor <= 0 && aHp <= dmg) ? 1 : 0;
+        const bKills = (b.card.armor <= 0 && bHp <= dmg) ? 1 : 0;
         if (bKills !== aKills) return bKills - aKills;
-        return b.card.power - a.card.power;
+        return bHp - aHp;
       });
       const target = oppTargets[0];
 
@@ -3039,17 +3069,33 @@
       el.dataset.uid = card.uid;
 
       const powerClass = card.power > card.basePower ? 'boosted' : (card.power < card.basePower ? 'damaged' : '');
+      const hpVal = card.hp ?? card.baseHp ?? card.power;
+      const baseHpVal = card.baseHp ?? card.basePower;
+      const hpClass = hpVal > baseHpVal ? 'boosted' : (hpVal < baseHpVal ? 'damaged' : '');
       const armorHtml = card.armor > 0 ? `<div class="gwent-card-armor">🛡️${card.armor}</div>` : '';
       const shieldHtml = card.shield ? `<div class="gwent-card-shield-badge" title="Shield: Ignores next instance of damage">🔰</div>` : '';
+      const defensesHtml = (card.armor > 0 || card.shield)
+        ? `<div class="gwent-card-defenses">${shieldHtml}${armorHtml}</div>`
+        : '';
       const iceBorderHtml = isFrozen ? `<div class="gwent-card-ice-overlay" title="Frozen: Cannot attack on its next turn"></div>` : '';
 
       el.innerHTML = `
         <img class="gwent-card-art" src="${card.cardImg}" alt="${card.name}">
-        <div class="gwent-card-power ${powerClass}">${card.power}</div>
-        ${armorHtml}
-        ${shieldHtml}
-        ${iceBorderHtml}
+        <div class="gwent-card-hp ${hpClass}" title="Health: ${hpVal}">
+          <svg class="gwent-card-hp-heart" viewBox="0 0 32 30" aria-hidden="true">
+            <path d="M16 27.5C16 27.5 3 19.2 3 10.2C3 5.8 6.4 2.5 10.5 2.5C13.1 2.5 15.1 3.9 16 5.8C16.9 3.9 18.9 2.5 21.5 2.5C25.6 2.5 29 5.8 29 10.2C29 19.2 16 27.5 16 27.5Z"/>
+          </svg>
+          <span class="gwent-card-stat-num">${hpVal}</span>
+        </div>
+        <div class="gwent-card-power ${powerClass}" title="Attack: ${card.power}">
+          <svg class="gwent-card-atk-sword" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M19.5 3.5L15.8 4.2L7.5 12.5L5.8 10.8L4.4 12.2L6.8 14.6L3.5 17.9L6.1 20.5L9.4 17.2L11.8 19.6L13.2 18.2L11.5 16.5L19.8 8.2L20.5 4.5Z"/>
+          </svg>
+          <span class="gwent-card-stat-num">${card.power}</span>
+        </div>
         <div class="gwent-card-row-badge" title="${ROW_LABELS[card.row]}">${ROW_ICONS[card.row]}</div>
+        ${defensesHtml}
+        ${iceBorderHtml}
         <div class="gwent-card-name-strip">${card.name}</div>
       `;
 
@@ -3120,6 +3166,8 @@
       }
 
       const pwrVal = card.power ?? card.basePower;
+      const hpVal = card.hp ?? card.baseHp ?? (card.basePower + 2);
+      const baseHpVal = card.baseHp ?? (card.basePower + 2);
       const armorVal = card.armor || 0;
       const def = window.MythosGwentCards?.CARDS?.[card.id];
       const tradImg = card.traditionalCardImg || def?.traditionalCardImg || null;
@@ -3131,10 +3179,10 @@
       if (tradImg) {
         dialog.classList.add('has-traditional-img');
         if (liveBadge) {
-          const isModified = pwrVal !== card.basePower;
+          const isModified = pwrVal !== card.basePower || hpVal !== baseHpVal;
           liveBadge.classList.toggle('hidden', !isModified);
           if (isModified) {
-            liveBadge.textContent = `⚔️ Current Power: ${pwrVal}`;
+            liveBadge.textContent = `⚔️ ${pwrVal} ATK • ❤️ ${hpVal} HP`;
           }
         }
       } else if (liveBadge) {
@@ -3154,6 +3202,12 @@
       if (pwrEl) {
         pwrEl.textContent = pwrVal;
         pwrEl.className = 'stat-val ' + (pwrVal > card.basePower ? 'boosted' : (pwrVal < card.basePower ? 'damaged' : ''));
+      }
+
+      const hpEl = document.getElementById('gwent-modal-hp');
+      if (hpEl) {
+        hpEl.textContent = hpVal;
+        hpEl.className = 'stat-val ' + (hpVal > baseHpVal ? 'boosted' : (hpVal < baseHpVal ? 'damaged' : ''));
       }
 
       const armorEl = document.getElementById('gwent-modal-armor');
@@ -3205,7 +3259,9 @@
       const rowTag = document.getElementById('status-moves-tag');
       if (rowTag) rowTag.textContent = `${ROW_ICONS[card.row]} ${ROW_LABELS[card.row]}`;
       const pwrEl = document.getElementById('inspect-power');
-      if (pwrEl) pwrEl.textContent = `Power: ${card.power} (Base ${card.basePower})`;
+      const hpVal = card.hp ?? card.baseHp ?? (card.basePower + 2);
+      const baseHpVal = card.baseHp ?? (card.basePower + 2);
+      if (pwrEl) pwrEl.textContent = `ATK: ${card.power} (Base ${card.basePower}) • HP: ${hpVal}/${baseHpVal}`;
       const rarEl = document.getElementById('inspect-rarity');
       if (rarEl) rarEl.textContent = `${card.stars}★ ${card.rarity.toUpperCase()}`;
 

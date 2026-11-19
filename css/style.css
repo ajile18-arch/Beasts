@@ -11841,9 +11841,25 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
   box-shadow: 0 3px 8px rgba(0, 0, 0, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.2);
   text-shadow: 0 1px 3px #000;
   z-index: 3;
+}
+
+.gwent-card-atk-sword {
+  position: absolute;
+  inset: 2px;
+  width: calc(100% - 4px);
+  height: calc(100% - 4px);
+  fill: rgba(250, 204, 21, 0.34);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.gwent-card-stat-num {
+  position: relative;
+  z-index: 1;
 }
 
 .gwent-card-power.boosted {
@@ -11858,10 +11874,73 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   box-shadow: 0 0 10px rgba(239, 68, 68, 0.55);
 }
 
-.gwent-card-armor {
+.gwent-card-hp {
   position: absolute;
-  top: 5px;
-  right: 5px;
+  top: 4px;
+  right: 4px;
+  width: 30px;
+  height: 28px;
+  padding: 0;
+  color: #fff1f2;
+  font-family: 'Cinzel', serif;
+  font-size: 11px;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-shadow: 0 1px 3px #000;
+  z-index: 3;
+}
+
+.gwent-card-hp-heart {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  fill: #7f1d1d;
+  stroke: #f87171;
+  stroke-width: 2.2;
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.9));
+  pointer-events: none;
+  z-index: 0;
+}
+
+.gwent-card-hp .gwent-card-stat-num {
+  margin-top: -2px;
+}
+
+.gwent-card-hp.boosted {
+  color: #dcfce7;
+}
+
+.gwent-card-hp.boosted .gwent-card-hp-heart {
+  fill: #14532d;
+  stroke: #4ade80;
+  filter: drop-shadow(0 0 8px rgba(34, 197, 94, 0.7));
+}
+
+.gwent-card-hp.damaged {
+  color: #fecaca;
+}
+
+.gwent-card-hp.damaged .gwent-card-hp-heart {
+  fill: #450a0a;
+  stroke: #ef4444;
+  filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.85));
+}
+
+.gwent-card-defenses {
+  position: absolute;
+  bottom: 16px;
+  right: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  z-index: 3;
+}
+
+.gwent-card-armor {
   padding: 2px 5px;
   border-radius: 6px;
   background: linear-gradient(180deg, #334155, #0f172a);
@@ -11870,13 +11949,12 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   font-size: 10px;
   font-weight: 800;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.85);
-  z-index: 3;
 }
 
 .gwent-card-row-badge {
   position: absolute;
   bottom: 20px;
-  right: 4px;
+  left: 4px;
   width: 20px;
   height: 20px;
   border-radius: 50%;
@@ -12539,16 +12617,12 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
 }
 
 .gwent-card-shield-badge {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  font-size: 13px;
+  font-size: 12px;
   line-height: 1;
   background: rgba(12, 74, 110, 0.88);
   border: 1px solid #38bdf8;
   border-radius: 50%;
   padding: 2px;
-  z-index: 4;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.65);
 }
 
