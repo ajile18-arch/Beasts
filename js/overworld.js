@@ -1518,8 +1518,9 @@
     recordQuestNpcTalked(npcId) {
       if (!npcId) return;
       if (!this.questState) this.questState = this.normalizeQuestState(null);
-      const id = String(npcId).trim();
-      if (!id) return;
+      const rawId = String(npcId).trim();
+      if (!rawId) return;
+      const id = this.normalizeRelationshipNpcId ? (this.normalizeRelationshipNpcId(rawId) || rawId) : rawId;
       if (this.questState.accepted?.q_neighborhood_patrol && !this.questState.claimed?.q_neighborhood_patrol && id !== 'police_chief') {
         if (!this.questState.patrolNpcs[id]) {
           this.questState.patrolNpcs[id] = true;
@@ -9675,6 +9676,7 @@
         this.clearPendingBattleResults();
       }
       this.activeDialogueNpc = actualId;
+      this.recordQuestNpcTalked(actualId);
 
       if (this.storyState === 'intro_waiting' && (actualId === 'friend' || actualId === 'best_friend' || actualId === this.friendName)) {
         this.storyState = 'intro_bored';
@@ -10138,6 +10140,7 @@
               this._dailyTalkedNpcs.add(talkKey);
               this.gainDialogueRelationship(normId, 1);
             }
+            this.recordQuestNpcTalked(normId || npcId);
           }
           choicesEl.innerHTML = '';
           const cleanSpeaker = this.stripNoteHtml(speakerText).replace(/^[^\w]+/, '').trim() || npcId;

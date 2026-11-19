@@ -258,7 +258,7 @@
       rarity: 'bronze',
       border: 'bronze',
       row: 'melee',
-      basePower: 1,
+      basePower: 2,
       baseHp: 5,
       armor: 2,
       resilient: true,
@@ -772,8 +772,8 @@
       border: 'decorative-gold',
       maxDeckCopies: 1,
       row: 'melee',
-      basePower: 7,
-      baseHp: 11,
+      basePower: 4,
+      baseHp: 6,
       armor: 1,
       cardImg: 'Cards/Oscar_Orc_Giant_Card.jpg',
       traditionalCardImg: 'Cards/Oscar_Orc_Giant_Traditional.jpg',
@@ -783,7 +783,7 @@
       passiveDesc: 'Limited to 1 copy per playing deck.',
       effects: [],
       aiScore() {
-        return 7 + 1 + 2;
+        return 6 + 2 + 1 + 2;
       }
     },
 
@@ -955,7 +955,7 @@
       maxDeckCopies: 2,
       row: 'melee',
       basePower: 1,
-      baseHp: 4,
+      baseHp: 3,
       armor: 0,
       cardImg: 'Cards/Baby_Lucia_Card.jpg',
       traditionalCardImg: 'Cards/Baby_Lucia_Traditional.jpg',
