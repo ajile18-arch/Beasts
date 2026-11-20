@@ -1370,8 +1370,9 @@
 
     getNpcQuestPromptSignature(npcId) {
       const qs = this.questState || this.normalizeQuestState(null);
+      const normNpcId = this.normalizeRelationshipNpcId ? this.normalizeRelationshipNpcId(npcId) : npcId;
       return this.getQuestDefinitions()
-        .filter(q => q.giverNpc === npcId || q.turnInNpc === npcId)
+        .filter(q => q.giverNpc === normNpcId || q.turnInNpc === normNpcId)
         .map(q => `${q.id}:${qs.accepted[q.id] ? 1 : 0}:${q.progress() >= q.target ? 1 : 0}:${qs.claimed[q.id] ? 1 : 0}`)
         .join('|');
     }
@@ -1379,6 +1380,7 @@
     getNpcQuestChoices(npcId) {
       if (!this.questState) this.questState = this.normalizeQuestState(null);
       const qs = this.questState;
+      const normNpcId = this.normalizeRelationshipNpcId ? this.normalizeRelationshipNpcId(npcId) : npcId;
       const defs = this.getQuestDefinitions();
       const out = [];
 
@@ -1388,7 +1390,7 @@
         const isReady = q.progress() >= q.target;
 
         // Turn-in choice if accepted, ready, and not yet claimed
-        if (q.turnInNpc === npcId && isAccepted && !isClaimed && isReady) {
+        if (q.turnInNpc === normNpcId && isAccepted && !isClaimed && isReady) {
           if (q.id === 'q_lost_handcuffs') {
             out.push({
               label: `📜 [Turn In] "Here are your lost handcuffs, Chief Miller!" (+$${q.rewardGold})`,
@@ -1438,7 +1440,7 @@
         }
 
         // Accept choice if this NPC gives the quest and it isn't accepted yet
-        if (q.giverNpc === npcId && !isAccepted && !isClaimed) {
+        if (q.giverNpc === normNpcId && !isAccepted && !isClaimed) {
           if (q.id === 'q_lost_handcuffs') {
             out.push({
               label: `📜 [Quest] "Need help with anything around the house, Mom?"`,
@@ -9172,6 +9174,7 @@
       }
 
       if (!cardsRow) return;
+      cardsRow.querySelectorAll('.pack-card-video').forEach(v => v.pause());
       cardsRow.innerHTML = '';
       cardsRow.className = 'pack-cards-reveal-row single-card-mode';
       cardsRow.classList.remove('hidden');
@@ -9180,9 +9183,15 @@
       slot.className = 'pack-card-slot single-pack-card rarity-mythic';
       slot.id = 'active-pack-card';
 
+      const cardDef = window.MythosGwentCards?.CARDS?.[card.beastId || card.id];
       const pullImg = card.traditionalCardImg
-        || window.MythosGwentCards?.CARDS?.[card.beastId]?.traditionalCardImg
+        || cardDef?.traditionalCardImg
         || card.cardImg;
+      const animPullVideo = card.animatedTraditionalVideo
+        || cardDef?.animatedTraditionalVideo
+        || card.animatedCardVideo
+        || cardDef?.animatedCardVideo
+        || null;
 
       slot.innerHTML = `
         <div class="pack-card-inner">
@@ -9195,12 +9204,23 @@
           <div class="pack-card-face pack-card-front">
             <span class="pack-card-rarity-banner mythic">${card.badgeLabel}</span>
             <img src="${pullImg}" alt="${card.name}">
+            ${animPullVideo ? `<video class="pack-card-video hidden" src="${animPullVideo}" poster="${pullImg}" playsinline preload="auto"></video>` : ''}
             <div class="pack-card-holo-glint"></div>
           </div>
         </div>
       `;
 
       slot.addEventListener('click', () => {
+        if (slot.classList.contains('sliding-out')) return;
+        const st = this.packOpeningState;
+        if (st?.flippedIndices?.has(idx)) {
+          if (idx < st.pulledCards.length - 1) {
+            this.advanceToNextPackCard();
+          } else {
+            this.showPackSummaryAllCards();
+          }
+          return;
+        }
         this.flipCurrentPackCard(idx, slot);
       });
 
@@ -9215,6 +9235,15 @@
       st.flippedIndices.add(idx);
       const card = st.pulledCards[idx];
       slotEl.classList.add('flipped');
+
+      const packVid = slotEl.querySelector('.pack-card-video');
+      if (packVid) {
+        packVid.classList.remove('hidden');
+        packVid.currentTime = 0;
+        window.MythosGwentCards?.playCardVideoOnce?.(packVid, {
+          onEnded: () => packVid.classList.add('hidden')
+        });
+      }
 
       if (window.sounds?.playCardFlipReveal) {
         window.sounds.playCardFlipReveal(true);
@@ -9270,6 +9299,7 @@
       }
 
       const activeSlot = document.getElementById('active-pack-card');
+      activeSlot?.querySelectorAll('.pack-card-video').forEach(v => v.pause());
       if (activeSlot) {
         activeSlot.classList.add('sliding-out');
         setTimeout(() => {
@@ -9308,6 +9338,7 @@
       }
 
       if (!cardsRow) return;
+      cardsRow.querySelectorAll('.pack-card-video').forEach(v => v.pause());
       cardsRow.innerHTML = '';
       cardsRow.className = 'pack-cards-reveal-row summary-mode';
 
@@ -11343,7 +11374,7 @@
               {
                 label: `2. ⚔️ "Any Mythos deck tips?"`,
                 onSelect: (el) => {
-                  el.innerHTML = `<b>Bram:</b> "Never forget row placement! Melee warriors can't reach Ranged rows, so tuck your archers and mages safely in the back!"`;
+                  el.innerHTML = `<b>Bram:</b> "Never forget row placement! Your Melee row protects your Ranged row, so keep a sturdy front line to shield your archers and mages in the back!"`;
                 }
               },
               {
@@ -12133,13 +12164,14 @@
             : (isReturning
               ? `<b>${tripNpc.name}:</b> "Hey ${this.playerName}! Just wrapping up my visit to <b>${destName}</b> and heading back."`
               : `<b>${tripNpc.name}:</b> "Hey ${this.playerName}! I'm heading over to <b>${destName}</b> for a bit!"`);
+          const tripHasQuest = (this.getNpcQuestChoices ? this.getNpcQuestChoices(tripNpc.id).length : 0) > 0;
           this.renderNpcChoicePrompt({
             npcId: tripNpc.id,
             altActiveIds: altIds,
             promptKey: `trip_${tripNpc.id}_${tripNpc.trip.buildingKey}_${tripNpc.trip.phase}`,
             speakerText: `🚶 ${tripNpc.name.toUpperCase()}`,
             speakerClass: 'ow-speaker-tag friend',
-            talkPromptHtml: `Press <b>Talk</b> to chat with <b>${tripNpc.name}</b>.`,
+            talkPromptHtml: `Press <b>Talk</b> to chat with <b>${tripNpc.name}</b>${tripHasQuest ? ' <i>(📜 Quest!)</i>' : ''}.`,
             greetingHtml: greeting,
             choices: [
               {

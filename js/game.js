@@ -675,6 +675,8 @@
         power: tmpl.basePower,
         armor: tmpl.armor || 0,
         cardImg: tmpl.cardImg,
+        animatedCardVideo: tmpl.animatedCardVideo || null,
+        animatedTraditionalVideo: tmpl.animatedTraditionalVideo || null,
         abilityTitle: tmpl.abilityTitle,
         abilityDesc: tmpl.abilityDesc,
         passiveTitle: tmpl.passiveTitle,
@@ -838,16 +840,16 @@
           tip: 'Melee cards go in front; Ranged cards go in back. Each adds its Power to your total.'
         },
         {
-          title: '4. Melee Cannot Attack Ranged',
+          title: '4. Melee Row Protects Ranged',
           placement: 'bottom',
-          focusIds: ['gwent-row-2-ranged'],
-          body: `${oppName} played <b>Orc Slinger</b> in his <b>Ranged row</b>. <b>Melee monsters CANNOT attack the enemy Ranged row</b> — only Melee!`,
-          tip: 'Tactic: Hide fragile or high-value units in your Ranged row away from enemy Melee attackers.'
+          focusIds: ['gwent-row-2-melee', 'gwent-row-2-ranged'],
+          body: `${oppName} deployed <b>Goblin Soldier</b> in <b>Melee</b> and <b>Orc Slinger</b> in <b>Ranged</b>. While an enemy has units in their <b>Melee row</b>, their <b>Ranged row is protected</b> — clear Melee first!`,
+          tip: 'Tactic: Keep a unit in your Melee row to shield fragile Ranged units. If Melee is empty, attackers can hit Ranged!'
         },
         {
           title: '5. Ranged Attacks & Scoring',
           focusIds: ['gwent-row-1-ranged'],
-          body: `<b>Ranged</b> units (like your <b>Goblin Archer</b>) can strike <b>either enemy row</b>! Click Goblin Archer to attack, or click <b>Next ▸</b>.`,
+          body: `<b>Ranged</b> units (like your <b>Goblin Archer</b>) add Power safely behind your Melee line and can attack the enemy front line. Once the enemy <b>Melee row is empty</b>, any unit can strike their <b>Ranged row</b>! Click Goblin Archer to attack, or click <b>Next ▸</b>.`,
           tip: 'Tactic: Damaging or defeating enemy monsters directly lowers their round total.'
         },
         {
@@ -879,7 +881,7 @@
           title: '10. Round 2 — Card Advantage!',
           focusIds: ['gwent-player-hand'],
           body: `It's <b>Round 2</b> and you hold <b>5 cards vs. ${oppName}'s 4</b>! Finish this practice match or click <b>Skip</b> / <b>🗺️ World</b> to duel for real.`,
-          tip: 'Summary: Total Power wins rounds • Melee can\'t hit Ranged • Protect Card Advantage!',
+          tip: 'Summary: Total Power wins rounds • Melee row protects Ranged • Protect Card Advantage!',
           isFinal: true
         }
       ];
@@ -916,14 +918,17 @@
           const card = idx !== -1 ? p1.hand.splice(idx, 1)[0] : this.createCardInstance('orc_infantry', 'tut_p1_orc');
           p1.rows.melee.push(card);
         }
+        if (p2.rows.melee.length === 0) {
+          p2.rows.melee.push(this.createCardInstance('goblin_soldier', 'tut_p2_gob'));
+        }
         if (p2.rows.ranged.length === 0) {
           const idx2 = p2.hand.findIndex(c => c.id === 'orc_slinger');
           const oppRanged = idx2 !== -1 ? p2.hand.splice(idx2, 1)[0] : this.createCardInstance('orc_slinger', 'tut_p2_slinger');
           p2.rows.ranged.push(oppRanged);
         }
-        this.log(`🌙 ${oppName} deployed Orc Slinger to the Ranged row! Melee units cannot attack Ranged units.`, 'team2');
+        this.log(`🌙 ${oppName} deployed Goblin Soldier (Melee) and Orc Slinger (Ranged)! Enemy Melee protects Ranged until cleared.`, 'team2');
       } else if (stepIdx === 4) {
-        // Put Goblin Archer on player's ranged row so they can see Ranged targeting across rows
+        // Put Goblin Archer on player's ranged row so they can see Ranged attacks & Melee protection
         if (!p1.rows.ranged.some(c => c.id === 'goblin_archer')) {
           const idx = p1.hand.findIndex(c => c.id === 'goblin_archer');
           const archer = idx !== -1 ? p1.hand.splice(idx, 1)[0] : this.createCardInstance('goblin_archer', 'tut_p1_archer');
@@ -933,7 +938,7 @@
         if (p2.rows.melee.length === 0) {
           p2.rows.melee.push(this.createCardInstance('goblin_soldier', 'tut_p2_gob'));
         }
-        this.log(`☀️ Your Goblin Archer is on the Ranged row — Ranged units can strike any enemy row!`, 'team1');
+        this.log(`☀️ Your Goblin Archer is on the Ranged row — clear the enemy Melee row to open up attacks on their Ranged row!`, 'team1');
       } else if (stepIdx === 5) {
         if (!p1.rows.melee.some(c => c.id === 'rust_bucket')) {
           const idx = p1.hand.findIndex(c => c.id === 'rust_bucket');
@@ -1240,9 +1245,6 @@
         if (oppMelee.length > 0 && !isTidal) {
           return false;
         }
-        if (attackerRow === 'melee' && !isTidal) {
-          return false;
-        }
       }
       return true;
     }
@@ -1459,8 +1461,8 @@
             this.log(`⏳ Neither player can attack on their first turn of Round ${this.state.round}.`, activeTeam === 1 ? 'team1' : 'team2');
           } else if (card.attackedThisTurn) {
             this.log(`⏳ ${card.name} has already attacked this turn.`, activeTeam === 1 ? 'team1' : 'team2');
-          } else if (hasAnyOpp && this.getCardRowKey(activeTeam, card.uid) === 'melee') {
-            this.log(`⚔️ ${card.name} is on the Melee row and cannot attack the opponent's Ranged row.`, activeTeam === 1 ? 'team1' : 'team2');
+          } else if (hasAnyOpp) {
+            this.log(`🛡️ ${card.name} has no valid targets — opposing cards are protected or untargetable.`, activeTeam === 1 ? 'team1' : 'team2');
           } else {
             this.log(`⚔️ No opposing cards on the board to attack.`, 'system');
           }
@@ -1477,12 +1479,7 @@
           return;
         }
         if (attacker && !this.canCardAttackTargetRow(activeTeam, attacker.uid, rowKey)) {
-          const oppMelee = this.state?.players?.[ownerTeam]?.rows?.melee || [];
-          if (rowKey === 'ranged' && oppMelee.length > 0) {
-            this.log(`🛡️ Opponent's Melee row protects their Ranged row — clear Melee first!`, activeTeam === 1 ? 'team1' : 'team2');
-          } else {
-            this.log(`⚔️ Melee row cards cannot attack the opponent's Ranged row!`, activeTeam === 1 ? 'team1' : 'team2');
-          }
+          this.log(`🛡️ Opponent's Melee row protects their Ranged row — clear Melee first!`, activeTeam === 1 ? 'team1' : 'team2');
           return;
         }
         this.executeBoardAttack(activeTeam, this.state.selectedAttackerUid, ownerTeam, card, rowKey);
@@ -1765,6 +1762,7 @@
       } else {
         player.rows[targetRow].push(card);
       }
+      card._playBoardAnim = true;
       this.state.playedCardThisTurn = true;
       this.state.selectedHandUid = null;
       this.state.selectedAttackerUid = null;
@@ -3455,6 +3453,33 @@
         <div class="gwent-card-name-strip">${card.name}</div>
       `;
 
+      const animBoardSrc = onBoard && card._playBoardAnim
+        ? (card.animatedCardVideo || GWENT_CARDS[card.id]?.animatedCardVideo || null)
+        : null;
+      if (animBoardSrc) {
+        if (!this._activeBoardVideos) this._activeBoardVideos = new Map();
+        let vid = this._activeBoardVideos.get(card.uid);
+        if (!vid) {
+          vid = document.createElement('video');
+          vid.className = 'gwent-card-art gwent-card-video';
+          vid.src = animBoardSrc;
+          vid.poster = card.cardImg || '';
+          vid.preload = 'auto';
+          this._activeBoardVideos.set(card.uid, vid);
+        }
+        const baseImg = el.querySelector('.gwent-card-art');
+        if (baseImg) baseImg.insertAdjacentElement('afterend', vid);
+        else el.prepend(vid);
+
+        window.MythosGwentCards?.playCardVideoOnce?.(vid, {
+          onEnded: () => {
+            card._playBoardAnim = false;
+            this._activeBoardVideos?.delete(card.uid);
+            vid.remove();
+          }
+        });
+      }
+
       // Hold-down click (long press) to open full card details
       let holdTimer = null;
       const cancelHold = () => {
@@ -3529,6 +3554,37 @@
       const img = document.getElementById('gwent-modal-img');
       if (img) img.src = tradImg || card.cardImg;
 
+      let modalVideo = document.getElementById('gwent-modal-video');
+      if (!modalVideo && img) {
+        modalVideo = document.createElement('video');
+        modalVideo.id = 'gwent-modal-video';
+        modalVideo.className = 'trad-card-bg-img hidden';
+        modalVideo.preload = 'auto';
+        img.insertAdjacentElement('afterend', modalVideo);
+      }
+      const animModalSrc = card.animatedTraditionalVideo
+        || def?.animatedTraditionalVideo
+        || card.animatedCardVideo
+        || def?.animatedCardVideo
+        || null;
+      if (modalVideo) {
+        modalVideo.pause();
+        if (animModalSrc) {
+          modalVideo.src = animModalSrc;
+          modalVideo.poster = tradImg || card.cardImg || '';
+          modalVideo.currentTime = 0;
+          modalVideo.classList.remove('hidden');
+          window.MythosGwentCards?.playCardVideoOnce?.(modalVideo, {
+            onEnded: () => {
+              modalVideo.classList.add('hidden');
+            }
+          });
+        } else {
+          modalVideo.removeAttribute('src');
+          modalVideo.classList.add('hidden');
+        }
+      }
+
       const liveBadge = document.getElementById('gwent-modal-live-badge');
       if (tradImg) {
         dialog.classList.add('has-traditional-img');
@@ -3590,6 +3646,12 @@
     }
 
     closeCardModal() {
+      const modalVideo = document.getElementById('gwent-modal-video');
+      if (modalVideo) {
+        modalVideo.pause();
+        modalVideo.removeAttribute('src');
+        modalVideo.classList.add('hidden');
+      }
       document.getElementById('gwent-card-modal')?.classList.add('hidden');
     }
 

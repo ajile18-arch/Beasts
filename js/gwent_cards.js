@@ -364,6 +364,8 @@
       armor: 2,
       cardImg: 'Cards/Gooba_Goblin_King_Card.jpg',
       traditionalCardImg: 'Cards/Gooba_Goblin_King_Traditional.jpg',
+      animatedCardVideo: 'Cards_Animated/Gooba_Goblin_King_Full_Art_Special.mp4',
+      animatedTraditionalVideo: 'Cards_Animated/Gooba_Goblin_King_Traditional_Special.mp4',
       abilityTitle: 'Royal Decree',
       abilityDesc: 'When played, you may also play a 1- or 2-star Goblin Army card from your hand.',
       passiveTitle: 'Goblin Sovereign',
@@ -676,6 +678,8 @@
       armor: 2,
       cardImg: 'Cards/Lothar_Vampire_Prince_Card.jpg',
       traditionalCardImg: 'Cards/Lothar_Vampire_Prince_Traditional.jpg',
+      animatedCardVideo: 'Cards_Animated/Lothar_Vampire_Prince_Full_Art_Special.mp4',
+      animatedTraditionalVideo: 'Cards_Animated/Lothar_Vampire_Prince_Traditional_Special.mp4',
       abilityTitle: 'Blood Thrall',
       abilityDesc: 'When played, turns a 1★ or 2★ enemy creature to your side of the board for the rest of the round.',
       passiveTitle: 'Deck Limit: 1',
@@ -1460,6 +1464,34 @@
       return typeof def.maxDeckCopies === 'number' ? Math.min(def.maxDeckCopies, starLimit) : starLimit;
     },
     executeEffects,
-    estimateCardValue
+    estimateCardValue,
+    /** Plays a card animation video once (never loops), falling back to muted if unmuted autoplay is blocked. */
+    playCardVideoOnce(videoEl, { onEnded } = {}) {
+      if (!videoEl) return;
+      videoEl.loop = false;
+      videoEl.playsInline = true;
+      videoEl.setAttribute('playsinline', '');
+      videoEl.muted = false;
+
+      if (videoEl._mythosEndedHandler) {
+        videoEl.removeEventListener('ended', videoEl._mythosEndedHandler);
+      }
+      const handleEnded = () => {
+        videoEl._mythosEndedHandler = null;
+        if (typeof onEnded === 'function') onEnded(videoEl);
+      };
+      videoEl._mythosEndedHandler = handleEnded;
+      videoEl.addEventListener('ended', handleEnded, { once: true });
+
+      const playPromise = videoEl.play();
+      if (playPromise && typeof playPromise.catch === 'function') {
+        playPromise.catch(() => {
+          videoEl.muted = true;
+          videoEl.play().catch(() => {
+            if (typeof onEnded === 'function') onEnded(videoEl);
+          });
+        });
+      }
+    }
   };
 })();
