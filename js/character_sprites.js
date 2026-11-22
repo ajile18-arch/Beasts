@@ -1436,7 +1436,7 @@
         if (isGrid4x4) {
           const frameW = Math.round(cImg.naturalWidth / 4);
           const frameH = Math.round(cImg.naturalHeight / 4);
-          const phase = isWalking ? (Math.floor(walkTick * 2.4) % 4) : 0;
+          const phase = isWalking ? (Math.floor(walkTick * 0.55) % 4) : 0;
           const row = DIR_ROW[dir] ?? 0;
           const drawX = Math.round(cx - cellDrawSize / 2);
           const drawY = Math.round(footY - (122 / 128) * cellDrawSize);
