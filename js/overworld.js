@@ -21031,9 +21031,11 @@
         { orient: 'h', x1: 17.20, x2: 25.75, y: -12.60, side: 'south' },
         { orient: 'h', x1: 30.45, x2: 52.05, y: -12.60, side: 'south' },
         { orient: 'h', x1: 56.80, x2: 60.40, y: -12.60, side: 'south' },
-        // Lake & Park Trail E-W (y = 5.375)
-        { orient: 'h', x1: 31.00, x2: 34.80, y: 4.50, side: 'north' },
-        { orient: 'h', x1: 25.60, x2: 34.80, y: 6.30, side: 'south' },
+        // Lake & Park Trail E-W (y = 5.375) — split at x = 32.15..33.75 for open pier & promenade gates
+        { orient: 'h', x1: 31.00, x2: 32.15, y: 4.50, side: 'north' },
+        { orient: 'h', x1: 33.75, x2: 34.55, y: 4.50, side: 'north' },
+        { orient: 'h', x1: 25.60, x2: 32.15, y: 6.30, side: 'south' },
+        { orient: 'h', x1: 33.75, x2: 34.55, y: 6.30, side: 'south' },
         // Main North Country Lane N-S (x = 14.825)
         { orient: 'v', y1: -18.25, y2: -3.70, x: 13.92, side: 'west' },
         { orient: 'v', y1: -29.95, y2: -23.00, x: 13.92, side: 'west' },
@@ -21097,6 +21099,24 @@
       const ang = Math.atan2(dy, dx);
       const rMod = 1.0 + 0.06 * Math.sin(ang * 3 + 0.6) + 0.04 * Math.cos(ang * 5 - 0.4);
       return dist <= 0.96 * rMod;
+    }
+
+    getMeadowbrookPathLights() {
+      if (this._meadowbrookPathLightsCache) return this._meadowbrookPathLightsCache;
+      const cx = 42.25;
+      const cy = 3.25;
+      const rx = 7.75;
+      const ry = 5.25;
+      const angles = [-2.25, -1.35, -0.45, 0.45, 1.35, 2.05];
+      this._meadowbrookPathLightsCache = angles.map((ang) => {
+        const rMod = 1.0 + 0.06 * Math.sin(ang * 3 + 0.6) + 0.04 * Math.cos(ang * 5 - 0.4);
+        const scale = 1.24 * rMod;
+        return {
+          x: cx + Math.cos(ang) * rx * scale,
+          y: cy + Math.sin(ang) * ry * scale,
+        };
+      });
+      return this._meadowbrookPathLightsCache;
     }
 
     /** Single-source exterior tree & shrub placements [tileX, tileY, radius, isAutumn, zone]. */
@@ -32890,6 +32910,109 @@
         ctx.lineTo(Math.round(42.60 * S), yValley);
       };
 
+      // Meadowbrook Lake Option 2 Promenade (Weathered Herringbone Brick & Moss — drawn beneath dirt road so gate entries tuck cleanly)
+      {
+        const lakeZoom = this.getAreaZoom();
+        const lakeCamX = Number.isFinite(this.cameraX) ? this.cameraX : 0;
+        const lakeCamY = Number.isFinite(this.cameraY) ? this.cameraY : 0;
+        const lakeViewW = this.canvas ? this.canvas.width / lakeZoom : 2000;
+        const lakeViewH = this.canvas ? this.canvas.height / lakeZoom : 1400;
+        if (lakeCamX + lakeViewW + 180 >= 31.5 * S && lakeCamX - 180 <= 53.5 * S &&
+            lakeCamY + lakeViewH + 180 >= -4.5 * S && lakeCamY - 180 <= 11.0 * S) {
+          if (!this._lakeBrickPattern) {
+            const pCanvas = document.createElement('canvas');
+            pCanvas.width = 32;
+            pCanvas.height = 32;
+            const pCtx = pCanvas.getContext('2d');
+            pCtx.fillStyle = '#544339';
+            pCtx.fillRect(0, 0, 32, 32);
+
+            const hColors = ['#a85d44', '#c27858'];
+            const vColors = ['#8c4a35', '#96624c'];
+            const drawHBrick = (bx, by, idx) => {
+              pCtx.fillStyle = hColors[idx % hColors.length];
+              pCtx.fillRect(bx + 1, by + 1, 14, 6);
+              pCtx.fillStyle = '#d49070';
+              pCtx.fillRect(bx + 1, by + 1, 14, 1);
+            };
+            const drawVBrick = (bx, by, idx) => {
+              pCtx.fillStyle = vColors[idx % vColors.length];
+              pCtx.fillRect(bx + 1, by + 1, 6, 14);
+              pCtx.fillStyle = '#d49070';
+              pCtx.fillRect(bx + 1, by + 1, 6, 1);
+            };
+
+            drawHBrick(0, 0, 0);
+            drawHBrick(0, 8, 1);
+            drawVBrick(16, 0, 0);
+            drawVBrick(24, 0, 1);
+            drawVBrick(0, 16, 1);
+            drawVBrick(8, 16, 0);
+            drawHBrick(16, 16, 1);
+            drawHBrick(16, 24, 0);
+
+            // Emerald moss pixel tufts
+            pCtx.fillStyle = '#4c8a34';
+            pCtx.fillRect(0, 14, 5, 4);
+            pCtx.fillRect(15, 0, 4, 5);
+            pCtx.fillRect(26, 27, 5, 4);
+            pCtx.fillStyle = '#6eae4a';
+            pCtx.fillRect(1, 15, 2, 2);
+            pCtx.fillRect(16, 1, 2, 2);
+            pCtx.fillRect(27, 28, 2, 2);
+
+            this._lakeBrickPattern = ctx.createPattern(pCanvas, 'repeat');
+          }
+
+          const tracePromenade = () => {
+            const cx = 42.25;
+            const cy = 3.25;
+            const rx = 7.75;
+            const ry = 5.25;
+            const startAng = 3.00;
+            const endAng = Math.PI * 2 + 2.50;
+            const steps = 60;
+            ctx.beginPath();
+            ctx.moveTo(32.95 * S, 4.95 * S);
+            ctx.lineTo(33.10 * S, 3.70 * S);
+            for (let i = 0; i <= steps; i++) {
+              const ang = startAng + ((endAng - startAng) * i) / steps;
+              const rMod = 1.0 + 0.06 * Math.sin(ang * 3 + 0.6) + 0.04 * Math.cos(ang * 5 - 0.4);
+              const scale = 1.18 * rMod;
+              ctx.lineTo((cx + Math.cos(ang) * rx * scale) * S, (cy + Math.sin(ang) * ry * scale) * S);
+            }
+            ctx.lineTo(33.15 * S, 6.85 * S);
+            ctx.lineTo(32.95 * S, 5.80 * S);
+          };
+
+          ctx.save();
+          ctx.lineCap = 'round';
+          ctx.lineJoin = 'round';
+
+          tracePromenade();
+          ctx.strokeStyle = '#2c3a22';
+          ctx.lineWidth = 58;
+          ctx.stroke();
+
+          tracePromenade();
+          ctx.strokeStyle = '#5b7a3c';
+          ctx.lineWidth = 54;
+          ctx.stroke();
+
+          tracePromenade();
+          ctx.strokeStyle = '#362a22';
+          ctx.lineWidth = 48;
+          ctx.stroke();
+
+          tracePromenade();
+          ctx.strokeStyle = this._lakeBrickPattern || '#a85d44';
+          ctx.lineWidth = 46;
+          ctx.stroke();
+
+          ctx.restore();
+        }
+      }
+
       ctx.save();
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
@@ -35608,6 +35731,133 @@
       for (const seg of this.getRuralOptionDFenceSegments()) {
         drawRuralOptionDFenceSegment(seg);
       }
+
+      // Open wooden split-rail pedestrian gates off the Lake & Park Trail into Meadowbrook Promenade + Fishing Pier
+      {
+        const gateZoom = this.getAreaZoom();
+        const gateCamX = Number.isFinite(this.cameraX) ? this.cameraX : 0;
+        const gateCamY = Number.isFinite(this.cameraY) ? this.cameraY : 0;
+        const gateViewW = this.canvas ? this.canvas.width / gateZoom : 2000;
+        const gateViewH = this.canvas ? this.canvas.height / gateZoom : 1400;
+        const gateMinX = gateCamX - 160;
+        const gateMaxX = gateCamX + gateViewW + 160;
+        const gateMinY = gateCamY - 160;
+        const gateMaxY = gateCamY + gateViewH + 160;
+
+        const drawOpenSplitRailGate = (x1Tile, x2Tile, yTile, swingDirY) => {
+          const gx1 = Math.round(x1Tile * S);
+          const gx2 = Math.round(x2Tile * S);
+          const gy = Math.round(yTile * S);
+          if (gx2 < gateMinX || gx1 > gateMaxX || gy + 48 < gateMinY || gy - 48 > gateMaxY) return;
+
+          const drawGateLeaf = (hingeX, inwardX, leafDirY) => {
+            const tipX = Math.round(hingeX + inwardX * 12);
+            const tipY = Math.round(gy + leafDirY * 32);
+
+            // Ground shadow beneath swung gate leaf
+            ctx.save();
+            ctx.strokeStyle = 'rgba(18, 12, 8, 0.24)';
+            ctx.lineCap = 'round';
+            ctx.lineWidth = 6;
+            ctx.beginPath();
+            ctx.moveTo(hingeX, gy + 5);
+            ctx.lineTo(tipX, tipY + 5);
+            ctx.stroke();
+
+            // Upper & lower rustic timber rails
+            for (const dyOff of [-14, -6]) {
+              ctx.strokeStyle = '#24160c';
+              ctx.lineWidth = 6;
+              ctx.beginPath();
+              ctx.moveTo(hingeX, gy + dyOff);
+              ctx.lineTo(tipX, tipY + dyOff);
+              ctx.stroke();
+
+              ctx.strokeStyle = '#7c4c27';
+              ctx.lineWidth = 3.5;
+              ctx.beginPath();
+              ctx.moveTo(hingeX, gy + dyOff);
+              ctx.lineTo(tipX, tipY + dyOff);
+              ctx.stroke();
+
+              ctx.strokeStyle = '#a06a3c';
+              ctx.lineWidth = 1.2;
+              ctx.beginPath();
+              ctx.moveTo(hingeX, gy + dyOff - 1);
+              ctx.lineTo(tipX, tipY + dyOff - 1);
+              ctx.stroke();
+            }
+
+            // Vertical end stile & diagonal brace post at free end of open gate leaf
+            ctx.fillStyle = '#24160c';
+            ctx.fillRect(tipX - 3, tipY - 19, 6, 22);
+            ctx.fillStyle = '#8b572c';
+            ctx.fillRect(tipX - 2, tipY - 18, 4, 20);
+
+            // Wrought-iron strap hinges & latch hardware
+            ctx.fillStyle = '#24272c';
+            ctx.fillRect(hingeX - 3, gy - 16, 6, 4);
+            ctx.fillRect(hingeX - 3, gy - 8, 6, 4);
+            ctx.fillStyle = '#68707a';
+            ctx.fillRect(hingeX - 1, gy - 15, 2, 2);
+            ctx.fillRect(hingeX - 1, gy - 7, 2, 2);
+            ctx.restore();
+          };
+
+          // Two half-leaves swung wide open (~70° off the roadside into the promenade/edge)
+          drawGateLeaf(gx1 + 7, 1, swingDirY);
+          drawGateLeaf(gx2 - 7, -1, swingDirY);
+        };
+
+        drawOpenSplitRailGate(32.15, 33.75, 4.50, -1); // North gate into lakeside path
+        drawOpenSplitRailGate(32.15, 33.75, 6.30, 1);  // South gate along southern bend
+
+        // 6 dim rustic garden path light bollards ringing the outer lakeside promenade
+        for (const p of this.getMeadowbrookPathLights()) {
+          const px = Math.round(p.x * S);
+          const py = Math.round(p.y * S);
+          if (px < gateMinX || px > gateMaxX || py < gateMinY || py > gateMaxY) continue;
+
+          // Contact shadow
+          ctx.fillStyle = 'rgba(16, 20, 14, 0.30)';
+          ctx.fillRect(px - 8, py - 2, 16, 5);
+
+          // Mossy fieldstone plinth
+          ctx.fillStyle = '#262522';
+          ctx.fillRect(px - 7, py - 7, 14, 8);
+          ctx.fillStyle = '#78746d';
+          ctx.fillRect(px - 6, py - 6, 12, 6);
+          ctx.fillStyle = '#979288';
+          ctx.fillRect(px - 6, py - 6, 12, 2);
+          ctx.fillStyle = '#4c8a34';
+          ctx.fillRect(px - 6, py - 6, 3, 2);
+          ctx.fillRect(px + 3, py - 5, 3, 2);
+
+          // Dark wrought-iron post
+          ctx.fillStyle = '#181a1d';
+          ctx.fillRect(px - 3, py - 14, 6, 8);
+          ctx.fillStyle = '#383d45';
+          ctx.fillRect(px - 2, py - 14, 4, 7);
+
+          // Lantern cage + dim warm amber glass centered at (px, py - 18)
+          ctx.fillStyle = '#181a1d';
+          ctx.fillRect(px - 5, py - 23, 10, 10);
+          ctx.fillStyle = '#9a5410';
+          ctx.fillRect(px - 4, py - 22, 8, 8);
+          ctx.fillStyle = '#fbbf24';
+          ctx.fillRect(px - 3, py - 21, 6, 6);
+          ctx.fillStyle = '#fef08a';
+          ctx.fillRect(px - 1, py - 20, 2, 3);
+
+          // Peaked wrought-iron cap & finial
+          ctx.fillStyle = '#181a1d';
+          ctx.fillRect(px - 6, py - 25, 12, 3);
+          ctx.fillRect(px - 3, py - 27, 6, 2);
+          ctx.fillStyle = '#49505a';
+          ctx.fillRect(px - 4, py - 24, 8, 1);
+        }
+      }
+
       const drawWoodFenceV = (fx, fy, fh) => {
         const x = Math.round(fx), y = Math.round(fy), h = Math.round(fh);
         ctx.fillStyle = 'rgba(14, 24, 10, 0.25)';
@@ -38009,6 +38259,21 @@
               lctx.arc(lx, ly, cutRadius, 0, Math.PI * 2);
               lctx.fill();
             }
+            const pathLights = this.getMeadowbrookPathLights();
+            const pathCutRadius = 120;
+            for (let i = 0; i < pathLights.length; i++) {
+              const lx = pathLights[i].x * S;
+              const ly = pathLights[i].y * S - 18;
+              if (lx < viewMinX || lx > viewMaxX || ly < viewMinY || ly > viewMaxY) continue;
+              const pathCut = lctx.createRadialGradient(lx, ly, 3, lx, ly, pathCutRadius);
+              pathCut.addColorStop(0, `rgba(0, 0, 0, ${(0.58 * nightStrength).toFixed(3)})`);
+              pathCut.addColorStop(0.5, `rgba(0, 0, 0, ${(0.34 * nightStrength).toFixed(3)})`);
+              pathCut.addColorStop(1, 'rgba(0, 0, 0, 0)');
+              lctx.fillStyle = pathCut;
+              lctx.beginPath();
+              lctx.arc(lx, ly, pathCutRadius, 0, Math.PI * 2);
+              lctx.fill();
+            }
             lctx.restore();
             ctx.drawImage(nCanvas, 0, 0);
           }
@@ -38053,6 +38318,32 @@
           ctx.fillStyle = bulbHalo;
           ctx.beginPath();
           ctx.arc(lx, ly, 38, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        const pathLights = this.getMeadowbrookPathLights();
+        const pathNow = typeof performance !== 'undefined' ? performance.now() : Date.now();
+        for (let i = 0; i < pathLights.length; i++) {
+          const lx = pathLights[i].x * S;
+          const ly = pathLights[i].y * S - 18;
+          if (lx < viewMinX || lx > viewMaxX || ly < viewMinY || ly > viewMaxY) continue;
+          const pFlick = 0.94 + 0.06 * Math.sin(pathNow * 0.0028 + i * 1.9);
+
+          const pathWash = ctx.createRadialGradient(lx, ly, 4, lx, ly, 95);
+          pathWash.addColorStop(0, `rgba(255, 210, 128, ${(0.14 * nightStrength * pFlick).toFixed(3)})`);
+          pathWash.addColorStop(0.55, `rgba(251, 180, 74, ${(0.06 * nightStrength * pFlick).toFixed(3)})`);
+          pathWash.addColorStop(1, 'rgba(251, 180, 74, 0)');
+          ctx.fillStyle = pathWash;
+          ctx.beginPath();
+          ctx.arc(lx, ly, 95, 0, Math.PI * 2);
+          ctx.fill();
+
+          const pathCore = ctx.createRadialGradient(lx, ly, 1, lx, ly, 20);
+          pathCore.addColorStop(0, `rgba(255, 244, 186, ${(0.38 * nightStrength * pFlick).toFixed(3)})`);
+          pathCore.addColorStop(0.5, `rgba(252, 198, 92, ${(0.15 * nightStrength * pFlick).toFixed(3)})`);
+          pathCore.addColorStop(1, 'rgba(252, 198, 92, 0)');
+          ctx.fillStyle = pathCore;
+          ctx.beginPath();
+          ctx.arc(lx, ly, 20, 0, Math.PI * 2);
           ctx.fill();
         }
         ctx.restore();
