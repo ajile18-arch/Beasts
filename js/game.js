@@ -1366,7 +1366,7 @@
       document.getElementById('gwent-turn-switch-banner')?.classList.add('hidden');
     }
 
-    showTurnSwitchBanner(reasonText, nextText, nextTeam = null, durationMs = 1500) {
+    showTurnSwitchBanner(reasonText, nextText, nextTeam = null, durationMs = 2600) {
       if (this.headless) return;
       const banner = document.getElementById('gwent-turn-switch-banner');
       const reasonEl = document.getElementById('gwent-turn-switch-banner-reason');
@@ -1431,7 +1431,7 @@
 
       this.state.autoEndingTurn = true;
       window.soundFX?.playMove?.();
-      this.showTurnSwitchBanner(reasonText, nextText, bannerTeam, 1500);
+      this.showTurnSwitchBanner(reasonText, nextText, bannerTeam, 2600);
       this.render();
       this.log(`⏭️ ${player.name}: ${reasonText} — switching turn.`, team === 1 ? 'team1' : 'team2');
 
@@ -1440,7 +1440,7 @@
         if (!this.state || this.isMatchOver || this.state.turnTeam !== team) return;
         this.state.autoEndingTurn = false;
         this.advanceTurn();
-      }, 700);
+      }, 950);
       return true;
     }
 
@@ -2585,7 +2585,7 @@
           `${autoPassedName.toUpperCase()} OUT OF CARDS — AUTO-PASSED`,
           `${this.state.turnTeam === 1 ? '☀️' : '🌙'} ${this.state.players[this.state.turnTeam].name}'s Turn`,
           this.state.turnTeam,
-          1500
+          2600
         );
       }
 
@@ -3485,6 +3485,87 @@
     // -------------------------------------------------------------------------
     // Rendering
     // -------------------------------------------------------------------------
+    syncBorderCometOverlay(el, active, color = 'gold', radius = 10) {
+      if (!el) return;
+      const existing = el.querySelector(':scope > svg.gwent-border-runner-svg');
+      if (!active) {
+        if (existing) existing.remove();
+        return;
+      }
+
+      const palette = color === 'red'
+        ? {
+            track: 'rgba(239, 68, 68, 0.24)',
+            glow: 'rgba(239, 68, 68, 0.55)',
+            core: '#fca5a5',
+            shadow: 'drop-shadow(0 0 6px rgba(239, 68, 68, 0.95))'
+          }
+        : {
+            track: 'rgba(251, 191, 36, 0.24)',
+            glow: 'rgba(251, 191, 36, 0.55)',
+            core: '#fef08a',
+            shadow: 'drop-shadow(0 0 6px rgba(251, 191, 36, 0.95))'
+          };
+
+      let svg = existing;
+      if (!svg) {
+        svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('class', 'gwent-border-runner-svg');
+        svg.setAttribute('aria-hidden', 'true');
+        svg.innerHTML =
+          '<rect class="gwent-border-runner-track"></rect>' +
+          '<rect class="gwent-border-runner-glow"></rect>' +
+          '<rect class="gwent-border-runner-core"></rect>';
+        el.prepend(svg);
+      }
+
+      const applyGeomAndColors = () => {
+        const curSvg = el.querySelector(':scope > svg.gwent-border-runner-svg');
+        if (!curSvg) return;
+        const w = Math.max(40, Math.round(el.clientWidth + 2));
+        const h = Math.max(24, Math.round(el.clientHeight + 2));
+        const stroke = 2.6;
+        const inset = stroke / 2;
+        const rx = Math.max(2, Math.min(radius, h / 2 - 2));
+        const rw = Math.max(4, w - stroke);
+        const rh = Math.max(4, h - stroke);
+
+        curSvg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+        const rects = curSvg.querySelectorAll('rect');
+        rects.forEach(r => {
+          r.setAttribute('x', inset);
+          r.setAttribute('y', inset);
+          r.setAttribute('width', rw);
+          r.setAttribute('height', rh);
+          r.setAttribute('rx', rx);
+          r.setAttribute('ry', rx);
+          r.setAttribute('pathLength', '100');
+        });
+
+        const [track, glow, core] = rects;
+        if (track) {
+          track.setAttribute('stroke', palette.track);
+          track.setAttribute('stroke-width', stroke);
+        }
+        if (glow) {
+          glow.setAttribute('stroke', palette.glow);
+          glow.setAttribute('stroke-width', 6.5);
+        }
+        if (core) {
+          core.setAttribute('stroke', palette.core);
+          core.setAttribute('stroke-width', stroke);
+          core.style.filter = palette.shadow;
+        }
+      };
+
+      applyGeomAndColors();
+
+      if (!el._cometRO && typeof ResizeObserver === 'function') {
+        el._cometRO = new ResizeObserver(() => applyGeomAndColors());
+        el._cometRO.observe(el);
+      }
+    }
+
     render() {
       if (this.headless || !this.state) return;
       const p1 = this.state.players[1];
@@ -3534,11 +3615,21 @@
           ).length
         : 0;
 
-      document.querySelector('.gwent-side-player')?.classList.toggle('active-turn-side', showTurnHighlight && turnTeam === 1);
-      document.querySelector('.gwent-side-opp')?.classList.toggle('active-turn-side', showTurnHighlight && turnTeam === 2);
-      document.querySelector('.gwent-side-player')?.classList.toggle('has-board-actions', isControllableTurn && turnTeam === 1 && readyBoardActionCount > 0);
-      document.querySelector('.gwent-side-opp')?.classList.toggle('has-board-actions', isControllableTurn && turnTeam === 2 && readyBoardActionCount > 0);
-      document.querySelector('.gwent-hand-tray')?.classList.toggle('can-play-card', canPlayCardNow);
+      const p1SideEl = document.querySelector('.gwent-side-player');
+      const p2SideEl = document.querySelector('.gwent-side-opp');
+      const handTrayEl = document.querySelector('.gwent-hand-tray');
+      const p1HasActions = isControllableTurn && turnTeam === 1 && readyBoardActionCount > 0;
+      const p2HasActions = isControllableTurn && turnTeam === 2 && readyBoardActionCount > 0;
+
+      p1SideEl?.classList.toggle('active-turn-side', showTurnHighlight && turnTeam === 1);
+      p2SideEl?.classList.toggle('active-turn-side', showTurnHighlight && turnTeam === 2);
+      p1SideEl?.classList.toggle('has-board-actions', p1HasActions);
+      p2SideEl?.classList.toggle('has-board-actions', p2HasActions);
+      handTrayEl?.classList.toggle('can-play-card', canPlayCardNow);
+
+      this.syncBorderCometOverlay(p1SideEl, p1HasActions, 'red', 10);
+      this.syncBorderCometOverlay(p2SideEl, p2HasActions, 'red', 10);
+      this.syncBorderCometOverlay(handTrayEl, canPlayCardNow, 'gold', 10);
 
       const checklistEl = document.getElementById('gwent-turn-checklist');
       const playPillEl = document.getElementById('phase-pill-play');

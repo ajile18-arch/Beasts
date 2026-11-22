@@ -12039,14 +12039,35 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
 }
 
 .gwent-hand-tray.can-play-card {
-  border-color: #fbbf24;
-  border-width: 2px;
-  animation: handTrayGoldPulse 1.35s ease-in-out infinite;
+  border-color: rgba(251, 191, 36, 0.45);
 }
 
-@keyframes handTrayGoldPulse {
-  0%, 100% { box-shadow: 0 0 14px rgba(251, 191, 36, 0.55), inset 0 0 12px rgba(251, 191, 36, 0.22); }
-  50% { border-color: #fde68a; box-shadow: 0 0 32px rgba(251, 191, 36, 1), 0 0 12px rgba(254, 240, 138, 0.9), inset 0 0 22px rgba(251, 191, 36, 0.42); }
+@keyframes gwentBorderCometRun {
+  0% { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: -100; }
+}
+
+.gwent-border-runner-svg {
+  position: absolute;
+  inset: -1px;
+  width: calc(100% + 2px);
+  height: calc(100% + 2px);
+  pointer-events: none;
+  overflow: visible;
+  z-index: 18;
+}
+
+.gwent-border-runner-track {
+  fill: none;
+  stroke-linecap: round;
+}
+
+.gwent-border-runner-glow,
+.gwent-border-runner-core {
+  fill: none;
+  stroke-linecap: round;
+  stroke-dasharray: 22 78;
+  animation: gwentBorderCometRun 6.0s linear infinite;
 }
 
 .gwent-turn-checklist {
@@ -12078,24 +12099,14 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   background: linear-gradient(135deg, #b45309, #eab308);
   border-color: #fef08a;
   color: #fffbeb;
-  animation: phaseGoldPulse 1.25s ease-in-out infinite;
-}
-
-@keyframes phaseGoldPulse {
-  0%, 100% { box-shadow: 0 0 8px rgba(251, 191, 36, 0.7); transform: scale(1); }
-  50% { box-shadow: 0 0 20px rgba(253, 224, 71, 1); transform: scale(1.05); }
+  box-shadow: 0 2px 10px rgba(251, 191, 36, 0.55);
 }
 
 .gwent-phase-pill.phase-attack-ready {
   background: linear-gradient(135deg, #991b1b, #ef4444);
   border-color: #fca5a5;
   color: #fef2f2;
-  animation: phaseRedPulse 1.25s ease-in-out infinite;
-}
-
-@keyframes phaseRedPulse {
-  0%, 100% { box-shadow: 0 0 8px rgba(239, 68, 68, 0.7); }
-  50% { box-shadow: 0 0 18px rgba(248, 113, 113, 1); }
+  box-shadow: 0 2px 10px rgba(239, 68, 68, 0.55);
 }
 
 .gwent-phase-pill.phase-done {
@@ -12190,7 +12201,7 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   border-bottom: 2px solid #f59e0b;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.85), 0 0 24px rgba(245, 158, 11, 0.35);
   backdrop-filter: blur(4px);
-  animation: gwentTurnBannerPop 1.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation: gwentTurnBannerPop 2.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 .gwent-turn-switch-banner.to-team1 {
@@ -12224,9 +12235,9 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
 
 @keyframes gwentTurnBannerPop {
   0% { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
-  14% { opacity: 1; transform: translate(-50%, -50%) scale(1.02); }
-  22% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-  80% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  10% { opacity: 1; transform: translate(-50%, -50%) scale(1.02); }
+  16% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  85% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
   100% { opacity: 0; transform: translate(-50%, -54%) scale(0.97); }
 }
 
@@ -13456,14 +13467,9 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
 }
 
 .gwent-side.active-turn-side.has-board-actions {
-  border: 2px solid #ef4444;
-  background: rgba(239, 68, 68, 0.08);
-  animation: boardSideRedPulse 1.3s ease-in-out infinite;
-}
-
-@keyframes boardSideRedPulse {
-  0%, 100% { border-color: rgba(239, 68, 68, 0.85); box-shadow: 0 0 14px rgba(239, 68, 68, 0.55), inset 0 0 12px rgba(239, 68, 68, 0.18); }
-  50% { border-color: #fca5a5; box-shadow: 0 0 30px rgba(239, 68, 68, 1), 0 0 12px rgba(248, 113, 113, 0.9), inset 0 0 22px rgba(239, 68, 68, 0.34); }
+  border-color: rgba(239, 68, 68, 0.38);
+  background: rgba(239, 68, 68, 0.06);
+  box-shadow: 0 0 16px rgba(239, 68, 68, 0.16), inset 0 0 12px rgba(239, 68, 68, 0.08);
 }
 
 
