@@ -235,6 +235,7 @@
   }
   preloadCharacterSheets();
 
+  const CUSTOM_SPRITE_VER = '2';
   const customSpriteBank = new Map();
   function getCustomSpriteImage(id) {
     if (!id) return null;
@@ -249,7 +250,7 @@
       img.onerror = () => {
         entry.failed = true;
       };
-      img.src = `Sprites/Characters/${id}.png`;
+      img.src = `Sprites/Characters/${id}.png?v=${CUSTOM_SPRITE_VER}`;
       customSpriteBank.set(id, entry);
     }
     return (entry.loaded && entry.img.naturalWidth > 0) ? entry.img : null;
