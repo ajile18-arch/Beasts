@@ -96,6 +96,87 @@
     }
   }
 
+  /** Shared AI score estimator for regular and animated Gooba cards. */
+  function estimateGoobaAiValue(ctx) {
+    const { game, team } = ctx;
+    const player = game.state?.players?.[team];
+    let est = 5 + 1; // 5 power + 2 armor value
+    const hasGoblinInHand = (player?.hand || []).some(c => {
+      const def = CARDS[c.id];
+      const role = c.role || def?.role;
+      const stars = Number(c.stars ?? def?.stars ?? 0);
+      return role === 'Goblin Army' && (stars === 1 || stars === 2);
+    });
+    if (hasGoblinInHand) est += 4;
+    return est;
+  }
+
+  /** Shared Blood Thrall onPlay handler for regular and animated Lothar cards. */
+  function lotharOnPlay(ctx) {
+    const { game, team, oppTeam, card, logType } = ctx;
+    const myPlayer = game.state?.players?.[team];
+    const oppPlayer = game.state?.players?.[oppTeam];
+    if (!myPlayer || !oppPlayer) return;
+    const eligible = [];
+    ['melee', 'ranged'].forEach(rk => {
+      (oppPlayer.rows[rk] || []).forEach(c => {
+        const def = CARDS[c.id];
+        const stars = Number(c.stars ?? def?.stars ?? 0);
+        if (stars === 1 || stars === 2) {
+          eligible.push({ card: c, rowKey: rk });
+        }
+      });
+    });
+    if (eligible.length === 0) {
+      game.log(`🧛 ${card.name}'s Blood Thrall found no 1★ or 2★ enemy creatures to turn.`, logType);
+      return;
+    }
+    const turnEnemyToAlly = (chosen) => {
+      if (!chosen || !chosen.card) return;
+      const rk = chosen.rowKey || 'melee';
+      const list = oppPlayer.rows[rk] || [];
+      const idx = list.findIndex(c => c.uid === chosen.card.uid);
+      if (idx === -1) return;
+      const [turned] = list.splice(idx, 1);
+      if (!turned._originalOwnerTeam) turned._originalOwnerTeam = oppTeam;
+      myPlayer.rows[rk].push(turned);
+      window.soundFX?.playPoison?.();
+      game.log(`🧛 ${card.name} turned ${turned.name} (${turned.power}) to your side for the rest of the round!`, logType);
+    };
+    if (game.isAiTeam ? game.isAiTeam(team) : (game.gameMode === 'ai' && team === 2)) {
+      eligible.sort((a, b) => (b.card.power || 0) - (a.card.power || 0));
+      turnEnemyToAlly(eligible[0]);
+    } else {
+      game.promptEnemyTargetChoice({
+        team,
+        logType,
+        sourceName: card.name,
+        title: '🧛 Blood Thrall — Turn an Enemy Creature',
+        subtitle: `Choose a 1★ or 2★ enemy creature for <strong>${card.name}</strong> to turn to your side for the rest of the round:`,
+        skipLog: `🧛 ${card.name} held Blood Thrall in reserve.`,
+        accentColor: '#f43f5e',
+        candidates: eligible,
+        onSelect: turnEnemyToAlly
+      });
+    }
+  }
+
+  /** Shared AI score estimator for regular and animated Lothar cards. */
+  function lotharAiScore(ctx) {
+    const { game, oppTeam } = ctx;
+    const oppRows = game.state?.players?.[oppTeam]?.rows;
+    let bestEnemy = 0;
+    if (oppRows) {
+      ['melee', 'ranged'].forEach(rk => {
+        (oppRows[rk] || []).forEach(c => {
+          const s = Number(c.stars ?? CARDS[c.id]?.stars ?? 0);
+          if (s === 1 || s === 2) bestEnemy = Math.max(bestEnemy, c.power || 0);
+        });
+      });
+    }
+    return 5 + 2 + bestEnemy * 2;
+  }
+
   // ---------------------------------------------------------------------------
   // Card Registry (New Mythos Card Set)
   // ---------------------------------------------------------------------------
@@ -364,6 +445,40 @@
       armor: 2,
       cardImg: 'Cards/Gooba_Goblin_King_Card.jpg',
       traditionalCardImg: 'Cards/Gooba_Goblin_King_Traditional.jpg',
+      abilityTitle: 'Royal Decree',
+      abilityDesc: 'When played, you may also play a 1- or 2-star Goblin Army card from your hand.',
+      passiveTitle: 'Goblin Sovereign',
+      passiveDesc: 'Commands the Goblin Army from the Ranged row.',
+      effects: [],
+      onPlay(ctx) {
+        playExtraGoblinArmyFromHand(ctx, {
+          sourceName: 'Gooba, Goblin King',
+          title: '👑 Royal Decree',
+          sound: 'howl',
+          maxStars: 2,
+          optional: true
+        });
+      },
+      estimateAiValue(rowKey, ctx) {
+        return estimateGoobaAiValue(ctx);
+      }
+    },
+
+    gooba_goblin_king_animated: {
+      id: 'gooba_goblin_king_animated',
+      name: 'Gooba, Goblin King (Animated)',
+      baseCardId: 'gooba_goblin_king',
+      isAnimatedSpecial: true,
+      role: 'Goblin Army',
+      element: 'earth',
+      stars: 5,
+      rarity: 'gold',
+      border: 'decorative-gold',
+      row: 'ranged',
+      basePower: 5,
+      armor: 2,
+      cardImg: 'Cards/Gooba_Goblin_King_Card.jpg',
+      traditionalCardImg: 'Cards/Gooba_Goblin_King_Traditional.jpg',
       animatedCardVideo: 'Cards_Animated/Gooba_Goblin_King_Full_Art_Special.mp4',
       animatedTraditionalVideo: 'Cards_Animated/Gooba_Goblin_King_Traditional_Special.mp4',
       abilityTitle: 'Royal Decree',
@@ -381,17 +496,7 @@
         });
       },
       estimateAiValue(rowKey, ctx) {
-        const { game, team } = ctx;
-        const player = game.state?.players?.[team];
-        let est = 5 + 1; // 5 power + 2 armor value
-        const hasGoblinInHand = (player?.hand || []).some(c => {
-          const def = CARDS[c.id];
-          const role = c.role || def?.role;
-          const stars = Number(c.stars ?? def?.stars ?? 0);
-          return role === 'Goblin Army' && (stars === 1 || stars === 2);
-        });
-        if (hasGoblinInHand) est += 4;
-        return est;
+        return estimateGoobaAiValue(ctx);
       }
     },
 
@@ -678,6 +783,31 @@
       armor: 2,
       cardImg: 'Cards/Lothar_Vampire_Prince_Card.jpg',
       traditionalCardImg: 'Cards/Lothar_Vampire_Prince_Traditional.jpg',
+      abilityTitle: 'Blood Thrall',
+      abilityDesc: 'When played, turns a 1★ or 2★ enemy creature to your side of the board for the rest of the round.',
+      passiveTitle: 'Deck Limit: 1',
+      passiveDesc: 'Limited to 1 copy per playing deck.',
+      effects: [],
+      onPlay: lotharOnPlay,
+      aiScore: lotharAiScore
+    },
+
+    lothar_vampire_prince_animated: {
+      id: 'lothar_vampire_prince_animated',
+      name: 'Lothar, Vampire Prince (Animated)',
+      baseCardId: 'lothar_vampire_prince',
+      isAnimatedSpecial: true,
+      role: 'Vampire',
+      element: 'poison',
+      stars: 5,
+      rarity: 'gold',
+      border: 'decorative-gold',
+      maxDeckCopies: 1,
+      row: 'melee',
+      basePower: 5,
+      armor: 2,
+      cardImg: 'Cards/Lothar_Vampire_Prince_Card.jpg',
+      traditionalCardImg: 'Cards/Lothar_Vampire_Prince_Traditional.jpg',
       animatedCardVideo: 'Cards_Animated/Lothar_Vampire_Prince_Full_Art_Special.mp4',
       animatedTraditionalVideo: 'Cards_Animated/Lothar_Vampire_Prince_Traditional_Special.mp4',
       abilityTitle: 'Blood Thrall',
@@ -685,68 +815,8 @@
       passiveTitle: 'Deck Limit: 1',
       passiveDesc: 'Limited to 1 copy per playing deck.',
       effects: [],
-      onPlay(ctx) {
-        const { game, team, oppTeam, card, logType } = ctx;
-        const myPlayer = game.state?.players?.[team];
-        const oppPlayer = game.state?.players?.[oppTeam];
-        if (!myPlayer || !oppPlayer) return;
-        const eligible = [];
-        ['melee', 'ranged'].forEach(rk => {
-          (oppPlayer.rows[rk] || []).forEach(c => {
-            const def = CARDS[c.id];
-            const stars = Number(c.stars ?? def?.stars ?? 0);
-            if (stars === 1 || stars === 2) {
-              eligible.push({ card: c, rowKey: rk });
-            }
-          });
-        });
-        if (eligible.length === 0) {
-          game.log(`🧛 ${card.name}'s Blood Thrall found no 1★ or 2★ enemy creatures to turn.`, logType);
-          return;
-        }
-        const turnEnemyToAlly = (chosen) => {
-          if (!chosen || !chosen.card) return;
-          const rk = chosen.rowKey || 'melee';
-          const list = oppPlayer.rows[rk] || [];
-          const idx = list.findIndex(c => c.uid === chosen.card.uid);
-          if (idx === -1) return;
-          const [turned] = list.splice(idx, 1);
-          if (!turned._originalOwnerTeam) turned._originalOwnerTeam = oppTeam;
-          myPlayer.rows[rk].push(turned);
-          window.soundFX?.playPoison?.();
-          game.log(`🧛 ${card.name} turned ${turned.name} (${turned.power}) to your side for the rest of the round!`, logType);
-        };
-        if (game.isAiTeam ? game.isAiTeam(team) : (game.gameMode === 'ai' && team === 2)) {
-          eligible.sort((a, b) => (b.card.power || 0) - (a.card.power || 0));
-          turnEnemyToAlly(eligible[0]);
-        } else {
-          game.promptEnemyTargetChoice({
-            team,
-            logType,
-            sourceName: card.name,
-            title: '🧛 Blood Thrall — Turn an Enemy Creature',
-            subtitle: `Choose a 1★ or 2★ enemy creature for <strong>${card.name}</strong> to turn to your side for the rest of the round:`,
-            skipLog: `🧛 ${card.name} held Blood Thrall in reserve.`,
-            accentColor: '#f43f5e',
-            candidates: eligible,
-            onSelect: turnEnemyToAlly
-          });
-        }
-      },
-      aiScore(ctx) {
-        const { game, oppTeam } = ctx;
-        const oppRows = game.state?.players?.[oppTeam]?.rows;
-        let bestEnemy = 0;
-        if (oppRows) {
-          ['melee', 'ranged'].forEach(rk => {
-            (oppRows[rk] || []).forEach(c => {
-              const s = Number(c.stars ?? CARDS[c.id]?.stars ?? 0);
-              if (s === 1 || s === 2) bestEnemy = Math.max(bestEnemy, c.power || 0);
-            });
-          });
-        }
-        return 5 + 2 + bestEnemy * 2;
-      }
+      onPlay: lotharOnPlay,
+      aiScore: lotharAiScore
     },
 
     oscar_orc_giant: {
@@ -1462,6 +1532,14 @@
       if (!def) return 3;
       const starLimit = (Number(def.stars) || 1) >= 4 ? 1 : 3;
       return typeof def.maxDeckCopies === 'number' ? Math.min(def.maxDeckCopies, starLimit) : starLimit;
+    },
+    getCanonicalCardId(cardOrId) {
+      const def = typeof cardOrId === 'string' ? CARDS[cardOrId] : cardOrId;
+      return def?.baseCardId || def?.id || (typeof cardOrId === 'string' ? cardOrId : '');
+    },
+    getAnimatedVariantId(baseId) {
+      const match = Object.values(CARDS).find(c => c && c.isAnimatedSpecial && c.baseCardId === baseId);
+      return match?.id || null;
     },
     executeEffects,
     estimateCardValue,

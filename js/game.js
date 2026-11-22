@@ -445,11 +445,12 @@
         ? customPlayerTeam.filter(id => GWENT_CARDS[id])
         : Array.from(new Set([...invCards, ...binderCards])).slice(0, 3);
 
-      const p2Guaranteed = (customOpponentTeam && customOpponentTeam.length)
+      const validCustomOpponent = (customOpponentTeam && customOpponentTeam.length)
         ? customOpponentTeam.filter(id => GWENT_CARDS[id])
         : [];
-      const p2CustomDeck = (customOpponentTeam && customOpponentTeam.length)
-        ? customOpponentTeam.filter(id => GWENT_CARDS[id])
+      const p2Guaranteed = validCustomOpponent;
+      const p2CustomDeck = validCustomOpponent.length > 0
+        ? validCustomOpponent
         : this.getNpcSetDeck(challenger?.id);
 
       this.startNewGwentMatch(p1Guaranteed, p2Guaranteed, p2CustomDeck);
@@ -505,29 +506,29 @@
     // Deck & Match Initialization
     // -------------------------------------------------------------------------
     // -------------------------------------------------------------------------
-    // NPC Set Decks (18–24 cards, <= 40 stars, high-star signature + same class)
+    // NPC Set Decks (18–24 cards, <= 40 stars, 1 large 4★–5★ card + same class)
     // -------------------------------------------------------------------------
     getNpcDeckArchetypes() {
       return {
-        berto:        { signature: 'krythos_the_basilisk', role: 'Lizard',      targetSize: 19, filler: ['vampire_thrall', 'vampire_bat', 'goblin_soldier', 'goblin_archer', 'werewolf_pup'] },
-        maya:         { signature: 'manson_wolf_father',   role: 'Wolf Pack',   targetSize: 19, filler: ['gooba_goblin_king', 'goblin_soldier', 'goblin_archer', 'merfolk', 'rust_bucket'] },
-        nova:         { signature: 'mothman',              role: 'Monster',     targetSize: 19, filler: ['vampire_thrall', 'vampire_bat', 'merfolk', 'goblin_archer', 'werewolf_pup'] },
-        evelyn:       { signature: 'sea_dragon',           role: 'Water Tribe', targetSize: 20, filler: ['frost_skink', 'gooba_goblin_king', 'goblin_soldier', 'goblin_archer', 'werewolf_pup', 'rust_bucket'] },
-        jasper:       { signature: 'pyromanda',            role: 'Lizard',      targetSize: 19, filler: ['jersey_devil', 'goblin_soldier', 'goblin_archer', 'werewolf_pup', 'merfolk'] },
-        pluto:        { signature: 'scrap_heap',           role: 'Machine',     targetSize: 19, filler: ['orc_infantry', 'orc_slinger', 'goblin_soldier', 'goblin_archer', 'merfolk'] },
-        silas:        { signature: 'orc_infantry',         role: 'Orc Army',    targetSize: 19, filler: ['manson_wolf_father', 'scrap_heap', 'rust_bucket', 'goblin_soldier', 'goblin_archer'] },
-        best_friend:  { signature: 'gooba_goblin_king',    role: 'Goblin Army', targetSize: 19, filler: ['minerva_wolf_mother', 'werewolf_pup', 'rust_bucket', 'merfolk', 'vampire_bat'] },
-        friend:       { signature: 'gooba_goblin_king',    role: 'Goblin Army', targetSize: 19, filler: ['minerva_wolf_mother', 'werewolf_pup', 'rust_bucket', 'merfolk', 'vampire_bat'] },
-        friend_duel:  { signature: 'gooba_goblin_king',    role: 'Goblin Army', targetSize: 19, filler: ['minerva_wolf_mother', 'werewolf_pup', 'rust_bucket', 'merfolk', 'vampire_bat'] },
-        rowan:        { signature: 'jersey_devil',         role: 'Monster',     targetSize: 19, filler: ['vampire_thrall', 'vampire_bat', 'rust_bucket', 'goblin_soldier', 'goblin_archer'] },
-        chloe:        { signature: 'minerva_wolf_mother',  role: 'Wolf Pack',   targetSize: 18, filler: ['sea_dragon', 'merfolk', 'goblin_soldier', 'goblin_archer', 'frost_skink'] },
-        clara:        { signature: 'minerva_wolf_mother',  role: 'Wolf Pack',   targetSize: 18, filler: ['gooba_goblin_king', 'goblin_soldier', 'goblin_archer', 'merfolk', 'vampire_bat'] },
-        bram:         { signature: 'orc_slinger',          role: 'Orc Army',    targetSize: 19, filler: ['scrap_heap', 'rust_bucket', 'werewolf_pup', 'goblin_soldier', 'goblin_archer'] },
-        mayor_donald: { signature: 'krythos_the_basilisk', role: 'Lizard',      targetSize: 20, filler: ['orc_infantry', 'scrap_heap', 'merfolk', 'goblin_soldier', 'goblin_archer', 'rust_bucket'] },
-        mom:          { signature: 'sea_dragon',           role: 'Water Tribe', targetSize: 18, filler: ['minerva_wolf_mother', 'werewolf_pup', 'goblin_soldier', 'goblin_archer', 'rust_bucket'] },
-        shopkeeper:   { signature: 'mothman',              role: 'Monster',     targetSize: 19, filler: ['gooba_goblin_king', 'goblin_soldier', 'goblin_archer', 'merfolk', 'werewolf_pup'] },
-        chef_marco:   { signature: 'pyromanda',            role: 'Lizard',      targetSize: 18, filler: ['orc_infantry', 'merfolk', 'goblin_soldier', 'goblin_archer', 'rust_bucket'] },
-        shaun:        { signature: 'vampire_thrall',       role: 'Vampire',     targetSize: 18, filler: ['scrap_heap', 'rust_bucket', 'goblin_soldier', 'goblin_archer', 'werewolf_pup'] }
+        berto:        { signature: 'krythos_the_basilisk',  role: 'Lizard',      targetSize: 19, filler: ['vampire_thrall', 'vampire_bat', 'goblin_soldier', 'goblin_archer', 'werewolf_pup'] },
+        maya:         { signature: 'manson_wolf_father',    role: 'Wolf Pack',   targetSize: 19, filler: ['goblin_soldier', 'goblin_archer', 'merfolk', 'rust_bucket', 'vampire_bat'] },
+        nova:         { signature: 'zavela_the_witch',      role: 'Monster',     targetSize: 19, filler: ['the_nieces', 'vampire_thrall', 'vampire_bat', 'merfolk', 'goblin_archer', 'werewolf_pup'] },
+        evelyn:       { signature: 'gooba_goblin_king',     role: 'Water Tribe', targetSize: 20, filler: ['frost_skink', 'goblin_soldier', 'goblin_archer', 'werewolf_pup', 'rust_bucket'] },
+        jasper:       { signature: 'krythos_the_basilisk',  role: 'Lizard',      targetSize: 19, filler: ['jersey_devil', 'goblin_soldier', 'goblin_archer', 'werewolf_pup', 'merfolk'] },
+        pluto:        { signature: 'jallopy',               role: 'Machine',     targetSize: 19, filler: ['orc_infantry', 'orc_slinger', 'goblin_soldier', 'goblin_archer', 'merfolk'] },
+        silas:        { signature: 'oscar_orc_giant',       role: 'Orc Army',    targetSize: 19, filler: ['scrap_heap', 'rust_bucket', 'goblin_soldier', 'goblin_archer', 'werewolf_pup'] },
+        best_friend:  { signature: 'gooba_goblin_king',     role: 'Goblin Army', targetSize: 19, filler: ['minerva_wolf_mother', 'werewolf_pup', 'rust_bucket', 'merfolk', 'vampire_bat'] },
+        friend:       { signature: 'gooba_goblin_king',     role: 'Goblin Army', targetSize: 19, filler: ['minerva_wolf_mother', 'werewolf_pup', 'rust_bucket', 'merfolk', 'vampire_bat'] },
+        friend_duel:  { signature: 'gooba_goblin_king',     role: 'Goblin Army', targetSize: 19, filler: ['minerva_wolf_mother', 'werewolf_pup', 'rust_bucket', 'merfolk', 'vampire_bat'] },
+        rowan:        { signature: 'armantha_the_witch',    role: 'Monster',     targetSize: 19, filler: ['baby_lucia', 'vampire_thrall', 'vampire_bat', 'rust_bucket', 'goblin_soldier', 'goblin_archer'] },
+        chloe:        { signature: 'manson_wolf_father',    role: 'Wolf Pack',   targetSize: 18, filler: ['sea_dragon', 'merfolk', 'goblin_soldier', 'goblin_archer', 'frost_skink'] },
+        clara:        { signature: 'manson_wolf_father',    role: 'Wolf Pack',   targetSize: 18, filler: ['goblin_soldier', 'goblin_archer', 'merfolk', 'vampire_bat', 'rust_bucket'] },
+        bram:         { signature: 'oscar_orc_giant',       role: 'Orc Army',    targetSize: 19, filler: ['scrap_heap', 'rust_bucket', 'werewolf_pup', 'goblin_soldier', 'goblin_archer'] },
+        mayor_donald: { signature: 'krythos_the_basilisk',  role: 'Lizard',      targetSize: 20, filler: ['orc_infantry', 'scrap_heap', 'merfolk', 'goblin_soldier', 'goblin_archer', 'rust_bucket'] },
+        mom:          { signature: 'zavela_the_witch',      role: 'Water Tribe', targetSize: 18, filler: ['minerva_wolf_mother', 'werewolf_pup', 'goblin_soldier', 'goblin_archer', 'rust_bucket'] },
+        shopkeeper:   { signature: 'gooba_goblin_king',     role: 'Monster',     targetSize: 19, filler: ['goblin_soldier', 'goblin_archer', 'merfolk', 'werewolf_pup', 'vampire_bat'] },
+        chef_marco:   { signature: 'krythos_the_basilisk',  role: 'Lizard',      targetSize: 18, filler: ['orc_infantry', 'merfolk', 'goblin_soldier', 'goblin_archer', 'rust_bucket'] },
+        shaun:        { signature: 'lothar_vampire_prince', role: 'Vampire',     targetSize: 18, filler: ['scrap_heap', 'rust_bucket', 'goblin_soldier', 'goblin_archer', 'werewolf_pup'] }
       };
     }
 
@@ -538,10 +539,12 @@
 
       const maxStars = 40;
       const minCards = 18;
+      const maxLargeCards = 1;
       const targetSize = Math.max(minCards, Math.min(24, spec.targetSize || 18));
       const deck = [];
       const counts = {};
       let totalStars = 0;
+      let largeCount = 0;
 
       const copyLimit = (id) => {
         const def = GWENT_CARDS[id];
@@ -557,12 +560,15 @@
         const limit = maxCopies === null ? copyLimit(id) : Math.min(maxCopies, copyLimit(id));
         if ((counts[id] || 0) >= limit) return false;
         const stars = Math.max(1, Number(def.stars) || 1);
+        const isLarge = stars >= 4;
+        if (isLarge && largeCount >= maxLargeCards) return false;
         const remainingSlotsAfter = Math.max(0, minCards - (deck.length + 1));
         // Reserve at least 1 star per remaining required card so we always reach 18+ cards under 40 stars
         if (totalStars + stars + remainingSlotsAfter > maxStars) return false;
         deck.push(id);
         counts[id] = (counts[id] || 0) + 1;
         totalStars += stars;
+        if (isLarge) largeCount++;
         return true;
       };
 
@@ -571,7 +577,7 @@
 
       // 2. All cards of that same class (role), highest-star first
       const sameClass = Object.values(GWENT_CARDS)
-        .filter(c => c && !c.isToken && c.role === spec.role)
+        .filter(c => c && !c.isToken && !c.isAnimatedSpecial && c.role === spec.role)
         .sort((a, b) => (b.stars || 1) - (a.stars || 1));
       for (const c of sameClass) {
         while (deck.length < targetSize && tryAdd(c.id)) {}
@@ -583,7 +589,7 @@
       }
       if (deck.length < minCards) {
         const fallbacks = Object.values(GWENT_CARDS)
-          .filter(c => c && !c.isToken)
+          .filter(c => c && !c.isToken && !c.isAnimatedSpecial)
           .sort((a, b) => (a.stars || 1) - (b.stars || 1));
         for (const c of fallbacks) {
           while (deck.length < minCards && tryAdd(c.id)) {}
@@ -592,29 +598,38 @@
       return deck;
     }
 
-    buildDeck(guaranteedIds = [], customDeckIds = null, maxStars = 40) {
+    buildDeck(guaranteedIds = [], customDeckIds = null, maxStars = 40, maxLargeCards = Infinity) {
       const minCards = 18;
       const maxCards = 24;
+      const getCanon = (id) => (CardReg.getCanonicalCardId ? CardReg.getCanonicalCardId(id) : id);
       const fillRandomToTarget = (baseIds) => {
         const result = [...baseIds];
         const counts = {};
         let totalStars = 0;
+        let largeCount = 0;
         result.forEach(id => {
-          counts[id] = (counts[id] || 0) + 1;
-          totalStars += Math.max(1, Number(GWENT_CARDS[id]?.stars) || 1);
+          const canonId = getCanon(id);
+          counts[canonId] = (counts[canonId] || 0) + 1;
+          const stars = Math.max(1, Number(GWENT_CARDS[id]?.stars) || 1);
+          totalStars += stars;
+          if (stars >= 4) largeCount++;
         });
-        const allIds = Object.keys(GWENT_CARDS).filter(id => !GWENT_CARDS[id]?.isToken);
+        const allIds = Object.keys(GWENT_CARDS).filter(id => !GWENT_CARDS[id]?.isToken && !GWENT_CARDS[id]?.isAnimatedSpecial);
         let guard = 0;
         while (result.length < minCards && allIds.length > 0 && guard < 600) {
           guard++;
           const pick = allIds[Math.floor(Math.random() * allIds.length)];
           const stars = Math.max(1, Number(GWENT_CARDS[pick]?.stars) || 1);
+          const isLarge = stars >= 4;
+          if (isLarge && largeCount >= maxLargeCards) continue;
           const remAfter = Math.max(0, minCards - (result.length + 1));
           const limit = CardReg.getMaxDeckCopies ? CardReg.getMaxDeckCopies(pick) : ((stars >= 4) ? 1 : (GWENT_CARDS[pick]?.maxDeckCopies ?? 3));
-          if ((counts[pick] || 0) < limit && (totalStars + stars + remAfter <= maxStars)) {
+          const canonPick = getCanon(pick);
+          if ((counts[canonPick] || 0) < limit && (totalStars + stars + remAfter <= maxStars)) {
             result.push(pick);
-            counts[pick] = (counts[pick] || 0) + 1;
+            counts[canonPick] = (counts[canonPick] || 0) + 1;
             totalStars += stars;
+            if (isLarge) largeCount++;
           }
         }
         return result;
@@ -623,16 +638,21 @@
       if (Array.isArray(customDeckIds) && customDeckIds.length > 0) {
         const customCounts = {};
         let totalStars = 0;
+        let largeCount = 0;
         let pool = [];
         customDeckIds.forEach(id => {
           if (!GWENT_CARDS[id] || pool.length >= maxCards) return;
           const stars = Math.max(1, Number(GWENT_CARDS[id]?.stars) || 1);
+          const isLarge = stars >= 4;
+          if (isLarge && largeCount >= maxLargeCards) return;
           const limit = CardReg.getMaxDeckCopies ? CardReg.getMaxDeckCopies(id) : ((stars >= 4) ? 1 : (GWENT_CARDS[id]?.maxDeckCopies ?? 3));
           const remAfter = Math.max(0, minCards - (pool.length + 1));
-          if ((customCounts[id] || 0) < limit && totalStars + stars + remAfter <= maxStars) {
+          const canonId = getCanon(id);
+          if ((customCounts[canonId] || 0) < limit && totalStars + stars + remAfter <= maxStars) {
             pool.push(id);
-            customCounts[id] = (customCounts[id] || 0) + 1;
+            customCounts[canonId] = (customCounts[canonId] || 0) + 1;
             totalStars += stars;
+            if (isLarge) largeCount++;
           }
         });
         if (pool.length < minCards) {
@@ -647,7 +667,14 @@
       }
 
       // When no 18-card deck is built yet, generate a fresh random 18-card deck under 40 stars
-      const uniqueGuaranteed = Array.from(new Set(guaranteedIds)).filter(id => GWENT_CARDS[id]);
+      let guaranteedLarge = 0;
+      const uniqueGuaranteed = Array.from(new Set(guaranteedIds)).filter(id => {
+        if (!GWENT_CARDS[id]) return false;
+        const isLarge = (Number(GWENT_CARDS[id]?.stars) || 1) >= 4;
+        if (isLarge && guaranteedLarge >= maxLargeCards) return false;
+        if (isLarge) guaranteedLarge++;
+        return true;
+      });
       let pool = fillRandomToTarget(uniqueGuaranteed);
       const rest = pool.slice(uniqueGuaranteed.length);
       for (let i = rest.length - 1; i > 0; i--) {
@@ -735,7 +762,7 @@
         : this.buildDeck(p1Guaranteed, effectivePlayerDeckIds);
       const p2Deck = isTutorial
         ? ['goblin_soldier', 'werewolf_pup', 'merfolk', 'rust_bucket', 'vampire_thrall', 'orc_slinger'].map((id, idx) => this.createCardInstance(id, `tut_p2d_${idx}`))
-        : this.buildDeck(p2Guaranteed, p2CustomDeck);
+        : this.buildDeck(p2Guaranteed, p2CustomDeck, 40, this.gameMode === 'ai' ? 1 : Infinity);
 
       const p1Hand = isTutorial
         ? ['goblin_soldier', 'goblin_archer', 'orc_infantry', 'rust_bucket', 'werewolf_pup', 'merfolk', 'vampire_bat'].map((id, idx) => this.createCardInstance(id, `tut_p1h_${idx}`))

@@ -6,6 +6,11 @@
   const simGame = new window.BeastsGame({ headless: true, gameMode: 'sim' });
 
   const NPC_LABELS = {
+    berto: 'Berto (Lizard)',
+    maya: 'Maya (Wolf Pack)',
+    nova: 'Nova (Monster)',
+    evelyn: 'Evelyn (Water Tribe)',
+    jasper: 'Jasper (Lizard)',
     pluto: 'Pluto (Machine)',
     silas: 'Silas (Orc Army)',
     best_friend: 'Best Friend (Goblin Army)',
@@ -22,7 +27,7 @@
 
   const ROLES = Array.from(new Set(Object.values(CARDS).filter(c => !c.isToken).map(c => c.role))).sort();
   const ELEMENTS = Array.from(new Set(Object.values(CARDS).filter(c => !c.isToken).map(c => c.element))).sort();
-  const CARD_LIST = Object.values(CARDS).filter(c => !c.isToken).sort((a, b) => a.stars - b.stars || a.name.localeCompare(b.name));
+  const CARD_LIST = Object.values(CARDS).filter(c => !c.isToken && !c.isAnimatedSpecial).sort((a, b) => a.stars - b.stars || a.name.localeCompare(b.name));
 
   let isRunning = false;
   let cancelRequested = false;

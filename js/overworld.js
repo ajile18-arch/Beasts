@@ -294,6 +294,13 @@
           extDoor: { x: 9.90, y: 27.45 },
           intEntry: { x: 7.90, y: 9.75 },
           spots: [{ x: 10.6, y: 6.4, dir: 'down' }, { x: 6.0, y: 8.2, dir: 'up' }]
+        },
+        barber_shop_interior: {
+          area: 'barber_shop_interior',
+          name: 'Oakhaven Barber Shop',
+          extDoor: { x: -21.70, y: 20.45 },
+          intEntry: { x: 7.90, y: 9.75 },
+          spots: [{ x: 9.2, y: 7.6, dir: 'down' }, { x: 5.5, y: 8.2, dir: 'up' }]
         }
       };
       this.AREA_PORTALS = {
@@ -309,7 +316,8 @@
         mayor_2f_interior: { extDoor: { x: -13.80, y: 9.25 }, intEntry: { x: 12.35, y: 5.55 }, intExit: { x: 12.35, y: 9.45 } },
         school_interior: { extDoor: { x: 23.65, y: 27.85 }, intEntry: { x: 3.15, y: 7.05 } },
         fire_station_interior: { extDoor: { x: 6.10, y: 27.45 }, intEntry: { x: 13.30, y: 9.75 } },
-        police_station_interior: { extDoor: { x: 9.90, y: 27.45 }, intEntry: { x: 7.90, y: 9.75 } }
+        police_station_interior: { extDoor: { x: 9.90, y: 27.45 }, intEntry: { x: 7.90, y: 9.75 } },
+        barber_shop_interior: { extDoor: { x: -21.70, y: 20.45 }, intEntry: { x: 7.90, y: 9.75 } }
       };
 
       // Scripted intro cutscene beats where the clock is frozen
@@ -350,6 +358,12 @@
       while (rawBinder.length < 36) rawBinder.push(null);
       this.binderSlots = this.wrapReactiveArray(rawBinder.map(s => s ? this.wrapReactiveItem(s) : null), 'binder');
       this.binderPage = 0;
+      this.deckPage = 0;
+      this.invPage = 0;
+      this.folioSection = 'binder';
+      this.folioLastUpper = 'binder';
+      this.binderStarFilter = 'all';
+      this.invCategoryFilter = 'all';
       this.consolidateBinderStacks();
       this.inspectingCard = null;
       this.inspectingSlotIndex = null;
@@ -446,6 +460,7 @@
       this.nearInteractable = null;
       this.activeDialogueNpc = null;
       this.currentShopTab = 'buy';
+      this.currentShopSellFilter = 'all';
 
       this.touchBeacon = null;
 
@@ -1221,7 +1236,7 @@
         'nova_interior', 'silas_interior', 'maya_interior', 'clara_interior',
         'bram_interior', 'mayor_interior', 'mayor_2f_interior', 'restaurant_interior',
         'corner_store_interior', 'fire_station_interior', 'police_station_interior',
-        'school_interior'
+        'barber_shop_interior', 'school_interior'
       ];
       const visitedBuildingsCount = buildingAreas.filter(a => qs.visitedAreas?.[a]).length;
       const patrolCount = Object.keys(qs.patrolNpcs || {}).length;
@@ -1348,7 +1363,7 @@
           name: 'Unopened Mythos Base Card Pack',
           qty: q.rewardBoosterPacks,
           icon: '🃏',
-          cardImg: 'Cards/Mythos_Card_Back.png',
+          cardImg: 'Cards/Mythos_Base_Pack.jpg',
           type: 'booster_pack',
           desc: `<b>Unopened Mythos Base Set Booster Pack (1st Edition)</b> — Reward from completing "${q.title}"!`
         });
@@ -3064,7 +3079,8 @@
       const cardDef = window.MythosGwentCards?.CARDS?.[cleanId] || cardOrBeastId;
       const stars = Math.max(1, Number(cardDef?.stars) || 1);
       const table = { 1: 1.00, 2: 1.50, 3: 2.25, 4: 3.50, 5: 4.50 };
-      return table[stars] ?? 4.50;
+      const baseVal = table[stars] ?? 4.50;
+      return cardDef?.isAnimatedSpecial ? baseVal * 2 : baseVal;
     }
 
     getSellListingWaitInfo(askingPrice, fairValue) {
@@ -4620,16 +4636,21 @@
         .map(c => {
           const armorTxt = c.armor > 0 ? ` • 🛡️${c.armor}` : '';
           const abilityTxt = c.abilityDesc ? `${c.abilityTitle}: ${c.abilityDesc}` : (c.passiveDesc || 'Mythos Unit Card');
+          const animPrefix = c.isAnimatedSpecial ? '✨ ANIMATED SPECIAL • ' : '';
           return {
             id: `card_${c.id}`,
             beastId: c.id,
+            baseCardId: c.baseCardId || null,
+            isAnimatedSpecial: Boolean(c.isAnimatedSpecial),
             name: c.name,
             shortName: c.name,
             element: c.role || c.element || 'Unit',
             stars: c.stars || 1,
-            badgeLabel: `${rowIcons[c.row] || '🃏'} ${c.role || 'Unit'} • ${c.basePower} PWR${armorTxt}`,
+            badgeLabel: `${animPrefix}${rowIcons[c.row] || '🃏'} ${c.role || 'Unit'} • ${c.basePower} PWR${armorTxt}`,
             cardImg: c.cardImg,
             traditionalCardImg: c.traditionalCardImg || null,
+            animatedCardVideo: c.animatedCardVideo || null,
+            animatedTraditionalVideo: c.animatedTraditionalVideo || null,
             desc: `<b>${c.name} (${c.role || 'Unit'} • ${c.basePower} Power${c.armor > 0 ? `, ${c.armor} Armor` : ''})</b> — ${abilityTxt}`
           };
         });
@@ -5044,14 +5065,20 @@
     toggleInventoryModal(forceOpen) {
       const binderModal = document.getElementById('binder-modal');
       const legacyInvModal = document.getElementById('inventory-modal');
+      legacyInvModal?.classList.add('hidden');
       if (forceOpen === false) {
-        legacyInvModal?.classList.add('hidden');
         binderModal?.classList.add('hidden');
         return;
       }
-      legacyInvModal?.classList.add('hidden');
-      const hasUnopenedPack = (this.inventory || []).some(i => i.type === 'booster_pack' && (i.qty || 0) > 0);
-      this.toggleBinderModal(forceOpen, hasUnopenedPack ? 'bag' : null);
+      if (forceOpen === undefined && binderModal && !binderModal.classList.contains('hidden')) {
+        if (this.folioSection === 'inventory') {
+          binderModal.classList.add('hidden');
+          return;
+        }
+        this.toggleBinderModal(true, 'inventory');
+        return;
+      }
+      this.toggleBinderModal(forceOpen, 'inventory');
     }
 
     /** Draw hand-crafted Craftsman & Corner Market style tabletop + satchel canvas background. */
@@ -5630,12 +5657,15 @@
         };
       }
       if (item.type === 'booster_pack') {
+        const isPremium = item.id === 'unopened_premium_pack' || Boolean(item.isPremiumPack);
         return {
           category: 'pack',
           kindAttr: 'pack',
-          tagLabel: 'Pack',
+          tagLabel: isPremium ? 'Premium' : 'Pack',
           elemAttr: '',
-          detailTags: ['📦 Booster Pack', '✨ 1st Edition']
+          detailTags: isPremium
+            ? ['💎 Premium Pack', '✨ 1st Edition', '★ Boosted 3★–5★']
+            : ['📦 Booster Pack', '✨ 1st Edition']
         };
       }
       if (item.type === 'mythos_card') {
@@ -5717,7 +5747,7 @@
             slot.innerHTML = `
               <span class="inv-slot-qty">x${item.qty}</span>
               <div class="inv-pack-art-thumb">
-                <img src="${item.cardImg || 'Cards/Mythos_Card_Back.png'}" alt="${displayName}">
+                <img src="${item.cardImg || 'Cards/Mythos_Base_Pack.jpg'}" alt="${displayName}">
               </div>
               <div class="inv-slot-name">${displayName}</div>
               ${kindPillHtml}
@@ -5852,7 +5882,7 @@
         if (selectedItem.type === 'booster_pack') {
           artEl.innerHTML = `
             <div class="inv-pack-art-thumb" style="width: 58px; height: 76px;">
-              <img src="${selectedItem.cardImg || 'Cards/Mythos_Card_Back.png'}" alt="${cleanSelectedName}">
+              <img src="${selectedItem.cardImg || 'Cards/Mythos_Base_Pack.jpg'}" alt="${cleanSelectedName}">
             </div>
           `;
           if (actionsEl) actionsEl.classList.remove('hidden');
@@ -6019,15 +6049,20 @@
       }
     }
 
-    buyBaseCardPack() {
+    _purchaseStorePack(kind = 'base') {
+      const isPremium = kind === 'premium';
       const activeEvent = this.getCurrentDayEvent();
       const isDiscountDay = activeEvent?.id === 'weekend_market';
-      const cost = isDiscountDay ? 8.00 : 10.00;
+      const cost = isPremium
+        ? (isDiscountDay ? 12.00 : 15.00)
+        : (isDiscountDay ? 8.00 : 10.00);
+      const statusElId = isPremium ? 'shop-premium-buy-status' : 'shop-buy-status';
+      const statusEl = document.getElementById(statusElId);
+
       if ((this.gold || 0) < cost) {
         if (window.sounds?.playClick) window.sounds.playClick();
-        const statusEl = document.getElementById('shop-buy-status');
         if (statusEl) {
-          statusEl.textContent = `⚠️ You don't have enough money! A Base Card Pack costs ${this.formatMoney(cost)}.`;
+          statusEl.textContent = `⚠️ You don't have enough money! A ${isPremium ? 'Premium' : 'Base'} Card Pack costs ${this.formatMoney(cost)}.`;
           statusEl.className = 'shop-buy-status error';
         }
         return false;
@@ -6042,35 +6077,57 @@
       this.gold = Math.round(((this.gold || 0) - cost) * 100) / 100;
       this.hasBoughtCardShopPacks = true;
 
-      // Add 1 Unopened Mythos Base Set Booster Pack to Inventory
-      this.addInventoryItem({
-        id: 'unopened_base_pack',
-        name: 'Unopened Mythos Base Card Pack',
-        qty: 1,
-        icon: '🃏',
-        cardImg: 'Cards/Mythos_Card_Back.png',
-        type: 'booster_pack',
-        desc: `<b>Unopened Mythos Base Set Booster Pack (1st Edition)</b> — A factory-sealed foil booster pack featuring <b>The Seal of Mythos</b> and <b>3 Mythos Game Cards</b> inside. Click <b>✨ Open Booster Pack</b> to break the seal! <i>(Purchased at Leo's Card Shop for ${this.formatMoney(cost)})</i>`
-      });
+      if (isPremium) {
+        this.addInventoryItem({
+          id: 'unopened_premium_pack',
+          name: '1st-Edition Mythos Premium Pack',
+          qty: 1,
+          icon: '💎',
+          cardImg: 'Cards/Mythos_Premium_Pack.jpg',
+          type: 'booster_pack',
+          isPremiumPack: true,
+          desc: `<b>1st-Edition Mythos Premium Pack</b> — A collector-grade Astral Ivory foil booster featuring <b>5 Mythos Game Cards</b> with heavily boosted <b>3★–5★ rarity weights</b>, at least 1 guaranteed <b>3★+</b> pull, and <b>2× Animated Special odds</b>! Click <b>✨ Open Booster Pack</b> to break the seal! <i>(Purchased at Leo's Card Shop for ${this.formatMoney(cost)})</i>`
+        });
+      } else {
+        this.addInventoryItem({
+          id: 'unopened_base_pack',
+          name: 'Unopened Mythos Base Card Pack',
+          qty: 1,
+          icon: '🃏',
+          cardImg: 'Cards/Mythos_Base_Pack.jpg',
+          type: 'booster_pack',
+          desc: `<b>Unopened Mythos Base Set Booster Pack (1st Edition)</b> — A factory-sealed foil booster pack featuring <b>The Seal of Mythos</b> and <b>5 Mythos Game Cards</b> inside. Click <b>✨ Open Booster Pack</b> to break the seal! <i>(Purchased at Leo's Card Shop for ${this.formatMoney(cost)})</i>`
+        });
+      }
 
       this.saveWorldData(this.draftAppearance);
       this.updateHUDSaveInfo();
-      this.changeRelationship('leo', 2, 'shop purchase');
+      this.changeRelationship('leo', isPremium ? 3 : 2, 'shop purchase');
       this.renderShopModal();
       this.renderInventoryModal();
+      this.renderBinderModal();
 
-      const statusEl = document.getElementById('shop-buy-status');
       if (statusEl) {
-        statusEl.textContent = `🎉 Purchased 1x 1st-Edition Mythos Base Card Pack for ${this.formatMoney(cost)}! Rip it open below or from your backpack.`;
+        statusEl.textContent = isPremium
+          ? `💎 Purchased 1x 1st-Edition Mythos Premium Pack for ${this.formatMoney(cost)}! Rip it open below or from your Inventory.`
+          : `🎉 Purchased 1x 1st-Edition Mythos Base Card Pack for ${this.formatMoney(cost)}! Rip it open below or from your backpack.`;
         statusEl.className = 'shop-buy-status success';
       }
 
       const footerMsg = document.getElementById('shop-footer-msg');
       if (footerMsg) {
-        footerMsg.innerHTML = `🛒 Purchased 1x Base Card Pack for ${this.formatMoney(cost)}! Remaining Wallet: <b>${this.formatMoney(this.gold)}</b>`;
+        footerMsg.innerHTML = `🛒 Purchased 1x ${isPremium ? '1st-Edition Premium Pack' : 'Base Card Pack'} for ${this.formatMoney(cost)}! Remaining Wallet: <b>${this.formatMoney(this.gold)}</b>`;
         footerMsg.className = 'shop-footer-hint highlight';
       }
       return true;
+    }
+
+    buyBaseCardPack() {
+      return this._purchaseStorePack('base');
+    }
+
+    buyPremiumCardPack() {
+      return this._purchaseStorePack('premium');
     }
 
     buyBase2v2Map() {
@@ -6191,13 +6248,749 @@
       }
     }
 
+    // -------------------------------------------------------------------------
+    // Refillable Class Booster Packs (Buy Empty -> Fill with Class -> Resell)
+    // -------------------------------------------------------------------------
+    getRefillablePackCatalog() {
+      return [
+        { role: 'Goblin Army', slug: 'goblin_army', icon: '🧌', cardImg: 'Cards/Gooba_Goblin_King_Card.jpg', packImg: 'Cards/ClassPacks/goblin_army.jpg', tagline: 'Goblin muster swarms', buyPrice: 1.00 },
+        { role: 'Lizard',      slug: 'lizard',      icon: '🦎', cardImg: 'Cards/Krythos_the_Basilisk_Card.jpg', packImg: 'Cards/ClassPacks/lizard.jpg', tagline: 'Flame, frost & venom', buyPrice: 1.00 },
+        { role: 'Machine',     slug: 'machine',     icon: '⚙️', cardImg: 'Cards/Jallopy_Card.jpg', packImg: 'Cards/ClassPacks/machine.jpg', tagline: 'Armored contraptions', buyPrice: 1.00 },
+        { role: 'Monster',     slug: 'monster',     icon: '🦇', cardImg: 'Cards/Mothman_Card.jpg', packImg: 'Cards/ClassPacks/monster.jpg', tagline: 'Cryptids & horrors', buyPrice: 1.00 },
+        { role: 'Orc Army',    slug: 'orc_army',    icon: '🪓', cardImg: 'Cards/Oscar_Orc_Giant_Card.jpg', packImg: 'Cards/ClassPacks/orc_army.jpg', tagline: 'Shield-wall giants', buyPrice: 1.00 },
+        { role: 'Vampire',     slug: 'vampire',     icon: '🧛', cardImg: 'Cards/Lothar_Vampire_Prince_Card.jpg', packImg: 'Cards/ClassPacks/vampire.jpg', tagline: 'Crimson blood thralls', buyPrice: 1.00 },
+        { role: 'Water Tribe', slug: 'water_tribe', icon: '🌊', cardImg: 'Cards/Sea_Dragon_Card.jpg', packImg: 'Cards/ClassPacks/water_tribe.jpg', tagline: 'Tidal deep-sea drakes', buyPrice: 1.00 },
+        { role: 'Witch',       slug: 'witch',       icon: '🔮', cardImg: 'Cards/Zavela_the_Witch_Card.jpg', packImg: 'Cards/ClassPacks/witch.jpg', tagline: 'Arcane hex weavers', buyPrice: 1.00 },
+        { role: 'Wolf Pack',   slug: 'wolf_pack',   icon: '🐺', cardImg: 'Cards/Manson_Wolf_Father_Card.jpg', packImg: 'Cards/ClassPacks/wolf_pack.jpg', tagline: 'Moonlit howling pack', buyPrice: 1.00 }
+      ];
+    }
+
+    getRefillableCardUnitValue(def) {
+      const starValues = { 1: 0.35, 2: 0.65, 3: 1.25, 4: 2.25, 5: 3.50 };
+      const stars = Math.max(1, Math.min(5, Math.round(Number(def?.stars) || 1)));
+      let val = starValues[stars] ?? 0.35;
+      if (def?.isAnimatedSpecial) val += 3.00;
+      return Math.round(val * 100) / 100;
+    }
+
+    getRefillablePackSellPrice(pack) {
+      const cards = Array.isArray(pack?.cards) ? pack.cards : [];
+      const cap = pack?.capacity || 5;
+      const isFull = cards.length >= cap;
+      const isSealed = Boolean(pack?.sealed) && isFull;
+      if (cards.length === 0) {
+        return {
+          baseSum: 0,
+          varietyBonus: 0,
+          fullBonusPct: 0,
+          isFull: false,
+          isSealed: false,
+          unsealedTotal: 0,
+          sealedTotal: 0,
+          total: 0
+        };
+      }
+      const reg = window.MythosGwentCards?.CARDS || {};
+      let baseSum = 0;
+      const distinct = new Set();
+      cards.forEach(cid => {
+        baseSum += this.getRefillableCardUnitValue(reg[cid]);
+        distinct.add(cid);
+      });
+      const varietyBonus = distinct.size >= 3 ? 0.50 : 0;
+      const fullBonusPct = isSealed ? 25 : 0;
+      const unsealedTotal = Math.round((baseSum + varietyBonus) * 100) / 100;
+      const sealedTotal = Math.round((baseSum + varietyBonus) * 1.25 * 100) / 100;
+      const total = isSealed ? sealedTotal : unsealedTotal;
+      return {
+        baseSum: Math.round(baseSum * 100) / 100,
+        varietyBonus,
+        fullBonusPct,
+        isFull,
+        isSealed,
+        unsealedTotal,
+        sealedTotal,
+        total
+      };
+    }
+
+    renderClassPackThumbHtml(role, slug, cardImg, icon, countText = '') {
+      const packImg = `Cards/ClassPacks/${slug}.jpg`;
+      return `
+        <div class="class-pack-visual class-pack-art-only role-${slug}">
+          <img src="${packImg}" alt="${role} Refillable Pack" class="class-pack-art-img" onerror="this.onerror=null;this.src='${cardImg}'">
+          ${countText ? `<span class="class-pack-count-tag">${countText}</span>` : ''}
+        </div>
+      `;
+    }
+
+    buyRefillableClassPack(roleOrSlug) {
+      const spec = this.getRefillablePackCatalog().find(
+        s => s.role === roleOrSlug || s.slug === roleOrSlug
+      );
+      if (!spec) return false;
+      const cost = spec.buyPrice || 1.00;
+      if ((this.gold || 0) < cost) {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        const statusEl = document.getElementById('shop-buy-status');
+        if (statusEl) {
+          statusEl.textContent = `⚠️ You need ${this.formatMoney(cost)} to buy a Refillable ${spec.role} Pack!`;
+          statusEl.className = 'shop-buy-status error';
+        }
+        return false;
+      }
+
+      if (window.sounds?.playVictory) window.sounds.playVictory();
+      else if (window.sounds?.playClick) window.sounds.playClick();
+
+      this.gold = Math.round(((this.gold || 0) - cost) * 100) / 100;
+      const packItem = {
+        id: `refill_pack_${spec.slug}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        name: `${spec.role} Refillable Pack`,
+        shortName: `${spec.role} Pack`,
+        qty: 1,
+        icon: spec.icon,
+        cardImg: spec.cardImg,
+        type: 'refillable_pack',
+        packRole: spec.role,
+        packSlug: spec.slug,
+        capacity: 5,
+        cards: [],
+        sealed: false,
+        desc: `<b>Refillable ${spec.role} Booster Pack</b> — Fill with up to 5 ${spec.role} cards, permanently seal for +25%, and resell to Leo!`
+      };
+      this.inventory.push(packItem);
+
+      this.saveWorldData(this.draftAppearance);
+      this.updateHUDSaveInfo();
+      this.changeRelationship('leo', 1, 'shop purchase');
+      this.renderShopModal();
+      this.renderBinderModal();
+
+      const statusEl = document.getElementById('shop-buy-status');
+      if (statusEl) {
+        statusEl.textContent = `🎉 Bought 1× ${spec.role} Refillable Pack for ${this.formatMoney(cost)}! Fill it in your Inventory & resell it to Leo.`;
+        statusEl.className = 'shop-buy-status success';
+      }
+      const footerMsg = document.getElementById('shop-footer-msg');
+      if (footerMsg) {
+        footerMsg.innerHTML = `🛒 Purchased <b>${spec.icon} ${spec.role} Refillable Pack</b> for ${this.formatMoney(cost)}! Remaining Wallet: <b>${this.formatMoney(this.gold)}</b>`;
+        footerMsg.className = 'shop-footer-hint highlight';
+      }
+      return packItem;
+    }
+
+    openRefillPackModal(packItemId) {
+      const pack = (this.inventory || []).find(i => i && i.id === packItemId && i.type === 'refillable_pack');
+      if (!pack) return false;
+      this.activeRefillPackId = packItemId;
+      this._sealPackConfirmId = null;
+      this.currentRefillSort = this.currentRefillSort || 'stars';
+      this.currentRefillTab = (Array.isArray(pack.cards) && pack.cards.length >= (pack.capacity || 5)) ? 'pack' : 'add';
+      this.renderRefillPackModal();
+      document.getElementById('refill-pack-modal')?.classList.remove('hidden');
+      if (window.sounds?.playClick) window.sounds.playClick();
+      return true;
+    }
+
+    closeRefillPackModal() {
+      document.getElementById('refill-pack-modal')?.classList.add('hidden');
+      this.activeRefillPackId = null;
+      this._sealPackConfirmId = null;
+    }
+
+    autoFillRefillPack(packItemId) {
+      const pack = (this.inventory || []).find(i => i && i.id === packItemId && i.type === 'refillable_pack');
+      const statusEl = document.getElementById('refill-pack-status');
+      const cap = pack?.capacity || 5;
+      if (!pack) return false;
+      if (pack.sealed) {
+        if (statusEl) statusEl.textContent = '🔒 This pack is permanently sealed!';
+        return false;
+      }
+      if (!Array.isArray(pack.cards)) pack.cards = [];
+      if (pack.cards.length >= cap) {
+        if (statusEl) statusEl.textContent = `📦 Pack is already full (${cap}/${cap})! Click PERMANENTLY SEAL below.`;
+        return false;
+      }
+      if (this.getTotalOwnedCardCount() <= 18) {
+        if (statusEl) statusEl.textContent = '🔒 Keep at least 18 total cards in your collection for a playable deck!';
+        return false;
+      }
+
+      const reg = window.MythosGwentCards?.CARDS || {};
+      const pool = this.getOwnedMythosCardPool();
+      let added = 0;
+
+      while (pack.cards.length < cap && this.getTotalOwnedCardCount() > 18) {
+        const candidates = Object.keys(pool)
+          .filter(cid => pool[cid] > 0 && reg[cid]?.role === pack.packRole)
+          .sort((a, b) => {
+            const aNew = pack.cards.includes(a) ? 0 : 1;
+            const bNew = pack.cards.includes(b) ? 0 : 1;
+            if (bNew !== aNew) return bNew - aNew;
+            const aSpare = pool[a] > 1 ? 1 : 0;
+            const bSpare = pool[b] > 1 ? 1 : 0;
+            if (bSpare !== aSpare) return bSpare - aSpare;
+            return this.getRefillableCardUnitValue(reg[b]) - this.getRefillableCardUnitValue(reg[a]);
+          });
+        if (candidates.length === 0) break;
+        const pick = candidates[0];
+        if (!this.consumeCardForPlayingDeck(pick, 'any')) break;
+        pack.cards.push(pick);
+        pool[pick] -= 1;
+        added += 1;
+      }
+
+      if (added === 0) {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        if (statusEl) statusEl.textContent = `⚠️ No available spare ${pack.packRole} cards left to auto-fill!`;
+        return false;
+      }
+
+      this._sealPackConfirmId = null;
+      if (pack.cards.length >= cap) this.currentRefillTab = 'pack';
+      if (window.sounds?.playVictory) window.sounds.playVictory();
+      else if (window.sounds?.playClick) window.sounds.playClick();
+
+      this.saveWorldData(this.draftAppearance);
+      this.updateHUDSaveInfo();
+      this.renderRefillPackModal();
+      this.renderBinderModal();
+      this.renderShopModal();
+
+      const pricing = this.getRefillablePackSellPrice(pack);
+      if (statusEl) {
+        statusEl.textContent = pricing.isFull
+          ? `⚡ Auto-filled ${added} card(s) to ${cap}/${cap}! Click 🔒 PERMANENTLY SEAL PACK to unlock ${this.formatMoney(pricing.sealedTotal)}.`
+          : `⚡ Auto-filled ${added} card(s) (${pack.cards.length}/${cap}) — Est. Sell: ${this.formatMoney(pricing.total)}`;
+      }
+      return added;
+    }
+
+    renderRefillPackModal() {
+      const pack = (this.inventory || []).find(i => i && i.id === this.activeRefillPackId && i.type === 'refillable_pack');
+      const modal = document.getElementById('refill-pack-modal');
+      if (!pack || !modal) {
+        modal?.classList.add('hidden');
+        return;
+      }
+      if (!Array.isArray(pack.cards)) pack.cards = [];
+      const cap = pack.capacity || 5;
+      const isFull = pack.cards.length >= cap;
+      const isSealed = Boolean(pack.sealed) && isFull;
+      const pricing = this.getRefillablePackSellPrice(pack);
+      const reg = window.MythosGwentCards?.CARDS || {};
+
+      const dialog = document.getElementById('refill-pack-dialog');
+      if (dialog) {
+        dialog.className = `refill-pack-dialog refill-dual-book-dialog role-${pack.packSlug || 'goblin_army'}${isSealed ? ' is-sealed' : ''}`;
+      }
+
+      // Sync mobile/narrow panes while desktop shows both twin book pages side by side
+      const showAddPane = (this.currentRefillTab || 'add') !== 'pack';
+      document.getElementById('refill-tab-add')?.classList.toggle('active', showAddPane);
+      document.getElementById('refill-tab-pack')?.classList.toggle('active', !showAddPane);
+      document.getElementById('refill-panel-add')?.classList.toggle('mobile-hidden', !showAddPane);
+      document.getElementById('refill-panel-pack')?.classList.toggle('mobile-hidden', showAddPane);
+
+      const pickerLabelEl = document.getElementById('refill-pack-picker-label');
+      if (pickerLabelEl) {
+        pickerLabelEl.textContent = `ADD ${pack.packRole.toUpperCase()} CARDS`;
+      }
+
+      const titleEl = document.getElementById('refill-pack-title');
+      if (titleEl) {
+        titleEl.textContent = isSealed
+          ? `${pack.packRole.toUpperCase()} SEALED PACK • ${cap}/${cap}`
+          : `${pack.packRole.toUpperCase()} FOIL PACK • ${pack.cards.length}/${cap}`;
+      }
+
+      const countPill = document.getElementById('refill-pack-count-pill');
+      if (countPill) countPill.textContent = isSealed ? `🔒 ${cap}/${cap}` : `${pack.cards.length}/${cap}`;
+
+      const thumbEl = document.getElementById('refill-pack-thumb-mini');
+      if (thumbEl) {
+        thumbEl.innerHTML = this.renderClassPackThumbHtml(
+          pack.packRole,
+          pack.packSlug,
+          pack.cardImg,
+          pack.icon || '📦',
+          isSealed ? '🔒 SEALED' : ''
+        );
+      }
+
+      const breakdownEl = document.getElementById('refill-pack-breakdown');
+      if (breakdownEl) {
+        if (pack.cards.length === 0) {
+          breakdownEl.innerHTML = `
+            <div class="breakdown-heading">Resale Value Breakdown</div>
+            <div>Base Cards: $0.00 &nbsp;|&nbsp; 3+ Variety Bonus: +$0.50</div>
+            <div>Permanent Seal Bonus: +25% &nbsp;|&nbsp; <span class="breakdown-total">FILL 5 CARDS TO SEAL</span></div>
+          `;
+        } else {
+          const totalLabel = isSealed ? 'SEALED TOTAL' : (isFull ? 'SEALED TOTAL' : 'EST. IF SEALED');
+          const totalVal = isSealed ? pricing.total : pricing.sealedTotal;
+          breakdownEl.innerHTML = `
+            <div class="breakdown-heading">Resale Value Breakdown</div>
+            <div>Base Cards: ${this.formatMoney(pricing.baseSum)} &nbsp;|&nbsp; 3+ Variety Bonus: +${this.formatMoney(pricing.varietyBonus)}</div>
+            <div>Permanent Seal Bonus: +25% &nbsp;|&nbsp; <span class="breakdown-total">${totalLabel}: ${this.formatMoney(totalVal)}</span></div>
+          `;
+        }
+      }
+
+      const slotsRow = document.getElementById('refill-pack-slots-row');
+      if (slotsRow) {
+        slotsRow.innerHTML = '';
+        for (let idx = 0; idx < cap; idx++) {
+          const cid = pack.cards[idx];
+          const slotBtn = document.createElement('button');
+          slotBtn.type = 'button';
+          if (cid && reg[cid]) {
+            const def = reg[cid];
+            const img = this.getCardTraditionalImg(def);
+            slotBtn.className = 'refill-pack-slot filled';
+            if (isSealed) {
+              slotBtn.disabled = true;
+              slotBtn.title = `${def.name} (Permanently sealed inside pack)`;
+              slotBtn.innerHTML = `
+                <img src="${img}" alt="${def.name}">
+                <span class="refill-pack-slot-lock">🔒</span>
+              `;
+            } else {
+              slotBtn.title = `Click to remove ${def.name} back to Binder`;
+              slotBtn.innerHTML = `
+                <img src="${img}" alt="${def.name}">
+                <span class="refill-pack-slot-rm">✕</span>
+              `;
+              slotBtn.addEventListener('click', () => this.removeCardFromRefillPack(pack.id, idx));
+            }
+          } else {
+            slotBtn.className = 'refill-pack-slot';
+            slotBtn.disabled = true;
+            slotBtn.innerHTML = `<span>+</span>`;
+          }
+          slotsRow.appendChild(slotBtn);
+        }
+      }
+
+      const sortMode = this.currentRefillSort || 'stars';
+      const sortBtn = document.getElementById('btn-refill-pack-sort');
+      if (sortBtn) {
+        sortBtn.textContent = sortMode === 'qty' ? 'Sort: Own ×' : 'Sort ★';
+      }
+
+      const eligibleGrid = document.getElementById('refill-pack-eligible-grid');
+      const totalOwned = this.getTotalOwnedCardCount();
+      if (eligibleGrid) {
+        eligibleGrid.innerHTML = '';
+        if (isSealed) {
+          eligibleGrid.innerHTML = `
+            <div class="refill-pack-sealed-banner">
+              <b>🔒 Pack Permanently Sealed!</b><br>
+              All <b>${cap} ${pack.packRole}</b> cards are permanently locked inside.<br>
+              Sell this sealed pack at Leo's Trade Ledger for <b>${this.formatMoney(pricing.total)}</b> (includes <b>+25% Sealed Bonus</b>)!
+            </div>
+          `;
+        } else {
+          const ownedPool = this.getOwnedMythosCardPool();
+          const matchingIds = Object.keys(ownedPool)
+            .filter(cid => ownedPool[cid] > 0 && reg[cid]?.role === pack.packRole)
+            .sort((a, b) => {
+              if (sortMode === 'qty') {
+                const qDiff = (ownedPool[b] || 0) - (ownedPool[a] || 0);
+                if (qDiff !== 0) return qDiff;
+              }
+              const sDiff = (Number(reg[b]?.stars) || 1) - (Number(reg[a]?.stars) || 1);
+              if (sDiff !== 0) return sDiff;
+              return (reg[a]?.name || '').localeCompare(reg[b]?.name || '');
+            });
+
+          if (matchingIds.length === 0) {
+            eligibleGrid.innerHTML = `
+              <div class="shop-empty-sell">
+                <span class="shop-empty-icon">📜</span>
+                <p class="shop-empty-title">No Spare ${pack.packRole} Cards</p>
+                <p class="shop-empty-desc">Pull more Mythos packs at Leo's Counter to collect ${pack.packRole} creatures!</p>
+              </div>
+            `;
+          } else {
+            const canMoveCard = totalOwned > 18 && pack.cards.length < cap;
+            matchingIds.forEach(cid => {
+              const def = reg[cid];
+              const qty = ownedPool[cid] || 0;
+              const stars = Number(def?.stars) || 1;
+              const unitVal = this.getRefillableCardUnitValue(def);
+              const img = this.getCardTraditionalImg(def);
+
+              const row = document.createElement('div');
+              row.className = 'refill-card-row';
+              row.innerHTML = `
+                <div class="refill-card-row-left">
+                  <img src="${img}" alt="${def.name}" class="refill-card-row-thumb">
+                  <div class="refill-card-row-meta">
+                    <div class="refill-card-row-name" title="${def.name}">${def.name} (${stars}★)</div>
+                    <div class="refill-card-row-sub">Own ×${qty} &nbsp;•&nbsp; +${this.formatMoney(unitVal)} value</div>
+                  </div>
+                </div>
+                <button type="button" class="ui-btn refill-add-btn" ${canMoveCard ? '' : 'disabled'} title="${canMoveCard ? `Insert 1 ${def.name}` : (totalOwned <= 18 ? 'Keep at least 18 total cards' : 'Pack is full (5/5)')}">
+                  + ADD
+                </button>
+              `;
+              row.querySelector('.refill-add-btn')?.addEventListener('click', () => this.addCardToRefillPack(pack.id, cid));
+              eligibleGrid.appendChild(row);
+            });
+          }
+        }
+      }
+
+      const autoFillBtn = document.getElementById('btn-refill-pack-autofill');
+      if (autoFillBtn) {
+        autoFillBtn.disabled = isSealed || isFull || totalOwned <= 18;
+      }
+
+      const emptyBtn = document.getElementById('btn-refill-pack-empty');
+      if (emptyBtn) {
+        emptyBtn.disabled = isSealed || pack.cards.length === 0;
+        emptyBtn.classList.toggle('hidden', isSealed);
+      }
+
+      const sealBtn = document.getElementById('btn-refill-pack-seal');
+      if (sealBtn) {
+        sealBtn.classList.remove('hidden');
+        if (isSealed) {
+          sealBtn.disabled = true;
+          sealBtn.classList.remove('armed');
+          sealBtn.classList.add('sealed-done');
+          sealBtn.textContent = `🔒 PACK PERMANENTLY SEALED (+25% ACTIVE)`;
+        } else if (isFull) {
+          sealBtn.disabled = false;
+          sealBtn.classList.remove('sealed-done');
+          const isArmed = this._sealPackConfirmId === pack.id;
+          sealBtn.classList.toggle('armed', isArmed);
+          sealBtn.textContent = isArmed
+            ? `⚠️ CLICK AGAIN TO LOCK 5 CARDS FOREVER`
+            : `🔒 PERMANENTLY SEAL PACK (${this.formatMoney(pricing.sealedTotal)})`;
+        } else {
+          sealBtn.disabled = true;
+          sealBtn.classList.remove('armed', 'sealed-done');
+          sealBtn.textContent = `🔒 FILL ${cap - pack.cards.length} MORE TO SEAL (+25%)`;
+        }
+      }
+    }
+
+    addCardToRefillPack(packItemId, cardId) {
+      const pack = (this.inventory || []).find(i => i && i.id === packItemId && i.type === 'refillable_pack');
+      const def = window.MythosGwentCards?.CARDS?.[cardId];
+      const statusEl = document.getElementById('refill-pack-status');
+      if (!pack || !def) return { ok: false, message: 'Invalid pack or card.' };
+      if (pack.sealed) {
+        const msg = '🔒 This pack is permanently sealed and cannot be modified!';
+        if (statusEl) statusEl.textContent = msg;
+        return { ok: false, message: msg };
+      }
+      if (!Array.isArray(pack.cards)) pack.cards = [];
+      if (def.role !== pack.packRole) {
+        const msg = `⚠️ Only ${pack.packRole} cards fit in this pack!`;
+        if (statusEl) statusEl.textContent = msg;
+        return { ok: false, message: msg };
+      }
+      if (pack.cards.length >= (pack.capacity || 5)) {
+        const msg = `⚠️ Pack is already full (${pack.capacity || 5}/${pack.capacity || 5})!`;
+        if (statusEl) statusEl.textContent = msg;
+        return { ok: false, message: msg };
+      }
+      if (this.getTotalOwnedCardCount() <= 18) {
+        const msg = '🔒 Keep at least 18 cards in your collection for a playable deck!';
+        if (statusEl) statusEl.textContent = msg;
+        return { ok: false, message: msg };
+      }
+      if (!this.consumeCardForPlayingDeck(cardId, 'any')) {
+        const msg = `⚠️ No available copy of ${def.name} in your Binder or Inventory.`;
+        if (statusEl) statusEl.textContent = msg;
+        return { ok: false, message: msg };
+      }
+
+      pack.cards.push(cardId);
+      this._sealPackConfirmId = null;
+      if (window.sounds?.playClick) window.sounds.playClick();
+      this.saveWorldData(this.draftAppearance);
+      this.updateHUDSaveInfo();
+      this.renderRefillPackModal();
+      this.renderBinderModal();
+      this.renderShopModal();
+
+      const pricing = this.getRefillablePackSellPrice(pack);
+      if (statusEl) {
+        statusEl.textContent = pricing.isFull
+          ? `✅ Added ${def.name} (${pack.cards.length}/${pack.capacity || 5})! Permanently seal the pack below to earn +25% (${this.formatMoney(pricing.sealedTotal)}).`
+          : `✅ Added ${def.name} (${pack.cards.length}/${pack.capacity || 5}) — Est. Sell: ${this.formatMoney(pricing.total)}`;
+      }
+      return { ok: true, price: pricing.total };
+    }
+
+    removeCardFromRefillPack(packItemId, slotIndex) {
+      const pack = (this.inventory || []).find(i => i && i.id === packItemId && i.type === 'refillable_pack');
+      const statusEl = document.getElementById('refill-pack-status');
+      if (!pack || pack.sealed) {
+        if (pack?.sealed && statusEl) statusEl.textContent = '🔒 This pack is permanently sealed and cannot be modified!';
+        return false;
+      }
+      if (!Array.isArray(pack.cards) || slotIndex < 0 || slotIndex >= pack.cards.length) return false;
+      const [removedId] = pack.cards.splice(slotIndex, 1);
+      this._sealPackConfirmId = null;
+      this.returnCardFromPlayingDeckToCollection(removedId, 'binder');
+      if (window.sounds?.playClick) window.sounds.playClick();
+      this.saveWorldData(this.draftAppearance);
+      this.updateHUDSaveInfo();
+      this.renderRefillPackModal();
+      this.renderBinderModal();
+      this.renderShopModal();
+      const def = window.MythosGwentCards?.CARDS?.[removedId];
+      if (statusEl && def) {
+        statusEl.textContent = `📖 Returned ${def.name} to your Card Binder.`;
+      }
+      return true;
+    }
+
+    emptyRefillPack(packItemId) {
+      const pack = (this.inventory || []).find(i => i && i.id === packItemId && i.type === 'refillable_pack');
+      const statusEl = document.getElementById('refill-pack-status');
+      if (!pack || pack.sealed) {
+        if (pack?.sealed && statusEl) statusEl.textContent = '🔒 This pack is permanently sealed and cannot be modified!';
+        return false;
+      }
+      if (!Array.isArray(pack.cards) || pack.cards.length === 0) return false;
+      const removed = [...pack.cards];
+      pack.cards = [];
+      this._sealPackConfirmId = null;
+      removed.forEach(cid => this.returnCardFromPlayingDeckToCollection(cid, 'binder'));
+      if (window.sounds?.playClick) window.sounds.playClick();
+      this.saveWorldData(this.draftAppearance);
+      this.updateHUDSaveInfo();
+      this.renderRefillPackModal();
+      this.renderBinderModal();
+      this.renderShopModal();
+      if (statusEl) {
+        statusEl.textContent = `📤 Emptied ${removed.length} card(s) back to your Card Binder.`;
+      }
+      return true;
+    }
+
+    sealRefillablePack(packItemId) {
+      const pack = (this.inventory || []).find(i => i && i.id === packItemId && i.type === 'refillable_pack');
+      const statusEl = document.getElementById('refill-pack-status');
+      const cap = pack?.capacity || 5;
+      if (!pack) return false;
+      if (pack.sealed) {
+        if (statusEl) statusEl.textContent = '🔒 This pack is already permanently sealed!';
+        return false;
+      }
+      if (!Array.isArray(pack.cards) || pack.cards.length < cap) {
+        if (statusEl) statusEl.textContent = `⚠️ Fill all ${cap} slots (${pack.cards?.length || 0}/${cap}) before sealing!`;
+        return false;
+      }
+
+      pack.sealed = true;
+      this._sealPackConfirmId = null;
+      if (window.sounds?.playVictory) window.sounds.playVictory();
+      else if (window.sounds?.playClick) window.sounds.playClick();
+
+      const pricing = this.getRefillablePackSellPrice(pack);
+      this.saveWorldData(this.draftAppearance);
+      this.updateHUDSaveInfo();
+      this.renderRefillPackModal();
+      this.renderBinderModal();
+      this.renderShopModal();
+
+      if (statusEl) {
+        statusEl.textContent = `🔒 Permanently sealed! +25% bonus unlocked (${this.formatMoney(pricing.total)} at Leo's Shop).`;
+      }
+      return pricing.total;
+    }
+
+    sellRefillablePackToShop(packItemId) {
+      const idx = (this.inventory || []).findIndex(i => i && i.id === packItemId && i.type === 'refillable_pack');
+      if (idx === -1) return false;
+      const pack = this.inventory[idx];
+      const cap = pack.capacity || 5;
+      if (!Array.isArray(pack.cards) || pack.cards.length === 0) {
+        const footerMsg = document.getElementById('shop-footer-msg');
+        if (footerMsg) {
+          footerMsg.innerHTML = `⚠️ Fill your <b>${pack.packRole} Refillable Pack</b> with at least 1 card before selling it!`;
+          footerMsg.className = 'shop-footer-hint highlight';
+        }
+        return false;
+      }
+      if (pack.cards.length >= cap && !pack.sealed) {
+        const footerMsg = document.getElementById('shop-footer-msg');
+        if (footerMsg) {
+          footerMsg.innerHTML = `🔒 Full ${cap}/${cap} packs must be permanently sealed before selling to earn the +25% bonus! Click <b>🔒 SEAL</b> to inspect &amp; seal.`;
+          footerMsg.className = 'shop-footer-hint highlight';
+        }
+        if (window.sounds?.playClick) window.sounds.playClick();
+        return false;
+      }
+
+      const pricing = this.getRefillablePackSellPrice(pack);
+      const earned = pricing.total;
+      this.inventory.splice(idx, 1);
+      this.gold = Math.round(((this.gold || 0) + earned) * 100) / 100;
+
+      if (window.sounds?.playVictory) window.sounds.playVictory();
+      else if (window.sounds?.playClick) window.sounds.playClick();
+
+      this.saveWorldData(this.draftAppearance);
+      this.updateHUDSaveInfo();
+      this.changeRelationship('leo', 2, 'shop purchase');
+      this.renderShopModal();
+      this.renderBinderModal();
+
+      const footerMsg = document.getElementById('shop-footer-msg');
+      if (footerMsg) {
+        footerMsg.innerHTML = `✅ Sold <b>${pack.icon || '📦'} ${pack.sealed ? 'Sealed ' : ''}${pack.packRole} Pack (${pack.cards.length}/${cap})</b> to Leo for <b>+${this.formatMoney(earned)}</b>! Wallet: <b>${this.formatMoney(this.gold)}</b>`;
+        footerMsg.className = 'shop-footer-hint highlight';
+      }
+      return earned;
+    }
+
+    _computeShopPayoutQuote() {
+      const looseCards = (this.inventory || []).filter(i => i && i.type === 'mythos_card' && i.qty > 0);
+      const totalOwnedCards = this.getTotalOwnedCardCount();
+      let remainingSellable = Math.max(0, totalOwnedCards - 18);
+
+      const sortedLoose = [...looseCards].sort((a, b) => (Number(a.stars) || 1) - (Number(b.stars) || 1));
+      const eligibleLoosePicks = [];
+      let extrasTotal = 0;
+
+      sortedLoose.forEach(item => {
+        if (remainingSellable <= 0) return;
+        const takeQty = Math.min(item.qty || 0, remainingSellable);
+        if (takeQty <= 0) return;
+        const unitPrice = this.getCardSellPrice(item);
+        const subtotal = Math.round(unitPrice * takeQty * 100) / 100;
+        eligibleLoosePicks.push({ item, takeQty, subtotal });
+        extrasTotal += subtotal;
+        remainingSellable -= takeQty;
+      });
+
+      extrasTotal = Math.round(extrasTotal * 100) / 100;
+      const filledPacks = (this.inventory || []).filter(
+        i => i && i.type === 'refillable_pack' && Array.isArray(i.cards) && i.cards.length > 0
+      );
+      const sellablePacks = filledPacks.filter(
+        pack => pack.cards.length < (pack.capacity || 5) || Boolean(pack.sealed)
+      );
+      const packsTotal = sellablePacks.reduce((s, pack) => s + this.getRefillablePackSellPrice(pack).total, 0);
+      const cashOutTotal = Math.round((extrasTotal + packsTotal) * 100) / 100;
+
+      return {
+        looseCards,
+        totalOwnedCards,
+        maxSellable: Math.max(0, totalOwnedCards - 18),
+        eligibleLoosePicks,
+        extrasTotal,
+        filledPacks,
+        sellablePacks,
+        packsTotal: Math.round(packsTotal * 100) / 100,
+        cashOutTotal
+      };
+    }
+
+    _commitBulkSell(picks, packsToSell = []) {
+      let soldCardCount = 0;
+      let soldPackCount = 0;
+      let earned = 0;
+
+      picks.forEach(({ item, takeQty, subtotal }) => {
+        const idx = (this.inventory || []).indexOf(item);
+        if (idx < 0 || takeQty <= 0) return;
+        if (item.qty > takeQty) {
+          item.qty -= takeQty;
+        } else {
+          this.inventory.splice(idx, 1);
+        }
+        soldCardCount += takeQty;
+        earned += subtotal;
+      });
+
+      packsToSell.forEach(pack => {
+        const idx = (this.inventory || []).indexOf(pack);
+        if (idx < 0) return;
+        earned += this.getRefillablePackSellPrice(pack).total;
+        this.inventory.splice(idx, 1);
+        soldPackCount += 1;
+      });
+
+      earned = Math.round(earned * 100) / 100;
+      if (soldCardCount === 0 && soldPackCount === 0) return 0;
+
+      this.gold = Math.round(((this.gold || 0) + earned) * 100) / 100;
+      if (window.sounds?.playVictory) window.sounds.playVictory();
+      else if (window.sounds?.playClick) window.sounds.playClick();
+
+      this.saveWorldData(this.draftAppearance);
+      this.updateHUDSaveInfo();
+      this.changeRelationship('leo', soldPackCount > 0 ? 3 : 2, 'shop purchase');
+      this.renderShopModal();
+      this.renderInventoryModal();
+      this.renderBinderModal();
+      return { earned, soldCardCount, soldPackCount };
+    }
+
+    quickSellExtrasAtShop() {
+      const quote = this._computeShopPayoutQuote();
+      if (quote.eligibleLoosePicks.length === 0) {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        const footerMsg = document.getElementById('shop-footer-msg');
+        if (footerMsg) {
+          footerMsg.innerHTML = `⚠️ No eligible loose extras to sell right now (18-card minimum protected).`;
+          footerMsg.className = 'shop-footer-hint highlight';
+        }
+        return false;
+      }
+      const res = this._commitBulkSell(quote.eligibleLoosePicks, []);
+      const footerMsg = document.getElementById('shop-footer-msg');
+      if (footerMsg && res) {
+        footerMsg.innerHTML = `✅ Quick-sold <b>${res.soldCardCount} extra card(s)</b> for <b>+${this.formatMoney(res.earned)}</b>! Wallet: <b>${this.formatMoney(this.gold)}</b>`;
+        footerMsg.className = 'shop-footer-hint highlight';
+      }
+      return res?.earned || false;
+    }
+
+    cashOutShopLedger() {
+      const quote = this._computeShopPayoutQuote();
+      if (quote.cashOutTotal <= 0) {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        const footerMsg = document.getElementById('shop-footer-msg');
+        if (footerMsg) {
+          const hasUnsealedFull = quote.filledPacks.some(p => p.cards.length >= (p.capacity || 5) && !p.sealed);
+          footerMsg.innerHTML = hasUnsealedFull
+            ? `🔒 Permanently seal your 5/5 Class Pack(s) first (click <b>🔒 SEAL</b>) to unlock the +25% bonus and cash out!`
+            : `⚠️ Nothing ready to cash out — add loose extras or fill a Class Pack first!`;
+          footerMsg.className = 'shop-footer-hint highlight';
+        }
+        return false;
+      }
+      const res = this._commitBulkSell(quote.eligibleLoosePicks, quote.sellablePacks);
+      const footerMsg = document.getElementById('shop-footer-msg');
+      if (footerMsg && res) {
+        const parts = [];
+        if (res.soldCardCount > 0) parts.push(`${res.soldCardCount} card(s)`);
+        if (res.soldPackCount > 0) parts.push(`${res.soldPackCount} filled pack(s)`);
+        footerMsg.innerHTML = `✅ Cashed out <b>${parts.join(' + ')}</b> for <b>+${this.formatMoney(res.earned)}</b>! Wallet: <b>${this.formatMoney(this.gold)}</b>`;
+        footerMsg.className = 'shop-footer-hint highlight';
+      }
+      return res?.earned || false;
+    }
+
     renderShopModal() {
       const modal = document.getElementById('shop-modal');
       if (!modal) return;
 
       const walletEl = document.getElementById('shop-wallet-display');
       if (walletEl) {
-        walletEl.textContent = `💵 Wallet: ${this.formatMoney(this.gold || 0)}`;
+        walletEl.textContent = `💰 ${this.formatMoney(this.gold || 0)}`;
       }
 
       const buyTabBtn = document.getElementById('shop-tab-buy');
@@ -6205,73 +6998,201 @@
       const buyPanel = document.getElementById('shop-panel-buy');
       const sellPanel = document.getElementById('shop-panel-sell');
 
-      const isBuy = this.currentShopTab === 'buy';
+      const isBuy = this.currentShopTab !== 'sell';
       buyTabBtn?.classList.toggle('active', isBuy);
       sellTabBtn?.classList.toggle('active', !isBuy);
-      buyPanel?.classList.toggle('hidden', !isBuy);
-      sellPanel?.classList.toggle('hidden', isBuy);
+      // Both panes stay visible side-by-side on desktop; mobile/narrow screens toggle via .mobile-hidden
+      buyPanel?.classList.remove('hidden');
+      sellPanel?.classList.remove('hidden');
+      buyPanel?.classList.toggle('mobile-hidden', !isBuy);
+      sellPanel?.classList.toggle('mobile-hidden', isBuy);
 
-      // Buy Section - Booster Pack
+      // Buy Section - Booster Packs (Base Pack & 1st Edition Premium Pack)
       const buyBtn = document.getElementById('btn-shop-buy-pack');
       const ripNowBtn = document.getElementById('btn-shop-rip-now');
+      const basePriceTag = document.getElementById('shop-base-price-tag');
+      const premBuyBtn = document.getElementById('btn-shop-buy-premium-pack');
+      const premRipNowBtn = document.getElementById('btn-shop-rip-premium-now');
+      const premPriceTag = document.getElementById('shop-premium-price-tag');
       const activeEvent = this.getCurrentDayEvent();
-      const packCost = activeEvent?.id === 'weekend_market' ? 8.00 : 10.00;
+      const isSale = activeEvent?.id === 'weekend_market';
+      const saleBadge = isSale ? ' 🏷️' : '';
+
+      const packCost = isSale ? 8.00 : 10.00;
       const hasMoneyForPack = (this.gold || 0) >= packCost;
+      if (basePriceTag) basePriceTag.textContent = `${this.formatMoney(packCost)}${isSale ? ' SALE' : ''}`;
       if (buyBtn) {
         buyBtn.disabled = !hasMoneyForPack;
-        const discountTag = activeEvent?.id === 'weekend_market' ? ' 🏷️ [Saturday Sale!]' : '';
-        buyBtn.innerHTML = hasMoneyForPack
-          ? `🛒 Buy Base Card Pack (${this.formatMoney(packCost)})${discountTag}`
-          : `🔒 Need ${this.formatMoney(packCost)} (Short ${this.formatMoney(packCost - (this.gold || 0))})`;
+        buyBtn.textContent = hasMoneyForPack ? `BUY${saleBadge}` : `🔒 ${this.formatMoney(packCost)}`;
       }
 
-      const hasUnopenedPack = (this.inventory || []).some(i => (i.id === 'unopened_starter_pack' || i.id === 'unopened_base_pack') && i.qty > 0);
+      const hasUnopenedBase = (this.inventory || []).some(i => (i.id === 'unopened_starter_pack' || i.id === 'unopened_base_pack') && i.qty > 0);
       if (ripNowBtn) {
-        ripNowBtn.classList.toggle('hidden', !hasUnopenedPack);
+        ripNowBtn.classList.toggle('hidden', !hasUnopenedBase);
       }
 
-      // Sell Section (Strictly cards in backpack inventory, excluding binder slots)
-      const looseCards = (this.inventory || []).filter(i => i.type === 'mythos_card' && i.qty > 0);
+      const premCost = isSale ? 12.00 : 15.00;
+      const hasMoneyForPrem = (this.gold || 0) >= premCost;
+      if (premPriceTag) premPriceTag.textContent = `${this.formatMoney(premCost)}${isSale ? ' SALE' : ''}`;
+      if (premBuyBtn) {
+        premBuyBtn.disabled = !hasMoneyForPrem;
+        premBuyBtn.textContent = hasMoneyForPrem ? `BUY${saleBadge}` : `🔒 ${this.formatMoney(premCost)}`;
+      }
+
+      const hasUnopenedPrem = (this.inventory || []).some(i => i.id === 'unopened_premium_pack' && i.qty > 0);
+      if (premRipNowBtn) {
+        premRipNowBtn.classList.toggle('hidden', !hasUnopenedPrem);
+      }
+
+      // Buy Section - Compact 3x3 Class Packs Display Tray (Option 1 Heraldic Foil Pouches)
+      const refillGridEl = document.getElementById('shop-refillable-packs-grid');
+      if (refillGridEl) {
+        refillGridEl.innerHTML = '';
+        this.getRefillablePackCatalog().forEach(spec => {
+          const canAfford = (this.gold || 0) >= spec.buyPrice;
+          const tileEl = document.createElement('button');
+          tileEl.type = 'button';
+          tileEl.className = `shop-class-tray-tile role-${spec.slug}`;
+          tileEl.disabled = !canAfford;
+          tileEl.title = canAfford
+            ? `Buy ${spec.role} Refillable Pack (${this.formatMoney(spec.buyPrice)}) — ${spec.tagline}`
+            : `Need ${this.formatMoney(spec.buyPrice)} for ${spec.role} Pack`;
+          tileEl.innerHTML = `
+            <img src="${spec.packImg}" alt="${spec.role} Class Pack ($1)" class="shop-tray-pack-img" onerror="this.onerror=null;this.src='${spec.cardImg}'">
+          `;
+          tileEl.addEventListener('click', () => this.buyRefillableClassPack(spec.slug));
+          refillGridEl.appendChild(tileEl);
+        });
+      }
+
+      // Sell Ledger Filter Tabs
+      const sellFilter = this.currentShopSellFilter || 'all';
+      document.getElementById('shop-sell-filter-all')?.classList.toggle('active', sellFilter === 'all');
+      document.getElementById('shop-sell-filter-cards')?.classList.toggle('active', sellFilter === 'cards');
+      document.getElementById('shop-sell-filter-packs')?.classList.toggle('active', sellFilter === 'packs');
+
+      // Sell Section (Loose backpack cards + Refillable Class Packs)
+      const quote = this._computeShopPayoutQuote();
+      const looseCards = quote.looseCards;
+      const refillPacks = (this.inventory || []).filter(i => i && i.type === 'refillable_pack' && (i.qty || 1) > 0);
+      const visiblePacks = sellFilter === 'cards'
+        ? []
+        : (sellFilter === 'packs' ? quote.filledPacks : refillPacks);
+      const visibleCards = sellFilter === 'packs' ? [] : looseCards;
       const totalLooseCount = looseCards.reduce((s, i) => s + (i.qty || 0), 0);
-      const totalOwnedCards = this.getTotalOwnedCardCount();
-      const maxSellable = Math.max(0, totalOwnedCards - 18);
 
       const countPill = document.getElementById('shop-sell-count-pill');
       if (countPill) {
-        countPill.textContent = String(totalLooseCount);
+        countPill.textContent = String(totalLooseCount + quote.filledPacks.length);
+      }
+
+      const quickSellBtn = document.getElementById('btn-shop-quick-sell-extras');
+      if (quickSellBtn) {
+        quickSellBtn.disabled = quote.extrasTotal <= 0;
+        quickSellBtn.textContent = `Quick Sell Extras (${this.formatMoney(quote.extrasTotal)})`;
+      }
+
+      const cashOutBtn = document.getElementById('btn-shop-cash-out');
+      if (cashOutBtn) {
+        cashOutBtn.disabled = quote.cashOutTotal <= 0;
+        cashOutBtn.textContent = quote.cashOutTotal > 0
+          ? `CASH OUT (${this.formatMoney(quote.cashOutTotal)})`
+          : 'CASH OUT';
       }
 
       const gridEl = document.getElementById('shop-sell-cards-grid');
       if (gridEl) {
         gridEl.innerHTML = '';
-        if (looseCards.length === 0) {
+        if (visiblePacks.length === 0 && visibleCards.length === 0) {
+          const emptyMsg = sellFilter === 'packs'
+            ? 'Buy a $1 Class Pack on the left and fill it with up to 5 matching-class cards to sell here (+25% full pack bonus)!'
+            : (sellFilter === 'cards'
+              ? 'No loose Mythos cards in your backpack right now. Cards stored in your 📖 Card Binder stay safe!'
+              : 'You have no loose Mythos cards or Refillable Class Packs right now. Cards in your 📖 Card Binder stay protected!');
           gridEl.innerHTML = `
             <div class="shop-empty-sell">
-              <span class="shop-empty-icon">🎒</span>
-              <p class="shop-empty-title">No Loose Cards in Backpack</p>
-              <p class="shop-empty-desc">
-                You have no Mythos cards in your backpack to sell right now.
-                Cards stored safely in your <b>📖 Old Card Binder</b> are protected and cannot be sold unless you remove them to your backpack first!
-              </p>
+              <span class="shop-empty-icon">📜</span>
+              <p class="shop-empty-title">${sellFilter === 'packs' ? 'No Filled Class Packs' : 'Ledger Clear — Nothing to Sell'}</p>
+              <p class="shop-empty-desc">${emptyMsg}</p>
             </div>
           `;
         } else {
-          if (maxSellable <= 0) {
+          if (visiblePacks.length > 0) {
+            const reg = window.MythosGwentCards?.CARDS || {};
+            visiblePacks.forEach(pack => {
+              const cards = Array.isArray(pack.cards) ? pack.cards : [];
+              const cap = pack.capacity || 5;
+              const pricing = this.getRefillablePackSellPrice(pack);
+              const needsSeal = pricing.isFull && !pricing.isSealed;
+              const cardNames = cards.map(cid => reg[cid]?.name || cid).join(', ');
+              const row = document.createElement('div');
+              row.className = 'shop-ledger-row is-pack';
+              const rowTitle = pricing.isSealed
+                ? `🔒 Sealed ${pack.packRole} Pack`
+                : (cards.length > 0 ? `Filled ${pack.packRole} Pack` : `Empty ${pack.packRole} Pack`);
+              const countBadgeText = pricing.isSealed
+                ? `${cap}/${cap} Sealed`
+                : (needsSeal ? `${cap}/${cap} Unsealed` : `${cards.length}/${cap} Cards`);
+              const bonusBadge = pricing.isSealed
+                ? '<span class="shop-sell-badge qty">+25% Bonus</span>'
+                : (needsSeal ? '<span class="shop-sell-badge qty">Seal for +25%</span>' : '');
+              const displayPrice = needsSeal
+                ? this.formatMoney(pricing.sealedTotal)
+                : (cards.length > 0 ? this.formatMoney(pricing.total) : '$0.00');
+              row.innerHTML = `
+                <div class="shop-sell-card-left">
+                  <div class="shop-sell-card-thumb shop-sell-thumb-box" title="${pricing.isSealed ? 'View permanently sealed cards inside' : `Click to fill or edit ${pack.packRole} Pack`}">
+                    ${this.renderClassPackThumbHtml(pack.packRole, pack.packSlug, pack.cardImg, pack.icon || '📦', pricing.isSealed ? '🔒 SEALED' : `${cards.length}/${cap}`)}
+                  </div>
+                  <div class="shop-sell-card-info">
+                    <div class="shop-sell-card-name">${rowTitle}</div>
+                    <div class="shop-sell-card-badges">
+                      <span class="shop-sell-badge stars">${countBadgeText}</span>
+                      ${bonusBadge}
+                    </div>
+                    ${cardNames ? `<div class="shop-sell-price-tag" title="${cardNames}">${cardNames}</div>` : ''}
+                  </div>
+                </div>
+                <div class="shop-ledger-row-right">
+                  <span class="shop-ledger-price">${displayPrice}</span>
+                  ${pricing.isSealed ? '' : '<button type="button" class="ui-btn shop-ledger-sub-btn edit-pack" title="Fill or edit pack cards">✏️</button>'}
+                  <button type="button" class="ui-btn shop-ledger-sell-btn ${needsSeal ? 'seal-action' : ''} sell-pack" ${cards.length > 0 ? '' : 'disabled'}>
+                    ${needsSeal ? '🔒 SEAL' : (cards.length > 0 ? 'SELL' : 'FILL')}
+                  </button>
+                </div>
+              `;
+              row.querySelector('.shop-sell-card-thumb')?.addEventListener('click', (ev) => {
+                ev.stopPropagation();
+                this.openRefillPackModal(pack.id);
+              });
+              row.querySelector('.edit-pack')?.addEventListener('click', (ev) => {
+                ev.stopPropagation();
+                this.openRefillPackModal(pack.id);
+              });
+              row.querySelector('.sell-pack')?.addEventListener('click', (ev) => {
+                ev.stopPropagation();
+                if (needsSeal || cards.length === 0) this.openRefillPackModal(pack.id);
+                else this.sellRefillablePackToShop(pack.id);
+              });
+              gridEl.appendChild(row);
+            });
+          }
+          if (visibleCards.length > 0 && quote.maxSellable <= 0) {
             const lockNotice = document.createElement('div');
             lockNotice.className = 'shop-sell-lock-notice';
-            lockNotice.style.cssText = 'grid-column: 1 / -1; padding: 10px 12px; border-radius: 10px; background: rgba(245, 158, 11, 0.14); border: 1px solid rgba(245, 158, 11, 0.45); color: #fde68a; font-size: 12.5px; margin-bottom: 6px;';
-            lockNotice.innerHTML = `🔒 <b>Minimum Deck Protection:</b> You currently have <b>${totalOwnedCards}</b> total cards (Binder + Playing Deck/Backpack). You must keep at least <b>18 cards</b> to maintain a playable deck.`;
+            lockNotice.style.cssText = 'padding: 8px 10px; border-radius: 8px; border: 1px solid #b45309; font-size: 11.5px; margin-bottom: 4px;';
+            lockNotice.innerHTML = `🔒 <b>Minimum Deck Protection:</b> Keep at least <b>18 total cards</b> (currently ${quote.totalOwnedCards}).`;
             gridEl.appendChild(lockNotice);
           }
-          looseCards.forEach(card => {
+          visibleCards.forEach(card => {
             const unitPrice = this.getCardSellPrice(card);
             const stars = Number(card.stars) || 1;
             const starText = '★'.repeat(stars);
-            const canSellOne = maxSellable >= 1;
-            const canSellAll = maxSellable >= card.qty;
+            const canSellOne = quote.maxSellable >= 1;
+            const canSellAll = quote.maxSellable >= card.qty;
 
             const row = document.createElement('div');
-            row.className = 'shop-sell-row';
+            row.className = 'shop-ledger-row';
 
             const artSrc = card.cardImg || 'Cards/Mythos_Card_Back.png';
             const elementName = card.element || 'Mythos';
@@ -6283,42 +7204,37 @@
                   <span class="shop-sell-qty-badge">x${card.qty}</span>
                 </div>
                 <div class="shop-sell-card-info">
-                  <div class="shop-sell-card-name" title="${card.name}">${card.name}</div>
+                  <div class="shop-sell-card-name" title="${card.name}">${card.name} (${stars}★)</div>
                   <div class="shop-sell-card-badges">
-                    <span class="shop-sell-badge element-${elementName.toLowerCase()}">${elementName}</span>
-                    <span class="shop-sell-badge stars">${starText} (${stars}★)</span>
-                    <span class="shop-sell-badge qty">x${card.qty} loose</span>
+                    <span class="shop-sell-badge stars">${starText}</span>
+                    <span class="shop-sell-badge">${elementName}</span>
+                    <span class="shop-sell-badge qty">Extra x${card.qty}</span>
                   </div>
-                  <div class="shop-sell-price-tag">Leo's Offer: <b>${this.formatMoney(unitPrice)}</b> each</div>
                 </div>
               </div>
-              <div class="shop-sell-card-actions">
-                <button type="button" class="ui-btn primary-btn shop-sell-btn sell-one" ${canSellOne ? '' : 'disabled title="Need more than 18 total cards to sell"'}>
-                  ${canSellOne ? `💵 Sell 1 (+${this.formatMoney(unitPrice)})` : '🔒 Min 18 Cards'}
-                </button>
+              <div class="shop-ledger-row-right">
+                <span class="shop-ledger-price">${this.formatMoney(unitPrice)}</span>
                 ${card.qty > 1 ? `
-                  <button type="button" class="ui-btn secondary shop-sell-btn sell-all" ${canSellAll ? '' : `disabled title="Selling all ${card.qty} would drop below 18 total cards"`}>
-                    Sell All x${card.qty} (+${this.formatMoney(unitPrice * card.qty)})
+                  <button type="button" class="ui-btn shop-ledger-sub-btn sell-all" ${canSellAll ? '' : 'disabled'} title="Sell all ${card.qty} (+${this.formatMoney(unitPrice * card.qty)})">
+                    x${card.qty}
                   </button>
                 ` : ''}
+                <button type="button" class="ui-btn shop-ledger-sell-btn sell-one" ${canSellOne ? '' : 'disabled title="Need more than 18 total cards to sell"'}>
+                  ${canSellOne ? 'SELL' : '🔒'}
+                </button>
               </div>
             `;
 
-            const thumbEl = row.querySelector('.shop-sell-card-thumb');
-            thumbEl?.addEventListener('click', (ev) => {
+            row.querySelector('.shop-sell-card-thumb')?.addEventListener('click', (ev) => {
               ev.stopPropagation();
               this.toggleShopModal(false);
               this.openCreatureInspect(card, null);
             });
-
-            const sellOneBtn = row.querySelector('.sell-one');
-            sellOneBtn?.addEventListener('click', (ev) => {
+            row.querySelector('.sell-one')?.addEventListener('click', (ev) => {
               ev.stopPropagation();
               this.sellCardToShop(card.id, false);
             });
-
-            const sellAllBtn = row.querySelector('.sell-all');
-            sellAllBtn?.addEventListener('click', (ev) => {
+            row.querySelector('.sell-all')?.addEventListener('click', (ev) => {
               ev.stopPropagation();
               this.sellCardToShop(card.id, true);
             });
@@ -7564,7 +8480,7 @@
           name: 'Unopened Mythos Base Card Pack',
           qty: packs,
           icon: '🃏',
-          cardImg: 'Cards/Mythos_Card_Back.png',
+          cardImg: 'Cards/Mythos_Base_Pack.jpg',
           type: 'booster_pack',
           desc: `<b>Unopened Mythos Base Set Booster Pack (1st Edition)</b> — Won as a <b>Booster Bash</b> prize at Leo's Card Shop!`
         });
@@ -7661,19 +8577,75 @@
       }
     }
 
+    setFolioSection(section) {
+      const target = (section === 'deck' || section === 'binder' || section === 'inventory') ? section : 'binder';
+      if (target === 'deck' || target === 'binder') {
+        this.folioLastUpper = target;
+      }
+      this.folioSection = target;
+      this.binderDrawerTab = target === 'inventory' ? 'bag' : 'sleeves';
+
+      const world = document.getElementById('folio-stage-world');
+      const invCol = document.getElementById('folio-inv-column');
+      if (invCol) {
+        invCol.style.marginLeft = this.folioLastUpper === 'binder' ? '50%' : '0%';
+      }
+      if (world) {
+        const tx = (target === 'binder' || (target === 'inventory' && this.folioLastUpper === 'binder')) ? '-50%' : '0%';
+        const ty = target === 'inventory' ? '-50%' : '0%';
+        world.style.transform = `translate3d(${tx}, ${ty}, 0)`;
+      }
+    }
+
+    showFolioToast(html) {
+      const toast = document.getElementById('binder-hint-text');
+      if (!toast || !html) return;
+      toast.innerHTML = html;
+      toast.classList.remove('hidden');
+      clearTimeout(this._folioToastTimer);
+      this._folioToastTimer = setTimeout(() => {
+        toast.classList.add('hidden');
+      }, 3200);
+    }
+
     toggleBinderModal(forceOpen, preferredTab = null) {
       this.hasOldCardBinder = true;
       const modal = document.getElementById('binder-modal');
       if (!modal) return;
-      const shouldOpen = forceOpen !== undefined ? forceOpen : modal.classList.contains('hidden');
+      const isCurrentlyOpen = !modal.classList.contains('hidden');
+
+      let targetSection = null;
+      if (preferredTab === 'deck') targetSection = 'deck';
+      else if (preferredTab === 'sleeves' || preferredTab === 'binder') targetSection = 'binder';
+      else if (preferredTab === 'bag' || preferredTab === 'inventory') targetSection = 'inventory';
+
+      if (forceOpen === undefined && isCurrentlyOpen) {
+        if (!targetSection) {
+          if (this.folioSection !== 'binder') {
+            if (window.sounds?.playClick) window.sounds.playClick();
+            this.setFolioSection('binder');
+            this.renderBinderModal();
+            return;
+          }
+          if (window.sounds?.playClick) window.sounds.playClick();
+          modal.classList.add('hidden');
+          return;
+        }
+        if (this.folioSection === targetSection) {
+          if (window.sounds?.playClick) window.sounds.playClick();
+          modal.classList.add('hidden');
+          return;
+        }
+      }
+
+      const shouldOpen = forceOpen !== undefined ? forceOpen : (!isCurrentlyOpen || Boolean(targetSection));
       if (window.sounds?.playClick) window.sounds.playClick();
       if (shouldOpen) {
-        if (preferredTab === 'sleeves' || preferredTab === 'bag') {
-          this.binderDrawerTab = preferredTab;
-        } else if (!this.binderDrawerTab) {
+        if (!targetSection) {
           const hasPack = (this.inventory || []).some(i => i.type === 'booster_pack' && (i.qty || 0) > 0);
-          this.binderDrawerTab = (hasPack && this.getSlottedBinderCount() === 0) ? 'bag' : 'sleeves';
+          targetSection = (hasPack && this.getSlottedBinderCount() === 0) ? 'inventory' : (this.folioSection || 'binder');
         }
+        this.setFolioSection(targetSection);
         this.renderBinderModal();
         modal.classList.remove('hidden');
       } else {
@@ -7864,10 +8836,6 @@
 
       const totalSlots = Math.max(36, Array.isArray(this.binderSlots) ? this.binderSlots.length : 36);
       const pageSize = 9;
-      const totalPages = Math.max(1, Math.ceil(totalSlots / pageSize));
-      const currentPage = Math.max(0, Math.min(totalPages - 1, this.binderPage || 0));
-      this.binderPage = currentPage;
-
       const slottedCount = this.getSlottedBinderCount();
       const bagItems = (this.inventory || []).filter(i => i && (i.qty || 0) > 0 && i.id !== 'old_card_binder');
       const bagTotalCount = bagItems.reduce((s, i) => s + (i.qty || 1), 0);
@@ -7878,31 +8846,80 @@
       if (binderBadgeEl) {
         binderBadgeEl.textContent = String(stats.cardCount + slottedCount + bagTotalCount);
       }
-      const traySummaryPill = document.getElementById('binder-tray-summary-pill');
-      const drawerSummaryPill = document.getElementById('binder-drawer-summary-pill');
 
+      const goldPill = document.getElementById('folio-inv-gold-pill');
+      if (goldPill) {
+        goldPill.textContent = `💰 ${this.formatMoney(this.gold || 0)} Gold`;
+      }
+      const invCountPill = document.getElementById('folio-inv-count-pill');
+      if (invCountPill) {
+        invCountPill.textContent = `🎒 ${bagTotalCount} Item${bagTotalCount === 1 ? '' : 's'}`;
+      }
+      const packCount = bagItems
+        .filter(i => i.type === 'booster_pack' || i.type === 'refillable_pack')
+        .reduce((s, i) => s + (i.qty || 1), 0);
+      const invItemLabel = `${bagTotalCount} Item${bagTotalCount === 1 ? '' : 's'}`;
+      const invTabText = packCount > 0
+        ? `✨ ${packCount} Pack${packCount === 1 ? '' : 's'} • ${invItemLabel}`
+        : invItemLabel;
+      ['folio-deck-inv-badge', 'folio-binder-inv-badge'].forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = invTabText;
+      });
+      ['btn-folio-deck-to-inv', 'btn-folio-binder-to-inv'].forEach((id) => {
+        document.getElementById(id)?.classList.toggle('has-packs', packCount > 0);
+      });
       if (tabSleevesCount) tabSleevesCount.textContent = String(slottedCount);
       if (tabBagCount) tabBagCount.textContent = String(bagTotalCount);
-      if (traySummaryPill) {
-        traySummaryPill.textContent = `${stats.cardCount}/${stats.maxCards} • ${stats.totalStars}/${stats.maxStars}★`;
-      }
-      if (drawerSummaryPill) {
-        drawerSummaryPill.textContent = `📖 ${slottedCount}/${totalSlots} • 🎒 ${bagTotalCount}`;
+
+      if (!document.getElementById('folio-stage-world')) {
+        const activeTab = this.binderDrawerTab === 'bag' ? 'bag' : 'sleeves';
+        tabSleevesBtn?.classList.toggle('active', activeTab === 'sleeves');
+        tabBagBtn?.classList.toggle('active', activeTab === 'bag');
+        gridEl?.classList.toggle('hidden', activeTab !== 'sleeves');
+        bagGridEl?.classList.toggle('hidden', activeTab !== 'bag');
+        sortBarEl?.classList.toggle('hidden', activeTab !== 'sleeves');
+        pageNavEl?.classList.toggle('hidden', activeTab !== 'sleeves' || Boolean(this.binderDrawerCollapsed));
+        if (modePill) {
+          modePill.textContent = activeTab === 'sleeves' ? '🔒 Protected from Sale' : '💰 Ready to Sell / Trade';
+        }
+        this.applyBinderCollapseState();
+      } else {
+        gridEl?.classList.remove('hidden');
+        bagGridEl?.classList.remove('hidden');
+        sortBarEl?.classList.remove('hidden');
+        pageNavEl?.classList.remove('hidden');
       }
 
-      const activeTab = this.binderDrawerTab === 'bag' ? 'bag' : 'sleeves';
-      tabSleevesBtn?.classList.toggle('active', activeTab === 'sleeves');
-      tabBagBtn?.classList.toggle('active', activeTab === 'bag');
-      gridEl?.classList.toggle('hidden', activeTab !== 'sleeves');
-      bagGridEl?.classList.toggle('hidden', activeTab !== 'bag');
-      sortBarEl?.classList.toggle('hidden', activeTab !== 'sleeves');
-      pageNavEl?.classList.toggle('hidden', activeTab !== 'sleeves' || Boolean(this.binderDrawerCollapsed));
-      if (modePill) {
-        modePill.textContent = activeTab === 'sleeves' ? '🔒 Protected from Sale' : '💰 Ready to Sell / Trade';
-      }
-      this.applyBinderCollapseState();
+      const syncPageSelector = ({ pillsId, indicatorId, prevId, nextId, currentPage, totalPages, onSelectPage }) => {
+        const ind = document.getElementById(indicatorId);
+        if (ind) ind.textContent = `Page ${currentPage + 1} / ${totalPages}`;
+        const prevBtn = document.getElementById(prevId);
+        const nextBtn = document.getElementById(nextId);
+        if (prevBtn) prevBtn.disabled = currentPage <= 0;
+        if (nextBtn) nextBtn.disabled = currentPage >= totalPages - 1;
+        const pillsEl = document.getElementById(pillsId);
+        if (pillsEl) {
+          pillsEl.innerHTML = '';
+          for (let p = 0; p < totalPages; p++) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = `folio-page-pill${p === currentPage ? ' active' : ''}`;
+            btn.dataset.page = String(p);
+            btn.textContent = String(p + 1);
+            btn.title = `Go to Page ${p + 1}`;
+            btn.addEventListener('click', () => {
+              if (p === currentPage) return;
+              if (window.sounds?.playClick) window.sounds.playClick();
+              onSelectPage(p);
+              this.renderBinderModal();
+            });
+            pillsEl.appendChild(btn);
+          }
+        }
+      };
 
-      // 1. Render Top Playing Deck Tray (horizontal click/drag/scroll strictly disabled)
+      // 1. Render Playing Deck Section
       if (deckTrayEl) {
         if (!deckTrayEl.dataset.hLockBound) {
           deckTrayEl.dataset.hLockBound = '1';
@@ -7910,36 +8927,31 @@
           deckTrayEl.addEventListener('scroll', () => {
             if (deckTrayEl.scrollLeft !== 0) deckTrayEl.scrollLeft = 0;
           }, { passive: true });
-          let tStartX = 0;
-          let tStartY = 0;
-          deckTrayEl.addEventListener('touchstart', (ev) => {
-            if (ev.touches.length === 1) {
-              tStartX = ev.touches[0].clientX;
-              tStartY = ev.touches[0].clientY;
-            }
-          }, { passive: true });
-          deckTrayEl.addEventListener('touchmove', (ev) => {
-            if (ev.touches.length !== 1) return;
-            const dx = Math.abs(ev.touches[0].clientX - tStartX);
-            const dy = Math.abs(ev.touches[0].clientY - tStartY);
-            if (dx > 8 && dx > dy * 1.4 && ev.cancelable) {
-              ev.preventDefault();
-            }
-            if (deckTrayEl.scrollLeft !== 0) deckTrayEl.scrollLeft = 0;
-          }, { passive: false });
         }
         deckTrayEl.scrollLeft = 0;
         deckTrayEl.innerHTML = '';
         if (!this.playingDeck || this.playingDeck.length === 0) {
+          this.deckPage = 0;
+          this._deckTotalPages = 1;
+          syncPageSelector({
+            pillsId: 'deck-page-pills',
+            indicatorId: 'deck-page-indicator',
+            prevId: 'btn-deck-prev-page',
+            nextId: 'btn-deck-next-page',
+            currentPage: 0,
+            totalPages: 1,
+            onSelectPage: (p) => { this.deckPage = p; }
+          });
           deckTrayEl.innerHTML = `
-            <div style="grid-column: 1 / -1; padding: 14px; text-align: center; color: #f3e8d2; font-size: 12px;">
-              Your Playing Deck Tray is empty (<b>Min ${stats.minCards} – Max ${stats.maxCards} cards</b>, <b>Max ${stats.maxStars}★</b>). Tap <b>+🃏 Deck</b> on cards below or click <b>✨ Fill Deck</b>!
+            <div style="grid-column: 1 / -1; grid-row: 1 / -1; display: flex; align-items: center; justify-content: center; padding: 20px 14px; text-align: center; color: #f3e8d2; font-size: 13px;">
+              <div>Your Playing Deck is empty (<b>Min ${stats.minCards} – Max ${stats.maxCards} cards</b>, <b>Max ${stats.maxStars}★</b>). Slide right to <b>📖 Card Binder</b> and tap <b>+🃏 Deck</b>, or click <b>✨ Auto-Fill</b>!</div>
             </div>
           `;
         } else {
           const grouped = [];
           const groupMap = {};
           this.playingDeck.forEach((cid, idx) => {
+            if (!reg[cid]) return;
             if (!groupMap[cid]) {
               groupMap[cid] = { cid, count: 0, lastIndex: idx };
               grouped.push(groupMap[cid]);
@@ -7948,13 +8960,30 @@
             groupMap[cid].lastIndex = idx;
           });
 
-          grouped.forEach(entry => {
+          const deckPageSize = 9;
+          const deckTotalPages = Math.max(1, Math.ceil(grouped.length / deckPageSize));
+          const deckCurrentPage = Math.max(0, Math.min(deckTotalPages - 1, this.deckPage || 0));
+          this.deckPage = deckCurrentPage;
+          this._deckTotalPages = deckTotalPages;
+
+          syncPageSelector({
+            pillsId: 'deck-page-pills',
+            indicatorId: 'deck-page-indicator',
+            prevId: 'btn-deck-prev-page',
+            nextId: 'btn-deck-next-page',
+            currentPage: deckCurrentPage,
+            totalPages: deckTotalPages,
+            onSelectPage: (p) => { this.deckPage = p; }
+          });
+
+          const pagedDeck = grouped.slice(deckCurrentPage * deckPageSize, (deckCurrentPage + 1) * deckPageSize);
+          pagedDeck.forEach(entry => {
             const c = reg[entry.cid];
             if (!c) return;
             const tradImg = this.getCardTraditionalImg(c);
             const stars = Number(c.stars) || 1;
             const slot = document.createElement('div');
-            slot.className = 'binder-trad-slot';
+            slot.className = `binder-trad-slot${c.isAnimatedSpecial ? ' is-animated-special' : ''}`;
             slot.setAttribute('draggable', 'false');
             slot.innerHTML = `
               <div class="binder-trad-art-wrap" draggable="false">
@@ -7972,31 +9001,26 @@
             slot.querySelector('.to-binder')?.addEventListener('click', (ev) => {
               ev.stopPropagation();
               this.removeCardFromPlayingDeck(entry.lastIndex, 'binder');
+              this.showFolioToast(`📖 Returned <b>${c.name}</b> to your Card Binder.`);
             });
             slot.querySelector('.to-bag')?.addEventListener('click', (ev) => {
               ev.stopPropagation();
               this.removeCardFromPlayingDeck(entry.lastIndex, 'inventory');
+              this.showFolioToast(`🎒 Moved <b>${c.name}</b> to your Inventory.`);
             });
             deckTrayEl.appendChild(slot);
           });
         }
       }
 
-      // 2. Render Bottom Drawer Tab 1: Binder Sleeves
-      const pageIndicatorEl = document.getElementById('binder-page-indicator');
-      if (pageIndicatorEl) {
-        pageIndicatorEl.textContent = `Page ${currentPage + 1} / ${totalPages}`;
-      }
-      const prevPageBtn = document.getElementById('btn-binder-prev-page');
-      const nextPageBtn = document.getElementById('btn-binder-next-page');
-      if (prevPageBtn) prevPageBtn.disabled = currentPage <= 0;
-      if (nextPageBtn) nextPageBtn.disabled = currentPage >= totalPages - 1;
-      document.querySelectorAll('#binder-page-pills .binder-page-pill').forEach(pill => {
-        pill.classList.toggle('active', Number(pill.dataset.page) === currentPage);
+      // 2. Render Card Binder Section (continuous multi-row grid, no middle gap)
+      const starFilter = this.binderStarFilter || 'all';
+      document.querySelectorAll('#binder-filter-bar [data-binder-filter]').forEach(btn => {
+        btn.classList.toggle('active', (btn.dataset.binderFilter || 'all') === starFilter);
       });
 
       const sortMode = this.binderSortBy || 'default';
-      document.querySelectorAll('#binder-sort-bar .binder-sort-btn').forEach(btn => {
+      document.querySelectorAll('#binder-sort-bar [data-sort]').forEach(btn => {
         btn.classList.toggle('active', (btn.dataset.sort || 'default') === sortMode);
       });
 
@@ -8014,30 +9038,67 @@
         return { name, type, power, stars };
       };
 
+      let entries = Array.from({ length: totalSlots }, (_, i) => ({
+        slotIndex: i,
+        card: this.binderSlots[i]
+      }));
+
+      if (starFilter !== 'all') {
+        entries = entries.filter(({ card }) => {
+          if (!card) return false;
+          const cleanId = String(card.beastId || card.id || '').replace(/^card_/, '');
+          const gwentDef = reg[cleanId];
+          const stars = Number(gwentDef?.stars ?? card.stars) || 1;
+          const isAnim = Boolean(card.isAnimatedSpecial || gwentDef?.isAnimatedSpecial);
+          if (starFilter === 'animated') return isAnim;
+          if (starFilter === '4-5') return stars >= 4;
+          return String(stars) === starFilter;
+        });
+      }
+
+      if (sortMode !== 'default') {
+        const filled = entries.filter(e => Boolean(e.card));
+        const empty = entries.filter(e => !e.card);
+        filled.sort((a, b) => {
+          const ma = getSortMeta(a.card);
+          const mb = getSortMeta(b.card);
+          if (sortMode === 'alpha') return ma.name.localeCompare(mb.name);
+          if (sortMode === 'type') return ma.type.localeCompare(mb.type) || ma.name.localeCompare(mb.name);
+          if (sortMode === 'power') return (mb.power - ma.power) || ma.name.localeCompare(mb.name);
+          if (sortMode === 'stars') return (mb.stars - ma.stars) || ma.name.localeCompare(mb.name);
+          return a.slotIndex - b.slotIndex;
+        });
+        entries = [...filled, ...empty];
+      }
+
+      const lastOccupiedIdx = entries.reduce((max, e, idx) => (e.card ? idx : max), -1);
+      const totalPages = Math.max(1, Math.ceil((lastOccupiedIdx + 1) / pageSize));
+      const currentPage = Math.max(0, Math.min(totalPages - 1, this.binderPage || 0));
+      this.binderPage = currentPage;
+      this._binderTotalPages = totalPages;
+
+      syncPageSelector({
+        pillsId: 'binder-page-pills',
+        indicatorId: 'binder-page-indicator',
+        prevId: 'btn-binder-prev-page',
+        nextId: 'btn-binder-next-page',
+        currentPage,
+        totalPages,
+        onSelectPage: (p) => { this.binderPage = p; }
+      });
+
       if (gridEl) {
-        let entries = Array.from({ length: totalSlots }, (_, i) => ({
-          slotIndex: i,
-          card: this.binderSlots[i]
-        }));
-
-        if (sortMode !== 'default') {
-          const filled = entries.filter(e => Boolean(e.card));
-          const empty = entries.filter(e => !e.card);
-          filled.sort((a, b) => {
-            const ma = getSortMeta(a.card);
-            const mb = getSortMeta(b.card);
-            if (sortMode === 'alpha') return ma.name.localeCompare(mb.name);
-            if (sortMode === 'type') return ma.type.localeCompare(mb.type) || ma.name.localeCompare(mb.name);
-            if (sortMode === 'power') return (mb.power - ma.power) || ma.name.localeCompare(mb.name);
-            if (sortMode === 'stars') return (mb.stars - ma.stars) || ma.name.localeCompare(mb.name);
-            return a.slotIndex - b.slotIndex;
-          });
-          entries = [...filled, ...empty];
-        }
-
         const pageStart = currentPage * pageSize;
         const pageEntries = entries.slice(pageStart, pageStart + pageSize);
         gridEl.innerHTML = '';
+
+        if (pageEntries.length === 0) {
+          gridEl.innerHTML = `
+            <div style="grid-column: 1 / -1; grid-row: 1 / -1; display: flex; align-items: center; justify-content: center; padding: 20px 14px; text-align: center; color: #f3e8d2; font-size: 13px;">
+              No Binder cards match this filter yet.
+            </div>
+          `;
+        }
 
         pageEntries.forEach(({ slotIndex: i, card }) => {
           const slotEl = document.createElement('div');
@@ -8046,10 +9107,11 @@
             const cleanId = String(card.beastId || card.id || '').replace(/^card_/, '');
             const gwentDef = reg[cleanId];
             const stars = Number(gwentDef?.stars ?? card.stars) || 1;
+            const isAnim = Boolean(card.isAnimatedSpecial || gwentDef?.isAnimatedSpecial);
             const binderCardImg = this.getCardTraditionalImg(card);
             const displayName = (card.shortName || card.name || '').replace(/\s*\(Mythos Card\)$/i, '');
 
-            slotEl.className = 'binder-trad-slot';
+            slotEl.className = `binder-trad-slot${isAnim ? ' is-animated-special' : ''}`;
             slotEl.setAttribute('draggable', 'false');
             slotEl.innerHTML = `
               <div class="binder-trad-art-wrap" draggable="false">
@@ -8070,21 +9132,19 @@
               ev.stopPropagation();
               if (cleanId) {
                 const res = this.addCardToPlayingDeck(cleanId, 'binder', i);
-                if (hintEl && res?.message) hintEl.innerHTML = res.message;
+                if (res?.message) this.showFolioToast(res.message);
               }
             });
 
             slotEl.querySelector('.to-bag')?.addEventListener('click', (ev) => {
               ev.stopPropagation();
               this.removeCardFromBinder(i);
-              if (hintEl) {
-                hintEl.innerHTML = `🎒 Moved <b>${displayName}</b> to your <b>Inventory</b> — ready to sell at Leo's Shop or on your Phone!`;
-              }
+              this.showFolioToast(`🎒 Moved <b>${displayName}</b> to your <b>Inventory</b> — ready to sell at Leo's Shop or on your Phone!`);
             });
           } else {
             slotEl.className = 'binder-trad-slot';
             slotEl.style.justifyContent = 'center';
-            slotEl.style.minHeight = '148px';
+            slotEl.style.minHeight = document.getElementById('folio-stage-world') ? '0' : '148px';
             slotEl.style.opacity = '0.72';
             slotEl.innerHTML = `
               <div class="binder-empty-btn" style="color:#fde68a; border-color:rgba(251,191,36,0.4);">
@@ -8101,27 +9161,89 @@
         });
       }
 
-      // 3. Render Bottom Drawer Tab 2: Inventory (Loose Inventory Cards, Unopened Packs & Board Themes)
+      // 3. Render Inventory Section
+      const invCat = this.invCategoryFilter || 'all';
+      document.querySelectorAll('#folio-inv-filter-bar [data-inv-filter]').forEach(btn => {
+        btn.classList.toggle('active', (btn.dataset.invFilter || 'all') === invCat);
+      });
+      const filteredBagItems = bagItems.filter(item => {
+        if (invCat === 'all') return true;
+        if (invCat === 'pack') return item.type === 'booster_pack' || item.type === 'refillable_pack';
+        if (invCat === 'board') return item.type === 'board_theme';
+        if (invCat === 'key') return item.type === 'quest_item';
+        return item.type !== 'booster_pack' && item.type !== 'refillable_pack' && item.type !== 'board_theme' && item.type !== 'quest_item';
+      });
+
+      const invPageSize = 9;
+      const invTotalPages = Math.max(1, Math.ceil(filteredBagItems.length / invPageSize));
+      const invCurrentPage = Math.max(0, Math.min(invTotalPages - 1, this.invPage || 0));
+      this.invPage = invCurrentPage;
+      this._invTotalPages = invTotalPages;
+
+      syncPageSelector({
+        pillsId: 'inv-page-pills',
+        indicatorId: 'inv-page-indicator',
+        prevId: 'btn-inv-prev-page',
+        nextId: 'btn-inv-next-page',
+        currentPage: invCurrentPage,
+        totalPages: invTotalPages,
+        onSelectPage: (p) => { this.invPage = p; }
+      });
+
       if (bagGridEl) {
         bagGridEl.innerHTML = '';
-        if (bagItems.length === 0) {
+        if (filteredBagItems.length === 0) {
           bagGridEl.innerHTML = `
-            <div style="grid-column: 1 / -1; padding: 18px; text-align: center; color: #f3e8d2; font-size: 12px;">
-              Your <b>🎒 Inventory</b> has no loose cards, packs, or items right now.<br>
-              <span style="opacity:0.85;">Pull cards here using <b>🎒 Sell</b> from your Playing Deck or Binder Sleeves whenever you want to sell them at Leo's Card Shop or list them on your Phone!</span>
+            <div style="grid-column: 1 / -1; grid-row: 1 / -1; display: flex; align-items: center; justify-content: center; padding: 20px 14px; text-align: center; color: #f3e8d2; font-size: 13px;">
+              <div>
+                Your <b>🎒 Inventory</b> has no matching items right now.<br>
+                <span style="opacity:0.85;">Pull cards here using <b>🎒 Sell</b> from your Playing Deck or Card Binder whenever you want to sell them at Leo's Card Shop or list them on your Phone!</span>
+              </div>
             </div>
           `;
         } else {
-          bagItems.forEach(item => {
+          const pagedBagItems = filteredBagItems.slice(invCurrentPage * invPageSize, (invCurrentPage + 1) * invPageSize);
+          pagedBagItems.forEach(item => {
             const slotEl = document.createElement('div');
             slotEl.className = 'binder-trad-slot';
             slotEl.setAttribute('draggable', 'false');
             const displayName = (item.shortName || item.name || '').replace(/\s*\(Mythos Card\)$/i, '');
 
-            if (item.type === 'booster_pack') {
+            if (item.type === 'refillable_pack') {
+              const cards = Array.isArray(item.cards) ? item.cards : [];
+              const cap = item.capacity || 5;
+              const pricing = this.getRefillablePackSellPrice(item);
+              const badgeTag = pricing.isSealed ? '🔒 SEALED' : `${cards.length}/${cap}`;
+              const valueLabel = pricing.isSealed
+                ? `🔒 Sealed: ${this.formatMoney(pricing.total)} (+25%)`
+                : (pricing.isFull
+                  ? `5/5 — Seal for +25%! (${this.formatMoney(pricing.sealedTotal)})`
+                  : `Est. Sell: ${this.formatMoney(pricing.total)}`);
+              const btnLabel = pricing.isSealed
+                ? '👁️ View Sealed'
+                : (pricing.isFull ? '🔒 Seal Pack' : (cards.length > 0 ? '✏️ Edit Pack' : '📥 Fill Pack'));
               slotEl.innerHTML = `
                 <div class="binder-trad-art-wrap" draggable="false">
-                  <img src="${item.cardImg || 'Cards/Mythos_Card_Back.png'}" alt="${displayName}" class="binder-trad-art-img" draggable="false">
+                  ${this.renderClassPackThumbHtml(item.packRole, item.packSlug, item.cardImg, item.icon || '📦', badgeTag)}
+                </div>
+                <div class="binder-trad-name" title="${displayName}">${displayName}</div>
+                <div style="font-size:11px;text-align:center;color:#fde047;font-weight:800;">${valueLabel}</div>
+                <div class="binder-trad-actions">
+                  <button type="button" class="binder-xfer-btn to-deck" style="flex:1;">${btnLabel}</button>
+                </div>
+              `;
+              slotEl.querySelector('.binder-trad-art-wrap')?.addEventListener('click', (ev) => {
+                ev.stopPropagation();
+                this.openRefillPackModal(item.id);
+              });
+              slotEl.querySelector('.to-deck')?.addEventListener('click', (ev) => {
+                ev.stopPropagation();
+                this.openRefillPackModal(item.id);
+              });
+            } else if (item.type === 'booster_pack') {
+              slotEl.innerHTML = `
+                <div class="binder-trad-art-wrap" draggable="false">
+                  <img src="${item.cardImg || 'Cards/Mythos_Base_Pack.jpg'}" alt="${displayName}" class="binder-trad-art-img" draggable="false">
                   <span class="binder-trad-qty-badge">x${item.qty || 1}</span>
                 </div>
                 <div class="binder-trad-name" title="${displayName}">${displayName}</div>
@@ -8169,7 +9291,9 @@
               const cleanId = String(item.beastId || item.id || '').replace(/^card_/, '');
               const gwentDef = reg[cleanId];
               const stars = Number(gwentDef?.stars ?? item.stars) || 1;
+              const isAnim = Boolean(item.isAnimatedSpecial || gwentDef?.isAnimatedSpecial);
               const tradImg = this.getCardTraditionalImg(item);
+              if (isAnim) slotEl.classList.add('is-animated-special');
               slotEl.innerHTML = `
                 <div class="binder-trad-art-wrap" draggable="false">
                   <img src="${tradImg}" alt="${displayName}" class="binder-trad-art-img" draggable="false">
@@ -8187,13 +9311,13 @@
                 ev.stopPropagation();
                 if (cleanId) {
                   const res = this.addCardToPlayingDeck(cleanId, 'inventory');
-                  if (hintEl && res?.message) hintEl.innerHTML = res.message;
+                  if (res?.message) this.showFolioToast(res.message);
                 }
               });
               slotEl.querySelector('.to-binder')?.addEventListener('click', (ev) => {
                 ev.stopPropagation();
                 if (this.insertCardIntoBinder(item.id)) {
-                  if (hintEl) hintEl.innerHTML = `📖 Slipped <b>${displayName}</b> into your protected <b>Binder Sleeves</b>.`;
+                  this.showFolioToast(`📖 Slipped <b>${displayName}</b> into your protected <b>Card Binder</b>.`);
                   this.renderBinderModal();
                 }
               });
@@ -8467,7 +9591,9 @@
       }
 
       const availableCount = (this.getOwnedMythosCardPool()[cardId] || 0);
-      const inDeckCount = (this.playingDeck || []).filter(id => id === cardId).length;
+      const getCanon = (id) => window.MythosGwentCards?.getCanonicalCardId?.(id) || id;
+      const canonicalId = getCanon(cardId);
+      const inDeckCount = (this.playingDeck || []).filter(id => getCanon(id) === canonicalId).length;
       if (availableCount <= 0) {
         if (window.sounds?.playClick) window.sounds.playClick();
         return { ok: false, message: `⚠️ You have no spare copies of ${cardDef.name} left in your Binder or Inventory.` };
@@ -8551,6 +9677,7 @@
       const maxCards = 24;
       const maxStars = 40;
 
+      const getCanon = (id) => window.MythosGwentCards?.getCanonicalCardId?.(id) || id;
       const tryAddOwned = (cid) => {
         if (this.playingDeck.length >= maxCards) return false;
         const def = reg[cid];
@@ -8560,10 +9687,11 @@
         const maxPerDeck = window.MythosGwentCards?.getMaxDeckCopies
           ? window.MythosGwentCards.getMaxDeckCopies(def)
           : (cStars >= 4 ? 1 : (def?.maxDeckCopies ?? 3));
-        if ((deckCounts[cid] || 0) >= maxPerDeck) return false;
+        const canonId = getCanon(cid);
+        if ((deckCounts[canonId] || 0) >= maxPerDeck) return false;
         if (!this.consumeCardForPlayingDeck(cid, 'any')) return false;
         pool[cid] -= 1;
-        deckCounts[cid] = (deckCounts[cid] || 0) + 1;
+        deckCounts[canonId] = (deckCounts[canonId] || 0) + 1;
         currentStars += cStars;
         this.playingDeck.push(cid);
         return true;
@@ -8598,8 +9726,21 @@
 
     togglePlayingDeckModal(forceOpen) {
       const legacyDeckModal = document.getElementById('playing-deck-modal');
+      const binderModal = document.getElementById('binder-modal');
       legacyDeckModal?.classList.add('hidden');
-      this.toggleBinderModal(forceOpen);
+      if (forceOpen === false) {
+        binderModal?.classList.add('hidden');
+        return;
+      }
+      if (forceOpen === undefined && binderModal && !binderModal.classList.contains('hidden')) {
+        if (this.folioSection === 'deck') {
+          binderModal.classList.add('hidden');
+          return;
+        }
+        this.toggleBinderModal(true, 'deck');
+        return;
+      }
+      this.toggleBinderModal(forceOpen, 'deck');
     }
 
     renderPlayingDeckModal() {
@@ -8687,11 +9828,14 @@
       if (allPoolIds.length === 0) {
         poolList.innerHTML = `<div style="padding: 16px; text-align: center; color: #94a3b8; font-size: 12px;">No Mythos cards in your Backpack or Binder yet. Open Booster Packs at Leo's Card Shop!</div>`;
       } else {
+        const getCanon = (id) => window.MythosGwentCards?.getCanonicalCardId?.(id) || id;
         allPoolIds.forEach(cid => {
           const c = reg[cid];
           if (!c) return;
           const avail = availableCounts[cid] || 0;
+          const canonCid = getCanon(cid);
           const inDeck = (this.playingDeck || []).filter(id => id === cid).length;
+          const inDeckCanonical = (this.playingDeck || []).filter(id => getCanon(id) === canonCid).length;
           const maxPerDeck = window.MythosGwentCards?.getMaxDeckCopies
             ? window.MythosGwentCards.getMaxDeckCopies(c)
             : ((Number(c?.stars) || 1) >= 4 ? 1 : (c?.maxDeckCopies ?? 3));
@@ -8704,7 +9848,7 @@
               <div class="playing-deck-row-name">${c.name} <span style="color:${avail > 0 ? '#fbbf24' : '#94a3b8'};">(Available: ${avail})</span></div>
               <div class="playing-deck-row-meta">${'★'.repeat(c.stars || 1)} ${c.role || 'Unit'} • ${c.basePower} PWR • In Deck: ${inDeck}/${allowedCopies}</div>
             </div>
-            <button type="button" class="ui-btn primary-btn" style="padding: 4px 8px; font-size: 11px;" ${avail <= 0 || inDeck >= allowedCopies ? 'disabled' : ''}>➕ Add</button>
+            <button type="button" class="ui-btn primary-btn" style="padding: 4px 8px; font-size: 11px;" ${avail <= 0 || inDeckCanonical >= maxPerDeck ? 'disabled' : ''}>➕ Add</button>
           `;
           row.querySelector('button')?.addEventListener('click', () => {
             const res = this.addCardToPlayingDeck(cid);
@@ -8896,13 +10040,25 @@
     // -------------------------------------------------------------------------
     // Theatrical & Suspenseful Booster Pack Opening Ritual (5 Cards Per Pack)
     // -------------------------------------------------------------------------
-    rollFivePackCards() {
+    rollBoosterPackCards({
+      tierCutoffs = [55, 85, 96, 99],
+      guaranteedMinStar = 0,
+      guaranteedCutoffs = [60, 87],
+      animatedUpgradeChance = 0.20
+    } = {}) {
       const mythosPool = this.getMythosPackCatalog();
       const catalog = mythosPool.length > 0 ? mythosPool : this.getBaseSetCardCatalog();
       if (catalog.length === 0) return [];
 
       const byStar = { 1: [], 2: [], 3: [], 4: [], 5: [] };
+      const animatedByBaseId = {};
       catalog.forEach(c => {
+        if (c.isAnimatedSpecial) {
+          if (c.baseCardId && !animatedByBaseId[c.baseCardId]) {
+            animatedByBaseId[c.baseCardId] = c;
+          }
+          return;
+        }
         const s = Math.max(1, Math.min(5, Math.round(Number(c.stars) || 1)));
         byStar[s].push(c);
       });
@@ -8913,19 +10069,31 @@
             return { ...byStar[t][Math.floor(Math.random() * byStar[t].length)] };
           }
         }
-        return { ...catalog[Math.floor(Math.random() * catalog.length)] };
+        const baseFallback = catalog.filter(c => !c.isAnimatedSpecial);
+        const pool = baseFallback.length > 0 ? baseFallback : catalog;
+        return { ...pool[Math.floor(Math.random() * pool.length)] };
       };
 
-      // Weighted tier odds per card slot: 55% 1★, 30% 2★, 11% 3★, 3% 4★, 1% 5★
       const drawn = [];
       for (let i = 0; i < 5; i++) {
-        const roll = Math.random() * 100;
         let tier = 1;
-        if (roll >= 99) tier = 5;
-        else if (roll >= 96) tier = 4;
-        else if (roll >= 85) tier = 3;
-        else if (roll >= 55) tier = 2;
-        drawn.push(pickFromTier(tier));
+        const needFloor = guaranteedMinStar >= 3 && i === 4 && !drawn.some(c => (Number(c.stars) || 1) >= guaranteedMinStar);
+        if (needFloor) {
+          const rFloor = Math.random() * 100;
+          tier = rFloor >= guaranteedCutoffs[1] ? 5 : (rFloor >= guaranteedCutoffs[0] ? 4 : 3);
+        } else {
+          const roll = Math.random() * 100;
+          if (roll >= tierCutoffs[3]) tier = 5;
+          else if (roll >= tierCutoffs[2]) tier = 4;
+          else if (roll >= tierCutoffs[1]) tier = 3;
+          else if (roll >= tierCutoffs[0]) tier = 2;
+        }
+        let picked = pickFromTier(tier);
+        const animatedVariant = animatedByBaseId[picked.beastId];
+        if (animatedVariant && Math.random() < animatedUpgradeChance) {
+          picked = { ...animatedVariant };
+        }
+        drawn.push(picked);
       }
 
       const activeEvent = this.getCurrentDayEvent();
@@ -8938,6 +10106,25 @@
         });
       }
       return drawn;
+    }
+
+    rollFivePackCards() {
+      // Base Pack odds: 55% 1★, 30% 2★, 11% 3★, 3% 4★, 1% 5★; 20% Animated upgrade chance
+      return this.rollBoosterPackCards({
+        tierCutoffs: [55, 85, 96, 99],
+        guaranteedMinStar: 0,
+        animatedUpgradeChance: 0.20
+      });
+    }
+
+    rollPremiumPackCards() {
+      // 1st-Edition Premium Pack ($15) odds: 15% 1★, 28% 2★, 32% 3★, 17% 4★, 8% 5★ + 3★+ guarantee + 40% Animated chance
+      return this.rollBoosterPackCards({
+        tierCutoffs: [15, 43, 75, 92],
+        guaranteedMinStar: 3,
+        guaranteedCutoffs: [60, 87],
+        animatedUpgradeChance: 0.40
+      });
     }
 
     rollThreePackCards() {
@@ -8961,7 +10148,7 @@
       const expandTier = (starsList) => {
         const out = [];
         catalog
-          .filter(c => starsList.includes(Math.round(Number(c.stars) || 1)))
+          .filter(c => !c.isAnimatedSpecial && starsList.includes(Math.round(Number(c.stars) || 1)))
           .forEach(card => {
             const def = reg[card.beastId];
             const maxCopies = window.MythosGwentCards?.getMaxDeckCopies
@@ -9001,6 +10188,7 @@
       if (!packItem) return;
 
       const isStarterPack = packItemId === 'unopened_starter_pack' || Boolean(packItem.isStarterPack);
+      const isPremiumPack = !isStarterPack && (packItemId === 'unopened_premium_pack' || Boolean(packItem.isPremiumPack));
 
       // Close the inventory or shop modal so the full-screen Pack Opening Stage takes center stage
       this.toggleInventoryModal(false);
@@ -9009,10 +10197,13 @@
       this.packOpeningState = {
         packItemId,
         isStarterPack,
+        isPremiumPack,
         chargeClicks: 0,
         isRipping: false,
         cardsDealt: false,
-        pulledCards: isStarterPack ? this.rollStarterPackCards() : this.rollFivePackCards(),
+        pulledCards: isStarterPack
+          ? this.rollStarterPackCards()
+          : (isPremiumPack ? this.rollPremiumPackCards() : this.rollFivePackCards()),
         currentCardIndex: 0,
         flippedIndices: new Set(),
         collected: false
@@ -9033,33 +10224,51 @@
 
       if (!modal || !wrapper || !sealedZone || !cardsRow) return;
 
+      document.getElementById('pack-stage-container')?.classList.remove('single-card-active');
+
       // Reset stage UI to Phase 1 (Sealed Booster Pack)
       if (badgeEl) {
         badgeEl.textContent = isStarterPack
           ? '✨ MYTHOS STARTER PACK • 18-CARD DECK BOX ✨'
-          : '✨ MYTHOS BASE SET • 1ST EDITION BOOSTER ✨';
+          : (isPremiumPack
+            ? '💎 MYTHOS 1ST EDITION • PREMIUM BOOSTER 💎'
+            : '✨ MYTHOS BASE SET • 1ST EDITION BOOSTER ✨');
       }
       if (titleEl) {
         titleEl.textContent = isStarterPack
           ? 'BREAK THE SEAL OF YOUR 18-CARD STARTER PACK'
-          : 'BREAK THE SEAL OF MYTHOS';
+          : (isPremiumPack
+            ? 'UNSEAL YOUR 1ST EDITION PREMIUM PACK'
+            : 'BREAK THE SEAL OF MYTHOS');
       }
       if (subEl) {
         subEl.innerHTML = 'Click the sealed Booster Pack <b>3 times</b> to charge <b>The Seal of Mythos</b> and tear open the foil!';
+      }
+      const foilArtImg = modal.querySelector('.pack-foil-art-img');
+      if (foilArtImg) {
+        foilArtImg.src = isPremiumPack
+          ? 'Cards/Mythos_Premium_Pack.jpg'
+          : (isStarterPack ? 'Cards/Mythos_Card_Back.png' : 'Cards/Mythos_Base_Pack.jpg');
       }
       const crimpLabel = modal.querySelector('.pack-crimp-label');
       if (crimpLabel) {
         crimpLabel.textContent = `★ MYTHOS TCG • ${this.packOpeningState.pulledCards.length} CARDS INSIDE ★`;
       }
-      const foilBadge = modal.querySelector('.pack-foil-badge-overlay span');
+      const foilBadgeWrap = modal.querySelector('.pack-foil-badge-overlay');
+      const foilBadge = foilBadgeWrap?.querySelector('span');
+      if (foilBadgeWrap) {
+        foilBadgeWrap.classList.toggle('hidden', !isStarterPack);
+      }
       if (foilBadge) {
-        foilBadge.textContent = isStarterPack ? '18-CARD STARTER PACK' : 'BASE SET BOOSTER';
+        foilBadge.textContent = isStarterPack
+          ? '18-CARD STARTER PACK'
+          : (isPremiumPack ? '1ST ED. PREMIUM PACK' : '1ST ED. BASE PACK');
       }
       if (collectBtn) {
         collectBtn.textContent = `📖 Collect All ${this.packOpeningState.pulledCards.length} Cards into Binder`;
       }
       sealedZone.classList.remove('hidden');
-      wrapper.className = 'sealed-booster-wrapper';
+      wrapper.className = isPremiumPack ? 'sealed-booster-wrapper premium-foil' : 'sealed-booster-wrapper';
       if (ring) ring.className = 'pack-energy-ring';
       ['seal-pip-1', 'seal-pip-2', 'seal-pip-3'].forEach(id => {
         document.getElementById(id)?.classList.remove('lit');
@@ -9159,6 +10368,7 @@
       nextBtn?.classList.add('hidden');
       viewAllBtn?.classList.add('hidden');
       collectBtn?.classList.add('hidden');
+      document.getElementById('pack-stage-container')?.classList.add('single-card-active');
 
       const card = st.pulledCards[idx];
       const isFinal = (idx === st.pulledCards.length - 1);
@@ -9198,11 +10408,9 @@
           <!-- Face-Down Back using Cleaned Mythos_Card_Back.png -->
           <div class="pack-card-face pack-card-back">
             <img src="Cards/Mythos_Card_Back.png" alt="Mythos Card Back">
-            <div class="pack-card-back-prompt">✨ CLICK TO REVEAL</div>
           </div>
           <!-- Face-Up Revealed Beast Card -->
           <div class="pack-card-face pack-card-front">
-            <span class="pack-card-rarity-banner mythic">${card.badgeLabel}</span>
             <img src="${pullImg}" alt="${card.name}">
             ${animPullVideo ? `<video class="pack-card-video hidden" src="${animPullVideo}" poster="${pullImg}" playsinline preload="auto"></video>` : ''}
             <div class="pack-card-holo-glint"></div>
@@ -9260,33 +10468,22 @@
         badgeEl.textContent = `✨ CARD ${idx + 1} REVEALED • ${card.badgeLabel} ✨`;
       }
       if (titleEl) {
-        titleEl.textContent = `✨ ${card.shortName.toUpperCase()} REVEALED! ✨`;
+        titleEl.textContent = card.isAnimatedSpecial
+          ? `🌟 ANIMATED SPECIAL: ${card.shortName.toUpperCase()}! 🌟`
+          : `✨ ${card.shortName.toUpperCase()} REVEALED! ✨`;
       }
+      const hasMoreCards = idx < st.pulledCards.length - 1;
       if (subEl) {
-        subEl.innerHTML = `<b>${card.name}</b> • <span class="element-tag ${card.element}">${card.element.toUpperCase()}</span> • ${card.stars}★<br><span style="font-size: 12.5px; color: var(--text-muted);">${card.desc}</span>`;
+        const nextHint = hasMoreCards
+          ? 'Click the card for the next card ▸'
+          : 'Click the card to view all & collect ▸';
+        subEl.innerHTML = `<b>${card.name}</b> • <span class="element-tag ${card.element}">${card.element.toUpperCase()}</span> • ${card.stars}★<br><span style="font-size: 12.5px; color: var(--text-muted);">${card.desc}</span><br><span style="font-size: 12px; color: #fde047; font-weight: 700;">${nextHint}</span>`;
       }
 
-      // Check if there are more cards to open in this pack
-      if (idx < st.pulledCards.length - 1) {
-        if (nextBtn) {
-          nextBtn.textContent = `Next Card ▸ (Open Card ${idx + 2} of ${st.pulledCards.length})`;
-          nextBtn.classList.remove('hidden');
-        }
-        if (viewAllBtn) {
-          viewAllBtn.textContent = `🃏 View All ${st.pulledCards.length} Cards`;
-          viewAllBtn.classList.remove('hidden');
-        }
-      } else {
-        // All cards have been opened!
-        if (viewAllBtn) {
-          viewAllBtn.textContent = `🃏 View All ${st.pulledCards.length} Cards`;
-          viewAllBtn.classList.remove('hidden');
-        }
-        if (collectBtn) {
-          collectBtn.textContent = `📖 Collect All ${st.pulledCards.length} Cards into Binder`;
-          collectBtn.classList.remove('hidden');
-        }
-      }
+      // Keep stage buttons hidden during single-card presentation; clicking the card advances.
+      nextBtn?.classList.add('hidden');
+      viewAllBtn?.classList.add('hidden');
+      collectBtn?.classList.add('hidden');
       this.updateMobileActionLabel();
     }
 
@@ -9326,7 +10523,13 @@
       const collectBtn = document.getElementById('btn-pack-collect');
       const cardsRow = document.getElementById('pack-cards-reveal-row');
 
-      if (badgeEl) badgeEl.textContent = st.isStarterPack ? '✨ STARTER PACK COMPLETE ✨' : '✨ BOOSTER PACK COMPLETE ✨';
+      document.getElementById('pack-stage-container')?.classList.remove('single-card-active');
+
+      if (badgeEl) {
+        badgeEl.textContent = st.isStarterPack
+          ? '✨ STARTER PACK COMPLETE ✨'
+          : (st.isPremiumPack ? '💎 1ST ED. PREMIUM PACK COMPLETE 💎' : '✨ BOOSTER PACK COMPLETE ✨');
+      }
       if (titleEl) titleEl.textContent = `✨ ALL ${st.pulledCards.length} CARDS PULLED! ✨`;
       if (subEl) subEl.innerHTML = `All ${st.pulledCards.length} Mythos Cards unsealed! Collect them to place them directly into your <b>Card Binder</b> sleeves:`;
 
@@ -9394,6 +10597,9 @@
           icon: '🃏',
           cardImg: card.cardImg,
           traditionalCardImg: card.traditionalCardImg || null,
+          isAnimatedSpecial: Boolean(card.isAnimatedSpecial),
+          animatedCardVideo: card.animatedCardVideo || null,
+          animatedTraditionalVideo: card.animatedTraditionalVideo || null,
           type: 'mythos_card',
           desc: card.desc
         });
@@ -9457,6 +10663,8 @@
       this.selectedInventoryItemId = null;
       this.binderSlots = Array(36).fill(null);
       this.binderPage = 0;
+      this.deckPage = 0;
+      this.invPage = 0;
       this.playingDeck = [];
       this.deckStorageMigrated = true;
       this.equippedBoardTheme = 'classic';
@@ -10829,10 +12037,12 @@
             });
           } else {
             const activeEvent = this.getCurrentDayEvent();
-            const packCost = activeEvent?.id === 'weekend_market' ? 8 : 10;
-            const hasMoneyForPack = (this.gold || 0) >= packCost;
+            const isSale = activeEvent?.id === 'weekend_market';
+            const packCost = isSale ? 8 : 10;
+            const premCost = isSale ? 12 : 15;
             const hasStarterPack = (this.inventory || []).some(i => i.id === 'unopened_starter_pack' && i.qty > 0);
-            const hasUnopenedPack = hasStarterPack || (this.inventory || []).some(i => i.id === 'unopened_base_pack' && i.qty > 0);
+            const hasPremiumPack = (this.inventory || []).some(i => i.id === 'unopened_premium_pack' && i.qty > 0);
+            const hasUnopenedPack = hasStarterPack || hasPremiumPack || (this.inventory || []).some(i => i.id === 'unopened_base_pack' && i.qty > 0);
             const looseCardCount = (this.inventory || []).filter(i => i.type === 'mythos_card' && i.qty > 0).reduce((s, i) => s + (i.qty || 0), 0);
 
             const leoChoices = [
@@ -10840,24 +12050,9 @@
                 label: `1. 🛒 "Let's check out your Buy &amp; Sell Counter!"`,
                 primary: true,
                 onSelect: () => this.toggleShopModal(true)
-              },
-              hasMoneyForPack
-                ? {
-                    label: `2. 📦 "Buy a 1st-Edition Base Card Pack (${this.formatMoney(packCost)})!"`,
-                    silentClick: true,
-                    onSelect: (el) => {
-                      if (this.buyBaseCardPack()) {
-                        this._leoRecentPackPurchase = true;
-                        el.innerHTML = `<b>Shopkeeper Leo:</b> "Added a sealed <b>1st-Edition Mythos Base Card Pack</b> (${this.formatMoney(packCost)}) to your backpack! Ready to rip it open?"`;
-                      }
-                    }
-                  }
-                : {
-                    label: `2. 📦 "I'd like a Base Card Pack (${this.formatMoney(packCost)})..." <i>(Wallet: ${this.formatMoney(this.gold || 0)})</i>`,
-                    onSelect: () => this.toggleShopModal(true, 'buy')
-                  }
+              }
             ];
-            let nextNum = 3;
+            let nextNum = 2;
             if (looseCardCount > 0) {
               leoChoices.push({
                 label: `${nextNum++}. 💵 "Sell cards from my backpack (${looseCardCount} available)"`,
@@ -10865,11 +12060,16 @@
               });
             }
             if (hasUnopenedPack) {
+              const targetPackId = hasStarterPack
+                ? 'unopened_starter_pack'
+                : (hasPremiumPack ? 'unopened_premium_pack' : 'unopened_base_pack');
               leoChoices.push({
                 label: hasStarterPack
                   ? `${nextNum++}. ✨ "Rip open my 18-Card Mythos Starter Pack right here!"`
-                  : `${nextNum++}. ✨ "Rip open my Mythos Base Card Pack right here!"`,
-                onSelect: () => this.startBoosterPackOpening(hasStarterPack ? 'unopened_starter_pack' : 'unopened_base_pack')
+                  : (hasPremiumPack
+                    ? `${nextNum++}. 💎 "Rip open my 1st-Edition Premium Pack right here!"`
+                    : `${nextNum++}. ✨ "Rip open my Mythos Base Card Pack right here!"`),
+                onSelect: () => this.startBoosterPackOpening(targetPackId)
               });
             }
             const bb = this.boosterBash;
@@ -10928,13 +12128,13 @@
 
             this.renderNpcChoicePrompt({
               npcId: 'shopkeeper',
-              promptKey: `keeper_unlocked_${hasMoneyForPack}_${packCost}_${hasUnopenedPack}_${looseCardCount}_${this._leoRecentPackPurchase ? 1 : 0}_${bb?.phase || 'none'}_${bbOpen}_${bbDoneToday}_${pName}_${fName}`,
+              promptKey: `keeper_unlocked_${packCost}_${premCost}_${hasUnopenedPack}_${looseCardCount}_${this._leoRecentPackPurchase ? 1 : 0}_${bb?.phase || 'none'}_${bbOpen}_${bbDoneToday}_${pName}_${fName}`,
               speakerText: "🃏 SHOPKEEPER LEO — LEO'S CARD SHOP",
               speakerClass: 'ow-speaker-tag tv',
               talkPromptHtml: `Press <b>Talk</b> to speak with <b>Shopkeeper Leo</b> across the counter.`,
               greetingHtml: this._leoRecentPackPurchase
-                ? `<b>Shopkeeper Leo:</b> "Added a sealed <b>1st-Edition Mythos Base Card Pack</b> (${this.formatMoney(packCost)}) to your backpack! Want to rip it open right here or grab another?"`
-                : `"Welcome back to the counter, ${pName}! Now that you and ${fName} have your starter packs, feel free to use our <b>Buy &amp; Sell Counter</b>: grab more 1st-Edition <b>Mythos Base Card Packs for ${this.formatMoney(packCost)}</b>, or trade in extra cards from your backpack for cash (10¢ for 1★ up to 50¢ for 4★)!"`,
+                ? `<b>Shopkeeper Leo:</b> "Added a sealed pack to your backpack! Open it here or browse the Buy &amp; Sell Counter for more!"`
+                : `"Welcome back to the counter, ${pName}! Now that you and ${fName} have your starter packs, feel free to use our <b>Buy &amp; Sell Counter</b>: grab <b>Base Packs (${this.formatMoney(packCost)})</b>, <b>Premium Packs (${this.formatMoney(premCost)})</b>, or trade in extra cards from your backpack for cash (10¢ for 1★ up to 50¢ for 4★)!"`,
               choices: leoChoices,
               challengeText: '🛒 Buy & Sell Counter (Space)'
             });
@@ -12444,13 +13644,8 @@
           return;
         } else if (st && st.cardsDealt) {
           const activeCard = document.getElementById('active-pack-card');
-          if (activeCard && !activeCard.classList.contains('flipped')) {
+          if (activeCard) {
             activeCard.click();
-            return;
-          }
-          const nextBtn = document.getElementById('btn-pack-next-card');
-          if (nextBtn && !nextBtn.classList.contains('hidden')) {
-            nextBtn.click();
             return;
           }
           const collectBtn = document.getElementById('btn-pack-collect');
@@ -12802,6 +13997,7 @@
         ? this.inventory.map(i => {
             const copy = { ...i };
             delete copy._isProxy;
+            if (Array.isArray(i.cards)) copy.cards = [...i.cards];
             return copy;
           })
         : [];
@@ -12946,6 +14142,8 @@
           areaLabel = `🚒 Oakhaven Fire Department`;
         } else if (this.currentArea === 'police_station_interior') {
           areaLabel = `🚓 Oakhaven Police Department`;
+        } else if (this.currentArea === 'barber_shop_interior') {
+          areaLabel = `💈 Oakhaven Barber Shop`;
         } else if (this.currentArea === 'apartment_hall_interior') {
           areaLabel = `🏢 Oakhaven Apartments — Main Hall`;
         } else if (this.currentArea === 'apt_1_interior') {
@@ -12999,6 +14197,7 @@
         else if (this.currentArea === 'school_interior') shortArea = `🏫 School`;
         else if (this.currentArea === 'fire_station_interior') shortArea = `🚒 Fire Dept.`;
         else if (this.currentArea === 'police_station_interior') shortArea = `🚓 Police Dept.`;
+        else if (this.currentArea === 'barber_shop_interior') shortArea = `💈 Barber Shop`;
         else if (this.currentArea === 'apartment_hall_interior') shortArea = `🏢 Apt. Hall`;
         else if (this.currentArea === 'apt_1_interior') shortArea = `🚪 Apt. 101`;
         else if (this.currentArea === 'apt_2_interior') shortArea = `🚪 Apt. 102`;
@@ -13653,47 +14852,28 @@
         });
       }
 
-      // Card Binder Button Handlers
+      // Card Binder & 3-Section Sliding Folio Button Handlers
       const openBinderBtn = document.getElementById('btn-open-binder');
       if (openBinderBtn) {
-        openBinderBtn.addEventListener('click', () => this.toggleBinderModal(true));
+        openBinderBtn.addEventListener('click', () => this.toggleBinderModal(true, 'binder'));
       }
 
-      const closeBinderBtn = document.getElementById('btn-close-binder');
-      if (closeBinderBtn) {
-        closeBinderBtn.addEventListener('click', () => this.toggleBinderModal(false));
-      }
+      ['btn-close-binder', 'btn-binder-done', 'btn-close-binder-deck', 'btn-close-binder-sleeves', 'btn-close-binder-inv'].forEach(btnId => {
+        document.getElementById(btnId)?.addEventListener('click', () => this.toggleBinderModal(false));
+      });
 
-      const binderDoneBtn = document.getElementById('btn-binder-done');
-      if (binderDoneBtn) {
-        binderDoneBtn.addEventListener('click', () => this.toggleBinderModal(false));
-      }
-
-      const bindCollapsibleHeader = (headerId, section) => {
-        const hdr = document.getElementById(headerId);
-        if (!hdr) return;
-        hdr.addEventListener('click', () => this.toggleBinderSection(section));
-        hdr.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            this.toggleBinderSection(section);
-          }
+      const bindFolioNav = (btnId, section) => {
+        document.getElementById(btnId)?.addEventListener('click', () => {
+          if (window.sounds?.playClick) window.sounds.playClick();
+          this.setFolioSection(section);
         });
       };
-      bindCollapsibleHeader('binder-deck-tray-header', 'tray');
-      bindCollapsibleHeader('binder-drawer-header', 'drawer');
-
-      document.getElementById('btn-binder-tab-sleeves')?.addEventListener('click', () => {
-        if (window.sounds?.playClick) window.sounds.playClick();
-        this.binderDrawerTab = 'sleeves';
-        this.renderBinderModal();
-      });
-
-      document.getElementById('btn-binder-tab-bag')?.addEventListener('click', () => {
-        if (window.sounds?.playClick) window.sounds.playClick();
-        this.binderDrawerTab = 'bag';
-        this.renderBinderModal();
-      });
+      bindFolioNav('btn-folio-deck-to-binder', 'binder');
+      bindFolioNav('btn-folio-deck-to-inv', 'inventory');
+      bindFolioNav('btn-folio-binder-to-deck', 'deck');
+      bindFolioNav('btn-folio-binder-to-inv', 'inventory');
+      bindFolioNav('btn-folio-inv-to-deck', 'deck');
+      bindFolioNav('btn-folio-inv-to-binder', 'binder');
 
       document.getElementById('btn-binder-autofill')?.addEventListener('click', () => {
         this.autoFillPlayingDeck();
@@ -13703,23 +14883,48 @@
         this.clearPlayingDeck();
       });
 
-      document.getElementById('btn-binder-raw-art')?.addEventListener('click', (e) => {
-        if (window.sounds?.playClick) window.sounds.playClick();
-        const dlg = document.getElementById('binder-hd-split-dialog');
-        if (!dlg) return;
-        const peeking = dlg.classList.toggle('raw-art-peek');
-        if (e.currentTarget) {
-          e.currentTarget.textContent = peeking ? '🃏 Show UI' : '👁️ Art';
-        }
+      document.querySelectorAll('#binder-filter-bar [data-binder-filter]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          if (window.sounds?.playClick) window.sounds.playClick();
+          this.binderStarFilter = btn.dataset.binderFilter || 'all';
+          this.binderPage = 0;
+          this.renderBinderModal();
+        });
       });
 
-      document.querySelectorAll('#binder-sort-bar .binder-sort-btn').forEach(btn => {
+      document.querySelectorAll('#folio-inv-filter-bar [data-inv-filter]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          if (window.sounds?.playClick) window.sounds.playClick();
+          this.invCategoryFilter = btn.dataset.invFilter || 'all';
+          this.invPage = 0;
+          this.renderBinderModal();
+        });
+      });
+
+      document.querySelectorAll('#binder-sort-bar [data-sort]').forEach(btn => {
         btn.addEventListener('click', () => {
           if (window.sounds?.playClick) window.sounds.playClick();
           this.binderSortBy = btn.dataset.sort || 'default';
           this.binderPage = 0;
           this.renderBinderModal();
         });
+      });
+
+      document.getElementById('btn-deck-prev-page')?.addEventListener('click', () => {
+        if ((this.deckPage || 0) > 0) {
+          if (window.sounds?.playClick) window.sounds.playClick();
+          this.deckPage -= 1;
+          this.renderBinderModal();
+        }
+      });
+
+      document.getElementById('btn-deck-next-page')?.addEventListener('click', () => {
+        const totalPages = this._deckTotalPages || 1;
+        if ((this.deckPage || 0) < totalPages - 1) {
+          if (window.sounds?.playClick) window.sounds.playClick();
+          this.deckPage = (this.deckPage || 0) + 1;
+          this.renderBinderModal();
+        }
       });
 
       document.getElementById('btn-binder-prev-page')?.addEventListener('click', () => {
@@ -13731,10 +14936,27 @@
       });
 
       document.getElementById('btn-binder-next-page')?.addEventListener('click', () => {
-        const totalPages = Math.max(1, Math.ceil((this.binderSlots?.length || 36) / 9));
+        const totalPages = this._binderTotalPages || 1;
         if ((this.binderPage || 0) < totalPages - 1) {
           if (window.sounds?.playClick) window.sounds.playClick();
           this.binderPage = (this.binderPage || 0) + 1;
+          this.renderBinderModal();
+        }
+      });
+
+      document.getElementById('btn-inv-prev-page')?.addEventListener('click', () => {
+        if ((this.invPage || 0) > 0) {
+          if (window.sounds?.playClick) window.sounds.playClick();
+          this.invPage -= 1;
+          this.renderBinderModal();
+        }
+      });
+
+      document.getElementById('btn-inv-next-page')?.addEventListener('click', () => {
+        const totalPages = this._invTotalPages || 1;
+        if ((this.invPage || 0) < totalPages - 1) {
+          if (window.sounds?.playClick) window.sounds.playClick();
+          this.invPage = (this.invPage || 0) + 1;
           this.renderBinderModal();
         }
       });
@@ -13850,6 +15072,16 @@
         shopRipNowBtn.addEventListener('click', () => this.startBoosterPackOpening('unopened_base_pack'));
       }
 
+      const shopBuyPremPackBtn = document.getElementById('btn-shop-buy-premium-pack');
+      if (shopBuyPremPackBtn) {
+        shopBuyPremPackBtn.addEventListener('click', () => this.buyPremiumCardPack());
+      }
+
+      const shopRipPremNowBtn = document.getElementById('btn-shop-rip-premium-now');
+      if (shopRipPremNowBtn) {
+        shopRipPremNowBtn.addEventListener('click', () => this.startBoosterPackOpening('unopened_premium_pack'));
+      }
+
       const shopBuyMapBtn = document.getElementById('btn-shop-buy-map');
       if (shopBuyMapBtn) {
         shopBuyMapBtn.addEventListener('click', () => this.buyBase2v2Map());
@@ -13872,6 +15104,59 @@
       if (closeShopXBtn) {
         closeShopXBtn.addEventListener('click', () => this.toggleShopModal(false));
       }
+
+      [
+        ['shop-sell-filter-all', 'all'],
+        ['shop-sell-filter-cards', 'cards'],
+        ['shop-sell-filter-packs', 'packs']
+      ].forEach(([id, filterVal]) => {
+        document.getElementById(id)?.addEventListener('click', () => {
+          this.currentShopSellFilter = filterVal;
+          this.renderShopModal();
+        });
+      });
+
+      document.getElementById('btn-shop-quick-sell-extras')?.addEventListener('click', () => {
+        this.quickSellExtrasAtShop();
+      });
+
+      document.getElementById('btn-shop-cash-out')?.addEventListener('click', () => {
+        this.cashOutShopLedger();
+      });
+
+      document.getElementById('btn-close-refill-pack')?.addEventListener('click', () => this.closeRefillPackModal());
+      document.getElementById('refill-tab-add')?.addEventListener('click', () => {
+        this.currentRefillTab = 'add';
+        this.renderRefillPackModal();
+      });
+      document.getElementById('refill-tab-pack')?.addEventListener('click', () => {
+        this.currentRefillTab = 'pack';
+        this.renderRefillPackModal();
+      });
+      document.getElementById('btn-refill-pack-autofill')?.addEventListener('click', () => {
+        if (this.activeRefillPackId) this.autoFillRefillPack(this.activeRefillPackId);
+      });
+      document.getElementById('btn-refill-pack-sort')?.addEventListener('click', () => {
+        this.currentRefillSort = this.currentRefillSort === 'qty' ? 'stars' : 'qty';
+        this.renderRefillPackModal();
+      });
+      document.getElementById('btn-refill-pack-empty')?.addEventListener('click', () => {
+        if (this.activeRefillPackId) this.emptyRefillPack(this.activeRefillPackId);
+      });
+      document.getElementById('btn-refill-pack-seal')?.addEventListener('click', () => {
+        if (!this.activeRefillPackId) return;
+        if (this._sealPackConfirmId === this.activeRefillPackId) {
+          this.sealRefillablePack(this.activeRefillPackId);
+        } else {
+          this._sealPackConfirmId = this.activeRefillPackId;
+          if (window.sounds?.playClick) window.sounds.playClick();
+          this.renderRefillPackModal();
+          const statusEl = document.getElementById('refill-pack-status');
+          if (statusEl) {
+            statusEl.textContent = '⚠️ Sealing locks all 5 cards forever! Click again to confirm permanent seal.';
+          }
+        }
+      });
 
       // Base2v2 2v2 Beast Select Modal Listeners
       const close2v2Btn = document.getElementById('btn-close-2v2-select');
@@ -14025,7 +15310,13 @@
 
       // Restore Inventory & Reactive Proxy
       const rawInv = Array.isArray(this.worldSave.inventory)
-        ? this.worldSave.inventory.filter(i => i && i.id !== 'map_base2v2' && i.type !== 'battle_map')
+        ? this.worldSave.inventory
+            .filter(i => i && i.id !== 'map_base2v2' && i.type !== 'battle_map')
+            .map(i => {
+              if (i.id === 'unopened_base_pack') return { ...i, cardImg: 'Cards/Mythos_Base_Pack.jpg' };
+              if (i.id === 'unopened_premium_pack') return { ...i, cardImg: 'Cards/Mythos_Premium_Pack.jpg', isPremiumPack: true };
+              return i;
+            })
         : [];
       this.inventory = this.wrapReactiveArray(rawInv.map(i => this.wrapReactiveItem(i)), 'inventory');
       this.selectedInventoryItemId = null;
@@ -14037,6 +15328,8 @@
       while (rawBinder.length < 36) rawBinder.push(null);
       this.binderSlots = this.wrapReactiveArray(rawBinder.map(s => s ? this.wrapReactiveItem(s) : null), 'binder');
       this.binderPage = 0;
+      this.deckPage = 0;
+      this.invPage = 0;
       try { this.consolidateBinderStacks(); } catch (e) { console.warn('consolidateBinderStacks:', e); }
       this.playingDeck = Array.isArray(this.worldSave.playingDeck)
         ? [...this.worldSave.playingDeck]
@@ -14396,17 +15689,12 @@
               this.handleSealedPackClick();
             } else if (st && st.cardsDealt) {
               const activeCard = document.getElementById('active-pack-card');
-              if (activeCard && !activeCard.classList.contains('flipped')) {
+              if (activeCard) {
                 activeCard.click();
               } else {
-                const nextBtn = document.getElementById('btn-pack-next-card');
-                if (nextBtn && !nextBtn.classList.contains('hidden')) {
-                  nextBtn.click();
-                } else {
-                  const collectBtn = document.getElementById('btn-pack-collect');
-                  if (collectBtn && !collectBtn.classList.contains('hidden')) {
-                    collectBtn.click();
-                  }
+                const collectBtn = document.getElementById('btn-pack-collect');
+                if (collectBtn && !collectBtn.classList.contains('hidden')) {
+                  collectBtn.click();
                 }
               }
             }
@@ -14459,6 +15747,7 @@
           { id: 'phone-modal', close: () => this.togglePhoneModal(false) },
           { id: 'calendar-modal', close: () => this.toggleCalendarModal(false) },
           { id: 'creature-inspect-modal', close: () => this.closeCreatureInspect() },
+          { id: 'refill-pack-modal', close: () => this.closeRefillPackModal() },
           { id: 'binder-picker-modal', close: () => this.closeBinderCardPicker() },
           { id: 'playing-deck-modal', close: () => this.togglePlayingDeckModal(false) },
           { id: 'binder-modal', close: () => this.toggleBinderModal(false) },
@@ -14483,6 +15772,21 @@
           }
         }
         if (openOverlayModal) {
+          if (openOverlayModal.id === 'binder-modal') {
+            if (k === 'arrowright' && this.folioSection === 'deck') {
+              e.preventDefault();
+              this.setFolioSection('binder');
+            } else if (k === 'arrowleft' && this.folioSection === 'binder') {
+              e.preventDefault();
+              this.setFolioSection('deck');
+            } else if (k === 'arrowdown' && this.folioSection !== 'inventory') {
+              e.preventDefault();
+              this.setFolioSection('inventory');
+            } else if (k === 'arrowup' && this.folioSection === 'inventory') {
+              e.preventDefault();
+              this.setFolioSection(this.folioLastUpper || 'binder');
+            }
+          }
           return;
         }
 
@@ -15136,6 +16440,20 @@
         // Lower-Right Officer Desk (x: 12.6..14.75, y: 7.3..9.0)
         if (tx >= 12.6 && ty >= 7.3 && ty <= 9.0) return true;
         return false;
+      } else if (this.currentArea === 'barber_shop_interior') {
+        // Cutaway Barber Shop floor bounds (16 x 12 room matching barber_shop_interior.png)
+        if (tx < 1.25 || tx > 14.75 || ty < 4.75 || ty > 10.55) return true;
+        // Upper-Left Ceramic Wash Basin
+        if (tx <= 2.4 && ty <= 6.2) return true;
+        // Three Barber Chair & Vanity Mirror Stations
+        if (tx >= 3.2 && tx <= 5.2 && ty <= 6.95) return true;
+        if (tx >= 5.8 && tx <= 7.8 && ty <= 6.95) return true;
+        if (tx >= 8.4 && tx <= 10.4 && ty <= 6.95) return true;
+        // Upper-Right Oak Reception Desk
+        if (tx >= 11.7 && ty >= 5.0 && ty <= 6.95) return true;
+        // Lower-Right Waiting Sofa, Magazine Table & Coat Rack
+        if (tx >= 12.8 && ty >= 7.5 && ty <= 10.1) return true;
+        return false;
       } else if (this.currentArea === 'school_interior') {
         // Oakhaven Elementary Interior (22 x 14 Cutaway Hall & Main Classroom Wing)
         // Allow stepping into the West Entrance Doors threshold to exit cleanly back outside
@@ -15204,6 +16522,7 @@
 
         if (tx >= 1.8 && tx <= 6.8 && ty >= 23.6 && ty <= 27.08) return true; // Oakhaven Fire Station
         if (tx >= 7.4 && tx <= 12.4 && ty >= 23.6 && ty <= 27.08) return true; // Oakhaven Police Station
+        if (tx >= -24.20 && tx <= -19.20 && ty >= 16.65 && ty <= 20.08) return true; // Oakhaven Barber Shop
 
         // Shaun's Corner Market (NW corner of Willow Way & N-S Paved Road: x: -5.5..-1.3, y: 23.9..26.7)
         if (tx >= -5.5 && tx <= -1.3 && ty >= 23.9 && ty <= 26.7) {
@@ -15952,6 +17271,7 @@
       if (inBox(-21.45, 32.30, 15.70, 33.40)) return true; // Oakhaven Blvd (4 blocks West & 3 blocks East of Roundabout)
       if (inBox(14.65, 27.05, 15.70, 33.40)) return true;  // East N-S Connector linking Willow Way East & Oakhaven Blvd
       if (inBox(-24.50, 27.05, 24.50, 28.20)) return true;// Willow Way & School Drop-Off Lane
+      if (inBox(-24.50, 20.05, 0.70, 21.15)) return true; // West Road (1 block north of Willow Way, Oakhaven Blvd to Barber Shop)
 
       // Building Entry Aprons & Plazas
       if (inBox(1.50, 2.70, 2.50, 4.30)) return true;     // Player's House
@@ -15968,6 +17288,7 @@
       if (inBox(-5.70, 26.00, 0.70, 27.70)) return true;  // Corner Market Flagstone Plaza
       if (inBox(-24.80, 26.20, -15.20, 27.70)) return true; // Convention Center Plaza
       if (inBox(15.50, 27.00, 24.50, 28.60)) return true; // School Portico Drop-Off
+      if (inBox(-24.40, 19.70, -19.00, 21.15)) return true; // Oakhaven Barber Shop Front Apron
       if (inBox(18.00, 6.80, 24.20, 11.60)) return true;  // Central Park Courtyard Walkways
 
       return false;
@@ -17399,6 +18720,30 @@
           this.currentArea = 'exterior';
           this.player.x = 9.90;
           this.player.y = 27.45;
+          this.player.dir = 'down';
+          this.player.targetX = null;
+          this.player.targetY = null;
+          this.areaTransitionCooldown = 25;
+          this.updateHUDSaveInfo();
+        } else if (this.currentArea === 'exterior' && this.player.x >= -22.15 && this.player.x <= -21.25 && this.player.y >= 19.85 && this.player.y <= 20.35) {
+          // Enter Oakhaven Barber Shop via centered arched double doors
+          if (window.sounds?.playMove) window.sounds.playMove();
+          this.currentArea = 'barber_shop_interior';
+          this.player.x = 7.90;
+          this.player.y = 9.75;
+          this.player.dir = 'up';
+          this.player.targetX = null;
+          this.player.targetY = null;
+          this.areaTransitionCooldown = 25;
+          this.cameraX = 0;
+          this.cameraY = 0;
+          this.updateHUDSaveInfo();
+        } else if (this.currentArea === 'barber_shop_interior' && this.player.x >= 7.0 && this.player.x <= 8.8 && this.player.y >= 10.25) {
+          // Exit Oakhaven Barber Shop via centered OAKHAVEN mat
+          if (window.sounds?.playMove) window.sounds.playMove();
+          this.currentArea = 'exterior';
+          this.player.x = -21.70;
+          this.player.y = 20.45;
           this.player.dir = 'down';
           this.player.targetX = null;
           this.player.targetY = null;
@@ -20125,7 +21470,7 @@
         'cottage_player', 'cottage_friend', 'cottage_pluto',
         'cottage_nova', 'cottage_silas', 'cottage_maya',
         'card_shop', 'shop_banner', 'convention_center', 'oakhaven_apartments',
-        'school_exterior', 'school_bus', 'police_station', 'fire_station', 'fire_station_interior', 'police_station_interior', 'npc_fire_chief', 'npc_fire_chief_back', 'npc_fire_chief_side', 'npc_police_chief', 'npc_police_chief_back', 'npc_police_chief_side',
+        'school_exterior', 'school_bus', 'police_station', 'fire_station', 'fire_station_interior', 'police_station_interior', 'barber_shop', 'barber_shop_interior', 'npc_fire_chief', 'npc_fire_chief_back', 'npc_fire_chief_side', 'npc_police_chief', 'npc_police_chief_back', 'npc_police_chief_side',
         'playground_ground', 'playground_fort', 'playground_swingset',
         'playground_seesaw', 'playground_spinner', 'playground_hoop',
         'tree_green', 'tree_autumn', 'tree_autumn_small',
@@ -24849,14 +26194,14 @@
     // =========================================================================
     // OAKHAVEN ELEMENTARY SCHOOL INTERIOR (22 x 14 Tiles - West Door Lobby & Classroom)
     // =========================================================================
-    renderPoliceStationInterior() {
+    _renderCutawayBuildingInterior(spriteKey) {
       const ctx = this.ctx;
       const W = this.canvas.width;
       const H = this.canvas.height;
       ctx.fillStyle = '#1c1917';
       ctx.fillRect(0, 0, W, H);
-      if (this.isImgReady('police_station_interior')) {
-        const img = this.owSprites.police_station_interior;
+      if (this.isImgReady(spriteKey)) {
+        const img = this.owSprites[spriteKey];
         const scale = Math.min(W / img.width, H / img.height);
         const dw = Math.round(img.width * scale);
         const dh = Math.round(img.height * scale);
@@ -24869,24 +26214,16 @@
       }
     }
 
+    renderPoliceStationInterior() {
+      this._renderCutawayBuildingInterior('police_station_interior');
+    }
+
     renderFireStationInterior() {
-      const ctx = this.ctx;
-      const W = this.canvas.width;
-      const H = this.canvas.height;
-      ctx.fillStyle = '#1c1917';
-      ctx.fillRect(0, 0, W, H);
-      if (this.isImgReady('fire_station_interior')) {
-        const img = this.owSprites.fire_station_interior;
-        const scale = Math.min(W / img.width, H / img.height);
-        const dw = Math.round(img.width * scale);
-        const dh = Math.round(img.height * scale);
-        const dx = Math.round((W - dw) / 2);
-        const dy = Math.round((H - dh) / 2);
-        ctx.save();
-        ctx.imageSmoothingEnabled = true;
-        ctx.drawImage(img, dx, dy, dw, dh);
-        ctx.restore();
-      }
+      this._renderCutawayBuildingInterior('fire_station_interior');
+    }
+
+    renderBarberShopInterior() {
+      this._renderCutawayBuildingInterior('barber_shop_interior');
     }
 
     renderSchoolInterior() {
@@ -26527,6 +27864,7 @@
       const eastExitEndX = willowEastEndX;          // 3 city blocks east of roundabout, connecting north to Willow Way East
       const westExitY = Math.round(rbCy - oakhavenWestTurnW / 2);
       const northWestPavedY = Math.round(27.60 * S - oakhavenWestTurnW / 2); // 1 city block (5.25 tiles) north of Oakhaven Blvd
+      const barberRoadY = Math.round(20.60 * S - oakhavenWestTurnW / 2);     // 1 block north of Willow Way running west from Oakhaven Blvd
 
       // Horizontal Urban Paved Road helper (used for 4-block West Exit from Roundabout)
       const drawUrbanPavedRoadH = (ux, uy, uw, uh) => {
@@ -26566,6 +27904,12 @@
       drawUrbanPavedRoad(oakhavenWestTurnX, 0, oakhavenWestTurnW, southPavedEndY);
       drawUrbanPavedRoadH(westExitEndX, westExitY, eastCurveCx - westExitEndX, oakhavenWestTurnW);
       drawUrbanPavedRoadH(willowWestEndX, northWestPavedY, willowEastEndX - willowWestEndX, oakhavenWestTurnW);
+      drawUrbanPavedRoadH(willowWestEndX, barberRoadY, oakhavenWestTurnX + oakhavenWestTurnW - willowWestEndX, oakhavenWestTurnW);
+      // Clean concrete end-cap at west dead-end beside Barber Shop
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillRect(Math.round(willowWestEndX), barberRoadY, 5, Math.round(oakhavenWestTurnW));
+      ctx.fillStyle = '#64748b';
+      ctx.fillRect(Math.round(willowWestEndX) + 5, barberRoadY + 5, 2, Math.round(oakhavenWestTurnW - 10));
       drawUrbanPavedRoad(eastConnX, northWestPavedY, oakhavenWestTurnW, eastCurveCy - northWestPavedY);
 
       // Curved 90-degree asphalt bend connecting Oakhaven Blvd East smoothly north into the East Connector
@@ -26596,6 +27940,9 @@
       ctx.fillStyle = this.urbanRoadPattern || '#444d5c';
       ctx.fillRect(Math.round(oakhavenWestTurnX - 6), northWestPavedY + 7, Math.round(oakhavenWestTurnW + 12), Math.round(oakhavenWestTurnW - 14));
       ctx.fillRect(Math.round(oakhavenWestTurnX + 7), northWestPavedY - 6, Math.round(oakhavenWestTurnW - 14), Math.round(oakhavenWestTurnW + 12));
+      // Open T-intersection mouth where the North West Road joins Oakhaven Blvd
+      ctx.fillRect(Math.round(oakhavenWestTurnX - 6), barberRoadY + 7, Math.round(oakhavenWestTurnW), Math.round(oakhavenWestTurnW - 14));
+      ctx.fillRect(Math.round(oakhavenWestTurnX + 7), barberRoadY - 6, Math.round(oakhavenWestTurnW - 14), Math.round(oakhavenWestTurnW + 12));
 
       // Urban Paved Roundabout at South End
       ctx.fillStyle = '#64748b';
@@ -28390,6 +29737,45 @@
               [0.86, 0.80, 26, 0.36, '253, 224, 71']
             ];
             policeLights.forEach(([fx, fy, gr, ga, rgb]) => {
+              const gx = dx + dw * fx;
+              const gy = dy + dh * fy;
+              const glow = ctx.createRadialGradient(gx, gy, 2, gx, gy, gr);
+              glow.addColorStop(0, `rgba(${rgb}, ${(ga * glowMult).toFixed(3)})`);
+              glow.addColorStop(1, `rgba(${rgb}, 0)`);
+              ctx.fillStyle = glow;
+              ctx.beginPath();
+              ctx.arc(gx, gy, gr, 0, Math.PI * 2);
+              ctx.fill();
+            });
+          }
+          ctx.restore();
+        }
+
+        // 3. Oakhaven Barber Shop (West end of new road one block north of Willow Way: x = -24.20..-19.20)
+        if (this.isImgReady('barber_shop')) {
+          const bImg = this.owSprites.barber_shop;
+          const dw = Math.round(5.0 * S);
+          const dh = Math.round(dw * (bImg.height / bImg.width));
+          const dx = Math.round(-24.20 * S);
+          const barberRoadTopY = Math.round(20.08 * S);
+          const dy = Math.round(barberRoadTopY - dh + 2);
+          ctx.save();
+          ctx.imageSmoothingEnabled = true;
+          ctx.drawImage(bImg, dx, dy, dw, dh);
+          if (isLit) {
+            ctx.globalCompositeOperation = 'lighter';
+            const barberLights = [
+              [0.375, 0.65, 30, 0.55, '253, 224, 71'],
+              [0.625, 0.65, 30, 0.55, '253, 224, 71'],
+              [0.50, 0.78, 36, 0.44, '253, 224, 71'],
+              [0.17, 0.77, 42, 0.45, '251, 191, 36'],
+              [0.83, 0.77, 42, 0.45, '251, 191, 36'],
+              [0.11, 0.42, 22, 0.34, '253, 224, 71'],
+              [0.23, 0.42, 22, 0.34, '253, 224, 71'],
+              [0.77, 0.42, 22, 0.34, '253, 224, 71'],
+              [0.89, 0.42, 22, 0.34, '253, 224, 71']
+            ];
+            barberLights.forEach(([fx, fy, gr, ga, rgb]) => {
               const gx = dx + dw * fx;
               const gy = dy + dh * fy;
               const glow = ctx.createRadialGradient(gx, gy, 2, gx, gy, gr);
@@ -31090,6 +32476,8 @@
         this.renderFireStationInterior();
       } else if (this.currentArea === 'police_station_interior') {
         this.renderPoliceStationInterior();
+      } else if (this.currentArea === 'barber_shop_interior') {
+        this.renderBarberShopInterior();
       } else {
         this.renderCraftsmanExterior();
       }

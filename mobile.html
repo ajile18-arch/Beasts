@@ -757,149 +757,370 @@
       </div>
     </div>
 
-    <!-- Shopkeeper Leo's Card Shop Modal (Buy & Sell Counter) -->
+    <!-- Shopkeeper Leo's Card Shop Modal (Option 2: Glass Display Case & Trade Ledger) -->
     <div class="modal-overlay hidden" id="shop-modal">
-      <div class="shop-modal-dialog">
-        <!-- Shop Header -->
-        <div class="shop-header">
-          <div class="shop-title-group">
-            <span class="shop-icon-badge">🃏</span>
-            <div>
-              <h2 class="shop-title">LEO'S CARD SHOP • BUY &amp; SELL COUNTER</h2>
-              <p class="shop-sub">Buy 1st-Edition Booster Packs ($10) or sell extra cards from your backpack for cash!</p>
-            </div>
-          </div>
-          <div class="shop-header-right">
-            <div class="shop-wallet-pill" id="shop-wallet-display">💵 Wallet: $0.00</div>
-            <button type="button" class="shop-close-btn" id="btn-close-shop-x" aria-label="Close Shop">✕</button>
-          </div>
-        </div>
+      <div class="shop-modal-dialog shop-dual-ledger-dialog">
+        <span class="shop-brass-corner tl" aria-hidden="true"></span>
+        <span class="shop-brass-corner tr" aria-hidden="true"></span>
+        <span class="shop-brass-corner bl" aria-hidden="true"></span>
+        <span class="shop-brass-corner br" aria-hidden="true"></span>
 
-        <!-- Shop Navigation Tabs: BUY / SELL -->
-        <div class="shop-tabs-nav">
+        <!-- Narrow/Mobile Pane Switcher -->
+        <div class="shop-mobile-tabs">
           <button type="button" class="shop-tab-btn active" id="shop-tab-buy" data-tab="buy">
-            🛒 BUY PACKS ($10)
+            🛒 BUY FROM LEO
           </button>
           <button type="button" class="shop-tab-btn" id="shop-tab-sell" data-tab="sell">
-            💵 SELL CARDS <span class="shop-tab-count-pill" id="shop-sell-count-pill">0</span>
+            📜 SELL TO LEO <span class="shop-tab-count-pill" id="shop-sell-count-pill">0</span>
           </button>
         </div>
 
-        <!-- Shop Body Content Panels -->
-        <div class="shop-body">
-          <!-- 1. BUY SECTION -->
-          <div class="shop-tab-panel active" id="shop-panel-buy">
-            <div class="shop-buy-card">
-              <div class="shop-pack-artwork-box">
-                <img src="Cards/Mythos_Card_Back.png" alt="Mythos Base Set Booster Pack" class="shop-pack-img">
-                <span class="shop-pack-edition-badge">✨ 1ST EDITION</span>
+        <div class="shop-dual-stage">
+          <!-- LEFT PANE: WALNUT & EMERALD VELVET GLASS DISPLAY CABINET -->
+          <section class="shop-pane shop-buy-cabinet" id="shop-panel-buy">
+            <div class="shop-cabinet-header">
+              <div class="shop-leo-portrait-ring">
+                <img src="Sprites/Overworld/leo_portrait.jpg" alt="Shopkeeper Leo" class="shop-leo-portrait">
               </div>
-              <div class="shop-pack-details">
-                <div class="shop-pack-header">
-                  <h3 class="shop-pack-title">1st-Edition Mythos Base Card Pack</h3>
-                  <span class="shop-pack-price-tag">$10.00</span>
+              <div class="shop-oak-sign-stack">
+                <div class="shop-oak-plaque">
+                  <h2 class="shop-title">LEO'S CARD SHOP</h2>
                 </div>
-                <p class="shop-pack-desc">
-                  Factory-sealed foil booster pack containing <b>5 random Mythos Game Cards</b>. Rip open the pack to discover new warriors, pack beasts, and war machines!
-                </p>
-                <div class="shop-pack-features">
-                  <span class="shop-feat-pill">📦 5 Cards / Pack</span>
-                  <span class="shop-feat-pill">🔥 1st-Edition Holos</span>
-                  <span class="shop-feat-pill">★ Rarity 1★ to 4★</span>
+                <div class="shop-sub-plaque">BUY FROM LEO</div>
+              </div>
+            </div>
+
+            <!-- Upper Illuminated Glass Showcase: Base & Premium Packs -->
+            <div class="shop-glass-showcase">
+              <div class="shop-glass-case">
+                <div class="shop-case-pack-wrap">
+                  <img src="Cards/Mythos_Base_Pack.jpg" alt="1st-Edition Mythos Base Pack" class="shop-pack-img">
                 </div>
-                <div class="shop-buy-actions">
-                  <button type="button" class="ui-btn primary-btn shop-buy-btn" id="btn-shop-buy-pack">
-                    🛒 Buy Base Card Pack ($10.00)
+                <div class="shop-case-plaque">
+                  <div class="shop-case-name">BASE PACK</div>
+                  <div class="shop-case-meta">5 Cards • <span id="shop-base-price-tag">$10.00</span></div>
+                </div>
+                <div class="shop-case-actions">
+                  <button type="button" class="ui-btn shop-cabinet-buy-btn base" id="btn-shop-buy-pack">BUY</button>
+                  <button type="button" class="ui-btn shop-cabinet-rip-btn hidden" id="btn-shop-rip-now" title="Rip Open Unopened Base Pack">✨ RIP</button>
+                </div>
+              </div>
+
+              <div class="shop-glass-case premium">
+                <div class="shop-case-pack-wrap premium">
+                  <img src="Cards/Mythos_Premium_Pack.jpg" alt="1st-Edition Mythos Premium Pack" class="shop-pack-img">
+                </div>
+                <div class="shop-case-plaque premium">
+                  <div class="shop-case-name">PREMIUM PACK</div>
+                  <div class="shop-case-meta">5 Cards • High Rarity • <span id="shop-premium-price-tag">$15.00</span></div>
+                </div>
+                <div class="shop-case-actions">
+                  <button type="button" class="ui-btn shop-cabinet-buy-btn premium" id="btn-shop-buy-premium-pack">BUY</button>
+                  <button type="button" class="ui-btn shop-cabinet-rip-btn premium hidden" id="btn-shop-rip-premium-now" title="Rip Open Unopened Premium Pack">💎 RIP</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Compact Purchase Status Feedback -->
+            <div class="shop-cabinet-status-strip">
+              <span class="shop-buy-status" id="shop-buy-status"></span>
+              <span class="shop-buy-status" id="shop-premium-buy-status"></span>
+            </div>
+
+            <!-- Lower 3x3 Wooden Display Tray: Refillable Class Packs -->
+            <div class="shop-class-tray-section">
+              <div class="shop-tray-divider">
+                <span class="shop-tray-divider-line" aria-hidden="true"></span>
+                <span class="shop-tray-divider-label">CLASS PACKS — $1.00</span>
+                <span class="shop-tray-divider-line" aria-hidden="true"></span>
+              </div>
+              <div class="shop-class-tray-grid" id="shop-refillable-packs-grid" title="Tap a $1 empty class pack to buy, fill with 5 matching cards (+25% bonus), and sell to Leo!">
+                <!-- Dynamically populated 3x3 tray of all 9 class refillable packs -->
+              </div>
+            </div>
+          </section>
+
+          <div class="shop-dual-spine" aria-hidden="true"></div>
+
+          <!-- RIGHT PANE: OPEN STITCHED-PARCHMENT TRADE LEDGER -->
+          <section class="shop-pane shop-sell-ledger" id="shop-panel-sell">
+            <div class="shop-ledger-header">
+              <div class="shop-ledger-ribbon">
+                <span>SELL TO LEO</span>
+              </div>
+              <div class="shop-ledger-header-right">
+                <div class="shop-wallet-pill" id="shop-wallet-display">💰 $0.00</div>
+                <button type="button" class="shop-close-btn" id="btn-close-shop-x" aria-label="Close Shop">✕</button>
+              </div>
+            </div>
+
+            <div class="shop-ledger-page">
+              <div class="shop-ledger-filters" role="tablist" aria-label="Filter items to sell">
+                <button type="button" class="shop-filter-tab active" id="shop-sell-filter-all" data-filter="all">ALL</button>
+                <button type="button" class="shop-filter-tab" id="shop-sell-filter-cards" data-filter="cards">LOOSE CARDS</button>
+                <button type="button" class="shop-filter-tab" id="shop-sell-filter-packs" data-filter="packs">FILLED PACKS</button>
+              </div>
+
+              <div class="shop-ledger-list" id="shop-sell-cards-grid">
+                <!-- Dynamically populated with Refillable Class Packs & Loose Backpack Cards -->
+              </div>
+
+              <div class="shop-ledger-quote-footer">
+                <div class="shop-quote-header">
+                  <span class="shop-quote-title">LEO'S PAYOUT QUOTE</span>
+                  <span class="shop-footer-hint" id="shop-footer-msg">1★=10¢ • 2★=20¢ • 3★=35¢ • 4★=50¢ • 🔒 Binder safe</span>
+                </div>
+                <div class="shop-quote-actions">
+                  <button type="button" class="ui-btn shop-quick-sell-btn" id="btn-shop-quick-sell-extras" disabled>
+                    Quick Sell Extras ($0.00)
                   </button>
-                  <button type="button" class="ui-btn secondary shop-rip-now-btn hidden" id="btn-shop-rip-now">
-                    ✨ Rip Open Unopened Pack
+                  <button type="button" class="ui-btn shop-cash-out-btn" id="btn-shop-cash-out" disabled>
+                    CASH OUT
                   </button>
                 </div>
-                <div class="shop-buy-status" id="shop-buy-status"></div>
               </div>
             </div>
-          </div>
-
-          <!-- 2. SELL SECTION -->
-          <div class="shop-tab-panel hidden" id="shop-panel-sell">
-            <div class="shop-sell-info-banner">
-              <div class="shop-sell-info-left">
-                <span>🎒 <b>Cards in Backpack:</b> Sell spare cards to Leo for store cash.</span>
-                <span class="shop-sell-legend">
-                  <b>Pricelist:</b> 1★ = 10¢ • 2★ = 20¢ • 3★ = 35¢ • 4★ = 50¢
-                </span>
-              </div>
-              <span class="shop-binder-safe-tag">🔒 Binder cards protected</span>
-            </div>
-
-            <!-- Sell List Items Container -->
-            <div class="shop-sell-grid" id="shop-sell-cards-grid">
-              <!-- Dynamically populated with cards from this.inventory -->
-            </div>
-          </div>
-        </div>
-
-        <!-- Shop Footer -->
-        <div class="shop-footer">
-          <div class="shop-footer-hint" id="shop-footer-msg">
-            Leo pays fair market cash for cards: 1★ (10¢) up to 4★ (50¢).
-          </div>
-          <button type="button" class="ui-btn primary-btn" id="btn-close-shop">
-            Done / Exit Shop
-          </button>
+          </section>
         </div>
       </div>
     </div>
 
-    <!-- Mythos Collector Card Binder Modal (9-Pocket Protective Sleeves) -->
-    <div class="modal-overlay hidden" id="binder-modal">
-      <div class="binder-modal-dialog">
-        <!-- Binder Spine Rings & Leather Cover Shell -->
-        <div class="binder-rings-spine" aria-hidden="true">
-          <span class="binder-ring"></span>
-          <span class="binder-ring"></span>
-          <span class="binder-ring"></span>
+    <!-- Refillable Class Booster Pack Filler Modal (Option 3: Dual-Ledger Pack Crafter) -->
+    <div class="modal-overlay hidden" id="refill-pack-modal" style="z-index: 130;">
+      <div class="refill-pack-dialog refill-dual-book-dialog" id="refill-pack-dialog">
+        <span class="shop-brass-corner tl" aria-hidden="true"></span>
+        <span class="shop-brass-corner tr" aria-hidden="true"></span>
+        <span class="shop-brass-corner bl" aria-hidden="true"></span>
+        <span class="shop-brass-corner br" aria-hidden="true"></span>
+
+        <button type="button" class="shop-close-btn refill-book-close-btn" id="btn-close-refill-pack" aria-label="Close Pack Crafter">✕</button>
+
+        <!-- Narrow/Mobile Pane Switcher -->
+        <div class="refill-mobile-tabs">
+          <button type="button" class="shop-tab-btn active" id="refill-tab-add" data-tab="add">
+            📜 ADD CARDS
+          </button>
+          <button type="button" class="shop-tab-btn" id="refill-tab-pack" data-tab="pack">
+            📦 FOIL PACK <span class="shop-tab-count-pill" id="refill-pack-count-pill">0/5</span>
+          </button>
         </div>
 
-        <div class="binder-content-sheet">
-          <div class="binder-header">
-            <div class="binder-title-group">
-              <span class="binder-icon-badge">📖</span>
-              <div>
-                <h2 class="binder-title" id="binder-main-title">OLD CARD BINDER</h2>
-                <p class="binder-sub" id="binder-sub-title">A well-loved 9-pocket trading card binder received from your friend • Click any card to inspect moves, types, and abilities</p>
+        <div class="refill-dual-stage">
+          <!-- LEFT PAGE: STITCHED PARCHMENT COLLECTION LEDGER -->
+          <section class="refill-pane refill-ledger-pane" id="refill-panel-add">
+            <div class="refill-ledger-top">
+              <div class="refill-oak-header-plaque">
+                <h3 class="refill-oak-header-title" id="refill-pack-picker-label">ADD CLASS CARDS</h3>
+              </div>
+              <div class="refill-ledger-toolbar">
+                <button type="button" class="ui-btn refill-tool-btn" id="btn-refill-pack-autofill" title="Auto-fill remaining slots with variety/spares">⚡ Auto-Fill Best</button>
+                <button type="button" class="ui-btn refill-tool-btn" id="btn-refill-pack-sort" title="Toggle sort by Rarity or Owned count">Sort ★</button>
               </div>
             </div>
-            <div class="binder-header-actions">
-              <span class="binder-counter-pill" id="binder-counter-pill">3 / 9 Sleeves Filled</span>
-              <button type="button" class="ui-btn primary-btn" id="btn-binder-to-deck" style="padding: 4px 10px; font-size: 11px; background: linear-gradient(135deg, #78350f, #b45309); border-color: #fbbf24;">🃏 Playing Deck</button>
-              <button type="button" class="ui-btn secondary" id="btn-binder-to-inv" style="padding: 4px 10px; font-size: 11px;">🎒 Backpack</button>
-              <button type="button" class="drawer-close-btn" id="btn-close-binder" title="Close Binder">✕</button>
+
+            <div class="refill-ledger-scroll">
+              <div class="refill-ledger-list" id="refill-pack-eligible-grid">
+                <!-- Matching-class owned cards rendered as Trade Ledger rows -->
+              </div>
             </div>
-          </div>
+          </section>
 
-          <!-- Binder Sort Controls -->
-          <div class="binder-sort-bar" id="binder-sort-bar">
-            <span class="binder-sort-label">Sort By:</span>
-            <button type="button" class="binder-sort-btn active" data-sort="default">Slot Order</button>
-            <button type="button" class="binder-sort-btn" data-sort="alpha">🔤 A–Z</button>
-            <button type="button" class="binder-sort-btn" data-sort="type">🏷️ Type</button>
-            <button type="button" class="binder-sort-btn" data-sort="power">⚔️ Attack Power</button>
-            <button type="button" class="binder-sort-btn" data-sort="stars">⭐ Star Rating</button>
-          </div>
+          <div class="shop-dual-spine" aria-hidden="true"></div>
 
-          <!-- 9-Pocket Card Sleeves Grid (3x3 Collector Sheet) -->
-          <div class="binder-grid" id="binder-slots-grid">
-            <!-- Dynamically populated with 9 sleeve slots -->
-          </div>
-
-          <div class="binder-footer">
-            <div class="binder-hint">
-              💡 <b>Tip:</b> Click any inserted card to enter <b>Creature Inspect Mode</b> with high-res standalone art, moves, and abilities.
+          <!-- RIGHT PAGE: EMERALD VELVET SEALING CHAMBER -->
+          <section class="refill-pane refill-chamber-pane" id="refill-panel-pack">
+            <div class="refill-chamber-header">
+              <div class="refill-oak-header-plaque chamber">
+                <h2 class="refill-oak-header-title" id="refill-pack-title">CLASS FOIL PACK • 0/5</h2>
+              </div>
+              <button type="button" class="ui-btn refill-empty-pill-btn" id="btn-refill-pack-empty">Empty</button>
             </div>
-            <button type="button" class="ui-btn primary-btn" id="btn-binder-done">Done</button>
-          </div>
+
+            <div class="refill-velvet-bay">
+              <div class="refill-pouch-showcase" id="refill-pack-thumb-mini"></div>
+
+              <div class="refill-book-slots-row" id="refill-pack-slots-row">
+                <!-- 5 slots rendered dynamically -->
+              </div>
+
+              <div class="refill-value-breakdown-plaque" id="refill-pack-breakdown">
+                <!-- Structured Resale Value Breakdown rendered dynamically -->
+              </div>
+            </div>
+
+            <div class="refill-pack-status" id="refill-pack-status">Fill 5 cards and permanently seal to earn the +25% bonus!</div>
+
+            <button type="button" class="ui-btn refill-permanent-seal-btn" id="btn-refill-pack-seal" disabled>
+              🔒 PERMANENTLY SEAL PACK
+            </button>
+          </section>
         </div>
+      </div>
+    </div>
+
+    <!-- Mythos Style 3 Saddle-Leather 3-Section Sliding Folio (Playing Deck ⇄ Card Binder ⇅ Inventory) -->
+    <div class="modal-overlay hidden" id="binder-modal">
+      <div class="binder-modal-dialog folio-stage-dialog" id="folio-stage-dialog">
+        <span class="binder-brass-corner top-left" aria-hidden="true"></span>
+        <span class="binder-brass-corner bottom-left" aria-hidden="true"></span>
+        <span class="binder-brass-corner top-right" aria-hidden="true"></span>
+        <span class="binder-brass-corner bottom-right" aria-hidden="true"></span>
+
+        <div class="folio-stage-viewport">
+        <div class="folio-stage-world" id="folio-stage-world">
+          <!-- SECTION 1 (Top-Left): PLAYING DECK -->
+          <section class="folio-panel folio-panel-deck" id="folio-section-deck">
+            <div class="folio-header">
+              <div class="folio-title-block">
+                <span class="folio-icon-badge" aria-hidden="true">🃏</span>
+                <div>
+                  <h2 class="folio-title">PLAYING DECK</h2>
+                  <p class="folio-sub">18–24 Cards • Max 40★ • 1 copy per 4★–5★ card • Hold card to inspect</p>
+                </div>
+              </div>
+              <div class="folio-header-right">
+                <span class="folio-gauge-pill cards" id="binder-deck-limit-pill">🃏 0 / 24 (Min 18)</span>
+                <span class="folio-gauge-pill stars" id="binder-star-limit-pill">⭐ 0 / 40★</span>
+                <div class="folio-star-budget" title="Star Cap Usage (Max 40★)">
+                  <span>Star Budget</span>
+                  <div class="folio-star-track">
+                    <div class="folio-star-fill" id="binder-star-meter-fill" style="width: 0%"></div>
+                  </div>
+                </div>
+                <button type="button" class="folio-action-btn" id="btn-binder-autofill" title="Auto-fill Playing Deck up to 18-24 cards under 40★">✨ Auto-Fill</button>
+                <button type="button" class="folio-action-btn secondary" id="btn-binder-clear-deck" title="Return all Playing Deck cards to Binder">🧹 Clear</button>
+                <button type="button" class="folio-close-btn" id="btn-close-binder-deck" title="Close Folio">✕</button>
+              </div>
+            </div>
+
+            <div class="folio-card-grid folio-paged-grid" id="binder-deck-tray-grid">
+              <!-- Dynamically populated with active Playing Deck cards -->
+            </div>
+
+            <div class="folio-page-selector-bar" id="deck-page-nav" aria-label="Playing Deck Pages">
+              <button type="button" class="folio-page-btn" id="btn-deck-prev-page" title="Previous Deck Page">◂ Prev</button>
+              <div class="folio-page-pills" id="deck-page-pills"></div>
+              <span class="folio-page-indicator" id="deck-page-indicator">Page 1 / 1</span>
+              <button type="button" class="folio-page-btn" id="btn-deck-next-page" title="Next Deck Page">Next ▸</button>
+            </div>
+
+            <button type="button" class="folio-edge-tab folio-edge-right" id="btn-folio-deck-to-binder" title="Slide right to Card Binder">
+              <span>📖 BINDER</span>
+              <span>▸</span>
+            </button>
+            <button type="button" class="folio-edge-tab folio-edge-bottom" id="btn-folio-deck-to-inv" title="Slide down to Inventory">
+              <img src="Sprites/Overworld/backpack_icon.png" class="folio-inv-tab-icon" alt="">
+              <span class="folio-inv-tab-label">INVENTORY<span class="folio-inv-tab-sublabel"> &amp; SATCHEL</span></span>
+              <span class="folio-inv-tab-badge" id="folio-deck-inv-badge">0 Items</span>
+              <span class="folio-inv-tab-arrow" aria-hidden="true">▾</span>
+            </button>
+          </section>
+
+          <!-- SECTION 2 (Top-Right): CARD BINDER (Continuous multi-row grid, no middle gap) -->
+          <section class="folio-panel folio-panel-binder" id="folio-section-binder">
+            <div class="folio-header">
+              <div class="folio-title-block">
+                <span class="folio-icon-badge" aria-hidden="true">📖</span>
+                <div>
+                  <h2 class="folio-title" id="binder-main-title">CARD BINDER</h2>
+                  <p class="folio-sub" id="binder-sub-title">Protected collector pockets • Tap + Deck to build • Hold card to inspect</p>
+                </div>
+              </div>
+              <div class="folio-header-right">
+                <span class="folio-gauge-pill" id="binder-counter-pill">0 / 36 Sleeves</span>
+                <div class="folio-filter-pills" id="binder-filter-bar" aria-label="Filter Binder Cards">
+                  <button type="button" class="folio-pill-btn active" data-binder-filter="all">All</button>
+                  <button type="button" class="folio-pill-btn" data-binder-filter="1">1★</button>
+                  <button type="button" class="folio-pill-btn" data-binder-filter="2">2★</button>
+                  <button type="button" class="folio-pill-btn" data-binder-filter="3">3★</button>
+                  <button type="button" class="folio-pill-btn" data-binder-filter="4-5">4–5★</button>
+                  <button type="button" class="folio-pill-btn" data-binder-filter="animated">✨ Anim</button>
+                </div>
+                <div class="folio-sort-pills" id="binder-sort-bar" aria-label="Sort Binder Cards">
+                  <span class="folio-sort-lbl">SORT</span>
+                  <button type="button" class="folio-pill-btn active" data-sort="default">Slot</button>
+                  <button type="button" class="folio-pill-btn" data-sort="alpha">A–Z</button>
+                  <button type="button" class="folio-pill-btn" data-sort="type">Type</button>
+                  <button type="button" class="folio-pill-btn" data-sort="power">PWR</button>
+                  <button type="button" class="folio-pill-btn" data-sort="stars">★</button>
+                </div>
+                <button type="button" class="folio-close-btn" id="btn-close-binder-sleeves" title="Close Folio">✕</button>
+              </div>
+            </div>
+
+            <div class="folio-card-grid folio-paged-grid" id="binder-slots-grid">
+              <!-- Dynamically populated with 9 binder sleeves per page -->
+            </div>
+
+            <div class="folio-page-selector-bar" id="binder-page-nav" aria-label="Card Binder Pages">
+              <button type="button" class="folio-page-btn" id="btn-binder-prev-page" title="Previous Binder Page">◂ Prev</button>
+              <div class="folio-page-pills" id="binder-page-pills"></div>
+              <span class="folio-page-indicator" id="binder-page-indicator">Page 1 / 1</span>
+              <button type="button" class="folio-page-btn" id="btn-binder-next-page" title="Next Binder Page">Next ▸</button>
+            </div>
+
+            <button type="button" class="folio-edge-tab folio-edge-left" id="btn-folio-binder-to-deck" title="Slide left to Playing Deck">
+              <span>◂</span>
+              <span>🃏 DECK</span>
+            </button>
+            <button type="button" class="folio-edge-tab folio-edge-bottom" id="btn-folio-binder-to-inv" title="Slide down to Inventory">
+              <img src="Sprites/Overworld/backpack_icon.png" class="folio-inv-tab-icon" alt="">
+              <span class="folio-inv-tab-label">INVENTORY<span class="folio-inv-tab-sublabel"> &amp; SATCHEL</span></span>
+              <span class="folio-inv-tab-badge" id="folio-binder-inv-badge">0 Items</span>
+              <span class="folio-inv-tab-arrow" aria-hidden="true">▾</span>
+            </button>
+          </section>
+
+          <!-- SECTION 3 (Bottom Row): INVENTORY & SATCHEL -->
+          <section class="folio-section-inventory" id="folio-section-inventory">
+            <div class="folio-panel folio-panel-inv" id="folio-inv-column">
+              <button type="button" class="folio-edge-tab folio-edge-top-left" id="btn-folio-inv-to-deck" title="Slide up to Playing Deck">
+                <span>▴</span>
+                <span>🃏 PLAYING DECK</span>
+              </button>
+              <button type="button" class="folio-edge-tab folio-edge-top-right" id="btn-folio-inv-to-binder" title="Slide up to Card Binder">
+                <span>▴</span>
+                <span>📖 CARD BINDER</span>
+              </button>
+
+              <div class="folio-header">
+                <div class="folio-title-block">
+                  <span class="folio-icon-badge" aria-hidden="true">🎒</span>
+                  <div>
+                    <h2 class="folio-title">INVENTORY &amp; SATCHEL</h2>
+                    <p class="folio-sub">Booster Packs, Playing Boards, Key Items &amp; sellable loose cards</p>
+                  </div>
+                </div>
+                <div class="folio-header-right">
+                  <span class="folio-gauge-pill gold" id="folio-inv-gold-pill">💰 $0.00 Gold</span>
+                  <span class="folio-gauge-pill" id="folio-inv-count-pill">🎒 0 Items</span>
+                  <div class="folio-filter-pills" id="folio-inv-filter-bar" aria-label="Filter Inventory Items">
+                    <button type="button" class="folio-pill-btn active" data-inv-filter="all">All</button>
+                    <button type="button" class="folio-pill-btn" data-inv-filter="pack">📦 Packs</button>
+                    <button type="button" class="folio-pill-btn" data-inv-filter="board">🪵 Boards</button>
+                    <button type="button" class="folio-pill-btn" data-inv-filter="key">📜 Key</button>
+                    <button type="button" class="folio-pill-btn" data-inv-filter="card">🃏 Singles</button>
+                  </div>
+                  <button type="button" class="folio-close-btn" id="btn-close-binder-inv" title="Close Folio">✕</button>
+                </div>
+              </div>
+
+              <div class="folio-card-grid folio-inv-grid folio-paged-grid" id="binder-bag-grid">
+                <!-- Dynamically populated with up to 9 items per 3x3 page -->
+              </div>
+
+              <div class="folio-page-selector-bar" id="inv-page-nav" aria-label="Inventory Pages">
+                <button type="button" class="folio-page-btn" id="btn-inv-prev-page" title="Previous Inventory Page">◂ Prev</button>
+                <div class="folio-page-pills" id="inv-page-pills"></div>
+                <span class="folio-page-indicator" id="inv-page-indicator">Page 1 / 1</span>
+                <button type="button" class="folio-page-btn" id="btn-inv-next-page" title="Next Inventory Page">Next ▸</button>
+              </div>
+            </div>
+          </section>
+        </div>
+        </div>
+
+        <div class="folio-hint-toast hidden" id="binder-hint-text"></div>
       </div>
     </div>
 
@@ -1146,7 +1367,7 @@
 
             <!-- Main Booster Pack Body using the Cleaned Mythos Card Back Art! -->
             <div class="pack-foil-body" id="pack-foil-body">
-              <img src="Cards/Mythos_Card_Back.png" alt="Mythos Base Pack" class="pack-foil-art-img">
+              <img src="Cards/Mythos_Base_Pack.jpg" alt="Mythos Base Pack" class="pack-foil-art-img">
               <div class="pack-foil-sheen"></div>
               <div class="pack-foil-badge-overlay">
                 <span>BASE SET BOOSTER</span>
