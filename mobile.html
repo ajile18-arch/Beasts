@@ -765,6 +765,20 @@
         <span class="shop-brass-corner bl" aria-hidden="true"></span>
         <span class="shop-brass-corner br" aria-hidden="true"></span>
 
+        <!-- Persistent Mobile Shop Topbar (Leo, Wallet & Close stay visible on both tabs) -->
+        <div class="shop-mobile-topbar">
+          <div class="shop-mobile-brand">
+            <div class="shop-leo-portrait-ring">
+              <img src="Sprites/Overworld/leo_portrait.jpg" alt="Shopkeeper Leo" class="shop-leo-portrait">
+            </div>
+            <h2 class="shop-title">LEO'S CARD SHOP</h2>
+          </div>
+          <div class="shop-mobile-topbar-right">
+            <div class="shop-wallet-pill" id="shop-wallet-display">💰 $0.00</div>
+            <button type="button" class="shop-close-btn" id="btn-close-shop-x" aria-label="Close Shop">✕</button>
+          </div>
+        </div>
+
         <!-- Narrow/Mobile Pane Switcher -->
         <div class="shop-mobile-tabs">
           <button type="button" class="shop-tab-btn active" id="shop-tab-buy" data-tab="buy">
@@ -778,18 +792,6 @@
         <div class="shop-dual-stage">
           <!-- LEFT PANE: WALNUT & EMERALD VELVET GLASS DISPLAY CABINET -->
           <section class="shop-pane shop-buy-cabinet" id="shop-panel-buy">
-            <div class="shop-cabinet-header">
-              <div class="shop-leo-portrait-ring">
-                <img src="Sprites/Overworld/leo_portrait.jpg" alt="Shopkeeper Leo" class="shop-leo-portrait">
-              </div>
-              <div class="shop-oak-sign-stack">
-                <div class="shop-oak-plaque">
-                  <h2 class="shop-title">LEO'S CARD SHOP</h2>
-                </div>
-                <div class="shop-sub-plaque">BUY FROM LEO</div>
-              </div>
-            </div>
-
             <!-- Upper Illuminated Glass Showcase: Base & Premium Packs -->
             <div class="shop-glass-showcase">
               <div class="shop-glass-case">
@@ -844,16 +846,6 @@
 
           <!-- RIGHT PANE: OPEN STITCHED-PARCHMENT TRADE LEDGER -->
           <section class="shop-pane shop-sell-ledger" id="shop-panel-sell">
-            <div class="shop-ledger-header">
-              <div class="shop-ledger-ribbon">
-                <span>SELL TO LEO</span>
-              </div>
-              <div class="shop-ledger-header-right">
-                <div class="shop-wallet-pill" id="shop-wallet-display">💰 $0.00</div>
-                <button type="button" class="shop-close-btn" id="btn-close-shop-x" aria-label="Close Shop">✕</button>
-              </div>
-            </div>
-
             <div class="shop-ledger-page">
               <div class="shop-ledger-filters" role="tablist" aria-label="Filter items to sell">
                 <button type="button" class="shop-filter-tab active" id="shop-sell-filter-all" data-filter="all">ALL</button>

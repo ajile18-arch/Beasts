@@ -1391,15 +1391,67 @@ select {
 
 /* Mobile Overrides for Leo's Option 2 Glass Display & Trade Ledger */
 .shop-modal-dialog.shop-dual-ledger-dialog {
-  width: 98vw !important;
+  width: 97vw !important;
+  height: 92dvh !important;
   max-height: 94dvh !important;
-  padding: 7px !important;
+  padding: 8px !important;
   gap: 0 !important;
+  overflow: hidden !important;
+}
+
+.shop-mobile-topbar {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
+  padding: 2px 4px 6px !important;
+  flex-shrink: 0 !important;
+}
+
+.shop-mobile-brand {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  min-width: 0 !important;
+  flex: 1 1 auto !important;
+}
+
+.shop-mobile-topbar .shop-leo-portrait-ring {
+  width: 38px !important;
+  height: 38px !important;
+  border-width: 2px !important;
+}
+
+.shop-mobile-topbar .shop-title {
+  font-size: 13.5px !important;
+  letter-spacing: 0.8px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.shop-mobile-topbar-right {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  flex-shrink: 0 !important;
+}
+
+.shop-dual-ledger-dialog .shop-wallet-pill {
+  padding: 4px 10px !important;
+  font-size: 12px !important;
+}
+
+.shop-dual-ledger-dialog .shop-close-btn {
+  width: 34px !important;
+  height: 34px !important;
+  font-size: 15px !important;
 }
 
 .shop-dual-ledger-dialog .shop-mobile-tabs {
   display: flex !important;
-  padding: 2px 4px 6px !important;
+  padding: 0 2px 6px !important;
+  gap: 6px !important;
 }
 
 .shop-dual-ledger-dialog .shop-tab-btn {
@@ -1407,10 +1459,13 @@ select {
   justify-content: center !important;
   padding: 7px 8px !important;
   font-size: 11.5px !important;
+  border-radius: 8px !important;
 }
 
 .shop-dual-ledger-dialog .shop-dual-stage {
   grid-template-columns: minmax(0, 1fr) !important;
+  flex: 1 1 0 !important;
+  min-height: 0 !important;
 }
 
 .shop-dual-ledger-dialog .shop-dual-spine {
@@ -1421,19 +1476,16 @@ select {
   display: none !important;
 }
 
-.shop-dual-ledger-dialog .shop-buy-cabinet,
-.shop-dual-ledger-dialog .shop-sell-ledger {
-  padding: 8px 9px 9px !important;
+.shop-dual-ledger-dialog .shop-buy-cabinet {
+  padding: 8px !important;
+  gap: 8px !important;
   overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
 }
 
-.shop-dual-ledger-dialog .shop-leo-portrait-ring {
-  width: 50px !important;
-  height: 50px !important;
-}
-
-.shop-dual-ledger-dialog .shop-title {
-  font-size: 14px !important;
+.shop-dual-ledger-dialog .shop-sell-ledger {
+  padding: 8px !important;
+  overflow: hidden !important;
 }
 
 .shop-dual-ledger-dialog .shop-glass-showcase {
@@ -1441,36 +1493,131 @@ select {
   gap: 6px !important;
 }
 
+.shop-dual-ledger-dialog .shop-glass-case {
+  padding: 6px 5px 7px !important;
+  gap: 5px !important;
+}
+
 .shop-dual-ledger-dialog .shop-case-pack-wrap {
-  width: 66px !important;
-  height: 95px !important;
+  width: 62px !important;
+  height: 90px !important;
+}
+
+.shop-dual-ledger-dialog .shop-case-plaque {
+  padding: 3px 4px !important;
+}
+
+.shop-dual-ledger-dialog .shop-case-name {
+  font-size: 11.5px !important;
+}
+
+.shop-dual-ledger-dialog .shop-case-meta {
+  font-size: 10px !important;
+}
+
+.shop-dual-ledger-dialog .shop-case-actions {
+  flex-wrap: wrap !important;
+  gap: 4px !important;
+}
+
+.shop-dual-ledger-dialog .shop-cabinet-buy-btn {
+  min-width: 0 !important;
+  flex: 1 1 auto !important;
+  padding: 5px 8px !important;
+  font-size: 11.5px !important;
+}
+
+.shop-dual-ledger-dialog .shop-cabinet-rip-btn {
+  padding: 5px 8px !important;
+  font-size: 10.5px !important;
+}
+
+.shop-dual-ledger-dialog .shop-class-tray-section {
+  flex: 0 0 auto !important;
+  min-height: auto !important;
 }
 
 .shop-dual-ledger-dialog .shop-class-tray-grid {
-  gap: 5px !important;
+  grid-template-rows: repeat(3, auto) !important;
+  flex: 0 0 auto !important;
+  min-height: auto !important;
+  gap: 6px !important;
   padding: 6px !important;
 }
 
-.shop-dual-ledger-dialog .shop-tray-pack-img {
-  max-height: 108px !important;
+.shop-dual-ledger-dialog .shop-class-tray-tile {
+  min-height: 98px !important;
+  padding: 4px 3px !important;
 }
 
-.shop-dual-ledger-dialog .shop-ledger-ribbon span {
-  font-size: 14px !important;
+.shop-dual-ledger-dialog .shop-tray-pack-img {
+  max-height: 78px !important;
+}
+
+.shop-dual-ledger-dialog .shop-tray-caption {
+  font-size: 9.5px !important;
 }
 
 .shop-dual-ledger-dialog .shop-ledger-page {
+  flex: 1 1 0 !important;
+  min-height: 0 !important;
   padding: 8px 8px 9px 10px !important;
+  gap: 7px !important;
+}
+
+.shop-dual-ledger-dialog .shop-filter-tab {
+  font-size: 10.5px !important;
+  padding: 6px 4px !important;
+}
+
+.shop-dual-ledger-dialog .shop-ledger-list {
+  flex: 1 1 0 !important;
+  min-height: 120px !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+
+.shop-dual-ledger-dialog .shop-ledger-row {
+  padding: 7px 8px !important;
+  gap: 6px !important;
+}
+
+.shop-dual-ledger-dialog .shop-sell-card-thumb,
+.shop-dual-ledger-dialog .shop-sell-thumb-box {
+  width: 38px !important;
+  height: 54px !important;
+  max-width: 38px !important;
+  max-height: 54px !important;
+}
+
+.shop-dual-ledger-dialog .shop-sell-card-name {
+  font-size: 12px !important;
+}
+
+.shop-dual-ledger-dialog .shop-ledger-row-right {
+  gap: 5px !important;
+}
+
+.shop-dual-ledger-dialog .shop-ledger-price {
+  font-size: 12.5px !important;
+  min-width: 38px !important;
 }
 
 .shop-dual-ledger-dialog .shop-quote-actions {
-  grid-template-columns: 1fr !important;
+  grid-template-columns: 1fr 1fr !important;
   gap: 6px !important;
+}
+
+.shop-dual-ledger-dialog .shop-quick-sell-btn,
+.shop-dual-ledger-dialog .shop-cash-out-btn {
+  padding: 7px 6px !important;
+  font-size: 11px !important;
 }
 
 /* Mobile Overrides for Option 3 Dual-Ledger Pack Crafter */
 .refill-pack-dialog.refill-dual-book-dialog {
   width: 98vw !important;
+  height: 92dvh !important;
   max-height: 94dvh !important;
   padding: 7px !important;
 }

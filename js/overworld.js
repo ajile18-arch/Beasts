@@ -7059,6 +7059,7 @@
             : `Need ${this.formatMoney(spec.buyPrice)} for ${spec.role} Pack`;
           tileEl.innerHTML = `
             <img src="${spec.packImg}" alt="${spec.role} Class Pack ($1)" class="shop-tray-pack-img" onerror="this.onerror=null;this.src='${spec.cardImg}'">
+            <span class="shop-tray-caption">${spec.role}</span>
           `;
           tileEl.addEventListener('click', () => this.buyRefillableClassPack(spec.slug));
           refillGridEl.appendChild(tileEl);
