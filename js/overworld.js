@@ -22,9 +22,10 @@
       // 16x12 visible grid @ 64px per tile (1024x768 viewport)
       this.COLS = 16;
       this.ROWS = 12;
+      this.EXT_MIN_ROW = -38.0; // North & Northeast Countryside (Meadowbrook Farmlands)
       this.EXT_ROWS = 36.5; // Expanded South Block + 3-block Southern Paved Avenue & Roundabout
       this.EXT_MIN_COL = -26.5; // West extension of South Connector Ave, Willow Way & Convention Center
-      this.EXT_COLS = 33.5; // Expanded East Central Park & Oakhaven Elementary Campus at Willow Way East
+      this.EXT_COLS = 68.0; // Expanded East Countryside (Town east ends at 33.5; Rural East reaches 68.0)
       this.EXT_ZOOM = 1.28; // Cozy RPG closer framing (~12.5x9.4 tiles) matching illustrated pixel style
       this.cameraY = 0;
       this.cameraX = 0;
@@ -334,6 +335,62 @@
           extDoor: { x: -10.45, y: 27.45 },
           intEntry: { x: 7.90, y: 9.75 },
           spots: [{ x: 10.55, y: 7.8, dir: 'left' }, { x: 5.8, y: 7.8, dir: 'right' }]
+        },
+        west_house_1_interior: {
+          area: 'west_house_1_interior',
+          name: "Otis's Woodcarver Cottage",
+          extDoor: { x: -2.60, y: 14.45 },
+          intEntry: { x: 7.90, y: 9.75 },
+          spots: [{ x: 9.8, y: 7.4, dir: 'down' }, { x: 5.8, y: 7.8, dir: 'right' }]
+        },
+        west_house_2_interior: {
+          area: 'west_house_2_interior',
+          name: "Maren's Stone-Hearth Cottage",
+          extDoor: { x: -6.35, y: 14.45 },
+          intEntry: { x: 7.90, y: 9.75 },
+          spots: [{ x: 10.2, y: 7.3, dir: 'down' }, { x: 8.6, y: 7.4, dir: 'left' }]
+        },
+        west_house_3_interior: {
+          area: 'west_house_3_interior',
+          name: "Caleb's Sunroom & Music Cottage",
+          extDoor: { x: -10.85, y: 14.45 },
+          intEntry: { x: 7.90, y: 9.75 },
+          spots: [{ x: 9.8, y: 7.4, dir: 'down' }, { x: 6.0, y: 7.4, dir: 'right' }]
+        },
+        arcade_interior: {
+          area: 'arcade_interior',
+          name: 'Oakhaven Arcade',
+          extDoor: { x: -9.70, y: 20.45 },
+          intEntry: { x: 10.0, y: 11.55 },
+          spots: [{ x: 10.0, y: 8.0, dir: 'down' }, { x: 3.6, y: 8.0, dir: 'right' }]
+        },
+        west_oak_1_interior: {
+          area: 'west_oak_1_interior',
+          name: "Juniper's Herbalist Cottage",
+          extDoor: { x: -2.90, y: 3.60 },
+          intEntry: { x: 7.90, y: 9.75 },
+          spots: [{ x: 9.8, y: 7.2, dir: 'down' }, { x: 6.2, y: 7.6, dir: 'right' }]
+        },
+        west_oak_2_interior: {
+          area: 'west_oak_2_interior',
+          name: "Gideon's Clockmaker Cottage",
+          extDoor: { x: -7.10, y: 3.60 },
+          intEntry: { x: 7.90, y: 9.75 },
+          spots: [{ x: 9.8, y: 7.2, dir: 'down' }, { x: 6.2, y: 7.6, dir: 'right' }]
+        },
+        farmhouse_1_1f_interior: {
+          area: 'farmhouse_1_1f_interior',
+          name: 'Homestead Dairy Farmhouse',
+          extDoor: { x: 23.70, y: -16.25 },
+          intEntry: { x: 11.0, y: 11.6 },
+          spots: [{ x: 15.2, y: 8.6, dir: 'left' }, { x: 8.0, y: 8.6, dir: 'right' }]
+        },
+        farmhouse_2_1f_interior: {
+          area: 'farmhouse_2_1f_interior',
+          name: 'Harvest Manor Farmhouse',
+          extDoor: { x: 42.60, y: -16.25 },
+          intEntry: { x: 11.0, y: 11.6 },
+          spots: [{ x: 17.8, y: 8.8, dir: 'left' }, { x: 4.5, y: 8.8, dir: 'right' }]
         }
       };
       this.AREA_PORTALS = {
@@ -352,7 +409,18 @@
         police_station_interior: { extDoor: { x: 9.90, y: 27.45 }, intEntry: { x: 7.90, y: 9.75 } },
         barber_shop_interior: { extDoor: { x: -21.70, y: 20.45 }, intEntry: { x: 7.90, y: 9.75 } },
         clothing_store_interior: { extDoor: { x: -15.80, y: 20.45 }, intEntry: { x: 7.90, y: 9.75 } },
-        animal_hospital_interior: { extDoor: { x: -10.45, y: 27.45 }, intEntry: { x: 7.90, y: 9.75 } }
+        animal_hospital_interior: { extDoor: { x: -10.45, y: 27.45 }, intEntry: { x: 7.90, y: 9.75 } },
+        west_house_1_interior: { extDoor: { x: -2.60, y: 14.45 }, intEntry: { x: 7.90, y: 9.75 } },
+        west_house_2_interior: { extDoor: { x: -6.35, y: 14.45 }, intEntry: { x: 7.90, y: 9.75 } },
+        west_house_3_interior: { extDoor: { x: -10.85, y: 14.45 }, intEntry: { x: 7.90, y: 9.75 } },
+        arcade_interior: { extDoor: { x: -9.70, y: 20.45 }, intEntry: { x: 10.0, y: 11.55 } },
+        arcade_back_interior: { extDoor: { x: -9.70, y: 20.45 }, intEntry: { x: 10.0, y: 11.55 } },
+        west_oak_1_interior: { extDoor: { x: -2.90, y: 3.60 }, intEntry: { x: 7.90, y: 9.75 } },
+        west_oak_2_interior: { extDoor: { x: -7.10, y: 3.60 }, intEntry: { x: 7.90, y: 9.75 } },
+        farmhouse_1_1f_interior: { extDoor: { x: 23.70, y: -16.25 }, intEntry: { x: 11.0, y: 11.6 } },
+        farmhouse_1_2f_interior: { extDoor: { x: 23.70, y: -16.25 }, intEntry: { x: 11.0, y: 11.6 } },
+        farmhouse_2_1f_interior: { extDoor: { x: 42.60, y: -16.25 }, intEntry: { x: 11.0, y: 11.6 } },
+        farmhouse_2_2f_interior: { extDoor: { x: 42.60, y: -16.25 }, intEntry: { x: 11.0, y: 11.6 } }
       };
 
       // Scripted intro cutscene beats where the clock is frozen
@@ -459,6 +527,16 @@
       this.barberNpc = this.createBarberNpc();
       this.tailorNpc = this.createTailorNpc();
       this.vetNpc = this.createVetNpc();
+      this.westOtisNpc = this.createWestOtisNpc();
+      this.westMarenNpc = this.createWestMarenNpc();
+      this.westCalebNpc = this.createWestCalebNpc();
+      this.westJuniperNpc = this.createWestJuniperNpc();
+      this.westGideonNpc = this.createWestGideonNpc();
+      this.fh1MarthaNpc = this.createFh1MarthaNpc();
+      this.fh1HarlanNpc = this.createFh1HarlanNpc();
+      this.fh2EleanorNpc = this.createFh2EleanorNpc();
+      this.fh2ArthurNpc = this.createFh2ArthurNpc();
+      this.arcadeZekeNpc = this.createArcadeZekeNpc();
       this.leagueRegistrarNpc = this.createLeagueRegistrarNpc();
       this.syncParkNpcBubbles();
       this.npcs = [
@@ -942,6 +1020,266 @@
           pantsColor: 'teal',
           hatStyle: 'none',
           customSprite: 'vet_hannah_d'
+        })
+      };
+    }
+
+    createWestOtisNpc() {
+      const CS = window.MythosCharacterSprites;
+      return {
+        id: 'west_otis',
+        name: 'Otis',
+        x: 9.8,
+        y: 7.4,
+        dir: 'down',
+        walkTick: 0,
+        bubble: '🪵',
+        hangoutSpot: { area: 'west_house_1_interior', x: 9.8, y: 7.4, dir: 'down', radius: 4, label: "Otis's Woodcarver Cottage" },
+        sprite: new CS.CharacterSpriteSheet({
+          name: 'Otis',
+          skin: 'warm',
+          hairStyle: 'swept',
+          hairColor: 'silver',
+          eyeColor: 'amber',
+          outfitStyle: 'vest',
+          outfitColor: 'forest',
+          pantsColor: 'dark',
+          hatStyle: 'none',
+          customSprite: 'west_otis_d'
+        })
+      };
+    }
+
+    createWestMarenNpc() {
+      const CS = window.MythosCharacterSprites;
+      return {
+        id: 'west_maren',
+        name: 'Maren',
+        x: 10.2,
+        y: 7.3,
+        dir: 'down',
+        walkTick: 0,
+        bubble: '🥖',
+        hangoutSpot: { area: 'west_house_2_interior', x: 10.2, y: 7.3, dir: 'down', radius: 4, label: "Maren's Stone-Hearth Cottage" },
+        sprite: new CS.CharacterSpriteSheet({
+          name: 'Maren',
+          skin: 'light',
+          hairStyle: 'ponytail',
+          hairColor: 'auburn',
+          eyeColor: 'brown',
+          outfitStyle: 'vest',
+          outfitColor: 'forest',
+          pantsColor: 'navy',
+          hatStyle: 'none',
+          customSprite: 'west_maren_d'
+        })
+      };
+    }
+
+    createWestCalebNpc() {
+      const CS = window.MythosCharacterSprites;
+      return {
+        id: 'west_caleb',
+        name: 'Caleb',
+        x: 9.8,
+        y: 7.4,
+        dir: 'down',
+        walkTick: 0,
+        bubble: '🎵',
+        hangoutSpot: { area: 'west_house_3_interior', x: 9.8, y: 7.4, dir: 'down', radius: 4, label: "Caleb's Sunroom & Music Cottage" },
+        sprite: new CS.CharacterSpriteSheet({
+          name: 'Caleb',
+          skin: 'tan',
+          hairStyle: 'swept',
+          hairColor: 'chestnut',
+          eyeColor: 'brown',
+          outfitStyle: 'jacket',
+          outfitColor: 'royal',
+          pantsColor: 'denim',
+          hatStyle: 'none',
+          customSprite: 'west_caleb_d'
+        })
+      };
+    }
+
+    createWestJuniperNpc() {
+      const CS = window.MythosCharacterSprites;
+      return {
+        id: 'west_juniper',
+        name: 'Juniper',
+        x: 9.8,
+        y: 7.2,
+        dir: 'down',
+        walkTick: 0,
+        bubble: '🌿',
+        hangoutSpot: { area: 'west_oak_1_interior', x: 9.8, y: 7.2, dir: 'down', radius: 4, label: "Juniper's Herbalist Cottage" },
+        sprite: new CS.CharacterSpriteSheet({
+          name: 'Juniper',
+          skin: 'light',
+          hairStyle: 'ponytail',
+          hairColor: 'chestnut',
+          eyeColor: 'brown',
+          outfitStyle: 'apron',
+          outfitColor: 'forest',
+          pantsColor: 'dark',
+          hatStyle: 'none',
+          customSprite: 'west_juniper_d'
+        })
+      };
+    }
+
+    createWestGideonNpc() {
+      const CS = window.MythosCharacterSprites;
+      return {
+        id: 'west_gideon',
+        name: 'Gideon',
+        x: 9.8,
+        y: 7.2,
+        dir: 'down',
+        walkTick: 0,
+        bubble: '⚙️',
+        hangoutSpot: { area: 'west_oak_2_interior', x: 9.8, y: 7.2, dir: 'down', radius: 4, label: "Gideon's Clockmaker Cottage" },
+        sprite: new CS.CharacterSpriteSheet({
+          name: 'Gideon',
+          skin: 'light',
+          hairStyle: 'swept',
+          hairColor: 'silver',
+          eyeColor: 'blue',
+          outfitStyle: 'vest',
+          outfitColor: 'navy',
+          pantsColor: 'dark',
+          hatStyle: 'none',
+          customSprite: 'west_gideon_d'
+        })
+      };
+    }
+
+    createFh1MarthaNpc() {
+      const CS = window.MythosCharacterSprites;
+      return {
+        id: 'fh1_martha',
+        name: 'Martha',
+        x: 15.2,
+        y: 8.6,
+        dir: 'left',
+        walkTick: 0,
+        bubble: '🥧',
+        hangoutSpot: { area: 'farmhouse_1_1f_interior', x: 15.2, y: 8.6, dir: 'left', radius: 4, label: 'Homestead Dairy Farmhouse 1F' },
+        sprite: new CS.CharacterSpriteSheet({
+          name: 'Martha',
+          skin: 'light',
+          hairStyle: 'bun',
+          hairColor: 'auburn',
+          eyeColor: 'brown',
+          outfitStyle: 'apron',
+          outfitColor: 'crimson',
+          pantsColor: 'dark',
+          hatStyle: 'none',
+          customSprite: 'fh1_martha_d'
+        })
+      };
+    }
+
+    createFh1HarlanNpc() {
+      const CS = window.MythosCharacterSprites;
+      return {
+        id: 'fh1_harlan',
+        name: 'Harlan',
+        x: 9.2,
+        y: 10.2,
+        dir: 'right',
+        walkTick: 0,
+        bubble: '🌾',
+        hangoutSpot: { area: 'farmhouse_1_2f_interior', x: 9.2, y: 10.2, dir: 'right', radius: 4, label: 'Homestead Dairy Farmhouse 2F' },
+        sprite: new CS.CharacterSpriteSheet({
+          name: 'Harlan',
+          skin: 'tan',
+          hairStyle: 'swept',
+          hairColor: 'chestnut',
+          eyeColor: 'brown',
+          outfitStyle: 'flannel',
+          outfitColor: 'forest',
+          pantsColor: 'khaki',
+          hatStyle: 'cap',
+          customSprite: 'fh1_harlan_d'
+        })
+      };
+    }
+
+    createFh2EleanorNpc() {
+      const CS = window.MythosCharacterSprites;
+      return {
+        id: 'fh2_eleanor',
+        name: 'Eleanor',
+        x: 17.8,
+        y: 8.8,
+        dir: 'left',
+        walkTick: 0,
+        bubble: '🍋',
+        hangoutSpot: { area: 'farmhouse_2_1f_interior', x: 17.8, y: 8.8, dir: 'left', radius: 4, label: 'Harvest Manor Conservatory 1F' },
+        sprite: new CS.CharacterSpriteSheet({
+          name: 'Eleanor',
+          skin: 'olive',
+          hairStyle: 'long',
+          hairColor: 'chestnut',
+          eyeColor: 'emerald',
+          outfitStyle: 'coat',
+          outfitColor: 'ranger',
+          pantsColor: 'charcoal',
+          hatStyle: 'none',
+          customSprite: 'fh2_eleanor_d'
+        })
+      };
+    }
+
+    createFh2ArthurNpc() {
+      const CS = window.MythosCharacterSprites;
+      return {
+        id: 'fh2_arthur',
+        name: 'Arthur',
+        x: 6.8,
+        y: 11.4,
+        dir: 'right',
+        walkTick: 0,
+        bubble: '📚',
+        hangoutSpot: { area: 'farmhouse_2_2f_interior', x: 6.8, y: 11.4, dir: 'right', radius: 4, label: 'Harvest Manor Gallery 2F' },
+        sprite: new CS.CharacterSpriteSheet({
+          name: 'Arthur',
+          skin: 'light',
+          hairStyle: 'swept',
+          hairColor: 'chestnut',
+          eyeColor: 'brown',
+          outfitStyle: 'vest',
+          outfitColor: 'crimson',
+          pantsColor: 'charcoal',
+          hatStyle: 'none',
+          customSprite: 'fh2_arthur_d'
+        })
+      };
+    }
+
+    createArcadeZekeNpc() {
+      const CS = window.MythosCharacterSprites;
+      return {
+        id: 'arcade_zeke',
+        name: 'Zeke',
+        x: 15.6,
+        y: 10.2,
+        dir: 'left',
+        walkTick: 0,
+        bubble: '🕹️',
+        hangoutSpot: { area: 'arcade_interior', x: 15.6, y: 10.2, dir: 'left', radius: 4, label: 'Oakhaven Arcade' },
+        sprite: new CS.CharacterSpriteSheet({
+          name: 'Zeke',
+          skin: 'warm',
+          hairStyle: 'spiky',
+          hairColor: 'midnight',
+          eyeColor: 'amber',
+          outfitStyle: 'varsity',
+          outfitColor: 'royal',
+          pantsColor: 'charcoal',
+          hatStyle: 'none',
+          customSprite: 'arcade_zeke_d'
         })
       };
     }
@@ -1533,7 +1871,12 @@
         'nova_interior', 'silas_interior', 'maya_interior', 'clara_interior',
         'bram_interior', 'mayor_interior', 'mayor_2f_interior', 'restaurant_interior',
         'corner_store_interior', 'fire_station_interior', 'police_station_interior',
-        'barber_shop_interior', 'clothing_store_interior', 'animal_hospital_interior', 'school_interior'
+        'barber_shop_interior', 'clothing_store_interior', 'animal_hospital_interior', 'school_interior',
+        'west_house_1_interior', 'west_house_2_interior', 'west_house_3_interior',
+        'west_oak_1_interior', 'west_oak_2_interior',
+        'farmhouse_1_1f_interior', 'farmhouse_1_2f_interior',
+        'farmhouse_2_1f_interior', 'farmhouse_2_2f_interior',
+        'arcade_interior', 'arcade_back_interior'
       ];
       const visitedBuildingsCount = buildingAreas.filter(a => qs.visitedAreas?.[a]).length;
       const patrolCount = Object.keys(qs.patrolNpcs || {}).length;
@@ -2379,6 +2722,19 @@
         }
       }
       return LOOKS[this.getTimePhase().id];
+    }
+
+    /** Smooth 0..1 night-time lighting strength synced to getTimeOfDayOverlay() dawn/dusk transitions. */
+    getNightLightStrength() {
+      const BLEND = 30;
+      const m = (((Number(this.timeOfDayMinutes) || 0) % 1440) + 1440) % 1440;
+      if (Math.abs(m - 18 * 60) < BLEND) {
+        return (m - (18 * 60 - BLEND)) / (BLEND * 2);
+      }
+      if (Math.abs(m - 6 * 60) < BLEND) {
+        return 1 - (m - (6 * 60 - BLEND)) / (BLEND * 2);
+      }
+      return (m >= 18 * 60 || m < 6 * 60) ? 1 : 0;
     }
 
     // -------------------------------------------------------------------------
@@ -13395,7 +13751,7 @@
       const id = interactable.id;
       if (typeof id === 'string' && id.startsWith('meetup_')) return true;
       const friend = this.getFriendNpc();
-      return id === 'friend' || id === 'best_friend' || id === 'friend_duel' || id === 'booster_bash_challenger' || id === 'mom' || id === 'shopkeeper' || id === 'pluto' || id === 'nova' || id === 'silas' || id === 'maya' || id === 'clara' || id === 'bram' || id === 'mayor_donald' || id === 'chef_marco' || id === 'berto' || id === 'shaun' || id === 'evelyn' || id === 'chloe' || id === 'rowan' || id === 'jasper' || id === 'fire_chief' || id === 'police_chief' || interactable === friend || interactable === this.shopkeeperNpc || interactable === this.plutoNpc || interactable === this.novaNpc || interactable === this.silasNpc || interactable === this.mayaNpc || interactable === this.claraNpc || interactable === this.bramNpc || interactable === this.mayorNpc || interactable === this.chefNpc || interactable === this.bertoNpc || interactable === this.shaunNpc || interactable === this.evelynNpc || interactable === this.chloeNpc || interactable === this.rowanNpc || interactable === this.jasperNpc || interactable === this.fireChiefNpc || interactable === this.policeChiefNpc;
+      return id === 'friend' || id === 'best_friend' || id === 'friend_duel' || id === 'booster_bash_challenger' || id === 'mom' || id === 'shopkeeper' || id === 'pluto' || id === 'nova' || id === 'silas' || id === 'maya' || id === 'clara' || id === 'bram' || id === 'mayor_donald' || id === 'chef_marco' || id === 'berto' || id === 'shaun' || id === 'evelyn' || id === 'chloe' || id === 'rowan' || id === 'jasper' || id === 'fire_chief' || id === 'police_chief' || id === 'west_otis' || id === 'west_maren' || id === 'west_caleb' || id === 'west_juniper' || id === 'west_gideon' || id === 'fh1_martha' || id === 'fh1_harlan' || id === 'fh2_eleanor' || id === 'fh2_arthur' || id === 'arcade_zeke' || interactable === friend || interactable === this.shopkeeperNpc || interactable === this.plutoNpc || interactable === this.novaNpc || interactable === this.silasNpc || interactable === this.mayaNpc || interactable === this.claraNpc || interactable === this.bramNpc || interactable === this.mayorNpc || interactable === this.chefNpc || interactable === this.bertoNpc || interactable === this.shaunNpc || interactable === this.evelynNpc || interactable === this.chloeNpc || interactable === this.rowanNpc || interactable === this.jasperNpc || interactable === this.fireChiefNpc || interactable === this.policeChiefNpc || interactable === this.westOtisNpc || interactable === this.westMarenNpc || interactable === this.westCalebNpc || interactable === this.westJuniperNpc || interactable === this.westGideonNpc || interactable === this.fh1MarthaNpc || interactable === this.fh1HarlanNpc || interactable === this.fh2EleanorNpc || interactable === this.fh2ArthurNpc || interactable === this.arcadeZekeNpc;
     }
 
     startTalkingToNpc(npcId) {
@@ -15683,6 +16039,486 @@
           challengeBtn.classList.remove('ow-talk-btn');
           bar.classList.add('hidden');
         }
+      } else if (this.currentArea === 'west_house_1_interior') {
+        const pName = this.draftAppearance?.name || 'Asher';
+        const otis = this.westOtisNpc;
+        const dist = otis ? Math.hypot(this.player.x - otis.x, this.player.y - otis.y) : 999;
+        if (dist < 1.65) {
+          this.nearInteractable = otis;
+          this.renderNpcChoicePrompt({
+            npcId: 'west_otis',
+            promptKey: `west_otis_dialogue_${pName}`,
+            speakerText: "🪵 OTIS — OTIS'S WOODCARVER COTTAGE",
+            speakerClass: 'ow-speaker-tag friend',
+            talkPromptHtml: `Press <b>Talk</b> to chat with <b>Otis</b> beside his carving display.`,
+            greetingHtml: `<b>Otis:</b> "Come right in, ${pName}! Mind the cedar wood shavings—I'm whittling miniature Mythos figurines for the display case."`,
+            choices: [
+              {
+                label: `1. 🐻 "Which creatures do you love carving most?"`,
+                primary: true,
+                onSelect: (el) => {
+                  el.innerHTML = `<b>Otis:</b> "Lately? The <b>Bear Family</b>! Koda, Treena, Ralph, and big sleepy Zorbo have such wonderful silhouettes in oak and walnut."`;
+                  this.gainDialogueRelationship('west_otis', 2, 'woodcarving chat');
+                }
+              },
+              {
+                label: `2. ⚔️ "Care for a friendly Mythos match?"`,
+                silentClick: true,
+                onSelect: () => this.triggerDuel(this.westOtisNpc)
+              },
+              {
+                label: `3. 🏡 "Your new teal-roof porch looks great across from Nova's!"`,
+                onSelect: (el) => {
+                  el.innerHTML = `<b>Otis:</b> "Thank kindly, ${pName}! Looking across Oakhaven Blvd at Nova's telescope dome keeps the whole row feeling neighborly."`;
+                  this.gainDialogueRelationship('west_otis', 2, 'neighborhood chat');
+                }
+              },
+              {
+                label: `4. 👋 "Keep carving, Otis! (Leave)"`,
+                onSelect: () => this.closeDialogue()
+              }
+            ],
+            challengeText: '⚔️ Battle Otis!'
+          });
+        } else {
+          this.lastShopPromptKey = null;
+          this.nearInteractable = null;
+          this.activeDialogueNpc = null;
+          challengeBtn.classList.remove('ow-talk-btn');
+          bar.classList.add('hidden');
+        }
+      } else if (this.currentArea === 'west_house_2_interior') {
+        const pName = this.draftAppearance?.name || 'Asher';
+        const maren = this.westMarenNpc;
+        const dist = maren ? Math.hypot(this.player.x - maren.x, this.player.y - maren.y) : 999;
+        if (dist < 1.65) {
+          this.nearInteractable = maren;
+          this.renderNpcChoicePrompt({
+            npcId: 'west_maren',
+            promptKey: `west_maren_dialogue_${pName}`,
+            speakerText: "🥖 MAREN — MAREN'S STONE-HEARTH COTTAGE",
+            speakerClass: 'ow-speaker-tag friend',
+            talkPromptHtml: `Press <b>Talk</b> to chat with <b>Maren</b> in her stone-hearth cottage.`,
+            greetingHtml: `<b>Maren:</b> "Step inside and warm up, ${pName}! I've got a fresh blackberry tart cooling on the farmhouse table."`,
+            choices: [
+              {
+                label: `1. 🫐 "The stone oven smells amazing—what's baking today?"`,
+                primary: true,
+                onSelect: (el) => {
+                  el.innerHTML = `<b>Maren:</b> "Honey oat loaves and spiced wild-berry tarts! Clara across the street and I swap starter dough every Thursday morning."`;
+                  this.gainDialogueRelationship('west_maren', 2, 'baking chat');
+                }
+              },
+              {
+                label: `2. ⚔️ "Want to play a friendly Mythos match?"`,
+                silentClick: true,
+                onSelect: () => this.triggerDuel(this.westMarenNpc)
+              },
+              {
+                label: `3. 🏡 "Love this cobblestone lower wall and terracotta roof!"`,
+                onSelect: (el) => {
+                  el.innerHTML = `<b>Maren:</b> "Isn't it cozy? That big triple bay window catches the morning sun right over the flower box!"`;
+                  this.gainDialogueRelationship('west_maren', 2, 'cottage compliment');
+                }
+              },
+              {
+                label: `4. 👋 "Save me a slice, Maren! (Leave)"`,
+                onSelect: () => this.closeDialogue()
+              }
+            ],
+            challengeText: '⚔️ Battle Maren!'
+          });
+        } else {
+          this.lastShopPromptKey = null;
+          this.nearInteractable = null;
+          this.activeDialogueNpc = null;
+          challengeBtn.classList.remove('ow-talk-btn');
+          bar.classList.add('hidden');
+        }
+      } else if (this.currentArea === 'west_house_3_interior') {
+        const pName = this.draftAppearance?.name || 'Asher';
+        const caleb = this.westCalebNpc;
+        const dist = caleb ? Math.hypot(this.player.x - caleb.x, this.player.y - caleb.y) : 999;
+        if (dist < 1.65) {
+          this.nearInteractable = caleb;
+          this.renderNpcChoicePrompt({
+            npcId: 'west_caleb',
+            promptKey: `west_caleb_dialogue_${pName}`,
+            speakerText: "🎵 CALEB — CALEB'S SUNROOM & MUSIC COTTAGE",
+            speakerClass: 'ow-speaker-tag friend',
+            talkPromptHtml: `Press <b>Talk</b> to chat with <b>Caleb</b> beside his vinyl rig.`,
+            greetingHtml: `<b>Caleb:</b> "Hey ${pName}, pull up the sunroom bench! Just spinning some acoustic lo-fi vinyl and organizing cards."`,
+            choices: [
+              {
+                label: `1. 💿 "Nice vinyl setup—and I spot an acoustic guitar!"`,
+                primary: true,
+                onSelect: (el) => {
+                  el.innerHTML = `<b>Caleb:</b> "Every sunny afternoon in that glass veranda wing gets the ferns thriving and makes strumming chords effortless."`;
+                  this.gainDialogueRelationship('west_caleb', 2, 'music sunroom chat');
+                }
+              },
+              {
+                label: `2. ⚔️ "Down for a quick Mythos duel?"`,
+                silentClick: true,
+                onSelect: () => this.triggerDuel(this.westCalebNpc)
+              },
+              {
+                label: `3. 🃏 "What's in your Mythos binder lately?"`,
+                onSelect: (el) => {
+                  el.innerHTML = `<b>Caleb:</b> "I'm loving the Bear Family cards from Leo's shop—pairing Koda's Shield with Treena's +1 Armor ward makes a rock-solid frontline!"`;
+                  this.gainDialogueRelationship('west_caleb', 2, 'bear family deck talk');
+                }
+              },
+              {
+                label: `4. 👋 "Catch you on the flip side, Caleb! (Leave)"`,
+                onSelect: () => this.closeDialogue()
+              }
+            ],
+            challengeText: '⚔️ Battle Caleb!'
+          });
+        } else {
+          this.lastShopPromptKey = null;
+          this.nearInteractable = null;
+          this.activeDialogueNpc = null;
+          challengeBtn.classList.remove('ow-talk-btn');
+          bar.classList.add('hidden');
+        }
+      } else if (this.currentArea === 'west_oak_1_interior') {
+        const pName = this.draftAppearance?.name || 'Asher';
+        const juniper = this.westJuniperNpc;
+        const dist = juniper ? Math.hypot(this.player.x - juniper.x, this.player.y - juniper.y) : 999;
+        if (dist < 1.65) {
+          this.nearInteractable = juniper;
+          this.renderNpcChoicePrompt({
+            npcId: 'west_juniper',
+            promptKey: `west_juniper_dialogue_${pName}`,
+            speakerText: "🌿 JUNIPER — JUNIPER'S HERBALIST COTTAGE",
+            speakerClass: 'ow-speaker-tag friend',
+            talkPromptHtml: `Press <b>Talk</b> to chat with <b>Juniper</b> beside her herb bundles.`,
+            greetingHtml: `<b>Juniper:</b> "Welcome in, ${pName}! Take a deep breath of lavender and rosemary—I just hung fresh garden cuttings above the windows."`,
+            choices: [
+              {
+                label: `1. 🌱 "Your side greenhouse is bursting with flowers!"`,
+                primary: true,
+                onSelect: (el) => {
+                  el.innerHTML = `<b>Juniper:</b> "Thank you! Morning sun pours straight through that glass bay—my seedlings sprout twice as fast right by the potting bench."`;
+                  this.gainDialogueRelationship('west_juniper', 2, 'greenhouse herb chat');
+                }
+              },
+              {
+                label: `2. ⚔️ "Up for a friendly Mythos match?"`,
+                silentClick: true,
+                onSelect: () => this.triggerDuel(this.westJuniperNpc)
+              },
+              {
+                label: `3. ☕ "Love the copper kettle on that cozy stove!"`,
+                onSelect: (el) => {
+                  el.innerHTML = `<b>Juniper:</b> "Mint and chamomile steep all afternoon here! Having Oakhaven Lane extended west right past our gate makes dropping by neighbors so easy."`;
+                  this.gainDialogueRelationship('west_juniper', 2, 'herbal tea chat');
+                }
+              },
+              {
+                label: `4. 👋 "Happy gardening, Juniper! (Leave)"`,
+                onSelect: () => this.closeDialogue()
+              }
+            ],
+            challengeText: '⚔️ Battle Juniper!'
+          });
+        } else {
+          this.lastShopPromptKey = null;
+          this.nearInteractable = null;
+          this.activeDialogueNpc = null;
+          challengeBtn.classList.remove('ow-talk-btn');
+          bar.classList.add('hidden');
+        }
+      } else if (this.currentArea === 'west_oak_2_interior') {
+        const pName = this.draftAppearance?.name || 'Asher';
+        const gideon = this.westGideonNpc;
+        const dist = gideon ? Math.hypot(this.player.x - gideon.x, this.player.y - gideon.y) : 999;
+        if (dist < 1.65) {
+          this.nearInteractable = gideon;
+          this.renderNpcChoicePrompt({
+            npcId: 'west_gideon',
+            promptKey: `west_gideon_dialogue_${pName}`,
+            speakerText: "⚙️ GIDEON — GIDEON'S CLOCKMAKER COTTAGE",
+            speakerClass: 'ow-speaker-tag friend',
+            talkPromptHtml: `Press <b>Talk</b> to chat with <b>Gideon</b> in his workshop.`,
+            greetingHtml: `<b>Gideon:</b> "Mind the brass cogs on the workbench, ${pName}! Just calibrating the grand pendulum before the evening stars come out."`,
+            choices: [
+              {
+                label: `1. 🕰️ "The grandfather clock and wall chimes sound amazing!"`,
+                primary: true,
+                onSelect: (el) => {
+                  el.innerHTML = `<b>Gideon:</b> "Every single clock keeps time to the second! A steady rhythm makes an old clockmaker feel right at home."`;
+                  this.gainDialogueRelationship('west_gideon', 2, 'clockwork chat');
+                }
+              },
+              {
+                label: `2. ⚔️ "Care for a Mythos card battle?"`,
+                silentClick: true,
+                onSelect: () => this.triggerDuel(this.westGideonNpc)
+              },
+              {
+                label: `3. 🔭 "I spotted a brass telescope and lookout cupola on your roof!"`,
+                onSelect: (el) => {
+                  el.innerHTML = `<b>Gideon:</b> "Good eye! Nova and I compare star charts from across Oakhaven Lane whenever the night sky clears up over West Woods."`;
+                  this.gainDialogueRelationship('west_gideon', 2, 'stargazing chat');
+                }
+              },
+              {
+                label: `4. 👋 "Good luck with the gears, Gideon! (Leave)"`,
+                onSelect: () => this.closeDialogue()
+              }
+            ],
+            challengeText: '⚔️ Battle Gideon!'
+          });
+        } else {
+          this.lastShopPromptKey = null;
+          this.nearInteractable = null;
+          this.activeDialogueNpc = null;
+          challengeBtn.classList.remove('ow-talk-btn');
+          bar.classList.add('hidden');
+        }
+      } else if (this.currentArea === 'farmhouse_1_1f_interior') {
+        const pName = this.draftAppearance?.name || 'Asher';
+        const martha = this.fh1MarthaNpc;
+        const dist = martha ? Math.hypot(this.player.x - martha.x, this.player.y - martha.y) : 999;
+        if (dist < 1.85) {
+          this.nearInteractable = martha;
+          this.renderNpcChoicePrompt({
+            npcId: 'fh1_martha',
+            promptKey: `fh1_martha_dialogue_${pName}`,
+            speakerText: '🥧 MARTHA — HOMESTEAD DAIRY FARMHOUSE (1F)',
+            speakerClass: 'ow-speaker-tag friend',
+            talkPromptHtml: `Press <b>Talk</b> to chat with <b>Martha</b> in the dairy kitchen.`,
+            greetingHtml: `<b>Martha:</b> "Well come right on in, ${pName}! Just pulled a warm honey-apple pie out of the wood stove—pull up a seat at the harvest table whenever you're hungry!"`,
+            choices: [
+              {
+                label: `1. 🥧 "Something smells delicious across all of Meadowland!"`,
+                primary: true,
+                onSelect: (el) => {
+                  el.innerHTML = `<b>Martha:</b> "Nothing beats fresh cream from our dairy barn and orchard apples! Feel free to warm up by the hearth parlor anytime."`;
+                  this.gainDialogueRelationship('fh1_martha', 2, 'dairy pie chat');
+                }
+              },
+              {
+                label: `2. ⚔️ "Care for a friendly Mythos duel?"`,
+                silentClick: true,
+                onSelect: () => this.triggerDuel(this.fh1MarthaNpc)
+              },
+              {
+                label: `3. 🪜 "Who else lives here in Homestead Dairy?"`,
+                onSelect: (el) => {
+                  el.innerHTML = `<b>Martha:</b> "My husband Harlan's just upstairs tidying up the guest bedrooms above the landing! Head right up those oak stairs if you'd like to say hello."`;
+                  this.gainDialogueRelationship('fh1_martha', 2, 'homestead family chat');
+                }
+              },
+              {
+                label: `4. 👋 "Save a slice for me, Martha! (Leave)"`,
+                onSelect: () => this.closeDialogue()
+              }
+            ],
+            challengeText: '⚔️ Battle Martha!'
+          });
+        } else {
+          this.lastShopPromptKey = null;
+          this.nearInteractable = null;
+          this.activeDialogueNpc = null;
+          challengeBtn.classList.remove('ow-talk-btn');
+          bar.classList.add('hidden');
+        }
+      } else if (this.currentArea === 'farmhouse_1_2f_interior') {
+        const pName = this.draftAppearance?.name || 'Asher';
+        const harlan = this.fh1HarlanNpc;
+        const dist = harlan ? Math.hypot(this.player.x - harlan.x, this.player.y - harlan.y) : 999;
+        if (dist < 1.85) {
+          this.nearInteractable = harlan;
+          this.renderNpcChoicePrompt({
+            npcId: 'fh1_harlan',
+            promptKey: `fh1_harlan_dialogue_${pName}`,
+            speakerText: '🌾 HARLAN — HOMESTEAD DAIRY FARMHOUSE (2F)',
+            speakerClass: 'ow-speaker-tag friend',
+            talkPromptHtml: `Press <b>Talk</b> to chat with <b>Harlan</b> on the upstairs landing.`,
+            greetingHtml: `<b>Harlan:</b> "Hey there, ${pName}! Glad you made it up the stairs—Martha and I keep three cozy bedrooms aired out up here for family and travelers."`,
+            choices: [
+              {
+                label: `1. 🌾 "How are the fields and cattle doing out on East Valley?"`,
+                primary: true,
+                onSelect: (el) => {
+                  el.innerHTML = `<b>Harlan:</b> "Busy from dawn 'til dusk! Those new brass lanterns along our Option D split-rail fence really light up the dirt lane after sunset."`;
+                  this.gainDialogueRelationship('fh1_harlan', 2, 'pasture lantern chat');
+                }
+              },
+              {
+                label: `2. ⚔️ "Up for a quick Mythos match?"`,
+                silentClick: true,
+                onSelect: () => this.triggerDuel(this.fh1HarlanNpc)
+              },
+              {
+                label: `3. 🛏️ "This whole three-bedroom upstairs floor looks so cozy!"`,
+                onSelect: (el) => {
+                  el.innerHTML = `<b>Harlan:</b> "That twin room gets the best breeze off Northern Ridge, and the guest room overlooks Oakhaven Meadows!"`;
+                  this.gainDialogueRelationship('fh1_harlan', 2, 'upstairs bedrooms chat');
+                }
+              },
+              {
+                label: `4. 👋 "See you around the farm, Harlan! (Leave)"`,
+                onSelect: () => this.closeDialogue()
+              }
+            ],
+            challengeText: '⚔️ Battle Harlan!'
+          });
+        } else {
+          this.lastShopPromptKey = null;
+          this.nearInteractable = null;
+          this.activeDialogueNpc = null;
+          challengeBtn.classList.remove('ow-talk-btn');
+          bar.classList.add('hidden');
+        }
+      } else if (this.currentArea === 'farmhouse_2_1f_interior') {
+        const pName = this.draftAppearance?.name || 'Asher';
+        const eleanor = this.fh2EleanorNpc;
+        const dist = eleanor ? Math.hypot(this.player.x - eleanor.x, this.player.y - eleanor.y) : 999;
+        if (dist < 1.85) {
+          this.nearInteractable = eleanor;
+          this.renderNpcChoicePrompt({
+            npcId: 'fh2_eleanor',
+            promptKey: `fh2_eleanor_dialogue_${pName}`,
+            speakerText: '🍋 ELEANOR — HARVEST MANOR CONSERVATORY (1F)',
+            speakerClass: 'ow-speaker-tag friend',
+            talkPromptHtml: `Press <b>Talk</b> to chat with <b>Eleanor</b> inside the conservatory.`,
+            greetingHtml: `<b>Eleanor:</b> "Welcome to <b>Harvest Manor</b>, ${pName}! Step right into our sunlit citrus conservatory—these dwarf lemon trees are blooming all week."`,
+            choices: [
+              {
+                label: `1. 🍋 "This glass sunroom wing looks amazing inside and out!"`,
+                primary: true,
+                onSelect: (el) => {
+                  el.innerHTML = `<b>Eleanor:</b> "Having a terracotta glass conservatory beside the banquet hall keeps rare herbs and Meyer lemons thriving year-round!"`;
+                  this.gainDialogueRelationship('fh2_eleanor', 2, 'conservatory chat');
+                }
+              },
+              {
+                label: `2. ⚔️ "Care for a Mythos card battle?"`,
+                silentClick: true,
+                onSelect: () => this.triggerDuel(this.fh2EleanorNpc)
+              },
+              {
+                label: `3. 📖 "What's in that stone hearth library across the foyer?"`,
+                onSelect: (el) => {
+                  el.innerHTML = `<b>Eleanor:</b> "That's Arthur's pride and joy! He was just upstairs sorting heirloom ledgers in the three-bedroom manor gallery."`;
+                  this.gainDialogueRelationship('fh2_eleanor', 2, 'manor library chat');
+                }
+              },
+              {
+                label: `4. 👋 "Happy pruning, Eleanor! (Leave)"`,
+                onSelect: () => this.closeDialogue()
+              }
+            ],
+            challengeText: '⚔️ Battle Eleanor!'
+          });
+        } else {
+          this.lastShopPromptKey = null;
+          this.nearInteractable = null;
+          this.activeDialogueNpc = null;
+          challengeBtn.classList.remove('ow-talk-btn');
+          bar.classList.add('hidden');
+        }
+      } else if (this.currentArea === 'farmhouse_2_2f_interior') {
+        const pName = this.draftAppearance?.name || 'Asher';
+        const arthur = this.fh2ArthurNpc;
+        const dist = arthur ? Math.hypot(this.player.x - arthur.x, this.player.y - arthur.y) : 999;
+        if (dist < 1.85) {
+          this.nearInteractable = arthur;
+          this.renderNpcChoicePrompt({
+            npcId: 'fh2_arthur',
+            promptKey: `fh2_arthur_dialogue_${pName}`,
+            speakerText: '📚 ARTHUR — HARVEST MANOR GALLERY (2F)',
+            speakerClass: 'ow-speaker-tag friend',
+            talkPromptHtml: `Press <b>Talk</b> to speak with <b>Arthur</b> in the upper gallery.`,
+            greetingHtml: `<b>Arthur:</b> "Good day, ${pName}! From this upper manor gallery you can look straight south toward <b>Meadowbrook Lake</b>'s crystal azure cove."`,
+            choices: [
+              {
+                label: `1. 📚 "All three upstairs suites have incredible craftsmanship!"`,
+                primary: true,
+                onSelect: (el) => {
+                  el.innerHTML = `<b>Arthur:</b> "Wait until evening—our stone hearth upstairs pairs wonderfully with the warm brass lanterns lighting East Valley Road below."`;
+                  this.gainDialogueRelationship('fh2_arthur', 2, 'manor gallery chat');
+                }
+              },
+              {
+                label: `2. ⚔️ "Fancy a strategic Mythos duel?"`,
+                silentClick: true,
+                onSelect: () => this.triggerDuel(this.fh2ArthurNpc)
+              },
+              {
+                label: `3. 🌊 "Have you walked out on the new pier at Meadowbrook Lake?"`,
+                onSelect: (el) => {
+                  el.innerHTML = `<b>Arthur:</b> "Every sunny afternoon! Follow the Lake Trail south through the Crossroads and step right out onto the oak pier over the water."`;
+                  this.gainDialogueRelationship('fh2_arthur', 2, 'meadowbrook lake chat');
+                }
+              },
+              {
+                label: `4. 👋 "Thank you for the tour, Arthur! (Leave)"`,
+                onSelect: () => this.closeDialogue()
+              }
+            ],
+            challengeText: '⚔️ Battle Arthur!'
+          });
+        } else {
+          this.lastShopPromptKey = null;
+          this.nearInteractable = null;
+          this.activeDialogueNpc = null;
+          challengeBtn.classList.remove('ow-talk-btn');
+          bar.classList.add('hidden');
+        }
+      } else if (this.currentArea === 'arcade_interior') {
+        const pName = this.draftAppearance?.name || 'Asher';
+        const zeke = this.arcadeZekeNpc;
+        const dist = zeke ? Math.hypot(this.player.x - zeke.x, this.player.y - zeke.y) : 999;
+        if (dist < 1.75) {
+          this.nearInteractable = zeke;
+          this.renderNpcChoicePrompt({
+            npcId: 'arcade_zeke',
+            promptKey: `arcade_zeke_dialogue_${pName}`,
+            speakerText: '🕹️ ZEKE — OAKHAVEN ARCADE ATTENDANT',
+            speakerClass: 'ow-speaker-tag friend',
+            talkPromptHtml: `Press <b>Talk</b> to chat with <b>Zeke</b> by the token counter.`,
+            greetingHtml: `<b>Zeke:</b> "Yo ${pName}! Welcome to <b>Oakhaven Arcade</b>! Every CRT cabinet is humming at 60 FPS today—ready to chase a high score or throw down in Mythos?"`,
+            choices: [
+              {
+                label: `1. 🕹️ "Which arcade cabinets are the hottest right now?"`,
+                primary: true,
+                onSelect: (el) => {
+                  el.innerHTML = `<b>Zeke:</b> "Starfall Blaster on the center island and the Claw Machine by the north wall! Nobody's cracked my high score on Wave 9 yet."`;
+                  this.gainDialogueRelationship('arcade_zeke', 2, 'arcade cabinets chat');
+                }
+              },
+              {
+                label: `2. ⚔️ "Challenge Zeke to an Arcade Mythos Duel!"`,
+                silentClick: true,
+                onSelect: () => this.triggerDuel(this.arcadeZekeNpc)
+              },
+              {
+                label: `3. 🛋️ "What's through that back doorway?"`,
+                onSelect: (el) => {
+                  el.innerHTML = `<b>Zeke:</b> "That's the Arcade Back Lounge! Six-seat card table, leather sofa, jukebox, and ice-cold snacks whenever players need a breather."`;
+                  this.gainDialogueRelationship('arcade_zeke', 2, 'back lounge chat');
+                }
+              },
+              {
+                label: `4. 👋 "Catch you at the counter, Zeke! (Leave)"`,
+                onSelect: () => this.closeDialogue()
+              }
+            ],
+            challengeText: '⚔️ Battle Zeke!'
+          });
+        } else {
+          this.lastShopPromptKey = null;
+          this.nearInteractable = null;
+          this.activeDialogueNpc = null;
+          challengeBtn.classList.remove('ow-talk-btn');
+          bar.classList.add('hidden');
+        }
       } else if (this.currentArea === 'convention_center_interior') {
         const pName = this.draftAppearance?.name || 'Asher';
         const valerie = this.leagueRegistrarNpc;
@@ -15817,6 +16653,11 @@
         const distSilasMailbox = Math.hypot(this.player.x - 6.45, this.player.y - 14.50);
         const distMayaDoor = Math.hypot(this.player.x - 12.68, this.player.y - 14.10);
         const distMayaMailbox = Math.hypot(this.player.x - 11.35, this.player.y - 14.50);
+        const distOtisMailbox = Math.hypot(this.player.x - (-0.65), this.player.y - 14.50);
+        const distMarenMailbox = Math.hypot(this.player.x - (-5.15), this.player.y - 14.50);
+        const distCalebMailbox = Math.hypot(this.player.x - (-9.45), this.player.y - 14.50);
+        const distJuniperMailbox = Math.hypot(this.player.x - (-0.65), this.player.y - 3.92);
+        const distGideonMailbox = Math.hypot(this.player.x - (-5.20), this.player.y - 3.92);
         const distSouthSign = Math.hypot(this.player.x - 7.35, this.player.y - 14.50);
         const distRoundaboutSign = Math.hypot(this.player.x - (-1.75), this.player.y - 32.05);
         const distNorthWestRoadSign = Math.hypot(this.player.x - (-1.15), this.player.y - 26.85);
@@ -16080,6 +16921,41 @@
             "Maya's Mailbox",
             `📬 MAILBOX — 305 SOUTH COBBLESTONE WAY`,
             `<b>"Maya's House"</b> — Cheerful emerald mailbox twined with sweet-pea vines and miniature clay pots.`
+          );
+        } else if (distOtisMailbox < 1.0) {
+          showStaticPrompt(
+            'otis_mailbox',
+            "Otis's Mailbox",
+            `📬 MAILBOX — 299 WEST COBBLESTONE WAY`,
+            `<b>"Otis's House"</b> — Teal-painted wooden mailbox with tiny whittled bear emblems on the post.`
+          );
+        } else if (distMarenMailbox < 1.0) {
+          showStaticPrompt(
+            'maren_mailbox',
+            "Maren's Mailbox",
+            `📬 MAILBOX — 297 WEST COBBLESTONE WAY`,
+            `<b>"Maren's House"</b> — Terracotta-trimmed mailbox smelling faintly of warm oat bread and berry tarts.`
+          );
+        } else if (distCalebMailbox < 1.0) {
+          showStaticPrompt(
+            'caleb_mailbox',
+            "Caleb's Mailbox",
+            `📬 MAILBOX — 295 WEST COBBLESTONE WAY`,
+            `<b>"Caleb's House"</b> — Dusty-plum mailbox stamped with tiny vinyl record and acoustic guitar decals.`
+          );
+        } else if (distJuniperMailbox < 1.0) {
+          showStaticPrompt(
+            'juniper_mailbox',
+            "Juniper's Mailbox",
+            `📬 MAILBOX — 99 WEST OAKHAVEN LANE`,
+            `<b>"Juniper's Cottage"</b> — Sage-green painted wooden mailbox wrapped with dried lavender ribbon.`
+          );
+        } else if (distGideonMailbox < 1.0) {
+          showStaticPrompt(
+            'gideon_mailbox',
+            "Gideon's Mailbox",
+            `📬 MAILBOX — 97 WEST OAKHAVEN LANE`,
+            `<b>"Gideon's Cottage"</b> — Deep-navy steel mailbox fitted with a tiny brass gear and crescent-moon clasp.`
           );
         } else if (distSouthSign < 1.0) {
           showStaticPrompt(
@@ -16378,6 +17254,46 @@
         }
         if (active === 'evelyn') {
           this.triggerDuel(this.evelynNpc);
+          return true;
+        }
+        if (active === 'west_otis') {
+          this.triggerDuel(this.westOtisNpc);
+          return true;
+        }
+        if (active === 'west_maren') {
+          this.triggerDuel(this.westMarenNpc);
+          return true;
+        }
+        if (active === 'west_caleb') {
+          this.triggerDuel(this.westCalebNpc);
+          return true;
+        }
+        if (active === 'west_juniper') {
+          this.triggerDuel(this.westJuniperNpc);
+          return true;
+        }
+        if (active === 'west_gideon') {
+          this.triggerDuel(this.westGideonNpc);
+          return true;
+        }
+        if (active === 'fh1_martha') {
+          this.triggerDuel(this.fh1MarthaNpc);
+          return true;
+        }
+        if (active === 'fh1_harlan') {
+          this.triggerDuel(this.fh1HarlanNpc);
+          return true;
+        }
+        if (active === 'fh2_eleanor') {
+          this.triggerDuel(this.fh2EleanorNpc);
+          return true;
+        }
+        if (active === 'fh2_arthur') {
+          this.triggerDuel(this.fh2ArthurNpc);
+          return true;
+        }
+        if (active === 'arcade_zeke') {
+          this.triggerDuel(this.arcadeZekeNpc);
           return true;
         }
         if (window.sounds?.playClick) window.sounds.playClick();
@@ -16998,8 +17914,30 @@
           areaLabel = `💈 Oakhaven Barber Shop`;
         } else if (this.currentArea === 'clothing_store_interior') {
           areaLabel = `👔 Oakhaven Apparel`;
+        } else if (this.currentArea === 'arcade_interior') {
+          areaLabel = `🕹️ Oakhaven Arcade`;
+        } else if (this.currentArea === 'arcade_back_interior') {
+          areaLabel = `🕹️ Oakhaven Arcade — Back Room`;
         } else if (this.currentArea === 'animal_hospital_interior') {
           areaLabel = `🐾 Oakhaven Animal Hospital`;
+        } else if (this.currentArea === 'west_house_1_interior') {
+          areaLabel = `🪵 Otis's Woodcarver Cottage`;
+        } else if (this.currentArea === 'west_house_2_interior') {
+          areaLabel = `🥖 Maren's Stone-Hearth Cottage`;
+        } else if (this.currentArea === 'west_house_3_interior') {
+          areaLabel = `🎵 Caleb's Sunroom Cottage`;
+        } else if (this.currentArea === 'west_oak_1_interior') {
+          areaLabel = `🌿 Juniper's Herbalist Cottage`;
+        } else if (this.currentArea === 'west_oak_2_interior') {
+          areaLabel = `⚙️ Gideon's Clockmaker Cottage`;
+        } else if (this.currentArea === 'farmhouse_1_1f_interior') {
+          areaLabel = `🏡 Homestead Dairy Farmhouse (1F)`;
+        } else if (this.currentArea === 'farmhouse_1_2f_interior') {
+          areaLabel = `🛏️ Homestead Dairy Farmhouse (2F)`;
+        } else if (this.currentArea === 'farmhouse_2_1f_interior') {
+          areaLabel = `🏛️ Harvest Manor Farmhouse (1F)`;
+        } else if (this.currentArea === 'farmhouse_2_2f_interior') {
+          areaLabel = `🛏️ Harvest Manor Farmhouse (2F)`;
         } else if (this.currentArea === 'apartment_hall_interior') {
           areaLabel = `🏢 Oakhaven Apartments — Main Hall`;
         } else if (this.currentArea === 'apt_1_interior') {
@@ -17012,6 +17950,8 @@
           areaLabel = `🚪 Oakhaven Apartments — Suite 104`;
         } else if (this.currentArea === 'mayor_2f_interior') {
           areaLabel = `🏛️ Mayor Donald's Manor (2F)`;
+        } else if (this.currentArea === 'exterior' && this.player && (this.player.y < 0 || (this.player.x >= 33.5 && this.player.y < 17.5))) {
+          areaLabel = `🌾 Meadowbrook Countryside`;
         } else if (this.currentArea === 'exterior' && this.player && this.player.x >= 16.0 && this.player.y >= 17.5) {
           areaLabel = `🏫 Oakhaven Elementary Campus`;
         } else if (this.currentArea === 'exterior' && this.player && this.player.x >= 16.0) {
@@ -17055,12 +17995,24 @@
         else if (this.currentArea === 'police_station_interior') shortArea = `🚓 Police Dept.`;
         else if (this.currentArea === 'barber_shop_interior') shortArea = `💈 Barber Shop`;
         else if (this.currentArea === 'clothing_store_interior') shortArea = `👔 Apparel`;
+        else if (this.currentArea === 'arcade_interior') shortArea = `🕹️ Arcade`;
+        else if (this.currentArea === 'arcade_back_interior') shortArea = `🕹️ Back Room`;
         else if (this.currentArea === 'animal_hospital_interior') shortArea = `🐾 Animal Hospital`;
+        else if (this.currentArea === 'west_house_1_interior') shortArea = `🪵 Otis's`;
+        else if (this.currentArea === 'west_house_2_interior') shortArea = `🥖 Maren's`;
+        else if (this.currentArea === 'west_house_3_interior') shortArea = `🎵 Caleb's`;
+        else if (this.currentArea === 'west_oak_1_interior') shortArea = `🌿 Juniper's`;
+        else if (this.currentArea === 'west_oak_2_interior') shortArea = `⚙️ Gideon's`;
+        else if (this.currentArea === 'farmhouse_1_1f_interior') shortArea = `🏡 Homestead Dairy 1F`;
+        else if (this.currentArea === 'farmhouse_1_2f_interior') shortArea = `🛏️ Homestead Dairy 2F`;
+        else if (this.currentArea === 'farmhouse_2_1f_interior') shortArea = `🏛️ Harvest Manor 1F`;
+        else if (this.currentArea === 'farmhouse_2_2f_interior') shortArea = `🛏️ Harvest Manor 2F`;
         else if (this.currentArea === 'apartment_hall_interior') shortArea = `🏢 Apt. Hall`;
         else if (this.currentArea === 'apt_1_interior') shortArea = `🚪 Apt. 101`;
         else if (this.currentArea === 'apt_2_interior') shortArea = `🚪 Apt. 102`;
         else if (this.currentArea === 'apt_3_interior') shortArea = `🚪 Apt. 103`;
         else if (this.currentArea === 'apt_4_interior') shortArea = `🚪 Apt. 104`;
+        else if (this.currentArea === 'exterior' && this.player && (this.player.y < 0 || (this.player.x >= 33.5 && this.player.y < 17.5))) shortArea = `🌾 Rural`;
         else if (this.currentArea === 'exterior' && this.player && this.player.x >= 16.0 && this.player.y >= 17.5) shortArea = `🏫 School`;
         else if (this.currentArea === 'exterior' && this.player && this.player.x >= 16.0) shortArea = `🌳 Park`;
         mobLocTag.textContent = `${shortArea} • 🎒 ${this.formatMoney(this.gold || 0)}`;
@@ -18947,6 +19899,86 @@
             yOffset: 0.35
           },
           {
+            active: this.currentArea === 'west_house_1_interior',
+            npc: this.westOtisNpc,
+            talkId: 'west_otis',
+            tapRadius: 1.25,
+            reachRadius: 1.65,
+            yOffset: 0.35
+          },
+          {
+            active: this.currentArea === 'west_house_2_interior',
+            npc: this.westMarenNpc,
+            talkId: 'west_maren',
+            tapRadius: 1.25,
+            reachRadius: 1.65,
+            yOffset: 0.35
+          },
+          {
+            active: this.currentArea === 'west_house_3_interior',
+            npc: this.westCalebNpc,
+            talkId: 'west_caleb',
+            tapRadius: 1.25,
+            reachRadius: 1.65,
+            yOffset: 0.35
+          },
+          {
+            active: this.currentArea === 'west_oak_1_interior',
+            npc: this.westJuniperNpc,
+            talkId: 'west_juniper',
+            tapRadius: 1.25,
+            reachRadius: 1.65,
+            yOffset: 0.35
+          },
+          {
+            active: this.currentArea === 'west_oak_2_interior',
+            npc: this.westGideonNpc,
+            talkId: 'west_gideon',
+            tapRadius: 1.25,
+            reachRadius: 1.65,
+            yOffset: 0.35
+          },
+          {
+            active: this.currentArea === 'farmhouse_1_1f_interior',
+            npc: this.fh1MarthaNpc,
+            talkId: 'fh1_martha',
+            tapRadius: 1.35,
+            reachRadius: 1.85,
+            yOffset: 0.35
+          },
+          {
+            active: this.currentArea === 'farmhouse_1_2f_interior',
+            npc: this.fh1HarlanNpc,
+            talkId: 'fh1_harlan',
+            tapRadius: 1.35,
+            reachRadius: 1.85,
+            yOffset: 0.35
+          },
+          {
+            active: this.currentArea === 'farmhouse_2_1f_interior',
+            npc: this.fh2EleanorNpc,
+            talkId: 'fh2_eleanor',
+            tapRadius: 1.35,
+            reachRadius: 1.85,
+            yOffset: 0.35
+          },
+          {
+            active: this.currentArea === 'farmhouse_2_2f_interior',
+            npc: this.fh2ArthurNpc,
+            talkId: 'fh2_arthur',
+            tapRadius: 1.35,
+            reachRadius: 1.85,
+            yOffset: 0.35
+          },
+          {
+            active: this.currentArea === 'arcade_interior',
+            npc: this.arcadeZekeNpc,
+            talkId: 'arcade_zeke',
+            tapRadius: 1.35,
+            reachRadius: 1.75,
+            yOffset: 0.35
+          },
+          {
             active: this.currentArea === 'convention_center_interior',
             npc: this.leagueRegistrarNpc,
             talkId: 'league_registrar',
@@ -19153,6 +20185,16 @@
         nova_interior: this.novaNpc,
         silas_interior: this.silasNpc,
         maya_interior: this.mayaNpc,
+        west_house_1_interior: this.westOtisNpc,
+        west_house_2_interior: this.westMarenNpc,
+        west_house_3_interior: this.westCalebNpc,
+        west_oak_1_interior: this.westJuniperNpc,
+        west_oak_2_interior: this.westGideonNpc,
+        farmhouse_1_1f_interior: this.fh1MarthaNpc,
+        farmhouse_1_2f_interior: this.fh1HarlanNpc,
+        farmhouse_2_1f_interior: this.fh2EleanorNpc,
+        farmhouse_2_2f_interior: this.fh2ArthurNpc,
+        arcade_interior: this.arcadeZekeNpc,
         school_interior: this.evelynNpc
       };
       const target = challenger || areaNpcMap[this.currentArea] || this.getFriendNpc() || this.npcs[0];
@@ -19442,6 +20484,188 @@
         // Mid-Right Steel & Oak Veterinary Examination Table
         if (tx >= 12.15 && tx <= 14.70 && ty >= 6.10 && ty <= 8.10) return true;
         return false;
+      } else if (this.currentArea === 'west_house_1_interior') {
+        // Cutaway Otis's Woodcarver Cottage floor bounds (16 x 12 flat orthographic room @ 1264x848)
+        if (tx >= 7.0 && tx <= 8.8 && ty >= 10.15 && ty <= 10.65) return false;
+        if (tx < 1.15 || tx > 14.85 || ty < 5.15 || ty > 10.35) return true;
+        // Upper-Left Woodcarver's Workbench & Wall Shelves
+        if (tx <= 5.00 && ty <= 6.55) return true;
+        // Center-Back Stone Fireplace
+        if (tx >= 6.60 && tx <= 9.45 && ty <= 6.00) return true;
+        // Upper-Right Figurine Display Cabinet
+        if (tx >= 11.45 && tx <= 14.00 && ty <= 6.05) return true;
+        // Lower-Right Round Tea Table & Chairs
+        if (tx >= 12.50 && tx <= 14.70 && ty >= 6.80 && ty <= 10.10) return true;
+        return false;
+      } else if (this.currentArea === 'west_house_2_interior') {
+        // Cutaway Maren's Stone-Hearth Cottage floor bounds (16 x 12 flat orthographic room @ 1264x848)
+        if (tx >= 7.0 && tx <= 8.8 && ty >= 10.15 && ty <= 10.65) return false;
+        if (tx < 1.15 || tx > 14.85 || ty < 5.15 || ty > 10.35) return true;
+        // Upper-Left Stone Hearth Oven & Flour Sacks
+        if (tx <= 6.80 && ty <= 5.75) return true;
+        // Far-Left Bread Counter
+        if (tx <= 2.35 && ty <= 7.80) return true;
+        // Mid-Left Farmhouse Table & Wooden Stools
+        if (tx >= 2.40 && tx <= 6.25 && ty >= 6.80 && ty <= 9.65) return true;
+        // Upper-Right Oak Pantry & Cookbook Shelf
+        if (tx >= 11.40 && ty <= 6.00) return true;
+        // Lower-Right L-Shaped Quilted Sofa & Side Table
+        if (tx >= 13.30 && ty >= 6.85) return true;
+        if (tx >= 10.10 && ty >= 9.35) return true;
+        return false;
+      } else if (this.currentArea === 'west_house_3_interior') {
+        // Cutaway Caleb's Sunroom & Music Cottage floor bounds (16 x 12 flat orthographic room @ 1264x848)
+        if (tx >= 7.0 && tx <= 8.8 && ty >= 10.15 && ty <= 10.65) return false;
+        if (tx < 1.15 || tx > 14.85 || ty < 5.15 || ty > 10.35) return true;
+        // Left Wall Potted Plants & Cushioned Bench
+        if (tx <= 3.25 && ty <= 6.10) return true;
+        if (tx <= 2.35 && ty >= 6.10 && ty <= 8.30) return true;
+        if (tx <= 3.25 && ty >= 8.30) return true;
+        // Center-Back Vinyl Turntable Console
+        if (tx >= 6.20 && tx <= 9.80 && ty <= 6.10) return true;
+        // Upper-Right Bookcase & Acoustic Guitar Stand
+        if (tx >= 11.45 && tx <= 14.85 && ty <= 6.05) return true;
+        // Mid/Lower-Right Deep-Navy Armchair & Floor Lamp
+        if (tx >= 12.40 && ty >= 6.60 && ty <= 9.65) return true;
+        return false;
+      } else if (this.currentArea === 'west_oak_1_interior') {
+        // Cutaway Juniper's Herbalist Cottage floor bounds (16 x 12 flat orthographic room @ 1264x848)
+        if (tx >= 7.0 && tx <= 8.8 && ty >= 10.15 && ty <= 10.65) return false;
+        if (tx < 1.15 || tx > 14.85 || ty < 5.15 || ty > 10.35) return true;
+        // Upper-Left Potting Workbench
+        if (tx <= 5.15 && ty <= 6.75) return true;
+        // Lower-Left L-Shaped Potting & Seedling Counter
+        if (tx <= 2.45 && ty >= 7.00) return true;
+        if (tx <= 5.25 && ty >= 9.05) return true;
+        // Upper-Right Cast-Iron Stove & Ferns
+        if (tx >= 11.45 && ty <= 6.45) return true;
+        // Far-Right Plant Shelves & Sage Reading Armchair / Tea Table
+        if (tx >= 13.75 && ty >= 6.45) return true;
+        if (tx >= 11.55 && ty >= 8.30) return true;
+        return false;
+      } else if (this.currentArea === 'west_oak_2_interior') {
+        // Cutaway Gideon's Clockmaker Cottage floor bounds (16 x 12 flat orthographic room @ 1264x848)
+        if (tx >= 7.0 && tx <= 8.8 && ty >= 10.15 && ty <= 10.65) return false;
+        if (tx < 1.15 || tx > 14.85 || ty < 5.15 || ty > 10.35) return true;
+        // Upper-Left Clockmaker Workbench & Stool
+        if (tx <= 5.20 && ty <= 6.90) return true;
+        // Lower-Left Drafting & Gears Desk
+        if (tx <= 2.55 && ty >= 7.05) return true;
+        // Center-Back Grandfather Clock
+        if (tx >= 7.15 && tx <= 8.85 && ty <= 5.85) return true;
+        // Upper-Right Bookshelf, Leather Armchair & Side Tables
+        if (tx >= 11.05 && ty <= 7.65) return true;
+        // Lower-Right Brass Telescope
+        if (tx >= 13.20 && ty >= 8.20) return true;
+        return false;
+      } else if (this.currentArea === 'arcade_interior') {
+        // Cutaway Oakhaven Arcade Main Hall (20 x 14 room @ 1264x848)
+        // South glass entrance doors + OAKHAVEN mat
+        if (tx >= 8.60 && tx <= 11.40 && ty >= 12.10 && ty <= 12.65) return false;
+        // North Back Room door threshold
+        if (tx >= 9.10 && tx <= 10.90 && ty >= 4.75 && ty <= 5.45) return false;
+        if (tx < 1.30 || tx > 18.70 || ty < 5.10 || ty > 12.35) return true;
+        // Left wall side cabinets
+        if (tx <= 2.35) return true;
+        // Top-left row (CLAW + 3 cabinets) & top-right row (4 cabinets)
+        if (tx >= 3.45 && tx <= 8.65 && ty <= 5.85) return true;
+        if (tx >= 11.40 && tx <= 16.35 && ty <= 5.85) return true;
+        // Far-right upper cabinet
+        if (tx >= 17.65 && ty <= 6.50) return true;
+        // Center-left & center-right arcade islands
+        if (tx >= 4.95 && tx <= 8.65 && ty >= 6.80 && ty <= 9.25) return true;
+        if (tx >= 11.35 && tx <= 15.10 && ty >= 6.80 && ty <= 9.25) return true;
+        // Right-wall trophy/plushie shelf & lower-right neon token counter
+        if (tx >= 16.25 && ty >= 6.65 && ty <= 8.55) return true;
+        if (tx >= 16.35 && ty >= 9.00 && ty <= 11.85) return true;
+        // Bottom-left (3) & bottom-right (2) back-facing cabinets
+        if (tx >= 3.55 && tx <= 7.50 && ty >= 10.35) return true;
+        if (tx >= 12.45 && tx <= 15.20 && ty >= 10.35) return true;
+        return false;
+      } else if (this.currentArea === 'arcade_back_interior') {
+        // Cutaway Oakhaven Arcade Back Lounge Room (20 x 14 room @ 1264x848)
+        // South return door threshold + mat
+        if (tx >= 8.80 && tx <= 11.20 && ty >= 12.10 && ty <= 12.65) return false;
+        if (tx < 1.30 || tx > 18.70 || ty < 4.50 || ty > 12.35) return true;
+        // Center wooden table & 6 chairs
+        if (tx >= 7.35 && tx <= 12.65 && ty >= 6.05 && ty <= 8.85) return true;
+        // Left wall plants, leather sofa & side tables
+        if (tx <= 2.45 && ty <= 4.95) return true;
+        if (tx <= 2.85 && ty >= 5.30 && ty <= 10.75) return true;
+        if (tx <= 2.45 && ty >= 11.25) return true;
+        // Upper-right vending machine & corner plant
+        if (tx >= 16.15 && ty <= 4.95) return true;
+        // Right wall jukebox, game table & bottom-right plant
+        if (tx >= 17.45 && ty >= 5.70) return true;
+        return false;
+      } else if (this.currentArea === 'farmhouse_1_1f_interior') {
+        // Cutaway Homestead Dairy 1F (22 x 14): Country Kitchen, Harvest Dining & Hearth Parlor
+        if (tx >= 9.5 && tx <= 12.5 && ty >= 12.1 && ty <= 12.9) return false;
+        if (tx >= 8.6 && tx <= 10.3 && ty >= 5.0 && ty <= 6.3) return false;
+        if (tx < 1.3 || tx > 20.7 || ty < 5.0 || ty > 12.5) return true;
+        // North wall staircase housing & left hearth fireplace/armchairs
+        if (tx >= 10.3 && tx <= 14.3 && ty <= 6.1) return true;
+        if (tx <= 6.2 && ty <= 6.0) return true;
+        if (tx <= 3.0 && ty >= 6.0) return true;
+        // Center harvest dining table & right kitchen butcher-block island
+        if (tx >= 9.6 && tx <= 12.4 && ty >= 7.0 && ty <= 10.2) return true;
+        if (tx >= 15.8 && tx <= 18.0 && ty >= 7.0 && ty <= 10.2) return true;
+        // Right dairy kitchen stove & wall counters
+        if (tx >= 14.7 && ty <= 6.2) return true;
+        if (tx >= 19.6) return true;
+        return false;
+      } else if (this.currentArea === 'farmhouse_1_2f_interior') {
+        // Cutaway Homestead Dairy 2F (22 x 14): Hallway Landing & 3 Bedrooms
+        if (tx >= 10.4 && tx <= 12.2 && ty >= 6.0 && ty <= 7.8) return false;
+        if (tx < 1.3 || tx > 20.7 || ty < 4.4 || ty > 12.6) return true;
+        // Vertical room partition walls (leaving generous southern hallway & doorway openings)
+        if (tx >= 7.2 && tx <= 8.0 && ty < 9.6) return true;
+        if (tx >= 11.8 && tx <= 12.8 && ty < 8.8) return true;
+        if (tx >= 16.4 && tx <= 17.2 && ty < 9.6) return true;
+        // Bedroom furnishings (Master four-poster bed, Twin kids beds, Guest bed)
+        if (tx >= 2.8 && tx <= 6.2 && ty <= 7.8) return true;
+        if (tx <= 2.4 && ty >= 7.6) return true;
+        if (tx >= 12.5 && tx <= 16.2 && ty <= 7.4) return true;
+        if (tx >= 18.2 && tx <= 20.5 && ty <= 6.6) return true;
+        return false;
+      } else if (this.currentArea === 'farmhouse_2_1f_interior') {
+        // Cutaway Harvest Manor 1F (22 x 14): Hearth Library, Banquet Hall & Glass Conservatory
+        if (tx >= 9.6 && tx <= 12.4 && ty >= 12.1 && ty <= 12.9) return false;
+        if (tx >= 13.4 && tx <= 15.2 && ty >= 4.5 && ty <= 6.1) return false;
+        if (tx < 1.2 || tx > 20.8 || ty < 4.5 || ty > 12.5) return true;
+        // Left Library wall (open center doorway y: 6.0..8.6) & Right Conservatory archway wall (open y: 5.8..8.8)
+        if (tx >= 7.0 && tx <= 7.8 && (ty < 6.0 || ty > 8.6)) return true;
+        if (tx >= 15.0 && tx <= 15.8 && (ty < 5.8 || ty > 8.8)) return true;
+        // Center banquet table, staircase north housing, Library bookcases/hearth & Conservatory east planters
+        if (tx >= 9.8 && tx <= 12.2 && ty >= 5.8 && ty <= 9.6) return true;
+        if (tx >= 10.2 && tx <= 13.4 && ty <= 5.6) return true;
+        if (tx <= 6.8 && ty <= 5.2) return true;
+        if (tx <= 2.3) return true;
+        if (tx <= 6.8 && ty >= 11.4) return true;
+        if (tx >= 15.8 && ty <= 5.1) return true;
+        if (tx >= 19.6) return true;
+        if (tx >= 18.6 && ty >= 10.4) return true;
+        return false;
+      } else if (this.currentArea === 'farmhouse_2_2f_interior') {
+        // Cutaway Harvest Manor 2F (22 x 14): Gallery Landing & 3 Bedroom Suites
+        if (tx >= 10.0 && tx <= 12.2 && ty >= 11.6 && ty <= 13.0) return false;
+        if (tx < 1.2 || tx > 20.8 || ty < 4.2 || ty > 12.8) return true;
+        // Horizontal bedroom partition wall with 3 arched doorways (x: 3.4..5.8, 10.5..12.9, 16.2..18.6)
+        if (ty >= 7.8 && ty <= 9.6) {
+          const inLeftArch = tx >= 3.4 && tx <= 5.8;
+          const inMidArch = tx >= 10.5 && tx <= 12.9;
+          const inRightArch = tx >= 16.2 && tx <= 18.6;
+          if (!inLeftArch && !inMidArch && !inRightArch) return true;
+        }
+        // Vertical bedroom walls separating the 3 suites
+        if (tx >= 8.2 && tx <= 9.0 && ty < 8.4) return true;
+        if (tx >= 14.6 && tx <= 15.4 && ty < 8.4) return true;
+        // Master canopy bed, Guest bed & Harvest Twin beds
+        if (tx >= 5.2 && tx <= 8.0 && ty <= 7.0) return true;
+        if (tx <= 2.5 && ty <= 7.0) return true;
+        if (tx >= 12.0 && tx <= 14.5 && ty <= 7.0) return true;
+        if (tx >= 18.0 && tx <= 20.6 && ty <= 7.4) return true;
+        return false;
       } else if (this.currentArea === 'school_interior') {
         // Oakhaven Elementary Interior (22 x 14 Cutaway Hall & Main Classroom Wing)
         // Allow stepping into the West Entrance Doors threshold to exit cleanly back outside
@@ -19467,8 +20691,8 @@
       } else {
         // Exterior world outer bounds: all grass across the map is walkable (buildings, fences, trees & props still collide below)
         const minExtX = (this.EXT_MIN_COL ?? -26.5) + 0.5;
-        const maxExtX = (this.EXT_COLS ?? 33.5) - 0.4;
-        const minExtY = 0.5;
+        const maxExtX = (this.EXT_COLS ?? 68.0) - 0.4;
+        const minExtY = (this.EXT_MIN_ROW ?? 0) + 0.5;
         const maxExtY = (this.EXT_ROWS ?? 36.5) - 0.5;
         if (tx < minExtX || tx > maxExtX || ty < minExtY || ty > maxExtY) return true;
 
@@ -19512,6 +20736,7 @@
         if (tx >= 7.4 && tx <= 12.4 && ty >= 23.6 && ty <= 27.08) return true; // Oakhaven Police Station
         if (tx >= -24.20 && tx <= -19.20 && ty >= 16.65 && ty <= 20.08) return true; // Oakhaven Barber Shop
         if (tx >= -18.50 && tx <= -13.10 && ty >= 16.65 && ty <= 20.08) return true; // Oakhaven Apparel
+        if (tx >= -12.40 && tx <= -7.00 && ty >= 16.65 && ty <= 20.08) return true;  // Oakhaven Arcade
         if (tx >= -13.15 && tx <= -7.75 && ty >= 23.46 && ty <= 27.08) return true; // Oakhaven Animal Hospital
 
         // Shaun's Corner Market (NW corner of Willow Way & N-S Paved Road: x: -5.5..-1.3, y: 23.9..26.7)
@@ -19686,6 +20911,33 @@
           return true;
         }
 
+        // 5B. WEST ROW COTTAGES ACROSS OAKHAVEN BLVD FROM NOVA'S HOUSE (y = 11.20..14.48):
+        // OTIS'S WOODCARVER COTTAGE (x = -4.2..-1.0, doorX = -2.60)
+        if (tx >= -4.2 && tx <= -1.0 && ty >= 11.20 && ty <= 14.48) {
+          if (tx >= -3.05 && tx <= -2.15 && ty >= 13.15) return false;
+          return true;
+        }
+        // MAREN'S STONE-HEARTH COTTAGE (x = -8.7..-5.5, doorX = -6.35)
+        if (tx >= -8.7 && tx <= -5.5 && ty >= 11.20 && ty <= 14.48) {
+          if (tx >= -6.80 && tx <= -5.90 && ty >= 13.15) return false;
+          return true;
+        }
+        // CALEB'S SUNROOM & MUSIC COTTAGE (x = -13.4..-9.8, doorX = -10.85)
+        if (tx >= -13.4 && tx <= -9.8 && ty >= 11.20 && ty <= 14.48) {
+          if (tx >= -11.30 && tx <= -10.40 && ty >= 13.15) return false;
+          return true;
+        }
+        // JUNIPER'S HERBALIST COTTAGE (West Oakhaven Lane North Row: x = -4.2..-0.8, doorX = -2.90)
+        if (tx >= -4.2 && tx <= -0.8 && ty >= 0.45 && ty <= 3.38) {
+          if (tx >= -3.35 && tx <= -2.45 && ty >= 2.85) return false;
+          return true;
+        }
+        // GIDEON'S CLOCKMAKER COTTAGE (West Oakhaven Lane North Row: x = -8.7..-5.5, doorX = -7.10)
+        if (tx >= -8.7 && tx <= -5.5 && ty >= 0.45 && ty <= 3.38) {
+          if (tx >= -7.55 && tx <= -6.65 && ty >= 2.85) return false;
+          return true;
+        }
+
         // 6. Mailboxes, Tree Stump, Gazebo Bench & Signpost Collisions
         if (Math.hypot(tx - 4.75, ty - 3.95) < 0.28) return true; // Player Mailbox
         if (Math.hypot(tx - (-0.65), ty - 9.25) < 0.28) return true; // Clara Mailbox
@@ -19696,6 +20948,11 @@
         if (Math.hypot(tx - 4.75, ty - 14.50) < 0.28) return true; // Nova Mailbox
         if (Math.hypot(tx - 6.45, ty - 14.50) < 0.28) return true; // Silas Mailbox
         if (Math.hypot(tx - 11.35, ty - 14.50) < 0.28) return true; // Maya Mailbox
+        if (Math.hypot(tx - (-0.65), ty - 14.50) < 0.28) return true; // Otis Mailbox
+        if (Math.hypot(tx - (-5.15), ty - 14.50) < 0.28) return true; // Maren Mailbox
+        if (Math.hypot(tx - (-9.45), ty - 14.50) < 0.28) return true; // Caleb Mailbox
+        if (Math.hypot(tx - (-0.65), ty - 3.92) < 0.28) return true; // Juniper Mailbox
+        if (Math.hypot(tx - (-5.20), ty - 3.92) < 0.28) return true; // Gideon Mailbox
         if (Math.hypot(tx - 0.85, ty - 3.65) < 0.30) return true; // Cut Tree Stump
         if (Math.hypot(tx - 7.35, ty - 5.45) < 0.28) return true; // Upper Intersection Signpost
         if (Math.hypot(tx - 7.35, ty - 14.50) < 0.28) return true; // South Block Signpost
@@ -19736,8 +20993,110 @@
         [-4.95, 9.16, 1.15],
         [-2.85, 9.16, 1.85],
         [-9.45, 9.16, 1.15],
-        [-7.35, 9.16, 1.85]
+        [-7.35, 9.16, 1.85],
+        [-4.35, 14.38, 1.25],
+        [-2.10, 14.38, 1.15],
+        [-8.85, 14.38, 2.00],
+        [-5.85, 14.38, 0.45],
+        [-13.55, 14.38, 2.20],
+        [-10.35, 14.38, 0.60],
+        [-4.35, 3.84, 0.95],
+        [-2.40, 3.84, 1.65],
+        [-8.85, 3.84, 1.25],
+        [-6.60, 3.84, 1.20]
       ];
+    }
+
+    /** Single-source Option D countryside border segments flanking all Meadowbrook dirt roads. */
+    getRuralOptionDFenceSegments() {
+      return [
+        // Gateway E-W (y = -1.35)
+        { orient: 'h', x1: -6.20, x2: 12.45, y: -2.22, side: 'north' },
+        { orient: 'h', x1: 17.20, x2: 25.75, y: -2.22, side: 'north' },
+        { orient: 'h', x1: -6.20, x2: 12.85, y: -0.42, side: 'south' },
+        { orient: 'h', x1: 16.80, x2: 25.75, y: -0.42, side: 'south' },
+        // Orchard & Sawmill West Spur (y = -20.625)
+        { orient: 'h', x1: -6.20, x2: 12.45, y: -21.50, side: 'north' },
+        { orient: 'h', x1: -6.20, x2: 12.45, y: -19.70, side: 'south' },
+        // Northern Ridge Farm Loop E-W (y = -33.225)
+        { orient: 'h', x1: 18.10, x2: 51.15, y: -34.10, side: 'north' },
+        { orient: 'h', x1: 18.10, x2: 30.05, y: -32.30, side: 'south' },
+        { orient: 'h', x1: 34.75, x2: 51.15, y: -32.30, side: 'south' },
+        // East Valley Country Road E-W (y = -13.525) — driveway gaps at x=23.70 (Farmhouse 1) & x=42.60 (Farmhouse 2)
+        { orient: 'h', x1: 17.20, x2: 22.80, y: -14.40, side: 'north' },
+        { orient: 'h', x1: 24.60, x2: 30.05, y: -14.40, side: 'north' },
+        { orient: 'h', x1: 34.75, x2: 41.70, y: -14.40, side: 'north' },
+        { orient: 'h', x1: 43.50, x2: 52.05, y: -14.40, side: 'north' },
+        { orient: 'h', x1: 56.80, x2: 60.40, y: -14.40, side: 'north' },
+        { orient: 'h', x1: 17.20, x2: 25.75, y: -12.60, side: 'south' },
+        { orient: 'h', x1: 30.45, x2: 52.05, y: -12.60, side: 'south' },
+        { orient: 'h', x1: 56.80, x2: 60.40, y: -12.60, side: 'south' },
+        // Lake & Park Trail E-W (y = 5.375)
+        { orient: 'h', x1: 31.00, x2: 34.80, y: 4.50, side: 'north' },
+        { orient: 'h', x1: 25.60, x2: 34.80, y: 6.30, side: 'south' },
+        // Main North Country Lane N-S (x = 14.825)
+        { orient: 'v', y1: -18.25, y2: -3.70, x: 13.92, side: 'west' },
+        { orient: 'v', y1: -29.95, y2: -23.00, x: 13.92, side: 'west' },
+        { orient: 'v', y1: -11.15, y2: -3.70, x: 15.72, side: 'east' },
+        { orient: 'v', y1: -29.95, y2: -15.90, x: 15.72, side: 'east' },
+        // Center Farm N-S Lane (x = 32.40)
+        { orient: 'v', y1: -30.85, y2: -15.90, x: 31.50, side: 'west' },
+        { orient: 'v', y1: -30.85, y2: -15.90, x: 33.30, side: 'east' },
+        // East Ranch N-S Lane (x = 54.425)
+        { orient: 'v', y1: -29.95, y2: -15.90, x: 53.52, side: 'west' },
+        { orient: 'v', y1: -11.15, y2: -8.40, x: 53.52, side: 'west' },
+        { orient: 'v', y1: -29.95, y2: -15.90, x: 55.32, side: 'east' },
+        { orient: 'v', y1: -11.15, y2: -8.40, x: 55.32, side: 'east' },
+        // Lake & Park Trail N-S (x = 28.10)
+        { orient: 'v', y1: -11.15, y2: -3.70, x: 27.20, side: 'west' },
+        { orient: 'v', y1: 1.00, y2: 3.00, x: 27.20, side: 'west' },
+        { orient: 'v', y1: -11.15, y2: 2.45, x: 29.00, side: 'east' }
+      ];
+    }
+
+    /** Single-source lantern pillar tile coordinates across every Option D rural fence segment. */
+    getRuralOptionDPillars() {
+      if (this._ruralOptionDPillarsCache) return this._ruralOptionDPillarsCache;
+      const pillars = [];
+      for (const seg of this.getRuralOptionDFenceSegments()) {
+        const isVert = seg.orient === 'v';
+        const spanTiles = isVert ? (seg.y2 - seg.y1) : (seg.x2 - seg.x1);
+        if (spanTiles <= 0.2) continue;
+        const bayCount = spanTiles < 5.2 ? 1 : Math.max(2, Math.round(spanTiles / 3.8));
+        for (let b = 0; b <= bayCount; b++) {
+          const t = b / bayCount;
+          pillars.push(isVert
+            ? { x: seg.x, y: seg.y1 + spanTiles * t }
+            : { x: seg.x1 + spanTiles * t, y: seg.y }
+          );
+        }
+      }
+      // Meadowland Archway twin post lanterns & Farmhouse 1 / Farmhouse 2 front porch lanterns
+      pillars.push(
+        { x: 13.58, y: -1.10 },
+        { x: 16.07, y: -1.10 },
+        { x: 23.15, y: -16.80 },
+        { x: 24.25, y: -16.80 },
+        { x: 41.80, y: -16.80 },
+        { x: 43.40, y: -16.80 }
+      );
+      this._ruralOptionDPillarsCache = pillars;
+      return pillars;
+    }
+
+    /** Single-source organic Meadowbrook Lake contour test for both rendering & shoreline collision. */
+    isInMeadowbrookLake(tx, ty) {
+      const cx = 42.25;
+      const cy = 3.25;
+      const rx = 7.75;
+      const ry = 5.25;
+      const dx = (tx - cx) / rx;
+      const dy = (ty - cy) / ry;
+      const dist = Math.hypot(dx, dy);
+      if (dist > 1.10) return false;
+      const ang = Math.atan2(dy, dx);
+      const rMod = 1.0 + 0.06 * Math.sin(ang * 3 + 0.6) + 0.04 * Math.cos(ang * 5 - 0.4);
+      return dist <= 0.96 * rMod;
     }
 
     /** Single-source exterior tree & shrub placements [tileX, tileY, radius, isAutumn, zone]. */
@@ -19747,8 +21106,8 @@
         [6.0, 0.9, 24, true, 'town'],
         [6.0, 2.0, 22, false, 'town'],
         [6.0, 3.0, 20, false, 'town'],
-        [-1.05, 0.9, 23, false, 'town'],
-        [-1.05, 2.2, 22, true, 'town'],
+        [-5.05, 1.3, 21, false, 'town'],
+        [-9.35, 1.8, 22, true, 'town'],
         [11.8, 0.9, 24, false, 'town'],
         [12.3, 2.3, 22, true, 'town'],
         [13.1, 3.2, 20, false, 'town'],
@@ -19758,8 +21117,6 @@
         [4.9, 6.4, 22, false, 'town'],
         [4.95, 7.28, 19, false, 'town'],
         // South Block
-        [-1.05, 11.6, 24, false, 'town'],
-        [-1.05, 13.6, 23, true, 'town'],
         [2.2, 10.8, 18, false, 'town'],
         [3.8, 10.8, 18, true, 'town'],
         [4.9, 12.2, 20, false, 'town'],
@@ -19795,11 +21152,6 @@
         [-18.0, 5.2, 25, false, 'town'],
         [-18.0, 7.4, 25, true, 'town'],
         [-18.0, 9.4, 24, false, 'town'],
-        [-2.0, 11.35, 24, false, 'town'],
-        [-5.2, 11.35, 24, true, 'town'],
-        [-8.4, 11.35, 24, false, 'town'],
-        [-11.6, 11.35, 24, true, 'town'],
-        [-14.8, 11.35, 24, false, 'town'],
         [-17.8, 11.35, 24, true, 'town'],
         // Oakhaven Elementary Campus & Playground Shading Trees (Willow Way East)
         [16.65, 24.05, 22, false, 'town'],
@@ -19821,7 +21173,11 @@
           { minX: 9.33, maxX: 9.60, minY: 7.22, maxY: 7.68 },   // Middle plaza east bench
           { minX: 7.98, maxX: 8.67, minY: 8.42, maxY: 8.68 },   // Middle plaza south bench
           { minX: 7.04, maxX: 7.68, minY: 16.22, maxY: 16.48 }, // South edge park bench
-          { minX: 19.35, maxX: 22.85, minY: 4.66, maxY: 4.90 }  // North Central Park large welcome sign
+          { minX: 19.35, maxX: 22.85, minY: 4.66, maxY: 4.90 }, // North Central Park large welcome sign
+          { minX: 13.22, maxX: 14.10, minY: -0.35, maxY: 0.12 }, // Meadowland Archway west stone pier
+          { minX: 15.55, maxX: 16.43, minY: -0.35, maxY: 0.12 }, // Meadowland Archway east stone pier
+          { minX: 20.75, maxX: 27.25, minY: -20.20, maxY: -16.85 }, // Farmhouse 1 solid base
+          { minX: 39.95, maxX: 46.65, minY: -20.10, maxY: -16.85 }  // Farmhouse 2 solid base
         ],
         // Fountains & Middle Plaza corner tree trunks
         ellipses: [
@@ -19851,6 +21207,19 @@
           return true;
         }
       }
+      for (const seg of this.getRuralOptionDFenceSegments()) {
+        if (seg.orient === 'v') {
+          if (ty >= seg.y1 - 0.18 && ty <= seg.y2 + 0.18 && Math.abs(tx - seg.x) < 0.22) {
+            return true;
+          }
+        } else {
+          if (tx >= seg.x1 - 0.18 && tx <= seg.x2 + 0.18 && Math.abs(ty - seg.y) < 0.22) {
+            return true;
+          }
+        }
+      }
+      const onLakePier = tx >= 34.40 && tx <= 37.85 && ty >= 4.72 && ty <= 6.02;
+      if (!onLakePier && this.isInMeadowbrookLake(tx, ty)) return true;
 
       const S = this.TILE;
       for (const [x, y, r, isAutumn] of this.getExteriorTreeClusters()) {
@@ -19914,6 +21283,24 @@
           doorX: 12.68, doorY: 13.88
         },
         {
+          id: 'west_house_1',
+          spriteKey: 'cottage_west_1',
+          hx: -4.2, hy: 11.20, hw: 3.2, maxY: 14.48,
+          doorX: -2.60, doorY: 13.88
+        },
+        {
+          id: 'west_house_2',
+          spriteKey: 'cottage_west_2',
+          hx: -8.7, hy: 11.20, hw: 3.2, maxY: 14.48,
+          doorX: -6.35, doorY: 13.88
+        },
+        {
+          id: 'west_house_3',
+          spriteKey: 'cottage_west_3',
+          hx: -13.4, hy: 11.20, hw: 3.6, maxY: 14.48,
+          doorX: -10.85, doorY: 13.88
+        },
+        {
           id: 'clara_house',
           spriteKey: 'cottage_maya',
           hx: -4.2, hy: 5.95, hw: 3.2, maxY: 9.28,
@@ -19963,6 +21350,41 @@
           id: 'animal_hospital',
           hx: -13.15, hy: 23.46, hw: 5.4, maxY: 27.08,
           doorX: -10.45, doorY: 27.20
+        },
+        {
+          id: 'arcade',
+          hx: -12.40, hy: 16.65, hw: 5.4, maxY: 20.08,
+          doorX: -9.70, doorY: 20.15
+        },
+        {
+          id: 'west_oak_1',
+          spriteKey: 'cottage_west_oak_1',
+          hx: -4.2, hy: 0.45, hw: 3.4, maxY: 3.38,
+          doorX: -2.90, doorY: 3.15
+        },
+        {
+          id: 'west_oak_2',
+          spriteKey: 'cottage_west_oak_2',
+          hx: -8.7, hy: 0.45, hw: 3.2, maxY: 3.38,
+          doorX: -7.10, doorY: 3.15
+        },
+        {
+          id: 'farmhouse_1',
+          spriteKey: 'farmhouse_1',
+          isWideCivic: true,
+          spriteWallWFrac: 1.0,
+          spriteBaseYFrac: 1.0,
+          hx: 20.60, hy: -22.20, hw: 6.80, maxY: -16.80,
+          doorX: 23.70, doorY: -16.65
+        },
+        {
+          id: 'farmhouse_2',
+          spriteKey: 'farmhouse_2',
+          isWideCivic: true,
+          spriteWallWFrac: 1.0,
+          spriteBaseYFrac: 1.0,
+          hx: 39.80, hy: -22.00, hw: 7.00, maxY: -16.80,
+          doorX: 42.60, doorY: -16.65
         }
       ];
     }
@@ -20051,10 +21473,60 @@
         'police_station_interior',
         'barber_shop_interior',
         'clothing_store_interior',
-        'animal_hospital_interior'
+        'animal_hospital_interior',
+        'west_house_1_interior',
+        'west_house_2_interior',
+        'west_house_3_interior',
+        'west_oak_1_interior',
+        'west_oak_2_interior'
       ].includes(this.currentArea)) {
         if (tx >= 6.2 && tx <= 9.6 && ty >= 9.3 && ty <= 12.0) {
           return { id: 'interior_exit', x: 7.90, y: 10.40 };
+        }
+        return null;
+      }
+      if (this.currentArea === 'arcade_interior') {
+        if (tx >= 8.2 && tx <= 11.8 && ty >= 11.2 && ty <= 14.0) {
+          return { id: 'interior_exit', x: 10.0, y: 12.35 };
+        }
+        if (tx >= 8.6 && tx <= 11.4 && ty >= 3.2 && ty <= 5.8) {
+          return { id: 'arcade_back_door', x: 10.0, y: 5.05 };
+        }
+        return null;
+      }
+      if (this.currentArea === 'arcade_back_interior') {
+        if (tx >= 8.2 && tx <= 11.8 && ty >= 11.2 && ty <= 14.0) {
+          return { id: 'interior_exit', x: 10.0, y: 12.35 };
+        }
+        return null;
+      }
+      if (this.currentArea === 'farmhouse_1_1f_interior') {
+        if (tx >= 9.0 && tx <= 13.0 && ty >= 11.4 && ty <= 14.0) {
+          return { id: 'interior_exit', x: 11.0, y: 12.35 };
+        }
+        if (tx >= 8.3 && tx <= 11.4 && ty >= 4.2 && ty <= 6.6) {
+          return { id: 'fh1_stairs_up', x: 9.45, y: 5.55 };
+        }
+        return null;
+      }
+      if (this.currentArea === 'farmhouse_1_2f_interior') {
+        if (tx >= 9.8 && tx <= 12.5 && ty >= 4.5 && ty <= 7.8) {
+          return { id: 'fh1_stairs_down', x: 11.25, y: 6.75 };
+        }
+        return null;
+      }
+      if (this.currentArea === 'farmhouse_2_1f_interior') {
+        if (tx >= 9.0 && tx <= 13.0 && ty >= 11.4 && ty <= 14.0) {
+          return { id: 'interior_exit', x: 11.0, y: 12.35 };
+        }
+        if (tx >= 12.6 && tx <= 15.6 && ty >= 3.8 && ty <= 6.3) {
+          return { id: 'fh2_stairs_up', x: 14.30, y: 5.20 };
+        }
+        return null;
+      }
+      if (this.currentArea === 'farmhouse_2_2f_interior') {
+        if (tx >= 9.5 && tx <= 12.6 && ty >= 11.0 && ty <= 14.0) {
+          return { id: 'fh2_stairs_down', x: 11.10, y: 12.20 };
         }
         return null;
       }
@@ -20110,10 +21582,33 @@
         const rows = Math.round((maxY - minY) / step) + 1;
         return { step, minX, minY, maxX, maxY, cols, rows };
       }
+      if (this.currentArea === 'arcade_interior' || this.currentArea === 'arcade_back_interior') {
+        const minX = 1.0;
+        const minY = 4.0;
+        const maxX = 19.0;
+        const maxY = 12.75;
+        const cols = Math.round((maxX - minX) / step) + 1;
+        const rows = Math.round((maxY - minY) / step) + 1;
+        return { step, minX, minY, maxX, maxY, cols, rows };
+      }
+      if ([
+        'farmhouse_1_1f_interior',
+        'farmhouse_1_2f_interior',
+        'farmhouse_2_1f_interior',
+        'farmhouse_2_2f_interior'
+      ].includes(this.currentArea)) {
+        const minX = 1.0;
+        const minY = 3.5;
+        const maxX = 21.0;
+        const maxY = 12.8;
+        const cols = Math.round((maxX - minX) / step) + 1;
+        const rows = Math.round((maxY - minY) / step) + 1;
+        return { step, minX, minY, maxX, maxY, cols, rows };
+      }
       const isExt = this.currentArea === 'exterior';
       const minX = isExt ? ((this.EXT_MIN_COL ?? -26.5) + 0.5) : 1.0;
-      const minY = isExt ? 0.5 : 4.0;
-      const maxX = isExt ? ((this.EXT_COLS ?? 33.5) - 0.4) : 15.0;
+      const minY = isExt ? ((this.EXT_MIN_ROW ?? 0) + 0.5) : 4.0;
+      const maxX = isExt ? ((this.EXT_COLS ?? 68.0) - 0.4) : 15.0;
       const maxY = isExt ? ((this.EXT_ROWS ?? 36.5) - 0.5) : 10.75;
       const cols = Math.round((maxX - minX) / step) + 1;
       const rows = Math.round((maxY - minY) / step) + 1;
@@ -20274,13 +21769,24 @@
       const inBox = (x1, y1, x2, y2) => tx >= x1 - m && tx <= x2 + m && ty >= y1 - m && ty <= y2 + m;
 
       // Cobblestone Town Roads & Connectors
-      if (inBox(-0.35, 4.20, 15.35, 5.25)) return true;   // Upper E-W Cobblestone Road
+      if (inBox(-8.70, 4.20, 15.35, 5.25)) return true;   // Upper E-W Cobblestone Road (Oakhaven Lane, extended west to Bram's House)
       if (inBox(14.25, 0.00, 15.35, 5.25)) return true;   // NE Cobblestone Turn
       if (inBox(-26.00, 9.55, 33.50, 10.70)) return true;  // South Connector Ave
       if (inBox(-26.00, 14.80, 33.50, 15.95)) return true; // Lower Cobblestone Way (extended West)
       if (inBox(-26.00, 9.55, -24.85, 15.95)) return true; // West End Cobblestone Loop Connector
       if (inBox(5.55, 4.20, 6.65, 10.70)) return true;    // West N-S Connector
       if (inBox(9.95, 4.20, 10.95, 15.95)) return true;   // East N-S Connector
+
+      // Rural Countryside Dirt Roadways (Meadowbrook Farmlands, connected north from NE Cobblestone Turn)
+      if (inBox(-6.50, -2.00, 28.70, -0.70)) return true;    // South Countryside E-W Dirt Road (Gateway East & West)
+      if (inBox(14.15, -33.70, 15.50, 0.10)) return true;    // Main North Country Lane
+      if (inBox(14.15, -14.20, 60.65, -12.85)) return true;  // East Valley Country Road
+      if (inBox(-6.50, -21.20, 15.00, -20.05)) return true;  // Orchard & Sawmill Spur (West)
+      if (inBox(15.00, -33.80, 54.00, -32.65)) return true;  // Northern Ridge Farm Loop
+      if (inBox(31.80, -33.80, 33.00, -13.20)) return true;  // Center Farm N-S Lane
+      if (inBox(53.80, -33.80, 55.05, -8.20)) return true;   // East Ranch N-S Lane
+      if (inBox(27.50, -13.00, 28.70, 5.95)) return true;    // Lake & Park Trail N-S Road
+      if (inBox(25.00, 4.80, 35.00, 5.95)) return true;      // Lake Pier & Central Park Connector
 
       // Urban Paved Avenue (Oakhaven Blvd), Willow Way, West Roundabout Ave & Roundabout
       if (inBox(-0.35, 0.00, 0.70, 33.50)) return true;   // N-S Oakhaven Blvd
@@ -20302,12 +21808,18 @@
       if (inBox(1.50, 13.90, 2.50, 14.90)) return true;   // Nova's House
       if (inBox(7.10, 13.90, 8.10, 14.90)) return true;   // Silas's House
       if (inBox(12.20, 13.90, 13.20, 14.90)) return true; // Maya's House
+      if (inBox(-3.10, 13.90, -2.10, 14.90)) return true; // Otis's Woodcarver Cottage
+      if (inBox(-6.85, 13.90, -5.85, 14.90)) return true; // Maren's Stone-Hearth Cottage
+      if (inBox(-11.35, 13.90, -10.35, 14.90)) return true; // Caleb's Sunroom Cottage
+      if (inBox(-3.40, 3.00, -2.40, 4.30)) return true;    // Juniper's Herbalist Cottage
+      if (inBox(-7.60, 3.00, -6.60, 4.30)) return true;    // Gideon's Clockmaker Cottage
       if (inBox(-16.00, 31.60, -15.00, 32.40)) return true; // Bistro Entrance Apron
       if (inBox(-5.70, 26.00, 0.70, 27.70)) return true;  // Corner Market Flagstone Plaza
       if (inBox(-24.80, 26.20, -15.20, 27.70)) return true; // Convention Center Plaza
       if (inBox(15.50, 27.00, 24.50, 28.60)) return true; // School Portico Drop-Off
       if (inBox(-24.40, 19.70, -19.00, 21.15)) return true; // Oakhaven Barber Shop Front Apron
       if (inBox(-18.70, 19.70, -12.90, 21.15)) return true; // Oakhaven Apparel Front Apron
+      if (inBox(-12.60, 19.70, -6.80, 21.15)) return true;  // Oakhaven Arcade Front Apron
       if (inBox(-13.35, 26.70, -7.55, 28.20)) return true; // Oakhaven Animal Hospital Front Apron
       if (inBox(18.00, 6.80, 24.20, 11.60)) return true;  // Central Park Courtyard Walkways
 
@@ -20751,7 +22263,7 @@
         this.rowanNpc, this.jasperNpc, this.bertoNpc,
         this.fireChiefNpc, this.policeChiefNpc,
         this.aptTessaNpc, this.aptDanteNpc, this.aptNinaNpc, this.aptMilesNpc,
-        this.barberNpc, this.tailorNpc, this.vetNpc, this.leagueRegistrarNpc
+        this.barberNpc, this.tailorNpc, this.vetNpc, this.westOtisNpc, this.westMarenNpc, this.westCalebNpc, this.westJuniperNpc, this.westGideonNpc, this.fh1MarthaNpc, this.fh1HarlanNpc, this.fh2EleanorNpc, this.fh2ArthurNpc, this.arcadeZekeNpc, this.leagueRegistrarNpc
       ].forEach(add);
       return list;
     }
@@ -21158,7 +22670,7 @@
     getBgmTrackForArea(area = this.currentArea) {
       const a = area || 'exterior';
       if (a === 'exterior') return 'overworld';
-      if (a === 'card_shop_interior' || a === 'corner_store_interior') return 'shop';
+      if (a === 'card_shop_interior' || a === 'corner_store_interior' || a === 'arcade_interior' || a === 'arcade_back_interior') return 'shop';
       if (a === 'restaurant_interior') return 'bistro';
       if (a === 'barber_shop_interior') return 'barber';
       if (a === 'clothing_store_interior') return 'boutique';
@@ -21168,7 +22680,11 @@
       if ([
         'interior', 'friend_interior', 'pluto_interior', 'nova_interior',
         'silas_interior', 'maya_interior', 'clara_interior', 'bram_interior',
-        'animal_hospital_interior', 'apartment_hall_interior', 'apt_1_interior', 'apt_2_interior', 'apt_3_interior', 'apt_4_interior'
+        'animal_hospital_interior', 'west_house_1_interior', 'west_house_2_interior', 'west_house_3_interior',
+        'west_oak_1_interior', 'west_oak_2_interior',
+        'farmhouse_1_1f_interior', 'farmhouse_1_2f_interior',
+        'farmhouse_2_1f_interior', 'farmhouse_2_2f_interior',
+        'apartment_hall_interior', 'apt_1_interior', 'apt_2_interior', 'apt_3_interior', 'apt_4_interior'
       ].includes(a)) {
         return 'cozy_home';
       }
@@ -21848,6 +23364,52 @@
           this.player.targetY = null;
           this.areaTransitionCooldown = 25;
           this.updateHUDSaveInfo();
+        } else if (this.currentArea === 'exterior' && this.player.x >= -10.20 && this.player.x <= -9.20 && this.player.y >= 19.85 && this.player.y <= 20.35) {
+          // Enter Oakhaven Arcade Main Hall via centered arched double doors
+          if (window.sounds?.playMove) window.sounds.playMove();
+          this.currentArea = 'arcade_interior';
+          this.player.x = 10.0;
+          this.player.y = 11.55;
+          this.player.dir = 'up';
+          this.player.targetX = null;
+          this.player.targetY = null;
+          this.areaTransitionCooldown = 25;
+          this.cameraX = 0;
+          this.cameraY = 0;
+          this.updateHUDSaveInfo();
+        } else if (this.currentArea === 'arcade_interior' && this.player.x >= 8.60 && this.player.x <= 11.40 && this.player.y >= 12.25) {
+          // Exit Oakhaven Arcade Main Hall via centered OAKHAVEN mat
+          if (window.sounds?.playMove) window.sounds.playMove();
+          this.currentArea = 'exterior';
+          this.player.x = -9.70;
+          this.player.y = 20.45;
+          this.player.dir = 'down';
+          this.player.targetX = null;
+          this.player.targetY = null;
+          this.areaTransitionCooldown = 25;
+          this.updateHUDSaveInfo();
+        } else if (this.currentArea === 'arcade_interior' && this.player.x >= 9.10 && this.player.x <= 10.90 && this.player.y <= 5.20) {
+          // Step through Back Room door into Arcade Back Lounge Room
+          if (window.sounds?.playMove) window.sounds.playMove();
+          this.currentArea = 'arcade_back_interior';
+          this.player.x = 10.0;
+          this.player.y = 11.55;
+          this.player.dir = 'up';
+          this.player.targetX = null;
+          this.player.targetY = null;
+          this.areaTransitionCooldown = 25;
+          this.updateHUDSaveInfo();
+        } else if (this.currentArea === 'arcade_back_interior' && this.player.x >= 8.80 && this.player.x <= 11.20 && this.player.y >= 12.25) {
+          // Return from Arcade Back Lounge Room to Arcade Main Hall
+          if (window.sounds?.playMove) window.sounds.playMove();
+          this.currentArea = 'arcade_interior';
+          this.player.x = 10.0;
+          this.player.y = 5.75;
+          this.player.dir = 'down';
+          this.player.targetX = null;
+          this.player.targetY = null;
+          this.areaTransitionCooldown = 25;
+          this.updateHUDSaveInfo();
         } else if (this.currentArea === 'exterior' && this.player.x >= -10.95 && this.player.x <= -9.95 && this.player.y >= 26.85 && this.player.y <= 27.35) {
           // Enter Oakhaven Animal Hospital via centered double glass doors
           if (window.sounds?.playMove) window.sounds.playMove();
@@ -21868,6 +23430,211 @@
           this.currentArea = 'exterior';
           this.player.x = -10.45;
           this.player.y = 27.45;
+          this.player.dir = 'down';
+          this.player.targetX = null;
+          this.player.targetY = null;
+          this.areaTransitionCooldown = 25;
+          this.updateHUDSaveInfo();
+        } else if (this.currentArea === 'exterior' && this.player.x >= -3.05 && this.player.x <= -2.15 && this.player.y >= 13.45 && this.player.y <= 14.20) {
+          // Enter Otis's Woodcarver Cottage across Oakhaven Blvd from Nova's house
+          if (window.sounds?.playMove) window.sounds.playMove();
+          this.currentArea = 'west_house_1_interior';
+          this.player.x = 7.90;
+          this.player.y = 9.75;
+          this.player.dir = 'up';
+          this.player.targetX = null;
+          this.player.targetY = null;
+          this.areaTransitionCooldown = 25;
+          this.cameraX = 0;
+          this.cameraY = 0;
+          this.updateHUDSaveInfo();
+        } else if (this.currentArea === 'west_house_1_interior' && this.player.x >= 7.0 && this.player.x <= 8.8 && this.player.y >= 10.25) {
+          if (window.sounds?.playMove) window.sounds.playMove();
+          this.currentArea = 'exterior';
+          this.player.x = -2.60;
+          this.player.y = 14.45;
+          this.player.dir = 'down';
+          this.player.targetX = null;
+          this.player.targetY = null;
+          this.areaTransitionCooldown = 25;
+          this.updateHUDSaveInfo();
+        } else if (this.currentArea === 'exterior' && this.player.x >= -6.80 && this.player.x <= -5.90 && this.player.y >= 13.45 && this.player.y <= 14.20) {
+          // Enter Maren's Stone-Hearth Cottage
+          if (window.sounds?.playMove) window.sounds.playMove();
+          this.currentArea = 'west_house_2_interior';
+          this.player.x = 7.90;
+          this.player.y = 9.75;
+          this.player.dir = 'up';
+          this.player.targetX = null;
+          this.player.targetY = null;
+          this.areaTransitionCooldown = 25;
+          this.cameraX = 0;
+          this.cameraY = 0;
+          this.updateHUDSaveInfo();
+        } else if (this.currentArea === 'west_house_2_interior' && this.player.x >= 7.0 && this.player.x <= 8.8 && this.player.y >= 10.25) {
+          if (window.sounds?.playMove) window.sounds.playMove();
+          this.currentArea = 'exterior';
+          this.player.x = -6.35;
+          this.player.y = 14.45;
+          this.player.dir = 'down';
+          this.player.targetX = null;
+          this.player.targetY = null;
+          this.areaTransitionCooldown = 25;
+          this.updateHUDSaveInfo();
+        } else if (this.currentArea === 'exterior' && this.player.x >= -11.30 && this.player.x <= -10.40 && this.player.y >= 13.45 && this.player.y <= 14.20) {
+          // Enter Caleb's Sunroom & Music Cottage
+          if (window.sounds?.playMove) window.sounds.playMove();
+          this.currentArea = 'west_house_3_interior';
+          this.player.x = 7.90;
+          this.player.y = 9.75;
+          this.player.dir = 'up';
+          this.player.targetX = null;
+          this.player.targetY = null;
+          this.areaTransitionCooldown = 25;
+          this.cameraX = 0;
+          this.cameraY = 0;
+          this.updateHUDSaveInfo();
+        } else if (this.currentArea === 'west_house_3_interior' && this.player.x >= 7.0 && this.player.x <= 8.8 && this.player.y >= 10.25) {
+          if (window.sounds?.playMove) window.sounds.playMove();
+          this.currentArea = 'exterior';
+          this.player.x = -10.85;
+          this.player.y = 14.45;
+          this.player.dir = 'down';
+          this.player.targetX = null;
+          this.player.targetY = null;
+          this.areaTransitionCooldown = 25;
+          this.updateHUDSaveInfo();
+        } else if (this.currentArea === 'exterior' && this.player.x >= -3.40 && this.player.x <= -2.40 && this.player.y >= 2.90 && this.player.y <= 3.60) {
+          // Enter Juniper's Herbalist Cottage (99 West Oakhaven Lane)
+          if (window.sounds?.playMove) window.sounds.playMove();
+          this.currentArea = 'west_oak_1_interior';
+          this.player.x = 7.90;
+          this.player.y = 9.75;
+          this.player.dir = 'up';
+          this.player.targetX = null;
+          this.player.targetY = null;
+          this.areaTransitionCooldown = 25;
+          this.cameraX = 0;
+          this.cameraY = 0;
+          this.updateHUDSaveInfo();
+        } else if (this.currentArea === 'west_oak_1_interior' && this.player.x >= 7.0 && this.player.x <= 8.8 && this.player.y >= 10.25) {
+          if (window.sounds?.playMove) window.sounds.playMove();
+          this.currentArea = 'exterior';
+          this.player.x = -2.90;
+          this.player.y = 3.60;
+          this.player.dir = 'down';
+          this.player.targetX = null;
+          this.player.targetY = null;
+          this.areaTransitionCooldown = 25;
+          this.updateHUDSaveInfo();
+        } else if (this.currentArea === 'exterior' && this.player.x >= -7.60 && this.player.x <= -6.60 && this.player.y >= 2.90 && this.player.y <= 3.60) {
+          // Enter Gideon's Clockmaker Cottage (97 West Oakhaven Lane)
+          if (window.sounds?.playMove) window.sounds.playMove();
+          this.currentArea = 'west_oak_2_interior';
+          this.player.x = 7.90;
+          this.player.y = 9.75;
+          this.player.dir = 'up';
+          this.player.targetX = null;
+          this.player.targetY = null;
+          this.areaTransitionCooldown = 25;
+          this.cameraX = 0;
+          this.cameraY = 0;
+          this.updateHUDSaveInfo();
+        } else if (this.currentArea === 'west_oak_2_interior' && this.player.x >= 7.0 && this.player.x <= 8.8 && this.player.y >= 10.25) {
+          if (window.sounds?.playMove) window.sounds.playMove();
+          this.currentArea = 'exterior';
+          this.player.x = -7.10;
+          this.player.y = 3.60;
+          this.player.dir = 'down';
+          this.player.targetX = null;
+          this.player.targetY = null;
+          this.areaTransitionCooldown = 25;
+          this.updateHUDSaveInfo();
+        } else if (this.currentArea === 'exterior' && this.player.x >= 23.0 && this.player.x <= 24.4 && this.player.y >= -17.0 && this.player.y <= -16.4) {
+          // Enter Farmhouse 1 (Homestead Dairy) 1F
+          if (window.sounds?.playMove) window.sounds.playMove();
+          this.currentArea = 'farmhouse_1_1f_interior';
+          this.player.x = 11.0;
+          this.player.y = 11.6;
+          this.player.dir = 'up';
+          this.player.targetX = null;
+          this.player.targetY = null;
+          this.areaTransitionCooldown = 25;
+          this.cameraX = 0;
+          this.cameraY = 0;
+          this.updateHUDSaveInfo();
+        } else if (this.currentArea === 'farmhouse_1_1f_interior' && this.player.x >= 9.5 && this.player.x <= 12.5 && this.player.y >= 12.15) {
+          if (window.sounds?.playMove) window.sounds.playMove();
+          this.currentArea = 'exterior';
+          this.player.x = 23.70;
+          this.player.y = -16.25;
+          this.player.dir = 'down';
+          this.player.targetX = null;
+          this.player.targetY = null;
+          this.areaTransitionCooldown = 25;
+          this.updateHUDSaveInfo();
+        } else if (this.currentArea === 'farmhouse_1_1f_interior' && this.player.x >= 8.6 && this.player.x <= 10.3 && this.player.y >= 5.0 && this.player.y <= 6.2) {
+          // Homestead Dairy stairs UP to 2F (3-bedroom landing)
+          if (window.sounds?.playMove) window.sounds.playMove();
+          this.currentArea = 'farmhouse_1_2f_interior';
+          this.player.x = 10.6;
+          this.player.y = 8.9;
+          this.player.dir = 'down';
+          this.player.targetX = null;
+          this.player.targetY = null;
+          this.areaTransitionCooldown = 25;
+          this.updateHUDSaveInfo();
+        } else if (this.currentArea === 'farmhouse_1_2f_interior' && this.player.x >= 10.4 && this.player.x <= 12.2 && this.player.y >= 6.2 && this.player.y <= 7.6) {
+          // Homestead Dairy stairs DOWN to 1F
+          if (window.sounds?.playMove) window.sounds.playMove();
+          this.currentArea = 'farmhouse_1_1f_interior';
+          this.player.x = 9.2;
+          this.player.y = 6.9;
+          this.player.dir = 'down';
+          this.player.targetX = null;
+          this.player.targetY = null;
+          this.areaTransitionCooldown = 25;
+          this.updateHUDSaveInfo();
+        } else if (this.currentArea === 'exterior' && this.player.x >= 41.9 && this.player.x <= 43.3 && this.player.y >= -17.0 && this.player.y <= -16.4) {
+          // Enter Farmhouse 2 (Harvest Manor) 1F
+          if (window.sounds?.playMove) window.sounds.playMove();
+          this.currentArea = 'farmhouse_2_1f_interior';
+          this.player.x = 11.0;
+          this.player.y = 11.6;
+          this.player.dir = 'up';
+          this.player.targetX = null;
+          this.player.targetY = null;
+          this.areaTransitionCooldown = 25;
+          this.cameraX = 0;
+          this.cameraY = 0;
+          this.updateHUDSaveInfo();
+        } else if (this.currentArea === 'farmhouse_2_1f_interior' && this.player.x >= 9.6 && this.player.x <= 12.4 && this.player.y >= 12.15) {
+          if (window.sounds?.playMove) window.sounds.playMove();
+          this.currentArea = 'exterior';
+          this.player.x = 42.60;
+          this.player.y = -16.25;
+          this.player.dir = 'down';
+          this.player.targetX = null;
+          this.player.targetY = null;
+          this.areaTransitionCooldown = 25;
+          this.updateHUDSaveInfo();
+        } else if (this.currentArea === 'farmhouse_2_1f_interior' && this.player.x >= 13.4 && this.player.x <= 15.2 && this.player.y >= 4.5 && this.player.y <= 5.9) {
+          // Harvest Manor stairs UP to 2F (3-bedroom gallery)
+          if (window.sounds?.playMove) window.sounds.playMove();
+          this.currentArea = 'farmhouse_2_2f_interior';
+          this.player.x = 10.8;
+          this.player.y = 10.7;
+          this.player.dir = 'up';
+          this.player.targetX = null;
+          this.player.targetY = null;
+          this.areaTransitionCooldown = 25;
+          this.updateHUDSaveInfo();
+        } else if (this.currentArea === 'farmhouse_2_2f_interior' && this.player.x >= 10.0 && this.player.x <= 12.2 && this.player.y >= 11.8 && this.player.y <= 12.9) {
+          // Harvest Manor stairs DOWN to 1F
+          if (window.sounds?.playMove) window.sounds.playMove();
+          this.currentArea = 'farmhouse_2_1f_interior';
+          this.player.x = 14.2;
+          this.player.y = 6.6;
           this.player.dir = 'down';
           this.player.targetX = null;
           this.player.targetY = null;
@@ -21992,7 +23759,7 @@
       const visibleH = isCover ? Math.min(viewH, viewW * (rect.height / rect.width)) : viewH;
 
       if (this.currentArea === 'exterior') {
-        const minCenterY = visibleH / 2;
+        const minCenterY = (this.EXT_MIN_ROW || 0) * this.TILE + visibleH / 2;
         const maxCenterY = Math.max(minCenterY, this.EXT_ROWS * this.TILE - visibleH / 2);
         const targetCenterY = Math.max(minCenterY, Math.min(maxCenterY, this.player.y * this.TILE));
         const targetCamY = targetCenterY - viewH / 2;
@@ -22004,7 +23771,9 @@
         const targetCamX = targetCenterX - viewW / 2;
         this.cameraX += (targetCamX - this.cameraX) * 0.18;
 
-        const extZone = this.player.x >= 16.0 ? (this.player.y >= 17.5 ? 'school' : 'park') : 'town';
+        const extZone = (this.player.y < 0 || (this.player.x >= 33.5 && this.player.y < 17.5))
+          ? 'rural'
+          : (this.player.x >= 16.0 ? (this.player.y >= 17.5 ? 'school' : 'park') : 'town');
         if (this._lastInPark !== extZone) {
           this._lastInPark = extZone;
           this.updateHUDSaveInfo();
@@ -22025,6 +23794,25 @@
         this.cameraY += (targetCamY - this.cameraY) * 0.18;
       } else if (this.currentArea === 'school_interior') {
         const hallW = 22 * this.TILE;
+        const hallH = 14 * this.TILE;
+        const targetCenterX = hallW <= visibleW
+          ? hallW / 2
+          : Math.max(visibleW / 2, Math.min(hallW - visibleW / 2, this.player.x * this.TILE));
+        const targetCamX = targetCenterX - viewW / 2;
+        this.cameraX += (targetCamX - this.cameraX) * 0.18;
+
+        const targetCenterY = hallH <= visibleH
+          ? hallH / 2
+          : Math.max(visibleH / 2, Math.min(hallH - visibleH / 2, this.player.y * this.TILE));
+        const targetCamY = targetCenterY - viewH / 2;
+        this.cameraY += (targetCamY - this.cameraY) * 0.18;
+      } else if ([
+        'arcade_interior', 'arcade_back_interior',
+        'farmhouse_1_1f_interior', 'farmhouse_1_2f_interior',
+        'farmhouse_2_1f_interior', 'farmhouse_2_2f_interior'
+      ].includes(this.currentArea)) {
+        const isFh = this.currentArea.startsWith('farmhouse_');
+        const hallW = (isFh ? 22 : 20) * this.TILE;
         const hallH = 14 * this.TILE;
         const targetCenterX = hallW <= visibleW
           ? hallW / 2
@@ -24595,21 +26383,28 @@
         'turf_edge_top', 'turf_edge_bot', 'turf_edge_left', 'turf_edge_right',
         'cottage_player', 'cottage_friend', 'cottage_pluto',
         'cottage_nova', 'cottage_silas', 'cottage_maya',
+        'cottage_west_1', 'cottage_west_2', 'cottage_west_3',
+        'west_house_1_interior', 'west_house_2_interior', 'west_house_3_interior',
+        'cottage_west_oak_1', 'cottage_west_oak_2',
+        'west_oak_1_interior', 'west_oak_2_interior',
+        'farmhouse_1_1f_interior', 'farmhouse_1_2f_interior',
+        'farmhouse_2_1f_interior', 'farmhouse_2_2f_interior',
+        'archway_meadowland', 'farmhouse_1', 'farmhouse_2',
         'card_shop', 'shop_banner', 'convention_center', 'oakhaven_apartments',
-        'school_exterior', 'school_bus', 'police_station', 'fire_station', 'fire_station_interior', 'police_station_interior', 'barber_shop', 'barber_shop_interior', 'clothing_store', 'clothing_store_interior', 'animal_hospital', 'animal_hospital_interior', 'npc_fire_chief', 'npc_fire_chief_back', 'npc_fire_chief_side', 'npc_police_chief', 'npc_police_chief_back', 'npc_police_chief_side',
+        'school_exterior', 'school_bus', 'police_station', 'fire_station', 'fire_station_interior', 'police_station_interior', 'barber_shop', 'barber_shop_interior', 'clothing_store', 'clothing_store_interior', 'animal_hospital', 'animal_hospital_interior', 'arcade', 'arcade_interior', 'arcade_back_interior', 'npc_fire_chief', 'npc_fire_chief_back', 'npc_fire_chief_side', 'npc_police_chief', 'npc_police_chief_back', 'npc_police_chief_side',
         'playground_ground', 'playground_fort', 'playground_swingset',
         'playground_seesaw', 'playground_spinner', 'playground_hoop',
         'tree_green', 'tree_autumn', 'tree_autumn_small',
         'fountain', 'bush_round', 'bush_flower',
         'bench_left', 'bench_front', 'bench_right',
-        'fence', 'pot_large', 'pot_small', 'signpost',
+        'fence', 'rural_pillar_lantern', 'pot_large', 'pot_small', 'signpost',
         'furniture_bed', 'furniture_bookshelf', 'furniture_tv',
         'furniture_table_book', 'furniture_card_counter'
       ];
       this.owSprites = this.owSprites || {};
       keys.forEach((k) => {
         const img = new Image();
-        img.src = `Sprites/Overworld/${k}.png?v=2.75`;
+        img.src = `Sprites/Overworld/${k}.png?v=3.02`;
         img.onload = () => {
           if (k === 'tile_grass' || k === 'tile_dirt' || k === 'tile_flagstone' || k === 'tile_wood_floor') {
             this._pixelArtVer = 0; // force pattern refresh once high-res PNG tiles finish decoding
@@ -29320,10 +31115,10 @@
     // =========================================================================
     // OAKHAVEN ELEMENTARY SCHOOL INTERIOR (22 x 14 Tiles - West Door Lobby & Classroom)
     // =========================================================================
-    _renderCutawayBuildingInterior(spriteKey) {
+    _renderCutawayBuildingInterior(spriteKey, cols = this.COLS, rows = this.ROWS) {
       const ctx = this.ctx;
-      const W = this.COLS * this.TILE;
-      const H = this.ROWS * this.TILE;
+      const W = cols * this.TILE;
+      const H = rows * this.TILE;
       ctx.fillStyle = '#1c1917';
       ctx.fillRect(-2000, -2000, W + 4000, H + 4000);
       if (this.isImgReady(spriteKey)) {
@@ -29358,6 +31153,50 @@
 
     renderAnimalHospitalInterior() {
       this._renderCutawayBuildingInterior('animal_hospital_interior');
+    }
+
+    renderArcadeInterior() {
+      this._renderCutawayBuildingInterior('arcade_interior', 20, 14);
+    }
+
+    renderArcadeBackInterior() {
+      this._renderCutawayBuildingInterior('arcade_back_interior', 20, 14);
+    }
+
+    renderWestOak1Interior() {
+      this._renderCutawayBuildingInterior('west_oak_1_interior');
+    }
+
+    renderWestOak2Interior() {
+      this._renderCutawayBuildingInterior('west_oak_2_interior');
+    }
+
+    renderFarmhouse1Floor1() {
+      this._renderCutawayBuildingInterior('farmhouse_1_1f_interior', 22, 14);
+    }
+
+    renderFarmhouse1Floor2() {
+      this._renderCutawayBuildingInterior('farmhouse_1_2f_interior', 22, 14);
+    }
+
+    renderFarmhouse2Floor1() {
+      this._renderCutawayBuildingInterior('farmhouse_2_1f_interior', 22, 14);
+    }
+
+    renderFarmhouse2Floor2() {
+      this._renderCutawayBuildingInterior('farmhouse_2_2f_interior', 22, 14);
+    }
+
+    renderWestHouse1Interior() {
+      this._renderCutawayBuildingInterior('west_house_1_interior');
+    }
+
+    renderWestHouse2Interior() {
+      this._renderCutawayBuildingInterior('west_house_2_interior');
+    }
+
+    renderWestHouse3Interior() {
+      this._renderCutawayBuildingInterior('west_house_3_interior');
     }
 
     renderSchoolInterior() {
@@ -30895,15 +32734,17 @@
       const S = this.TILE; // 64px
       const W = this.canvas.width;  // 1024
       const EXT_MIN_X = Math.round((this.EXT_MIN_COL || 0) * S); // -1184px (West South Connector Ave)
-      const EXT_W = Math.round(this.EXT_COLS * S); // 1664px (Expanded East Central Park)
-      const EXT_H = Math.round(this.EXT_ROWS * S); // 1184px (Expanded South Block)
+      const EXT_MIN_Y = Math.round((this.EXT_MIN_ROW || 0) * S); // -2432px (North Countryside)
+      const EXT_W = Math.round(this.EXT_COLS * S); // 4352px (Expanded East Countryside)
+      const TOWN_EAST_W = Math.round(33.5 * S); // 2144px (Town East End: Central Park & Elementary)
+      const EXT_H = Math.round(this.EXT_ROWS * S); // 2336px (Expanded South Block)
       const pName = this.draftAppearance?.name || 'Asher';
       const fName = this.friendName || 'Rocky';
 
-      // 1. Lush Sunlit Meadow Pixel-Art Grass Base across the neighborhood & Central Park
+      // 1. Lush Sunlit Meadow Pixel-Art Grass Base across the neighborhood, Central Park & Countryside
       this.initCobblestonePattern();
       ctx.fillStyle = this.grassPattern || '#58aa3c';
-      ctx.fillRect(EXT_MIN_X, 0, EXT_W - EXT_MIN_X, EXT_H);
+      ctx.fillRect(EXT_MIN_X, EXT_MIN_Y, EXT_W - EXT_MIN_X, EXT_H - EXT_MIN_Y);
 
       // Fallback meadow grass speckles only when PNG tile has not finished decoding
       if (this._pixelArtVer !== 3) {
@@ -30947,12 +32788,13 @@
       const oakhavenRoad1W = (oakhavenTurnX + oakhavenTurnW);
       const oakhavenWestTurnX = -0.35 * S;
       const oakhavenWestTurnW = 1.05 * S;
+      const oakhavenLaneWestX = -8.70 * S;
 
       // Cobblestone Town Road Network (Upper, Lower, Connectors matching South Connector Ave)
       ctx.fillStyle = this.flagstonePattern || '#988878';
-      ctx.fillRect(oakhavenWestTurnX + oakhavenWestTurnW, road1Y, oakhavenRoad1W - (oakhavenWestTurnX + oakhavenWestTurnW), road1H);
+      ctx.fillRect(oakhavenLaneWestX, road1Y, oakhavenRoad1W - oakhavenLaneWestX, road1H);
       ctx.fillRect(oakhavenTurnX, 0, oakhavenTurnW, road1Y + road1H);
-      ctx.fillRect(westEndConnX, road3Y, EXT_W - westEndConnX, road3H);
+      ctx.fillRect(westEndConnX, road3Y, TOWN_EAST_W - westEndConnX, road3H);
       ctx.fillRect(westEndConnX, road2Y, westEndConnW, westConnH);
       ctx.fillRect(south1X, road1Y, south1W, midConnH);
       ctx.fillRect(south2X, road1Y, south2W, fullConnH);
@@ -30960,6 +32802,296 @@
       // Middle Commercial Road (South Connector Ave): Irregular Flagstone Cobblestone Street extended West!
       ctx.fillStyle = this.flagstonePattern || '#988878';
       ctx.fillRect(westEndConnX, road2Y, W - westEndConnX, road2H);
+
+      // Rustic Packed-Dirt Countryside Road Network (Meadowbrook Farmlands — smooth curved bends & flared junctions)
+      const ruralRoadW = Math.round(1.28 * S);
+      const traceCornerFlare = (cx, cy, dx, dy, radius) => {
+        const x0 = Math.round(cx + dx * radius);
+        const y0 = Math.round(cy);
+        const cpx = Math.round(cx);
+        const cpy = Math.round(cy);
+        const x1 = Math.round(cx);
+        const y1 = Math.round(cy + dy * radius);
+        ctx.moveTo(x0, y0);
+        ctx.arcTo(cpx, cpy, x1, y1, radius);
+        ctx.lineTo(x1, y1);
+      };
+      const traceRuralPaths = () => {
+        const rLoop = Math.round(2.6 * S);
+        const rLake = Math.round(2.2 * S);
+        const rFlare = Math.round(1.65 * S);
+        const rGatewaySouth = Math.round(1.25 * S);
+        const xMain = Math.round(14.825 * S);
+        const yRidge = Math.round(-33.225 * S);
+        const xRanch = Math.round(54.425 * S);
+        const yValley = Math.round(-13.525 * S);
+        const yOrchard = Math.round(-20.625 * S);
+        const yGateway = Math.round(-1.35 * S);
+        const xCenterFarm = Math.round(32.40 * S);
+        const xLakeN = Math.round(28.10 * S);
+        const yLakeS = Math.round(5.375 * S);
+
+        ctx.beginPath();
+        // 1. Main North Country Lane -> Northern Ridge Farm Loop -> East Ranch N-S Lane (with sweeping NW & NE curves)
+        ctx.moveTo(xMain, 0);
+        ctx.arcTo(xMain, yRidge, xRanch, yRidge, rLoop);
+        ctx.arcTo(xRanch, yRidge, xRanch, Math.round(-8.20 * S), rLoop);
+        ctx.lineTo(xRanch, Math.round(-8.20 * S));
+
+        // 2. Orchard & Sawmill West Spur
+        ctx.moveTo(Math.round(-6.50 * S), yOrchard);
+        ctx.lineTo(xMain, yOrchard);
+
+        // 2b. South Countryside E-W Border Road (connects NE Gateway west to Orchard edge & east to Lake N-S Road)
+        ctx.moveTo(Math.round(-6.50 * S), yGateway);
+        ctx.lineTo(xLakeN, yGateway);
+
+        // 3. East Valley Country Road
+        ctx.moveTo(xMain, yValley);
+        ctx.lineTo(Math.round(60.65 * S), yValley);
+
+        // 4. Center Farm N-S Lane
+        ctx.moveTo(xCenterFarm, yRidge);
+        ctx.lineTo(xCenterFarm, yValley);
+
+        // 5. Lake & Park Trail (curved SE bend into Lake Pier + West Park Connector)
+        ctx.moveTo(xLakeN, yValley);
+        ctx.arcTo(xLakeN, yLakeS, Math.round(35.00 * S), yLakeS, rLake);
+        ctx.lineTo(Math.round(35.00 * S), yLakeS);
+        ctx.moveTo(Math.round(25.00 * S), yLakeS);
+        ctx.lineTo(xLakeN, yLakeS);
+
+        // 6. Smooth T-junction & Crossroads turning flares (replaces sharp 90-degree inner angles)
+        traceCornerFlare(xMain, yGateway, -1, -1, rFlare);
+        traceCornerFlare(xMain, yGateway, 1, -1, rFlare);
+        traceCornerFlare(xMain, yGateway, -1, 1, rGatewaySouth);
+        traceCornerFlare(xMain, yGateway, 1, 1, rGatewaySouth);
+        traceCornerFlare(xLakeN, yGateway, -1, -1, rFlare);
+        traceCornerFlare(xLakeN, yGateway, -1, 1, rFlare);
+        traceCornerFlare(xMain, yOrchard, -1, -1, rFlare);
+        traceCornerFlare(xMain, yOrchard, -1, 1, rFlare);
+        traceCornerFlare(xMain, yValley, 1, -1, rFlare);
+        traceCornerFlare(xMain, yValley, 1, 1, rFlare);
+        traceCornerFlare(xCenterFarm, yRidge, -1, 1, rFlare);
+        traceCornerFlare(xCenterFarm, yRidge, 1, 1, rFlare);
+        traceCornerFlare(xCenterFarm, yValley, -1, -1, rFlare);
+        traceCornerFlare(xCenterFarm, yValley, 1, -1, rFlare);
+        traceCornerFlare(xRanch, yValley, -1, -1, rFlare);
+        traceCornerFlare(xRanch, yValley, 1, -1, rFlare);
+        traceCornerFlare(xRanch, yValley, -1, 1, rFlare);
+        traceCornerFlare(xRanch, yValley, 1, 1, rFlare);
+        traceCornerFlare(xLakeN, yValley, -1, 1, rFlare);
+        traceCornerFlare(xLakeN, yValley, 1, 1, rFlare);
+        traceCornerFlare(xLakeN, yLakeS, -1, -1, rFlare);
+        // 7. Farmhouse 1 & Farmhouse 2 Packed-Dirt Driveways off East Valley Country Road
+        ctx.moveTo(Math.round(23.70 * S), Math.round(-16.85 * S));
+        ctx.lineTo(Math.round(23.70 * S), yValley);
+        ctx.moveTo(Math.round(42.60 * S), Math.round(-16.85 * S));
+        ctx.lineTo(Math.round(42.60 * S), yValley);
+      };
+
+      ctx.save();
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      // Pass 1: Outer dark-earth verge
+      traceRuralPaths();
+      ctx.strokeStyle = '#6b4c28';
+      ctx.lineWidth = ruralRoadW + 10;
+      ctx.stroke();
+
+      // Pass 2: Warm sandy-brown earth shoulder
+      traceRuralPaths();
+      ctx.strokeStyle = '#9e7342';
+      ctx.lineWidth = ruralRoadW + 5;
+      ctx.stroke();
+
+      // Pass 3: Seamless packed-dirt fill & warm sandy tint across all curves & intersections
+      traceRuralPaths();
+      ctx.strokeStyle = this.cobblePattern || '#c8a165';
+      ctx.lineWidth = ruralRoadW;
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(196, 152, 88, 0.22)';
+      ctx.lineWidth = ruralRoadW;
+      ctx.stroke();
+
+      // Pass 4: Curved wagon wheel ruts (wide rut guide followed by narrower center-crown dirt clear)
+      traceRuralPaths();
+      ctx.strokeStyle = 'rgba(92, 58, 26, 0.20)';
+      ctx.lineWidth = Math.round(ruralRoadW * 0.56);
+      ctx.stroke();
+
+      traceRuralPaths();
+      ctx.strokeStyle = this.cobblePattern || '#c8a165';
+      ctx.lineWidth = Math.round(ruralRoadW * 0.40);
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(196, 152, 88, 0.22)';
+      ctx.lineWidth = Math.round(ruralRoadW * 0.40);
+      ctx.stroke();
+      ctx.restore();
+
+      // -----------------------------------------------------------------------
+      // MEADOWBROOK LAKE (Option A: Crystal Azure Water, Sandy Shore & Oak Pier)
+      // -----------------------------------------------------------------------
+      {
+        const lakeCx = 42.25 * S;
+        const lakeCy = 3.25 * S;
+        const lakeRx = 7.75 * S;
+        const lakeRy = 5.25 * S;
+        const zoomL = this.getAreaZoom();
+        const camXL = Number.isFinite(this.cameraX) ? this.cameraX : 0;
+        const camYL = Number.isFinite(this.cameraY) ? this.cameraY : 0;
+        const viewWL = this.canvas ? this.canvas.width / zoomL : 2000;
+        const viewHL = this.canvas ? this.canvas.height / zoomL : 1400;
+        if (
+          lakeCx + lakeRx * 1.15 >= camXL - 140 &&
+          lakeCx - lakeRx * 1.15 <= camXL + viewWL + 140 &&
+          lakeCy + lakeRy * 1.15 >= camYL - 140 &&
+          lakeCy - lakeRy * 1.15 <= camYL + viewHL + 140
+        ) {
+          const lakeMod = (ang) => 1.0 + 0.06 * Math.sin(ang * 3 + 0.6) + 0.04 * Math.cos(ang * 5 - 0.4);
+          const fillLakeRing = (scaleMul, color) => {
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            for (let i = 0; i < 64; i++) {
+              const ang = (i / 64) * Math.PI * 2;
+              const r = lakeMod(ang) * scaleMul;
+              const lx = Math.round((lakeCx + Math.cos(ang) * lakeRx * r) / 2) * 2;
+              const ly = Math.round((lakeCy + Math.sin(ang) * lakeRy * r) / 2) * 2;
+              if (i === 0) ctx.moveTo(lx, ly);
+              else ctx.lineTo(lx, ly);
+            }
+            ctx.closePath();
+            ctx.fill();
+          };
+
+          fillLakeRing(1.03, '#8a6c42');
+          fillLakeRing(1.00, '#e8d4a2');
+          fillLakeRing(0.968, '#c6ae78');
+          fillLakeRing(0.955, '#4cc6c0');
+          fillLakeRing(0.84, '#2c94bc');
+          fillLakeRing(0.68, '#1c66a4');
+
+          // Crisp 2px pixel shoreline foam glints
+          ctx.fillStyle = 'rgba(228, 250, 255, 0.85)';
+          for (let i = 0; i < 48; i += 2) {
+            const ang = (i / 48) * Math.PI * 2;
+            const r = lakeMod(ang) * 0.955;
+            const bob = Math.sin(this.tick * 0.045 + i * 0.8) * 1.6;
+            const fx = Math.round((lakeCx + Math.cos(ang) * (lakeRx * r - 4 + bob)) / 2) * 2;
+            const fy = Math.round((lakeCy + Math.sin(ang) * (lakeRy * r - 4 + bob)) / 2) * 2;
+            ctx.fillRect(fx - 3, fy - 1, 6, 2);
+          }
+
+          // Animated horizontal pixel ripple bars across mid/deep lake water
+          for (let row = -6; row <= 6; row++) {
+            const wy = Math.round((lakeCy + row * 38) / 2) * 2;
+            for (let col = -5; col <= 5; col++) {
+              const drift = Math.sin(this.tick * 0.03 + row * 1.7 + col * 2.3) * 5;
+              const wx = Math.round((lakeCx + col * 74 + ((row & 1) * 32) + drift) / 2) * 2;
+              const dx = (wx - lakeCx) / lakeRx;
+              const dy = (wy - lakeCy) / lakeRy;
+              const dist = Math.hypot(dx, dy);
+              if (dist > 0.84 * lakeMod(Math.atan2(dy, dx))) continue;
+              const rLen = 14 + ((Math.abs(row * 7 + col * 3)) % 14);
+              ctx.fillStyle = 'rgba(128, 228, 236, 0.65)';
+              ctx.fillRect(wx - rLen / 2, wy, rLen, 2);
+              if (((Math.abs(row + col)) % 3) === 0) {
+                ctx.fillStyle = 'rgba(218, 248, 255, 0.55)';
+                ctx.fillRect(wx - rLen / 4, wy + 2, Math.max(6, Math.round(rLen * 0.45)), 2);
+              }
+            }
+          }
+
+          // Floating green lily pads inside the cove
+          const lilyCoords = [
+            [38.9, 1.4], [40.2, 5.1], [43.5, 0.6], [46.2, 3.8],
+            [45.1, 6.2], [38.2, 6.6], [41.6, 2.5], [47.1, 1.8]
+          ];
+          for (const [lxTile, lyTile] of lilyCoords) {
+            const lx = Math.round(lxTile * S);
+            const ly = Math.round(lyTile * S);
+            ctx.fillStyle = '#16441c';
+            ctx.fillRect(lx - 8, ly - 5, 16, 10);
+            ctx.fillStyle = '#3a983e';
+            ctx.fillRect(lx - 6, ly - 3, 12, 6);
+            ctx.fillStyle = '#68c65c';
+            ctx.fillRect(lx - 4, ly - 3, 6, 2);
+          }
+
+          // Mossy shore rocks & cattail reeds around the sandy perimeter
+          const reedAngles = [0.45, 0.95, 1.85, 2.35, 3.85, 4.45, 5.15, 5.75];
+          for (let rIdx = 0; rIdx < reedAngles.length; rIdx++) {
+            const ang = reedAngles[rIdx];
+            const rm = lakeMod(ang) * 1.005;
+            const rx = Math.round(lakeCx + Math.cos(ang) * lakeRx * rm);
+            const ry = Math.round(lakeCy + Math.sin(ang) * lakeRy * rm);
+            // Shore cobble stone
+            ctx.fillStyle = '#3e4448'; ctx.fillRect(rx + 6, ry + 1, 14, 9);
+            ctx.fillStyle = '#808684'; ctx.fillRect(rx + 8, ry + 3, 10, 5);
+            ctx.fillStyle = '#448e2e'; ctx.fillRect(rx + 14, ry + 3, 4, 3);
+            // 3 cattail stalks
+            for (let k = -1; k <= 1; k++) {
+              const sx = rx + k * 4;
+              const sh = 16 + ((k === 0) ? 5 : 0);
+              ctx.fillStyle = '#183412'; ctx.fillRect(sx - 1, ry - sh, 4, sh);
+              ctx.fillStyle = '#306c24'; ctx.fillRect(sx, ry - sh + 2, 2, sh - 2);
+              if (k !== 0) {
+                ctx.fillStyle = '#703e1c'; ctx.fillRect(sx - 1, ry - sh + 2, 4, 6);
+              }
+            }
+          }
+
+          // Walkable weathered oak Fishing Pier extending east from Lake & Park Trail
+          const pierX = Math.round(34.48 * S);
+          const pierY = Math.round(4.72 * S);
+          const pierW = Math.round(3.38 * S);
+          const pierH = Math.round(1.30 * S);
+          // Submerged oak pilings & water reflections at pier east end
+          ctx.fillStyle = 'rgba(14, 52, 92, 0.42)';
+          ctx.fillRect(pierX + pierW - 14, pierY + 4, 12, 16);
+          ctx.fillRect(pierX + pierW - 14, pierY + pierH - 2, 12, 18);
+          for (const pyPost of [pierY + 2, pierY + pierH - 12]) {
+            ctx.fillStyle = '#24160c'; ctx.fillRect(pierX + pierW - 12, pyPost, 10, 20);
+            ctx.fillStyle = '#5c381c'; ctx.fillRect(pierX + pierW - 10, pyPost + 2, 6, 16);
+            ctx.fillStyle = 'rgba(235, 250, 255, 0.78)'; ctx.fillRect(pierX + pierW - 14, pyPost + 18, 14, 2);
+          }
+          // Deck shadow, frame & horizontal planks
+          ctx.fillStyle = 'rgba(10, 24, 34, 0.30)';
+          ctx.fillRect(pierX + 4, pierY + 5, pierW, pierH);
+          ctx.fillStyle = '#24160c';
+          ctx.fillRect(pierX, pierY, pierW, pierH);
+          ctx.fillStyle = '#86562e';
+          ctx.fillRect(pierX + 2, pierY + 2, pierW - 4, pierH - 4);
+          for (let pxPlank = pierX + 6; pxPlank < pierX + pierW - 8; pxPlank += 12) {
+            ctx.fillStyle = '#a67244'; ctx.fillRect(pxPlank, pierY + 3, 2, pierH - 6);
+            ctx.fillStyle = '#5c381c'; ctx.fillRect(pxPlank + 8, pierY + 3, 2, pierH - 6);
+          }
+          // 4 Corner mooring bollards
+          for (const bxPost of [pierX + 3, pierX + pierW - 13]) {
+            for (const byPost of [pierY + 2, pierY + pierH - 13]) {
+              ctx.fillStyle = '#24160c'; ctx.fillRect(bxPost, byPost, 10, 11);
+              ctx.fillStyle = '#b07c4e'; ctx.fillRect(bxPost + 2, byPost + 2, 6, 7);
+            }
+          }
+        }
+      }
+
+      [
+        [14.32, -0.08, 14, 9],
+        [14.78, -0.14, 16, 10],
+        [15.08, -0.05, 13, 8],
+        [14.54, -0.26, 12, 8],
+        [14.95, -0.32, 11, 7]
+      ].forEach(([sx, sy, sw, sh]) => {
+        const px = Math.round(sx * S), py = Math.round(sy * S);
+        ctx.fillStyle = '#5c4e41';
+        ctx.fillRect(px - 1, py - 1, sw + 2, sh + 2);
+        ctx.fillStyle = '#9e8f80';
+        ctx.fillRect(px, py, sw, sh);
+        ctx.fillStyle = '#bfb0a0';
+        ctx.fillRect(px + 2, py + 1, sw - 4, 3);
+      });
 
       // Continuous North-South Urban Paved Avenue (West of Player's, Pluto's & Nova's Houses: y = 0..15.95*S)
       const drawUrbanPavedRoad = (ux, uy, uw, uh) => {
@@ -32044,6 +34176,7 @@
         ctx.fillStyle = vGrad;
         ctx.fillRect(rx, ry, rw, rh);
       };
+      drawRoadVignette(road1Y, road1H, oakhavenWestTurnX - oakhavenLaneWestX, oakhavenLaneWestX);
       drawRoadVignette(road1Y, road1H, oakhavenRoad1W - (oakhavenWestTurnX + oakhavenWestTurnW), oakhavenWestTurnX + oakhavenWestTurnW);
       const vGradNorth = ctx.createLinearGradient(oakhavenTurnX, 0, oakhavenTurnX + oakhavenTurnW, 0);
       vGradNorth.addColorStop(0, 'rgba(36, 22, 10, 0.25)');
@@ -32053,7 +34186,7 @@
       ctx.fillStyle = vGradNorth;
       ctx.fillRect(oakhavenTurnX, 0, oakhavenTurnW, road1Y + road1H);
       drawRoadVignette(road2Y, road2H, W - westEndConnX, westEndConnX);
-      drawRoadVignette(road3Y, road3H, EXT_W - westEndConnX, westEndConnX);
+      drawRoadVignette(road3Y, road3H, TOWN_EAST_W - westEndConnX, westEndConnX);
 
       // Walkways with Organic Rounded Stepping Stones (no rigid grey box)
       const drawDrivewayPath = (px, py, pw, ph) => {
@@ -32079,6 +34212,8 @@
 
       drawDrivewayPath(1.71 * S, 3.22 * S, 0.50 * S, road1Y - 3.22 * S + 4);
       drawDrivewayPath(9.79 * S, 3.22 * S, 0.50 * S, road1Y - 3.22 * S + 4);
+      drawDrivewayPath(-3.15 * S, 3.22 * S, 0.50 * S, road1Y - 3.22 * S + 4);  // Juniper's Herbalist Cottage (doorX = -2.90)
+      drawDrivewayPath(-7.35 * S, 3.22 * S, 0.50 * S, road1Y - 3.22 * S + 4);  // Gideon's Clockmaker Cottage (doorX = -7.10)
       drawDrivewayPath(1.71 * S, 8.85 * S, 0.50 * S, road2Y - 8.85 * S + 4);
       drawDrivewayPath(-3.59 * S, 8.85 * S, 0.50 * S, road2Y - 8.85 * S + 4);
       drawDrivewayPath(-8.09 * S, 8.85 * S, 0.50 * S, road2Y - 8.85 * S + 4);
@@ -32088,6 +34223,9 @@
       drawDrivewayPath(1.71 * S, 14.15 * S, 0.50 * S, road3Y - 14.15 * S + 4);
       drawDrivewayPath(7.35 * S, 14.15 * S, 0.50 * S, road3Y - 14.15 * S + 4);
       drawDrivewayPath(12.43 * S, 14.15 * S, 0.50 * S, road3Y - 14.15 * S + 4);
+      drawDrivewayPath(-2.85 * S, 14.15 * S, 0.50 * S, road3Y - 14.15 * S + 4);  // Otis's Woodcarver Cottage (doorX = -2.60)
+      drawDrivewayPath(-6.60 * S, 14.15 * S, 0.50 * S, road3Y - 14.15 * S + 4);  // Maren's Stone-Hearth Cottage (doorX = -6.35)
+      drawDrivewayPath(-11.10 * S, 14.15 * S, 0.50 * S, road3Y - 14.15 * S + 4); // Caleb's Sunroom Cottage (doorX = -10.85)
       // ── OAKHAVEN CONVENTION CENTER ON WEST END OF WILLOW WAY (Craftsman Civic Hall Style) ──
       const drawWillowWayConventionCenter = () => {
         const rx = Math.round(-24.4 * S);
@@ -32968,6 +35106,45 @@
           ctx.restore();
         }
 
+        // 4b. Oakhaven Arcade (East next to Oakhaven Apparel along West Road: x = -12.40..-7.00)
+        if (this.isImgReady('arcade')) {
+          const arcImg = this.owSprites.arcade;
+          const dw = Math.round(5.4 * S);
+          const dh = Math.round(dw * (arcImg.height / arcImg.width));
+          const dx = Math.round(-12.40 * S);
+          const arcadeRoadTopY = Math.round(20.08 * S);
+          const dy = Math.round(arcadeRoadTopY - dh + 2);
+          ctx.save();
+          ctx.imageSmoothingEnabled = true;
+          ctx.drawImage(arcImg, dx, dy, dw, dh);
+          if (isLit) {
+            ctx.globalCompositeOperation = 'lighter';
+            const arcadeLights = [
+              [0.50, 0.22, 48, 0.42, '251, 146, 60'],
+              [0.16, 0.40, 26, 0.34, '253, 224, 71'],
+              [0.50, 0.40, 28, 0.34, '253, 224, 71'],
+              [0.84, 0.40, 26, 0.34, '253, 224, 71'],
+              [0.18, 0.80, 44, 0.46, '244, 114, 182'],
+              [0.82, 0.80, 44, 0.46, '56, 189, 248'],
+              [0.37, 0.66, 22, 0.55, '253, 224, 71'],
+              [0.63, 0.66, 22, 0.55, '253, 224, 71'],
+              [0.50, 0.80, 34, 0.40, '253, 224, 71']
+            ];
+            arcadeLights.forEach(([fx, fy, gr, ga, rgb]) => {
+              const gx = dx + dw * fx;
+              const gy = dy + dh * fy;
+              const glow = ctx.createRadialGradient(gx, gy, 2, gx, gy, gr);
+              glow.addColorStop(0, `rgba(${rgb}, ${(ga * glowMult).toFixed(3)})`);
+              glow.addColorStop(1, `rgba(${rgb}, 0)`);
+              ctx.fillStyle = glow;
+              ctx.beginPath();
+              ctx.arc(gx, gy, gr, 0, Math.PI * 2);
+              ctx.fill();
+            });
+          }
+          ctx.restore();
+        }
+
         // 5. Oakhaven Animal Hospital (North side of Willow Way between Convention Center & Corner Market: x = -13.15..-7.75)
         if (this.isImgReady('animal_hospital')) {
           const aImg = this.owSprites.animal_hospital;
@@ -33070,11 +35247,16 @@
 
       // Upper Road Top Curbs (bottom overhang of north grass plots)
       [
+        { x: oakhavenLaneWestX, w: (-7.35 * S) - oakhavenLaneWestX },
+        { x: -6.85 * S, w: (-3.15 - (-6.85)) * S },
+        { x: -2.65 * S, w: oakhavenWestTurnX - (-2.65 * S) },
         { x: oakhavenWestTurnX + oakhavenWestTurnW, w: 1.71 * S - (oakhavenWestTurnX + oakhavenWestTurnW) },
         { x: 2.21 * S, w: (9.79 - 2.21) * S },
         { x: 10.29 * S, w: oakhavenTurnX - 10.29 * S }
       ].forEach(c => drawStoneCurbH(c.x, road1Y - 6, c.w, 'bot'));
-      drawStoneCurbV(oakhavenWestTurnX - 6, 0, road2Y, 'right');
+      drawStoneCurbV(oakhavenLaneWestX - 6, road1Y - 6, road1H + 12, 'right');
+      drawStoneCurbV(oakhavenWestTurnX - 6, 0, road1Y, 'right');
+      drawStoneCurbV(oakhavenWestTurnX - 6, road1Y + road1H, road2Y - (road1Y + road1H), 'right');
       drawStoneCurbV(oakhavenWestTurnX - 6, road2Y + road2H, road3Y - (road2Y + road2H), 'right');
       drawStoneCurbV(oakhavenWestTurnX - 6, road3Y + road3H, 26.0 * S - (road3Y + road3H), 'right');
       drawStoneCurbV(oakhavenWestTurnX - 6, northWestPavedY + oakhavenWestTurnW, (rbCy - rbOuterR) - (northWestPavedY + oakhavenWestTurnW) + 12, 'right');
@@ -33107,6 +35289,7 @@
 
       // Upper Road Bottom Curbs (top lip of middle grass plots)
       [
+        { x: oakhavenLaneWestX, w: oakhavenWestTurnX - oakhavenLaneWestX },
         { x: oakhavenWestTurnX + oakhavenWestTurnW, w: south1X - (oakhavenWestTurnX + oakhavenWestTurnW) },
         { x: south1X + south1W, w: south2X - (south1X + south1W) },
         { x: south2X + south2W, w: (oakhavenTurnX + oakhavenTurnW) - (south2X + south2W) }
@@ -33140,17 +35323,20 @@
         { x: 2.21 * S, w: (7.35 - 2.21) * S },
         { x: 7.85 * S, w: south2X - 7.85 * S },
         { x: south2X + south2W, w: (12.43 * S) - (south2X + south2W) },
-        { x: 12.93 * S, w: EXT_W - 12.93 * S }
+        { x: 12.93 * S, w: TOWN_EAST_W - 12.93 * S }
       ].forEach(c => drawStoneCurbH(c.x, road3Y - 6, c.w, 'bot'));
 
       // Southern Avenue Western Extension & Loop Curbs
-      drawStoneCurbH(westEndConnX + westEndConnW, road3Y - 6, westConnX - (westEndConnX + westEndConnW), 'bot');
+      drawStoneCurbH(westEndConnX + westEndConnW, road3Y - 6, (-11.10 * S) - (westEndConnX + westEndConnW), 'bot');
+      drawStoneCurbH(-10.60 * S, road3Y - 6, (-6.60 - (-10.60)) * S, 'bot');
+      drawStoneCurbH(-6.10 * S, road3Y - 6, (-2.85 - (-6.10)) * S, 'bot');
+      drawStoneCurbH(-2.35 * S, road3Y - 6, westConnX - (-2.35 * S), 'bot');
       drawStoneCurbH(westPavedConnX + oakhavenWestTurnW, road3Y + road3H, westConnX - (westPavedConnX + oakhavenWestTurnW), 'top');
       drawStoneCurbV(westEndConnX - 6, road2Y - 6, (road3Y + road3H + 6) - (road2Y - 6), 'right');
       drawStoneCurbV(westEndConnX + westEndConnW, road2Y + road2H, road3Y - (road2Y + road2H), 'left');
 
       // Southern Avenue Bottom Continuous Curb
-      drawStoneCurbH(westConnX + westConnW, road3Y + road3H, EXT_W - (westConnX + westConnW), 'top');
+      drawStoneCurbH(westConnX + westConnW, road3Y + road3H, TOWN_EAST_W - (westConnX + westConnW), 'top');
 
       // Vertical Curbs along North-South Connector Roads
       const connMidH = road2Y - (road1Y + road1H);
@@ -33201,6 +35387,226 @@
       };
       for (const [fx, fy, fw] of this.getExteriorFences()) {
         drawWoodFence(fx * S, fy * S, fw * S);
+      }
+
+      // Option D Mixed Country Border along all Meadowbrook dirt roads (split-rail + mossy stone lantern pillars + shrubs + wildflowers)
+      const drawRuralOptionDFenceSegment = (seg) => {
+        const isVert = seg.orient === 'v';
+        const zoom = this.getAreaZoom();
+        const camX = Number.isFinite(this.cameraX) ? this.cameraX : 0;
+        const camY = Number.isFinite(this.cameraY) ? this.cameraY : 0;
+        const viewW = this.canvas ? this.canvas.width / zoom : 2000;
+        const viewH = this.canvas ? this.canvas.height / zoom : 1400;
+        const viewMinX = camX - 180;
+        const viewMaxX = camX + viewW + 180;
+        const viewMinY = camY - 180;
+        const viewMaxY = camY + viewH + 180;
+
+        const drawBush = (bx, by) => {
+          ctx.fillStyle = 'rgba(14, 24, 10, 0.25)';
+          ctx.beginPath(); ctx.ellipse(bx, by + 5, 13, 5, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#204918';
+          ctx.beginPath(); ctx.arc(bx - 6, by + 1, 7, 0, Math.PI * 2); ctx.arc(bx + 6, by + 1, 7, 0, Math.PI * 2); ctx.arc(bx, by - 4, 8, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#3b802c';
+          ctx.beginPath(); ctx.arc(bx - 5, by, 5.5, 0, Math.PI * 2); ctx.arc(bx + 5, by, 5.5, 0, Math.PI * 2); ctx.arc(bx, by - 4, 6.5, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#65b348';
+          ctx.fillRect(bx - 4, by - 7, 4, 3);
+          ctx.fillRect(bx + 2, by - 5, 4, 2);
+          ctx.fillRect(bx - 7, by - 2, 3, 2);
+        };
+
+        const drawFlowerTuft = (fx, fy, color) => {
+          ctx.fillStyle = '#24581b';
+          ctx.fillRect(fx - 4, fy + 1, 8, 3);
+          ctx.fillRect(fx - 2, fy - 1, 4, 3);
+          ctx.fillStyle = color;
+          ctx.fillRect(fx - 4, fy - 2, 3, 3);
+          ctx.fillRect(fx + 1, fy - 1, 3, 3);
+          ctx.fillRect(fx - 1, fy - 4, 3, 3);
+        };
+
+        const drawLanternPillar = (px, py) => {
+          if (this.isImgReady('rural_pillar_lantern')) {
+            const img = this.owSprites.rural_pillar_lantern;
+            const targetH = 48;
+            const targetW = Math.round(targetH * (img.naturalWidth / img.naturalHeight));
+            ctx.fillStyle = 'rgba(14, 24, 10, 0.30)';
+            ctx.beginPath();
+            ctx.ellipse(px, py + 6, Math.max(10, Math.round(targetW * 0.56)), 4.5, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.save();
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+            ctx.drawImage(img, Math.round(px - targetW / 2), Math.round(py + 6 - targetH), targetW, targetH);
+            ctx.restore();
+            return;
+          }
+          ctx.fillStyle = 'rgba(14, 24, 10, 0.30)';
+          ctx.fillRect(px - 8, py + 3, 18, 5);
+          ctx.fillStyle = '#261d15';
+          ctx.fillRect(px - 9, py - 18, 18, 24);
+          ctx.fillStyle = '#8b8376';
+          ctx.fillRect(px - 8, py - 14, 16, 19);
+          ctx.fillStyle = '#a69e90';
+          ctx.fillRect(px - 7, py - 13, 8, 5);
+          ctx.fillRect(px + 2, py - 8, 5, 5);
+          ctx.fillRect(px - 7, py - 2, 6, 5);
+          ctx.fillStyle = '#6f675b';
+          ctx.fillRect(px + 1, py - 13, 6, 4);
+          ctx.fillRect(px - 7, py - 7, 8, 4);
+          ctx.fillRect(px, py - 2, 7, 5);
+          ctx.fillStyle = '#4a433b';
+          ctx.fillRect(px - 8, py - 8, 16, 1);
+          ctx.fillRect(px - 8, py - 3, 16, 1);
+          ctx.fillStyle = '#261d15';
+          ctx.fillRect(px - 10, py - 20, 20, 6);
+          ctx.fillStyle = '#cbc2b6';
+          ctx.fillRect(px - 9, py - 19, 18, 4);
+          ctx.fillStyle = '#e5ded4';
+          ctx.fillRect(px - 9, py - 19, 18, 2);
+        };
+
+        const shrubStep = Math.round(2.9 * S);
+        const flowerCols = ['#ef4444', '#facc15', '#ffffff'];
+        let fIdx = 0;
+
+        if (isVert) {
+          const y1 = Math.round(seg.y1 * S);
+          const y2 = Math.round(seg.y2 * S);
+          const x = Math.round(seg.x * S);
+          const spanH = y2 - y1;
+          if (spanH <= 12) return;
+          if (x + 35 < viewMinX || x - 35 > viewMaxX || y2 + 30 < viewMinY || y1 - 55 > viewMaxY) return;
+
+          const isWest = seg.side === 'west';
+          const bushX = isWest ? x - 14 : x + 14;
+          const flowerX = isWest ? x - 10 : x + 10;
+          const spanTiles = seg.y2 - seg.y1;
+          const bayCount = spanTiles < 5.2 ? 1 : Math.max(2, Math.round(spanTiles / 3.8));
+          const pillarStep = spanH / bayCount;
+          const pillarYs = [];
+          for (let b = 0; b <= bayCount; b++) {
+            pillarYs.push(Math.round(y1 + b * pillarStep));
+          }
+
+          // 1. Outer pasture-side meadow shrubs avoiding pillar silhouettes
+          for (let by = y1 + Math.round(1.4 * S), bIdx = 0; by < y2 - Math.round(0.8 * S); by += shrubStep, bIdx++) {
+            if (bIdx % 2 === 0 && !pillarYs.some(py => Math.abs(by - py) < 26)) {
+              drawBush(bushX, by);
+            }
+          }
+
+          // 2. Vertical cedar fence rail & ground drop shadow
+          ctx.fillStyle = 'rgba(14, 24, 10, 0.24)';
+          ctx.fillRect(x + 3, y1, 5, spanH);
+          ctx.fillStyle = '#24160c';
+          ctx.fillRect(x - 4, y1, 8, spanH);
+          ctx.fillStyle = '#8c5a32';
+          ctx.fillRect(x - 3, y1 + 1, 6, spanH - 2);
+          ctx.fillStyle = '#b57a48';
+          ctx.fillRect(x - 3, y1 + 1, 2, spanH - 2);
+
+          // 3. Intermediate cedar posts & grass-base wildflowers along pasture edge
+          for (let b = 0; b < bayCount; b++) {
+            const sy = Math.round(y1 + b * pillarStep);
+            const ey = Math.round(y1 + (b + 1) * pillarStep);
+            const subCount = Math.max(2, Math.round((ey - sy) / (1.25 * S)));
+            for (let sub = 1; sub < subCount; sub++) {
+              const py = Math.round(sy + (ey - sy) * (sub / subCount));
+              ctx.fillStyle = '#24160c';
+              ctx.fillRect(x - 4, py - 15, 8, 19);
+              ctx.fillStyle = '#9c663a';
+              ctx.fillRect(x - 3, py - 14, 6, 17);
+              ctx.fillStyle = '#c68854';
+              ctx.fillRect(x - 3, py - 14, 6, 2);
+              if (sub % 2 === 1) {
+                drawFlowerTuft(flowerX, py + 4, flowerCols[fIdx % flowerCols.length]);
+                fIdx++;
+              }
+            }
+          }
+
+          // 4. Mossy fieldstone lantern pillars top-to-bottom
+          for (let b = 0; b <= bayCount; b++) {
+            const py = pillarYs[b];
+            drawLanternPillar(x, py);
+            if (b < bayCount) {
+              drawFlowerTuft(flowerX, py + 18, flowerCols[(fIdx + 1) % flowerCols.length]);
+              fIdx++;
+            }
+          }
+          return;
+        }
+
+        const x1 = Math.round(seg.x1 * S);
+        const x2 = Math.round(seg.x2 * S);
+        const y = Math.round(seg.y * S);
+        const spanW = x2 - x1;
+        if (spanW <= 12) return;
+        if (x2 < viewMinX || x1 > viewMaxX || y + 30 < viewMinY || y - 55 > viewMaxY) return;
+        const isNorth = seg.side === 'north';
+
+        // 1. North-side meadow shrubs tucked behind fence rails on outer pasture grass
+        if (isNorth) {
+          for (let bx = x1 + Math.round(1.4 * S), bIdx = 0; bx < x2 - Math.round(0.8 * S); bx += shrubStep, bIdx++) {
+            if (bIdx % 2 === 0) drawBush(bx, y - 13);
+          }
+        }
+
+        // 2. Ground shadow strip & continuous weathered cedar split-rail bars
+        ctx.fillStyle = 'rgba(14, 24, 10, 0.24)';
+        ctx.fillRect(x1, y + 3, spanW, 5);
+
+        ctx.fillStyle = '#24160c';
+        ctx.fillRect(x1, y - 12, spanW, 5);
+        ctx.fillRect(x1, y - 5, spanW, 5);
+        ctx.fillStyle = '#8c5a32';
+        ctx.fillRect(x1 + 1, y - 11, spanW - 2, 3);
+        ctx.fillRect(x1 + 1, y - 4, spanW - 2, 3);
+        ctx.fillStyle = '#b57a48';
+        ctx.fillRect(x1 + 1, y - 11, spanW - 2, 1);
+        ctx.fillRect(x1 + 1, y - 4, spanW - 2, 1);
+
+        // 3. Mossy lantern pillars at ends + evenly spaced intermediate bays, with wood fence posts & grass-base wildflowers
+        const spanTiles = seg.x2 - seg.x1;
+        const bayCount = spanTiles < 5.2 ? 1 : Math.max(2, Math.round(spanTiles / 3.8));
+        const pillarStep = spanW / bayCount;
+        const flowerY = y + 6;
+
+        for (let b = 0; b < bayCount; b++) {
+          const sx = Math.round(x1 + b * pillarStep);
+          const ex = Math.round(x1 + (b + 1) * pillarStep);
+          const subCount = Math.max(2, Math.round((ex - sx) / (1.25 * S)));
+          for (let sub = 1; sub < subCount; sub++) {
+            const px = Math.round(sx + (ex - sx) * (sub / subCount));
+            ctx.fillStyle = '#24160c';
+            ctx.fillRect(px - 4, y - 15, 8, 19);
+            ctx.fillStyle = '#9c663a';
+            ctx.fillRect(px - 3, y - 14, 6, 17);
+            ctx.fillStyle = '#c68854';
+            ctx.fillRect(px - 3, y - 14, 6, 2);
+            if (sub % 2 === 1) {
+              drawFlowerTuft(px + 9, flowerY, flowerCols[fIdx % flowerCols.length]);
+              fIdx++;
+            }
+          }
+        }
+        for (let b = 0; b <= bayCount; b++) {
+          const px = Math.round(x1 + b * pillarStep);
+          drawLanternPillar(px, y);
+          if (b < bayCount) {
+            drawFlowerTuft(px + 18, flowerY, flowerCols[(fIdx + 1) % flowerCols.length]);
+            fIdx++;
+          }
+        }
+        if (!isNorth) {
+          for (let bx = x1 + Math.round(1.4 * S), bIdx = 0; bx < x2 - Math.round(0.8 * S); bx += shrubStep, bIdx++) {
+            if (bIdx % 2 === 0) drawBush(bx, y + 8);
+          }
+        }
+      };
+      for (const seg of this.getRuralOptionDFenceSegments()) {
+        drawRuralOptionDFenceSegment(seg);
       }
       const drawWoodFenceV = (fx, fy, fh) => {
         const x = Math.round(fx), y = Math.round(fy), h = Math.round(fh);
@@ -34421,6 +36827,145 @@
         glowWindows: true
       });
 
+      // 5B. WEST ROW COTTAGES ACROSS OAKHAVEN BLVD FROM NOVA'S HOUSE
+      // OTIS'S WOODCARVER COTTAGE (Center-Gable Porch Cottage — Teal Shingles & Honey-Cream Siding)
+      drawNeighborhoodCottage({
+        hx: -4.2 * S,
+        hy: 11.20 * S,
+        hw: 3.2 * S,
+        spriteKey: 'cottage_west_1',
+        mirror: false,
+        roofDark: '#1c5e5a',
+        roofMid: '#2a847e',
+        roofLight: '#42a49c',
+        sidingCol: '#e8d0a4',
+        sidingLineCol: '#c6ab7c',
+        trimCol: '#f6ebd4',
+        doorMatCol: '#0d9488',
+        hasChimney: true,
+        glowWindows: true
+      });
+
+      // MAREN'S STONE-HEARTH COTTAGE (Two-Story Cobblestone-Base House — Burnt-Terracotta Roof & Sage-Cream Upper)
+      drawNeighborhoodCottage({
+        hx: -8.7 * S,
+        hy: 11.20 * S,
+        hw: 3.2 * S,
+        spriteKey: 'cottage_west_2',
+        mirror: false,
+        roofDark: '#7c2d12',
+        roofMid: '#b45309',
+        roofLight: '#d97706',
+        sidingCol: '#d4dcc4',
+        sidingLineCol: '#a6b096',
+        trimCol: '#f5efe0',
+        doorMatCol: '#15803d',
+        hasChimney: true,
+        glowWindows: true
+      });
+
+      // CALEB'S SUNROOM & MUSIC COTTAGE (Right-Gable Sunroom Cottage — Dusty-Plum Shingles & Butter-Cream Siding)
+      drawNeighborhoodCottage({
+        hx: -13.4 * S,
+        hy: 11.20 * S,
+        hw: 3.6 * S,
+        spriteKey: 'cottage_west_3',
+        mirror: false,
+        roofDark: '#3f2e4c',
+        roofMid: '#5b446e',
+        roofLight: '#7b5f92',
+        sidingCol: '#f2e0b6',
+        sidingLineCol: '#ceb684',
+        trimCol: '#fff8ec',
+        doorMatCol: '#312e81',
+        hasChimney: true,
+        glowWindows: true
+      });
+
+      // 5C. WEST OAKHAVEN LANE COTTAGES (NORTH ROW, ACROSS FROM CLARA & BRAM)
+      // JUNIPER'S HERBALIST & GREENHOUSE COTTAGE (Sage-Green Shingles & Glass Side Greenhouse)
+      drawNeighborhoodCottage({
+        hx: -4.2 * S,
+        hy: 0.45 * S,
+        hw: 3.4 * S,
+        spriteKey: 'cottage_west_oak_1',
+        mirror: false,
+        roofDark: '#36583e',
+        roofMid: '#4f7a58',
+        roofLight: '#6b9c74',
+        sidingCol: '#efe4cc',
+        sidingLineCol: '#c6b490',
+        trimCol: '#f9f4e6',
+        doorMatCol: '#15803d',
+        hasChimney: true,
+        glowWindows: true
+      });
+
+      // GIDEON'S CLOCKMAKER & STARGAZER COTTAGE (Slate-Navy Roof, Brass Cupola & Buttercream Stucco)
+      drawNeighborhoodCottage({
+        hx: -8.7 * S,
+        hy: 0.45 * S,
+        hw: 3.2 * S,
+        spriteKey: 'cottage_west_oak_2',
+        mirror: false,
+        roofDark: '#1e293b',
+        roofMid: '#334155',
+        roofLight: '#475569',
+        sidingCol: '#f2e0b6',
+        sidingLineCol: '#ceb684',
+        trimCol: '#fff8ec',
+        doorMatCol: '#1e3a8a',
+        hasChimney: false,
+        glowWindows: true
+      });
+
+      // 5D. MEADOWLAND GATEWAY ARCHWAY 2 & LARGE FARMHOUSES (1 & 2)
+      if (this.isImgReady('archway_meadowland')) {
+        const aImg = this.owSprites.archway_meadowland;
+        const archW = Math.round(3.20 * S);
+        const archH = Math.round(archW * (aImg.naturalHeight / aImg.naturalWidth));
+        const archX = Math.round(14.825 * S - archW / 2);
+        const archBaseY = Math.round(0.08 * S);
+        ctx.fillStyle = 'rgba(14, 24, 10, 0.28)';
+        ctx.beginPath(); ctx.ellipse(Math.round(13.66 * S), archBaseY, 22, 6, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(Math.round(15.99 * S), archBaseY, 22, 6, 0, 0, Math.PI * 2); ctx.fill();
+        this._extDepthProps.push({
+          sortY: archBaseY,
+          zBias: 2,
+          draw: () => {
+            ctx.save();
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+            ctx.drawImage(aImg, archX, archBaseY - archH, archW, archH);
+            ctx.restore();
+          }
+        });
+      }
+
+      const drawMeadowlandFarmhouse = (spriteKey, hxTile, hwTile, baseYTile) => {
+        if (!this.isImgReady(spriteKey)) return;
+        const img = this.owSprites[spriteKey];
+        const fx = Math.round(hxTile * S);
+        const fw = Math.round(hwTile * S);
+        const fh = Math.round(fw * (img.naturalHeight / img.naturalWidth));
+        const fBaseY = Math.round(baseYTile * S);
+        ctx.fillStyle = 'rgba(14, 24, 10, 0.26)';
+        ctx.fillRect(fx + 10, fBaseY - 10, fw - 20, 16);
+        this._extDepthProps.push({
+          sortY: fBaseY,
+          zBias: 0,
+          draw: () => {
+            ctx.save();
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+            ctx.drawImage(img, fx, fBaseY - fh, fw, fh);
+            ctx.restore();
+          }
+        });
+      };
+      drawMeadowlandFarmhouse('farmhouse_1', 20.60, 6.80, -16.80);
+      drawMeadowlandFarmhouse('farmhouse_2', 39.80, 7.00, -16.80);
+
       // 6. READABLE ROADSIDE MAILBOXES ACROSS ALL 3 BLOCKS
       const drawMailbox = (mx, my, labelText, boxColor, isHighlighted) => {
         ctx.fillStyle = 'rgba(0,0,0,0.35)';
@@ -34491,6 +37036,11 @@
       const nearNovaMb = this.nearInteractable?.id === 'nova_mailbox';
       const nearSilasMb = this.nearInteractable?.id === 'silas_mailbox';
       const nearMayaMb = this.nearInteractable?.id === 'maya_mailbox';
+      const nearOtisMb = this.nearInteractable?.id === 'otis_mailbox';
+      const nearMarenMb = this.nearInteractable?.id === 'maren_mailbox';
+      const nearCalebMb = this.nearInteractable?.id === 'caleb_mailbox';
+      const nearJuniperMb = this.nearInteractable?.id === 'juniper_mailbox';
+      const nearGideonMb = this.nearInteractable?.id === 'gideon_mailbox';
 
       drawMailbox(4.75 * S, 3.95 * S, `📬 ${pName}'s House`, '#2563eb', nearPlayerMb);
       drawMailbox(8.15 * S, 3.95 * S, `📬 ${fName}'s House`, '#dc2626', nearFriendMb);
@@ -34501,6 +37051,11 @@
       drawMailbox(4.75 * S, 14.50 * S, `📬 Nova's House`, '#3b82f6', nearNovaMb);
       drawMailbox(6.45 * S, 14.50 * S, `📬 Silas's House`, '#15803d', nearSilasMb);
       drawMailbox(11.35 * S, 14.50 * S, `📬 Maya's House`, '#f43f5e', nearMayaMb);
+      drawMailbox(-0.65 * S, 14.50 * S, `📬 Otis's House`, '#0d9488', nearOtisMb);
+      drawMailbox(-5.15 * S, 14.50 * S, `📬 Maren's House`, '#c2410c', nearMarenMb);
+      drawMailbox(-9.45 * S, 14.50 * S, `📬 Caleb's House`, '#7e22ce', nearCalebMb);
+      drawMailbox(-0.65 * S, 3.92 * S, `📬 Juniper's House`, '#15803d', nearJuniperMb);
+      drawMailbox(-5.20 * S, 3.92 * S, `📬 Gideon's House`, '#1e3a8a', nearGideonMb);
 
       // 7. DIRECTIONAL SIGNPOSTS (Sprites/Overworld/signpost.png)
       const drawSignpost = (sgX, sgY) => {
@@ -34672,7 +37227,7 @@
       const parkStartX = 16.0 * S;
 
       // Subtle manicured meadow lawn across East Park (keeping clear of roads & southern dirt avenue)
-      for (let px = parkStartX; px < EXT_W; px += 44) {
+      for (let px = parkStartX; px < TOWN_EAST_W; px += 44) {
         ctx.fillStyle = (Math.floor(px / 44) % 2 === 0) ? 'rgba(60, 148, 42, 0.07)' : 'rgba(42, 108, 28, 0.07)';
         ctx.fillRect(px, 0, 44, road3Y - 4);
       }
@@ -35398,17 +37953,72 @@
       const ctx = this.ctx;
       const S = this.TILE;
       const { timeOfDay, shadersEnabled } = this.settings;
+      const isExt = this.currentArea === 'exterior';
+      const nightStrength = isExt && shadersEnabled ? this.getNightLightStrength() : 0;
+      const zoom = this.getAreaZoom();
+      const camX = Number.isFinite(this.cameraX) ? this.cameraX : 0;
+      const camY = Number.isFinite(this.cameraY) ? this.cameraY : 0;
+      const lightMargin = 240;
+      const viewMinX = camX - lightMargin;
+      const viewMaxX = camX + this.canvas.width / zoom + lightMargin;
+      const viewMinY = camY - lightMargin;
+      const viewMaxY = camY + this.canvas.height / zoom + lightMargin;
 
-      // Time-of-day tint (Morning / Afternoon / Night) driven by the real-time clock
+      // Time-of-day tint (Morning / Afternoon / Night) driven by the real-time clock,
+      // punching bright visibility pools around active countryside brass lanterns at dusk/night.
       const look = this.getTimeOfDayOverlay();
       if (look) {
         const alphaScale = shadersEnabled ? 1 : 0.7;
         const rgba = (c) => `rgba(${Math.round(c[0])}, ${Math.round(c[1])}, ${Math.round(c[2])}, ${(c[3] * alphaScale).toFixed(3)})`;
-        const tint = ctx.createLinearGradient(0, 0, 0, this.canvas.height);
-        tint.addColorStop(0, rgba(look.top));
-        tint.addColorStop(1, rgba(look.bottom));
-        ctx.fillStyle = tint;
-        ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        if (isExt && nightStrength > 0.01) {
+          if (!this._nightLightCanvas) {
+            this._nightLightCanvas = document.createElement('canvas');
+          }
+          const nCanvas = this._nightLightCanvas;
+          if (nCanvas.width !== this.canvas.width || nCanvas.height !== this.canvas.height) {
+            nCanvas.width = this.canvas.width;
+            nCanvas.height = this.canvas.height;
+          }
+          const lctx = nCanvas.getContext('2d');
+          if (lctx) {
+            lctx.globalCompositeOperation = 'source-over';
+            lctx.clearRect(0, 0, nCanvas.width, nCanvas.height);
+            const tint = lctx.createLinearGradient(0, 0, 0, nCanvas.height);
+            tint.addColorStop(0, rgba(look.top));
+            tint.addColorStop(1, rgba(look.bottom));
+            lctx.fillStyle = tint;
+            lctx.fillRect(0, 0, nCanvas.width, nCanvas.height);
+
+            lctx.save();
+            lctx.scale(zoom, zoom);
+            lctx.translate(-Math.round(camX), -Math.round(camY));
+            lctx.globalCompositeOperation = 'destination-out';
+            const pillars = this.getRuralOptionDPillars();
+            const cutRadius = 200;
+            for (let i = 0; i < pillars.length; i++) {
+              const lx = pillars[i].x * S;
+              const ly = pillars[i].y * S - 36;
+              if (lx < viewMinX || lx > viewMaxX || ly < viewMinY || ly > viewMaxY) continue;
+              const cutGrad = lctx.createRadialGradient(lx, ly, 4, lx, ly, cutRadius);
+              cutGrad.addColorStop(0, `rgba(0, 0, 0, ${(0.95 * nightStrength).toFixed(3)})`);
+              cutGrad.addColorStop(0.45, `rgba(0, 0, 0, ${(0.68 * nightStrength).toFixed(3)})`);
+              cutGrad.addColorStop(0.78, `rgba(0, 0, 0, ${(0.24 * nightStrength).toFixed(3)})`);
+              cutGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+              lctx.fillStyle = cutGrad;
+              lctx.beginPath();
+              lctx.arc(lx, ly, cutRadius, 0, Math.PI * 2);
+              lctx.fill();
+            }
+            lctx.restore();
+            ctx.drawImage(nCanvas, 0, 0);
+          }
+        } else {
+          const tint = ctx.createLinearGradient(0, 0, 0, this.canvas.height);
+          tint.addColorStop(0, rgba(look.top));
+          tint.addColorStop(1, rgba(look.bottom));
+          ctx.fillStyle = tint;
+          ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        }
       }
 
       if (!shadersEnabled) return;
@@ -35416,7 +38026,37 @@
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
 
-      if (this.currentArea === 'interior' || this.currentArea === 'friend_interior' || this.currentArea === 'card_shop_interior') {
+      if (isExt && nightStrength > 0.01) {
+        ctx.save();
+        ctx.scale(zoom, zoom);
+        ctx.translate(-Math.round(camX), -Math.round(camY));
+        const pillars = this.getRuralOptionDPillars();
+        for (let i = 0; i < pillars.length; i++) {
+          const lx = pillars[i].x * S;
+          const ly = pillars[i].y * S - 36;
+          if (lx < viewMinX || lx > viewMaxX || ly < viewMinY || ly > viewMaxY) continue;
+          const flick = 0.94 + 0.06 * Math.sin(this.tick * 0.07 + i * 1.7);
+
+          const groundWash = ctx.createRadialGradient(lx, ly, 4, lx, ly, 165);
+          groundWash.addColorStop(0, `rgba(255, 212, 120, ${(0.28 * nightStrength * flick).toFixed(3)})`);
+          groundWash.addColorStop(0.5, `rgba(251, 172, 58, ${(0.11 * nightStrength * flick).toFixed(3)})`);
+          groundWash.addColorStop(1, 'rgba(251, 172, 58, 0)');
+          ctx.fillStyle = groundWash;
+          ctx.beginPath();
+          ctx.arc(lx, ly, 165, 0, Math.PI * 2);
+          ctx.fill();
+
+          const bulbHalo = ctx.createRadialGradient(lx, ly, 2, lx, ly, 38);
+          bulbHalo.addColorStop(0, `rgba(255, 246, 188, ${(0.65 * nightStrength * flick).toFixed(3)})`);
+          bulbHalo.addColorStop(0.5, `rgba(254, 206, 94, ${(0.26 * nightStrength * flick).toFixed(3)})`);
+          bulbHalo.addColorStop(1, 'rgba(254, 206, 94, 0)');
+          ctx.fillStyle = bulbHalo;
+          ctx.beginPath();
+          ctx.arc(lx, ly, 38, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      } else if (this.currentArea === 'interior' || this.currentArea === 'friend_interior' || this.currentArea === 'card_shop_interior') {
         ctx.save();
         const zoom = this.getAreaZoom();
         if (zoom !== 1 || this.cameraX || this.cameraY) {
@@ -35600,6 +38240,36 @@
       } else if (area === 'animal_hospital_interior') {
         if (!this.vetNpc) this.vetNpc = this.createVetNpc();
         active.push(this.vetNpc);
+      } else if (area === 'west_house_1_interior') {
+        if (!this.westOtisNpc) this.westOtisNpc = this.createWestOtisNpc();
+        active.push(this.westOtisNpc);
+      } else if (area === 'west_house_2_interior') {
+        if (!this.westMarenNpc) this.westMarenNpc = this.createWestMarenNpc();
+        active.push(this.westMarenNpc);
+      } else if (area === 'west_house_3_interior') {
+        if (!this.westCalebNpc) this.westCalebNpc = this.createWestCalebNpc();
+        active.push(this.westCalebNpc);
+      } else if (area === 'west_oak_1_interior') {
+        if (!this.westJuniperNpc) this.westJuniperNpc = this.createWestJuniperNpc();
+        active.push(this.westJuniperNpc);
+      } else if (area === 'west_oak_2_interior') {
+        if (!this.westGideonNpc) this.westGideonNpc = this.createWestGideonNpc();
+        active.push(this.westGideonNpc);
+      } else if (area === 'farmhouse_1_1f_interior') {
+        if (!this.fh1MarthaNpc) this.fh1MarthaNpc = this.createFh1MarthaNpc();
+        active.push(this.fh1MarthaNpc);
+      } else if (area === 'farmhouse_1_2f_interior') {
+        if (!this.fh1HarlanNpc) this.fh1HarlanNpc = this.createFh1HarlanNpc();
+        active.push(this.fh1HarlanNpc);
+      } else if (area === 'farmhouse_2_1f_interior') {
+        if (!this.fh2EleanorNpc) this.fh2EleanorNpc = this.createFh2EleanorNpc();
+        active.push(this.fh2EleanorNpc);
+      } else if (area === 'farmhouse_2_2f_interior') {
+        if (!this.fh2ArthurNpc) this.fh2ArthurNpc = this.createFh2ArthurNpc();
+        active.push(this.fh2ArthurNpc);
+      } else if (area === 'arcade_interior') {
+        if (!this.arcadeZekeNpc) this.arcadeZekeNpc = this.createArcadeZekeNpc();
+        active.push(this.arcadeZekeNpc);
       } else if (area === 'convention_center_interior') {
         if (!this.leagueRegistrarNpc) this.leagueRegistrarNpc = this.createLeagueRegistrarNpc();
         active.push(this.leagueRegistrarNpc);
@@ -35781,6 +38451,28 @@
         this.renderClothingStoreInterior();
       } else if (this.currentArea === 'animal_hospital_interior') {
         this.renderAnimalHospitalInterior();
+      } else if (this.currentArea === 'west_house_1_interior') {
+        this.renderWestHouse1Interior();
+      } else if (this.currentArea === 'west_house_2_interior') {
+        this.renderWestHouse2Interior();
+      } else if (this.currentArea === 'west_house_3_interior') {
+        this.renderWestHouse3Interior();
+      } else if (this.currentArea === 'arcade_interior') {
+        this.renderArcadeInterior();
+      } else if (this.currentArea === 'arcade_back_interior') {
+        this.renderArcadeBackInterior();
+      } else if (this.currentArea === 'west_oak_1_interior') {
+        this.renderWestOak1Interior();
+      } else if (this.currentArea === 'west_oak_2_interior') {
+        this.renderWestOak2Interior();
+      } else if (this.currentArea === 'farmhouse_1_1f_interior') {
+        this.renderFarmhouse1Floor1();
+      } else if (this.currentArea === 'farmhouse_1_2f_interior') {
+        this.renderFarmhouse1Floor2();
+      } else if (this.currentArea === 'farmhouse_2_1f_interior') {
+        this.renderFarmhouse2Floor1();
+      } else if (this.currentArea === 'farmhouse_2_2f_interior') {
+        this.renderFarmhouse2Floor2();
       } else {
         this.renderCraftsmanExterior();
       }

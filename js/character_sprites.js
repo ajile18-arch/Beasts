@@ -328,7 +328,7 @@
   }
   preloadCharacterSheets();
 
-  const CUSTOM_SPRITE_VER = '4';
+  const CUSTOM_SPRITE_VER = '6';
   const customSpriteBank = new Map();
   function getCustomSpriteImage(id) {
     if (!id) return null;
@@ -358,7 +358,9 @@
     'police_chief_d', 'mayor_donald_d', 'chef_marco_d', 'shaun_d', 'barber_enzo_d',
     'tailor_celeste_d', 'league_registrar_d', 'evelyn_d', 'pluto_d', 'nova_d',
     'silas_d', 'clara_d', 'bram_d', 'apt_tessa_d', 'apt_dante_d',
-    'apt_nina_d', 'apt_miles_d', 'chloe_d', 'berto_d', 'rowan_d', 'jasper_d'
+    'apt_nina_d', 'apt_miles_d', 'chloe_d', 'berto_d', 'rowan_d', 'jasper_d',
+    'west_otis_d', 'west_maren_d', 'west_caleb_d', 'west_juniper_d', 'west_gideon_d',
+    'fh1_martha_d', 'fh1_harlan_d', 'fh2_eleanor_d', 'fh2_arthur_d', 'arcade_zeke_d'
   ];
   for (const id of CUSTOM_SPRITE_IDS) getCustomSpriteImage(id);
 
