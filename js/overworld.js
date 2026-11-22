@@ -3166,25 +3166,31 @@
         }
       });
       (this.scheduledMeetups || []).forEach(m => {
-        if (m.status === 'scheduled' && m.type === 'sell') {
+        if (m.status !== 'scheduled') return;
+        if (m.type === 'sell' && m.beastId) {
           reservedByBeast[m.beastId] = (reservedByBeast[m.beastId] || 0) + 1;
+        } else if (m.type === 'buy' && Array.isArray(m.offeredCards)) {
+          m.offeredCards.forEach(oc => {
+            if (oc?.beastId) {
+              reservedByBeast[oc.beastId] = (reservedByBeast[oc.beastId] || 0) + 1;
+            }
+          });
         }
       });
 
       const cards = window.MythosGwentCards?.CARDS || {};
+      const pool = this.getOwnedMythosCardPool();
       const out = [];
-      (this.inventory || []).forEach(item => {
-        if (item.type !== 'mythos_card' || (item.qty || 0) <= 0) return;
-        const beastId = item.beastId || String(item.id || '').replace(/^card_/, '');
-        const availQty = (item.qty || 0) - (reservedByBeast[beastId] || 0);
+      Object.entries(pool).forEach(([beastId, ownedQty]) => {
+        const availQty = (ownedQty || 0) - (reservedByBeast[beastId] || 0);
         if (availQty <= 0) return;
-        const def = cards[beastId] || item;
+        const def = cards[beastId] || this.buildMythosCardRecord(beastId);
         const fairValue = this.getCardFairMarketValue(def);
         out.push({
           beastId,
-          cardName: def.name || item.shortName || item.name,
-          stars: Number(def.stars || item.stars) || 1,
-          element: `${'★'.repeat(Number(def.stars || item.stars) || 1)} ${def.role || item.element || 'Unit'}`,
+          cardName: def.name || beastId,
+          stars: Number(def.stars) || 1,
+          element: `${'★'.repeat(Number(def.stars) || 1)} ${def.role || def.element || 'Unit'}`,
           availQty,
           fairValue,
           def
@@ -3198,13 +3204,13 @@
       const cand = candidates.find(c => c.beastId === beastId);
       if (!cand) {
         if (window.sounds?.playError) window.sounds.playError();
-        return { ok: false, message: 'No spare copy available in your backpack (already listed or scheduled).' };
+        return { ok: false, message: 'No spare copy available in your Card Binder (already listed or scheduled).' };
       }
       const totalReservedSells = (this.playerSellListings || []).filter(l => l.status === 'waiting' || l.status === 'responded').length
         + (this.scheduledMeetups || []).filter(m => m.status === 'scheduled' && m.type === 'sell').length;
       if (this.getTotalOwnedCardCount() - totalReservedSells <= 18) {
         if (window.sounds?.playError) window.sounds.playError();
-        return { ok: false, message: 'Keep at least 18 total cards across your Binder & Backpack for your deck!' };
+        return { ok: false, message: 'Keep at least 18 total cards across your Binder & Playing Deck!' };
       }
 
       const parsed = parseFloat(rawAskingPrice);
@@ -3488,7 +3494,7 @@
         composer.innerHTML = `
           <div style="font-size:11.5px; font-weight:800; color:#f8fafc;">📝 List a Card for Sale</div>
           <div style="font-size:10.5px; color:#94a3b8; line-height:1.4;">
-            No unreserved spare Mythos cards in your backpack right now. Open booster packs at Leo's Card Shop or move a card out of your Old Card Binder to list it!
+            No unreserved spare Mythos cards in your Card Binder right now. Open booster packs at Leo's Card Shop or move extras from your Playing Deck!
           </div>
         `;
       } else {
@@ -3982,11 +3988,11 @@
         sellBagDrawerHtml = `
           <div class="phone-neg-sellbag-drawer" id="phone-neg-sellbag-drawer">
             <div class="phone-neg-label">
-              <span>🎒 Pick Card from Inventory (Slot ${neg.sellBagPickerSlot + 1})</span>
+              <span>📖 Pick Card from Binder (Slot ${neg.sellBagPickerSlot + 1})</span>
               <button type="button" id="btn-sellbag-close" style="background:none;border:none;color:#94a3b8;cursor:pointer;font-weight:800;">✕</button>
             </div>
             ${candidates.length === 0
-              ? `<div style="font-size:10.5px; color:#94a3b8;">No unreserved cards in your Inventory right now.</div>`
+              ? `<div style="font-size:10.5px; color:#94a3b8;">No unreserved cards in your Card Binder right now.</div>`
               : candidates.map(c => {
                   const used = usedIds.has(c.beastId);
                   return `
@@ -4432,13 +4438,17 @@
 
       if (m.type === 'buy') {
         const offeredCards = Array.isArray(m.offeredCards) ? m.offeredCards : [];
+        const ownedPool = this.getOwnedMythosCardPool();
+        const neededCounts = {};
+        offeredCards.forEach(oc => {
+          if (oc?.beastId) neededCounts[oc.beastId] = (neededCounts[oc.beastId] || 0) + 1;
+        });
         for (const oc of offeredCards) {
-          const invIdx = (this.inventory || []).findIndex(i => i.beastId === oc.beastId && (i.qty || 1) > 0);
-          if (invIdx === -1) {
+          if ((ownedPool[oc.beastId] || 0) < (neededCounts[oc.beastId] || 1)) {
             if (window.sounds?.playError) window.sounds.playError();
             return {
               ok: false,
-              message: `You need ${oc.cardName} in your Inventory to complete this trade!`
+              message: `You need ${oc.cardName} in your Card Binder to complete this trade!`
             };
           }
         }
@@ -4450,12 +4460,7 @@
           };
         }
         offeredCards.forEach(oc => {
-          const invIdx = (this.inventory || []).findIndex(i => i.beastId === oc.beastId && (i.qty || 1) > 0);
-          if (invIdx !== -1) {
-            const item = this.inventory[invIdx];
-            if ((item.qty || 1) > 1) item.qty -= 1;
-            else this.inventory.splice(invIdx, 1);
-          }
+          this.consumeCardForPlayingDeck(oc.beastId, 'any');
         });
         this.gold = Math.round(((this.gold || 0) - m.agreedPrice) * 100) / 100;
         if (!this.phoneListingsBought.includes(m.listingId)) {
@@ -4464,8 +4469,8 @@
         const cardDef = this.getBaseSetCardCatalog().find(c => c.beastId === m.beastId);
         if (cardDef) {
           this.addCardToBinder(cardDef);
-          this.renderBinderModal?.();
         }
+        this.renderBinderModal?.();
         m.status = 'completed';
         const nbNote = this.getNotebookNotes().find(n => n.id === `meetup_${m.id}`);
         if (nbNote) {
@@ -4496,20 +4501,15 @@
       }
 
       // Sell completion
-      const idx = (this.inventory || []).findIndex(i => i.beastId === m.beastId && (i.qty || 1) > 0);
-      if (idx === -1) {
+      const sellPool = this.getOwnedMythosCardPool();
+      if ((sellPool[m.beastId] || 0) <= 0 || !this.consumeCardForPlayingDeck(m.beastId, 'any')) {
         if (window.sounds?.playError) window.sounds.playError();
         return {
           ok: false,
-          message: `Wait — you don't have a <b>${m.cardName}</b> in your backpack right now! Move it out of your card binder first if it's slotted there.`
+          message: `Wait — you don't have a <b>${m.cardName}</b> in your Card Binder right now! Remove it from your Playing Deck if it's equipped there.`
         };
       }
-      const invItem = this.inventory[idx];
-      if (invItem.qty && invItem.qty > 1) {
-        invItem.qty--;
-      } else {
-        this.inventory.splice(idx, 1);
-      }
+      this.renderBinderModal?.();
       this.gold = Math.round(((this.gold || 0) + m.agreedPrice) * 100) / 100;
       if (!this.phoneListingsSold.includes(m.listingId)) {
         this.phoneListingsSold.push(m.listingId);
@@ -6203,33 +6203,61 @@
       return looseCount + binderCount + deckCount;
     }
 
+    getShopSellableLooseCards() {
+      const reg = window.MythosGwentCards?.CARDS || {};
+      const pool = this.getOwnedMythosCardPool();
+      const entries = [];
+      Object.entries(pool).forEach(([cid, qty]) => {
+        if (!qty || qty <= 0) return;
+        const rec = this.buildMythosCardRecord(cid);
+        const def = reg[cid];
+        const matchingSlot = (this.binderSlots || []).find(
+          s => s && ((s.beastId || String(s.id || '').replace(/^card_/, '')) === cid)
+        );
+        const matchingInv = (this.inventory || []).find(
+          i => i && (i.type === 'mythos_card' || i.id?.startsWith('card_'))
+            && ((i.beastId || String(i.id || '').replace(/^card_/, '')) === cid)
+        );
+        entries.push({
+          ...rec,
+          traditionalCardImg: rec.traditionalCardImg || def?.traditionalCardImg || matchingSlot?.traditionalCardImg || matchingInv?.traditionalCardImg || null,
+          isAnimatedSpecial: Boolean(def?.isAnimatedSpecial || matchingSlot?.isAnimatedSpecial || matchingInv?.isAnimatedSpecial),
+          animatedCardVideo: def?.animatedCardVideo || matchingSlot?.animatedCardVideo || matchingInv?.animatedCardVideo || null,
+          animatedTraditionalVideo: def?.animatedTraditionalVideo || matchingSlot?.animatedTraditionalVideo || matchingInv?.animatedTraditionalVideo || null,
+          qty
+        });
+      });
+      return entries.sort((a, b) => ((Number(b.stars) || 1) - (Number(a.stars) || 1)) || a.name.localeCompare(b.name));
+    }
+
     sellCardToShop(cardId, sellAll = false) {
-      const itemIndex = (this.inventory || []).findIndex(i => i.id === cardId && i.type === 'mythos_card' && i.qty > 0);
-      if (itemIndex < 0) return;
+      const cleanId = String(cardId || '').replace(/^card_/, '');
+      const item = this.getShopSellableLooseCards().find(c => c.id === cardId || c.beastId === cleanId);
+      if (!item || (item.qty || 0) <= 0) return;
 
       const maxSellable = Math.max(0, this.getTotalOwnedCardCount() - 18);
       if (maxSellable <= 0) {
         if (window.sounds?.playClick) window.sounds.playClick();
         const footerMsg = document.getElementById('shop-footer-msg');
         if (footerMsg) {
-          footerMsg.innerHTML = `⚠️ Cannot sell! You must keep at least <b>18 total cards</b> between your Binder and Playing Deck/Backpack to have a playable deck.`;
+          footerMsg.innerHTML = `⚠️ Cannot sell! You must keep at least <b>18 total cards</b> between your Binder and Playing Deck to have a playable deck.`;
           footerMsg.className = 'shop-footer-hint highlight';
         }
         return;
       }
 
-      const item = this.inventory[itemIndex];
       const unitPrice = this.getCardSellPrice(item);
       const requestedQty = sellAll ? item.qty : 1;
       const qtyToSell = Math.min(requestedQty, maxSellable);
       if (qtyToSell <= 0) return;
-      const totalEarned = Math.round(unitPrice * qtyToSell * 100) / 100;
 
-      if (item.qty > qtyToSell) {
-        item.qty -= qtyToSell;
-      } else {
-        this.inventory.splice(itemIndex, 1);
+      let soldCount = 0;
+      for (let i = 0; i < qtyToSell; i++) {
+        if (!this.consumeCardForPlayingDeck(cleanId, 'any')) break;
+        soldCount += 1;
       }
+      if (soldCount <= 0) return;
+      const totalEarned = Math.round(unitPrice * soldCount * 100) / 100;
 
       this.gold = Math.round(((this.gold || 0) + totalEarned) * 100) / 100;
 
@@ -6240,10 +6268,11 @@
       this.changeRelationship('leo', 2, 'shop purchase');
       this.renderShopModal();
       this.renderInventoryModal();
+      this.renderBinderModal();
 
       const footerMsg = document.getElementById('shop-footer-msg');
       if (footerMsg) {
-        footerMsg.innerHTML = `✅ Sold <b>${qtyToSell}× ${item.name}</b> to Leo for <b>+${this.formatMoney(totalEarned)}</b>! Wallet: <b>${this.formatMoney(this.gold)}</b>`;
+        footerMsg.innerHTML = `✅ Sold <b>${soldCount}× ${item.name}</b> to Leo for <b>+${this.formatMoney(totalEarned)}</b>! Wallet: <b>${this.formatMoney(this.gold)}</b>`;
         footerMsg.className = 'shop-footer-hint highlight';
       }
     }
@@ -6855,7 +6884,7 @@
     }
 
     _computeShopPayoutQuote() {
-      const looseCards = (this.inventory || []).filter(i => i && i.type === 'mythos_card' && i.qty > 0);
+      const looseCards = this.getShopSellableLooseCards();
       const totalOwnedCards = this.getTotalOwnedCardCount();
       let remainingSellable = Math.max(0, totalOwnedCards - 18);
 
@@ -6902,16 +6931,17 @@
       let soldPackCount = 0;
       let earned = 0;
 
-      picks.forEach(({ item, takeQty, subtotal }) => {
-        const idx = (this.inventory || []).indexOf(item);
-        if (idx < 0 || takeQty <= 0) return;
-        if (item.qty > takeQty) {
-          item.qty -= takeQty;
-        } else {
-          this.inventory.splice(idx, 1);
+      picks.forEach(({ item, takeQty }) => {
+        const cleanId = String(item?.beastId || item?.id || '').replace(/^card_/, '');
+        if (!cleanId || takeQty <= 0) return;
+        const unitPrice = this.getCardSellPrice(item);
+        let soldThis = 0;
+        for (let i = 0; i < takeQty; i++) {
+          if (!this.consumeCardForPlayingDeck(cleanId, 'any')) break;
+          soldThis += 1;
         }
-        soldCardCount += takeQty;
-        earned += subtotal;
+        soldCardCount += soldThis;
+        earned += Math.round(unitPrice * soldThis * 100) / 100;
       });
 
       packsToSell.forEach(pack => {
@@ -7106,10 +7136,10 @@
         gridEl.innerHTML = '';
         if (visiblePacks.length === 0 && visibleCards.length === 0) {
           const emptyMsg = sellFilter === 'packs'
-            ? 'Buy a $1 Class Pack on the left and fill it with up to 5 matching-class cards to sell here (+25% full pack bonus)!'
+            ? 'Buy a $1 Class Pack on the left and fill it with up to 5 matching-class cards from your Binder to sell here (+25% sealed bonus)!'
             : (sellFilter === 'cards'
-              ? 'No loose Mythos cards in your backpack right now. Cards stored in your 📖 Card Binder stay safe!'
-              : 'You have no loose Mythos cards or Refillable Class Packs right now. Cards in your 📖 Card Binder stay protected!');
+              ? 'No loose cards in your Card Binder right now. Cards equipped in your Playing Deck stay protected!'
+              : 'You have no loose cards in your Binder or Refillable Class Packs right now. Playing Deck cards stay protected!');
           gridEl.innerHTML = `
             <div class="shop-empty-sell">
               <span class="shop-empty-icon">📜</span>
@@ -8994,8 +9024,7 @@
               </div>
               <div class="binder-trad-name" title="${c.name}">${c.name}</div>
               <div class="binder-trad-actions">
-                <button type="button" class="binder-xfer-btn to-binder" title="Return 1 copy to Binder Sleeves">📖 Binder</button>
-                <button type="button" class="binder-xfer-btn to-bag" title="Pull 1 copy to Inventory">🎒 Sell</button>
+                <button type="button" class="binder-xfer-btn to-binder" style="flex:1;" title="Return 1 copy to Binder Sleeves">📖 Return to Binder</button>
               </div>
             `;
             this.attachTradCardLongPress(slot.querySelector('.binder-trad-art-wrap'), c);
@@ -9003,11 +9032,6 @@
               ev.stopPropagation();
               this.removeCardFromPlayingDeck(entry.lastIndex, 'binder');
               this.showFolioToast(`📖 Returned <b>${c.name}</b> to your Card Binder.`);
-            });
-            slot.querySelector('.to-bag')?.addEventListener('click', (ev) => {
-              ev.stopPropagation();
-              this.removeCardFromPlayingDeck(entry.lastIndex, 'inventory');
-              this.showFolioToast(`🎒 Moved <b>${c.name}</b> to your Inventory.`);
             });
             deckTrayEl.appendChild(slot);
           });
@@ -9122,8 +9146,7 @@
               </div>
               <div class="binder-trad-name" title="${displayName}">${displayName}</div>
               <div class="binder-trad-actions">
-                <button type="button" class="binder-xfer-btn to-deck" title="Move 1 copy to Playing Deck (+${stars}★)">+🃏 Deck</button>
-                <button type="button" class="binder-xfer-btn to-bag" title="Pull 1 copy to Inventory">🎒 Sell</button>
+                <button type="button" class="binder-xfer-btn to-deck" style="flex:1;" title="Move 1 copy to Playing Deck (+${stars}★)">+🃏 Deck</button>
               </div>
             `;
 
@@ -9135,12 +9158,6 @@
                 const res = this.addCardToPlayingDeck(cleanId, 'binder', i);
                 if (res?.message) this.showFolioToast(res.message);
               }
-            });
-
-            slotEl.querySelector('.to-bag')?.addEventListener('click', (ev) => {
-              ev.stopPropagation();
-              this.removeCardFromBinder(i);
-              this.showFolioToast(`🎒 Moved <b>${displayName}</b> to your <b>Inventory</b> — ready to sell at Leo's Shop or on your Phone!`);
             });
           } else {
             slotEl.className = 'binder-trad-slot';
@@ -9198,7 +9215,7 @@
             <div style="grid-column: 1 / -1; grid-row: 1 / -1; display: flex; align-items: center; justify-content: center; padding: 20px 14px; text-align: center; color: #f3e8d2; font-size: 13px;">
               <div>
                 Your <b>🎒 Inventory</b> has no matching items right now.<br>
-                <span style="opacity:0.85;">Pull cards here using <b>🎒 Sell</b> from your Playing Deck or Card Binder whenever you want to sell them at Leo's Card Shop or list them on your Phone!</span>
+                <span style="opacity:0.85;">Your cards live directly in your <b>📖 Card Binder</b> — use them right from there in Refillable Class Packs, Leo's Shop, and Phone Trades!</span>
               </div>
             </div>
           `;
