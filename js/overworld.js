@@ -544,7 +544,8 @@
           outfitStyle: isMike ? 'hoodie' : 'jacket',
           outfitColor: isMike ? 'ranger' : 'crimson',
           pantsColor: 'dark',
-          hatStyle: isMike ? 'goggles' : 'cap'
+          hatStyle: isMike ? 'goggles' : 'cap',
+          customSprite: 'rocky_d'
         })
       };
     }
@@ -571,7 +572,8 @@
           outfitStyle: 'vest',
           outfitColor: 'amethyst',
           pantsColor: 'navy',
-          hatStyle: 'none'
+          hatStyle: 'none',
+          customSprite: 'mom_d'
         })
       };
     }
@@ -596,7 +598,8 @@
           outfitStyle: 'vest',
           outfitColor: 'gold',
           pantsColor: 'dark',
-          hatStyle: 'goggles'
+          hatStyle: 'goggles',
+          customSprite: 'shopkeeper_d'
         })
       };
     }
@@ -621,7 +624,8 @@
           outfitStyle: 'hoodie',
           outfitColor: 'royal',
           pantsColor: 'dark',
-          hatStyle: 'goggles'
+          hatStyle: 'goggles',
+          customSprite: 'pluto_d'
         })
       };
     }
@@ -646,7 +650,8 @@
           outfitStyle: 'hoodie',
           outfitColor: 'royal',
           pantsColor: 'dark',
-          hatStyle: 'none'
+          hatStyle: 'none',
+          customSprite: 'nova_d'
         })
       };
     }
@@ -671,7 +676,8 @@
           outfitStyle: 'vest',
           outfitColor: 'ranger',
           pantsColor: 'khaki',
-          hatStyle: 'none'
+          hatStyle: 'none',
+          customSprite: 'silas_d'
         })
       };
     }
@@ -722,7 +728,8 @@
           outfitStyle: 'hoodie',
           outfitColor: 'crimson',
           pantsColor: 'denim',
-          hatStyle: 'none'
+          hatStyle: 'none',
+          customSprite: 'clara_d'
         })
       };
     }
@@ -747,7 +754,8 @@
           outfitStyle: 'jacket',
           outfitColor: 'ranger',
           pantsColor: 'dark',
-          hatStyle: 'cap'
+          hatStyle: 'cap',
+          customSprite: 'bram_d'
         })
       };
     }
@@ -772,7 +780,8 @@
           outfitStyle: 'hoodie',
           outfitColor: 'royal',
           pantsColor: 'denim',
-          hatStyle: 'none'
+          hatStyle: 'none',
+          customSprite: 'apt_tessa_d'
         })
       };
     }
@@ -797,7 +806,8 @@
           outfitStyle: 'vest',
           outfitColor: 'ranger',
           pantsColor: 'khaki',
-          hatStyle: 'cap'
+          hatStyle: 'cap',
+          customSprite: 'apt_dante_d'
         })
       };
     }
@@ -822,7 +832,8 @@
           outfitStyle: 'jacket',
           outfitColor: 'crimson',
           pantsColor: 'dark',
-          hatStyle: 'none'
+          hatStyle: 'none',
+          customSprite: 'apt_nina_d'
         })
       };
     }
@@ -847,7 +858,8 @@
           outfitStyle: 'vest',
           outfitColor: 'royal',
           pantsColor: 'denim',
-          hatStyle: 'none'
+          hatStyle: 'none',
+          customSprite: 'apt_miles_d'
         })
       };
     }
@@ -872,7 +884,8 @@
           outfitStyle: 'vest',
           outfitColor: 'crimson',
           pantsColor: 'dark',
-          hatStyle: 'none'
+          hatStyle: 'none',
+          customSprite: 'barber_enzo_d'
         })
       };
     }
@@ -897,7 +910,8 @@
           outfitStyle: 'jacket',
           outfitColor: 'royal',
           pantsColor: 'dark',
-          hatStyle: 'none'
+          hatStyle: 'none',
+          customSprite: 'tailor_celeste_d'
         })
       };
     }
@@ -922,7 +936,8 @@
           outfitStyle: 'trench',
           outfitColor: 'cream',
           pantsColor: 'teal',
-          hatStyle: 'none'
+          hatStyle: 'none',
+          customSprite: 'vet_hannah_d'
         })
       };
     }
@@ -947,7 +962,8 @@
           outfitStyle: 'vest',
           outfitColor: 'crimson',
           pantsColor: 'dark',
-          hatStyle: 'none'
+          hatStyle: 'none',
+          customSprite: 'league_registrar_d'
         })
       };
     }
@@ -972,7 +988,8 @@
           outfitStyle: 'jacket',
           outfitColor: 'royal',
           pantsColor: 'dark',
-          hatStyle: 'none'
+          hatStyle: 'none',
+          customSprite: 'mayor_donald_d'
         })
       };
     }
@@ -997,7 +1014,8 @@
           outfitStyle: 'tunic',
           outfitColor: 'crimson',
           pantsColor: 'dark',
-          hatStyle: 'none'
+          hatStyle: 'none',
+          customSprite: 'chef_marco_d'
         })
       };
     }
@@ -1022,7 +1040,8 @@
           outfitStyle: 'vest',
           outfitColor: 'forest',
           pantsColor: 'khaki',
-          hatStyle: 'none'
+          hatStyle: 'none',
+          customSprite: 'shaun_d'
         })
       };
     }
@@ -1078,7 +1097,8 @@
           outfitStyle: 'jacket',
           outfitColor: 'crimson',
           pantsColor: 'charcoal',
-          hatStyle: 'fire_helmet'
+          hatStyle: 'fire_helmet',
+          customSprite: 'fire_chief_d'
         })
       };
     }
@@ -1103,7 +1123,8 @@
           outfitStyle: 'jacket',
           outfitColor: 'cobalt',
           pantsColor: 'navy',
-          hatStyle: 'police_cap'
+          hatStyle: 'police_cap',
+          customSprite: 'police_chief_d'
         })
       };
     }
@@ -1128,7 +1149,8 @@
           outfitStyle: 'vest',
           outfitColor: 'navy',
           pantsColor: 'dark',
-          hatStyle: 'none'
+          hatStyle: 'none',
+          customSprite: 'evelyn_d'
         })
       };
     }
@@ -1153,7 +1175,8 @@
           outfitStyle: 'vest',
           outfitColor: 'gold',
           pantsColor: 'khaki',
-          hatStyle: 'none'
+          hatStyle: 'none',
+          customSprite: 'chloe_d'
         })
       };
     }
@@ -1178,7 +1201,8 @@
           outfitStyle: 'jacket',
           outfitColor: 'crimson',
           pantsColor: 'dark',
-          hatStyle: 'none'
+          hatStyle: 'none',
+          customSprite: 'berto_d'
         })
       };
     }
@@ -1203,7 +1227,8 @@
           outfitStyle: 'jacket',
           outfitColor: 'royal',
           pantsColor: 'dark',
-          hatStyle: 'cap'
+          hatStyle: 'cap',
+          customSprite: 'rowan_d'
         })
       };
     }
@@ -1228,7 +1253,8 @@
           outfitStyle: 'hoodie',
           outfitColor: 'ranger',
           pantsColor: 'denim',
-          hatStyle: 'goggles'
+          hatStyle: 'goggles',
+          customSprite: 'jasper_d'
         })
       };
     }

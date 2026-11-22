@@ -235,7 +235,7 @@
   }
   preloadCharacterSheets();
 
-  const CUSTOM_SPRITE_VER = '2';
+  const CUSTOM_SPRITE_VER = '3';
   const customSpriteBank = new Map();
   function getCustomSpriteImage(id) {
     if (!id) return null;
@@ -255,8 +255,15 @@
     }
     return (entry.loaded && entry.img.naturalWidth > 0) ? entry.img : null;
   }
-  getCustomSpriteImage('player_hero_d');
-  getCustomSpriteImage('maya_d');
+  const CUSTOM_SPRITE_IDS = [
+    'player_hero_d', 'maya_d',
+    'rocky_d', 'mom_d', 'shopkeeper_d', 'vet_hannah_d', 'fire_chief_d',
+    'police_chief_d', 'mayor_donald_d', 'chef_marco_d', 'shaun_d', 'barber_enzo_d',
+    'tailor_celeste_d', 'league_registrar_d', 'evelyn_d', 'pluto_d', 'nova_d',
+    'silas_d', 'clara_d', 'bram_d', 'apt_tessa_d', 'apt_dante_d',
+    'apt_nina_d', 'apt_miles_d', 'chloe_d', 'berto_d', 'rowan_d', 'jasper_d'
+  ];
+  for (const id of CUSTOM_SPRITE_IDS) getCustomSpriteImage(id);
 
   function isArchReady(arch) {
     const set = spriteBank[arch];
