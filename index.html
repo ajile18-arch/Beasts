@@ -6,7 +6,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>Mythos - Open World & Tabletop Card Game</title>
-  <link rel="stylesheet" href="css/style.css?v=2.76">
+  <link rel="stylesheet" href="css/style.css?v=2.97">
   <link rel="stylesheet" href="css/mobile.css?v=2.76" media="(max-width: 820px), (hover: none) and (pointer: coarse)">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -399,10 +399,20 @@
             <div class="round-overlay-title" id="round-overlay-title">ROUND 1 VICTORY!</div>
             <div class="round-overlay-sub" id="round-overlay-sub">You 24 — 18 A.I.</div>
           </div>
+
+          <!-- Turn Switch / Auto-End Banner (briefly shown across battlefield center) -->
+          <div class="gwent-turn-switch-banner hidden" id="gwent-turn-switch-banner" aria-live="polite">
+            <div class="gwent-turn-switch-banner-reason" id="gwent-turn-switch-banner-reason">NO VALID MOVES LEFT</div>
+            <div class="gwent-turn-switch-banner-next" id="gwent-turn-switch-banner-next">🌙 Opponent's Turn</div>
+          </div>
         </div>
 
         <!-- Player Hand Tray -->
         <div class="gwent-hand-tray">
+          <div class="gwent-turn-checklist hidden" id="gwent-turn-checklist">
+            <span class="gwent-phase-pill" id="phase-pill-play">🃏 1. Play a Card</span>
+            <span class="gwent-phase-pill" id="phase-pill-attack">⚔️ 2. Board Actions</span>
+          </div>
           <div class="gwent-hand-hint" id="gwent-hand-hint">Select a card from your hand, then click a highlighted row to deploy it.</div>
           <div class="gwent-player-hand" id="gwent-player-hand">
             <!-- Playable Mythos cards -->
@@ -1874,9 +1884,9 @@
   </div>
 
   <script src="js/audio.js?v=2.76"></script>
-  <script src="js/character_sprites.js?v=2.81"></script>
-  <script src="js/overworld.js?v=2.81"></script>
-  <script src="js/gwent_cards.js?v=2.76"></script>
-  <script src="js/game.js?v=2.76"></script>
+  <script src="js/character_sprites.js?v=2.83"></script>
+  <script src="js/overworld.js?v=2.89"></script>
+  <script src="js/gwent_cards.js?v=2.92"></script>
+  <script src="js/game.js?v=2.98"></script>
 </body>
 </html>

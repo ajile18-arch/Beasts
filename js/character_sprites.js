@@ -141,6 +141,98 @@
     { id: 'crown', name: 'Mythos Circlet' }
   ];
 
+  const PLAYER_HAIR_OPTIONS = [
+    {
+      id: 'spiky',
+      name: 'Spiky Duelist',
+      price: 0,
+      tier: 'Starter Cut',
+      icon: '⚡',
+      desc: 'Classic messy spiky chestnut hair with signature Oakhaven energy.',
+      isStarter: true
+    },
+    {
+      id: 'swept_blonde',
+      name: 'Sunlit Swept Ace',
+      price: 3,
+      tier: 'Styled Cut',
+      icon: '✨',
+      desc: 'Sleek side-swept golden blonde bangs with effortless pro-duelist polish.',
+      isStarter: false
+    },
+    {
+      id: 'crimson_mohawk',
+      name: 'Blaze Punk Crest',
+      price: 5,
+      tier: 'Statement Cut',
+      icon: '🔥',
+      desc: 'Bold crimson anime crest with clean tapered dark sides that stands out downtown.',
+      isStarter: false
+    }
+  ];
+
+  const PLAYER_OUTFIT_OPTIONS = [
+    {
+      id: 'default_jacket',
+      name: 'Duelist Blue Jacket',
+      price: 0,
+      tier: 'Starter Outfit',
+      icon: '🧥',
+      desc: 'Everyday cobalt blue zip jacket over a crisp white tee, slate jeans, and brown boots.',
+      colors: { base: '#2563eb' },
+      isStarter: true
+    },
+    {
+      id: 'varsity_crimson',
+      name: 'Oakhaven Varsity',
+      price: 4,
+      tier: 'Streetwear',
+      icon: '🏈',
+      desc: 'Crimson wool letterman jacket with cream sleeves, gold snaps, joggers, and high-tops.',
+      colors: { base: '#b91c1c' },
+      isStarter: false
+    },
+    {
+      id: 'sovereign_coat',
+      name: 'Sovereign Duelist Coat',
+      price: 8,
+      tier: 'Champion Coat',
+      icon: '👑',
+      desc: 'Royal dark-violet trench coat with gold trim worn over a tailored vest and buckled boots.',
+      colors: { base: '#581c87' },
+      isStarter: false
+    }
+  ];
+
+  const PLAYER_SPRITE_MATRIX = {
+    spiky: {
+      default_jacket: 'player_hero_d',
+      varsity_crimson: 'player_spiky_varsity_d',
+      sovereign_coat: 'player_spiky_sovereign_d'
+    },
+    swept_blonde: {
+      default_jacket: 'player_swept_default_d',
+      varsity_crimson: 'player_swept_varsity_d',
+      sovereign_coat: 'player_swept_sovereign_d'
+    },
+    crimson_mohawk: {
+      default_jacket: 'player_mohawk_default_d',
+      varsity_crimson: 'player_mohawk_varsity_d',
+      sovereign_coat: 'player_mohawk_sovereign_d'
+    }
+  };
+
+  function resolvePlayerCustomSprite(app = {}) {
+    const hair = Object.prototype.hasOwnProperty.call(PLAYER_SPRITE_MATRIX, app?.hairStyle)
+      ? app.hairStyle
+      : 'spiky';
+    const row = PLAYER_SPRITE_MATRIX[hair];
+    const outfit = Object.prototype.hasOwnProperty.call(row, app?.styleDOutfit)
+      ? app.styleDOutfit
+      : 'default_jacket';
+    return row[outfit] || 'player_hero_d';
+  }
+
   const DEFAULT_APPEARANCE = {
     name: 'Asher',
     worldName: 'Oakhaven',
@@ -155,6 +247,7 @@
     shirtStyle: null,
     pantsStyle: null,
     shoeStyle: null,
+    styleDOutfit: 'default_jacket',
     customSprite: null
   };
 
@@ -235,7 +328,7 @@
   }
   preloadCharacterSheets();
 
-  const CUSTOM_SPRITE_VER = '3';
+  const CUSTOM_SPRITE_VER = '4';
   const customSpriteBank = new Map();
   function getCustomSpriteImage(id) {
     if (!id) return null;
@@ -256,7 +349,11 @@
     return (entry.loaded && entry.img.naturalWidth > 0) ? entry.img : null;
   }
   const CUSTOM_SPRITE_IDS = [
-    'player_hero_d', 'maya_d',
+    'player_hero_d',
+    'player_spiky_varsity_d', 'player_spiky_sovereign_d',
+    'player_swept_default_d', 'player_swept_varsity_d', 'player_swept_sovereign_d',
+    'player_mohawk_default_d', 'player_mohawk_varsity_d', 'player_mohawk_sovereign_d',
+    'maya_d',
     'rocky_d', 'mom_d', 'shopkeeper_d', 'vet_hannah_d', 'fire_chief_d',
     'police_chief_d', 'mayor_donald_d', 'chef_marco_d', 'shaun_d', 'barber_enzo_d',
     'tailor_celeste_d', 'league_registrar_d', 'evelyn_d', 'pluto_d', 'nova_d',
@@ -1550,9 +1647,12 @@
     APPAREL_SHIRTS,
     APPAREL_PANTS,
     APPAREL_SHOES,
+    PLAYER_HAIR_OPTIONS,
+    PLAYER_OUTFIT_OPTIONS,
     HAT_STYLES,
     OUTFIT_STYLES,
     DEFAULT_APPEARANCE,
+    resolvePlayerCustomSprite,
     CharacterSpriteSheet,
     drawVariation3B
   };

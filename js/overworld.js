@@ -51,10 +51,13 @@
       this.worldSave = this.loadSaveData();
       const rawApp = this.worldSave?.playerAppearance;
       const cleanSavedApp = (rawApp && rawApp.playerAppearance) ? rawApp.playerAppearance : (rawApp || {});
-      this.draftAppearance = {
+      const initialApp = {
         ...CS.DEFAULT_APPEARANCE,
-        ...cleanSavedApp,
-        customSprite: 'player_hero_d'
+        ...cleanSavedApp
+      };
+      this.draftAppearance = {
+        ...initialApp,
+        customSprite: CS.resolvePlayerCustomSprite ? CS.resolvePlayerCustomSprite(initialApp) : 'player_hero_d'
       };
       this.wins = this.worldSave?.wins ?? 0;
       this.losses = this.worldSave?.losses ?? 0;
@@ -75,7 +78,7 @@
       this.ownedShirts = Array.isArray(this.worldSave?.ownedShirts) ? [...this.worldSave.ownedShirts] : [];
       this.ownedPants = Array.isArray(this.worldSave?.ownedPants) ? [...this.worldSave.ownedPants] : [];
       this.ownedShoes = Array.isArray(this.worldSave?.ownedShoes) ? [...this.worldSave.ownedShoes] : [];
-      this.apparelActiveTab = 'shirts';
+      this.apparelActiveTab = 'outfits';
       this.apparelPreviewItemId = null;
       this.apparelPreviewDir = 'down';
       this.duelCallsTodayDay = this.worldSave?.duelCallsTodayDay || (this.dayNumber || 1);
@@ -514,6 +517,7 @@
       if (this.canvas) {
         this.canvas.width = this.COLS * this.TILE;
         this.canvas.height = this.ROWS * this.TILE;
+        this.syncCanvasViewport();
         this.initPhoneSystem();
         this.bindEvents();
         this.initTouchControls();
@@ -6368,7 +6372,7 @@
               <span class="barber-pole-badge" aria-hidden="true">💈</span>
               <div>
                 <h2>ENZO'S BARBER SHOP</h2>
-                <div class="barber-subtitle">Custom Main Street Cuts • $1.00 – $5.00</div>
+                <div class="barber-subtitle">Custom Main Street Cuts • 3 Styles ($0.00 – $5.00)</div>
               </div>
             </div>
             <div class="barber-header-actions">
@@ -6396,10 +6400,8 @@
               <div id="barber-status-msg" class="barber-status-msg"></div>
             </div>
             <div class="barber-catalog-pane">
-              <div class="barber-section-label">💈 Signature Hair Styles ($1.00 – $5.00)</div>
+              <div class="barber-section-label">💈 Signature Hair Styles (3 Cuts)</div>
               <div id="barber-style-grid" class="barber-grid"></div>
-              <div class="barber-section-label barber-starter-heading">✂️ Starter Styles (Free)</div>
-              <div id="barber-starter-row" class="barber-starter-row"></div>
             </div>
           </div>
         </div>
@@ -6439,7 +6441,10 @@
       const shouldOpen = forceOpen !== undefined ? forceOpen : modal.classList.contains('hidden');
       if (window.sounds?.playClick) window.sounds.playClick();
       if (shouldOpen) {
-        this.barberPreviewHairId = this.draftAppearance?.hairStyle || 'spiky';
+        const CS = window.MythosCharacterSprites;
+        const hairOptions = CS?.PLAYER_HAIR_OPTIONS || [];
+        const rawHair = this.draftAppearance?.hairStyle;
+        this.barberPreviewHairId = hairOptions.some(s => s.id === rawHair) ? rawHair : (hairOptions[0]?.id || 'spiky');
         this.barberPreviewDir = 'down';
         const statusEl = document.getElementById('barber-status-msg');
         if (statusEl) {
@@ -6478,6 +6483,9 @@
         ...this.draftAppearance,
         hairStyle: this.barberPreviewHairId || this.draftAppearance?.hairStyle || 'spiky'
       };
+      if (CS.resolvePlayerCustomSprite) {
+        previewApp.customSprite = CS.resolvePlayerCustomSprite(previewApp);
+      }
       ctx.imageSmoothingEnabled = false;
       CS.drawVariation3B(ctx, previewApp, w * 0.5, 148, this.barberPreviewDir || 'down', 0, 3.5);
     }
@@ -6488,23 +6496,25 @@
       const walletEl = document.getElementById('barber-wallet-display');
       if (walletEl) walletEl.textContent = `💰 ${this.formatMoney(this.gold || 0)}`;
 
-      const barberStyles = CS.BARBER_HAIR_STYLES || [];
-      const starterStyles = CS.HAIR_STYLES || [];
+      const hairOptions = CS.PLAYER_HAIR_OPTIONS || [];
       const ownedSet = new Set(Array.isArray(this.ownedHairStyles) ? this.ownedHairStyles : []);
-      const equippedId = this.draftAppearance?.hairStyle || 'spiky';
-      const previewId = this.barberPreviewHairId || equippedId;
+      const rawHair = this.draftAppearance?.hairStyle;
+      const equippedId = hairOptions.some(s => s.id === rawHair) ? rawHair : (hairOptions[0]?.id || 'spiky');
+      const previewId = hairOptions.some(s => s.id === this.barberPreviewHairId) ? this.barberPreviewHairId : equippedId;
+      this.barberPreviewHairId = previewId;
 
       const gridEl = document.getElementById('barber-style-grid');
       if (gridEl) {
         gridEl.innerHTML = '';
-        for (const style of barberStyles) {
+        for (const style of hairOptions) {
+          const isStarter = !!style.isStarter;
           const isEquipped = style.id === equippedId;
-          const isOwned = ownedSet.has(style.id);
+          const isOwned = isStarter || ownedSet.has(style.id);
           const isSelected = style.id === previewId;
           const card = document.createElement('button');
           card.type = 'button';
           card.className = `barber-style-card${isSelected ? ' selected' : ''}${isEquipped ? ' equipped' : ''}${isOwned ? ' owned' : ''}`;
-          const pillText = isEquipped ? '✓ EQUIPPED' : (isOwned ? 'OWNED' : this.formatMoney(style.price));
+          const pillText = isEquipped ? '✓ EQUIPPED' : (isStarter ? 'FREE' : (isOwned ? 'OWNED' : this.formatMoney(style.price)));
           const pillClass = isEquipped ? 'equipped' : (isOwned ? 'owned' : `price-${style.price}`);
           card.innerHTML = `
             <div class="barber-card-top">
@@ -6528,49 +6538,19 @@
         }
       }
 
-      const starterRowEl = document.getElementById('barber-starter-row');
-      if (starterRowEl) {
-        starterRowEl.innerHTML = '';
-        for (const st of starterStyles) {
-          const isEquipped = st.id === equippedId;
-          const isSelected = st.id === previewId;
-          const btn = document.createElement('button');
-          btn.type = 'button';
-          btn.className = `barber-starter-pill${isSelected ? ' selected' : ''}${isEquipped ? ' equipped' : ''}`;
-          btn.textContent = isEquipped ? `✓ ${st.name}` : st.name;
-          btn.addEventListener('click', () => {
-            if (window.sounds?.playClick) window.sounds.playClick();
-            this.barberPreviewHairId = st.id;
-            const statusEl = document.getElementById('barber-status-msg');
-            if (statusEl) {
-              statusEl.textContent = '';
-              statusEl.className = 'barber-status-msg';
-            }
-            this.renderBarberModal();
-          });
-          starterRowEl.appendChild(btn);
-        }
-      }
-
-      const selectedBarber = barberStyles.find(s => s.id === previewId);
-      const selectedStarter = starterStyles.find(s => s.id === previewId);
+      const selectedStyle = hairOptions.find(s => s.id === previewId) || hairOptions[0];
       const nameEl = document.getElementById('barber-selected-name');
       const tierEl = document.getElementById('barber-selected-tier');
       const descEl = document.getElementById('barber-selected-desc');
-      if (selectedBarber) {
-        if (nameEl) nameEl.textContent = `${selectedBarber.icon} ${selectedBarber.name}`;
-        if (tierEl) tierEl.textContent = `${selectedBarber.tier} • ${this.formatMoney(selectedBarber.price)}`;
-        if (descEl) descEl.textContent = selectedBarber.desc;
-      } else if (selectedStarter) {
-        if (nameEl) nameEl.textContent = `✂️ ${selectedStarter.name}`;
-        if (tierEl) tierEl.textContent = 'Starter Style • Free';
-        if (descEl) descEl.textContent = 'Classic starter cut available anytime at no cost.';
+      if (selectedStyle) {
+        if (nameEl) nameEl.textContent = `${selectedStyle.icon} ${selectedStyle.name}`;
+        if (tierEl) tierEl.textContent = selectedStyle.isStarter ? `${selectedStyle.tier} • Free` : `${selectedStyle.tier} • ${this.formatMoney(selectedStyle.price)}`;
+        if (descEl) descEl.textContent = selectedStyle.desc;
       }
 
       const actionBtn = document.getElementById('barber-action-btn');
-      if (actionBtn) {
-        const isStarter = !!selectedStarter;
-        const isOwned = isStarter || ownedSet.has(previewId);
+      if (actionBtn && selectedStyle) {
+        const isOwned = !!selectedStyle.isStarter || ownedSet.has(previewId);
         if (previewId === equippedId) {
           actionBtn.textContent = '✓ Currently Equipped';
           actionBtn.disabled = true;
@@ -6579,14 +6559,14 @@
           actionBtn.textContent = '✨ Equip Style (Free)';
           actionBtn.disabled = false;
           actionBtn.className = 'barber-action-btn equip';
-        } else if (selectedBarber) {
-          const canAfford = (this.gold || 0) >= selectedBarber.price;
+        } else {
+          const canAfford = (this.gold || 0) >= selectedStyle.price;
           if (canAfford) {
-            actionBtn.textContent = `💈 Buy & Equip — ${this.formatMoney(selectedBarber.price)}`;
+            actionBtn.textContent = `💈 Buy & Equip — ${this.formatMoney(selectedStyle.price)}`;
             actionBtn.disabled = false;
             actionBtn.className = 'barber-action-btn buy';
           } else {
-            actionBtn.textContent = `🔒 Need ${this.formatMoney(selectedBarber.price)}`;
+            actionBtn.textContent = `🔒 Need ${this.formatMoney(selectedStyle.price)}`;
             actionBtn.disabled = true;
             actionBtn.className = 'barber-action-btn locked';
           }
@@ -6599,25 +6579,23 @@
     buyOrEquipBarberHairStyle(styleId) {
       const CS = window.MythosCharacterSprites;
       if (!CS) return;
-      const barberStyle = (CS.BARBER_HAIR_STYLES || []).find(s => s.id === styleId);
-      const starterStyle = (CS.HAIR_STYLES || []).find(s => s.id === styleId);
-      const targetStyle = barberStyle || starterStyle;
+      const targetStyle = (CS.PLAYER_HAIR_OPTIONS || []).find(s => s.id === styleId);
       if (!targetStyle) return;
 
       if (!Array.isArray(this.ownedHairStyles)) this.ownedHairStyles = [];
-      const alreadyOwned = !!starterStyle || this.ownedHairStyles.includes(styleId);
+      const alreadyOwned = !!targetStyle.isStarter || this.ownedHairStyles.includes(styleId);
       const statusEl = document.getElementById('barber-status-msg');
 
-      if (!alreadyOwned && barberStyle) {
-        if ((this.gold || 0) < barberStyle.price) {
+      if (!alreadyOwned) {
+        if ((this.gold || 0) < targetStyle.price) {
           if (window.sounds?.playClick) window.sounds.playClick();
           if (statusEl) {
-            statusEl.textContent = `⚠️ You need ${this.formatMoney(barberStyle.price)} for ${barberStyle.name}.`;
+            statusEl.textContent = `⚠️ You need ${this.formatMoney(targetStyle.price)} for ${targetStyle.name}.`;
             statusEl.className = 'barber-status-msg error';
           }
           return;
         }
-        this.gold = (this.gold || 0) - barberStyle.price;
+        this.gold = (this.gold || 0) - targetStyle.price;
         this.ownedHairStyles.push(styleId);
         if (window.sounds?.playVictory) {
           window.sounds.playVictory();
@@ -6625,7 +6603,7 @@
           window.sounds.playClick();
         }
         if (statusEl) {
-          statusEl.textContent = `💈 Fresh cut! Purchased & equipped ${barberStyle.name} for ${this.formatMoney(barberStyle.price)}!`;
+          statusEl.textContent = `💈 Fresh cut! Purchased & equipped ${targetStyle.name} for ${this.formatMoney(targetStyle.price)}!`;
           statusEl.className = 'barber-status-msg success';
         }
       } else {
@@ -6637,37 +6615,22 @@
       }
 
       this.draftAppearance.hairStyle = styleId;
+      if (CS.resolvePlayerCustomSprite) {
+        this.draftAppearance.customSprite = CS.resolvePlayerCustomSprite(this.draftAppearance);
+      }
       this.playerSprite?.setAppearance(this.draftAppearance);
       this.saveWorldData(this.draftAppearance);
       this.updateHUDSaveInfo();
       this.renderBarberModal();
     }
 
-    _getApparelCategoryMeta(category = this.apparelActiveTab || 'shirts') {
+    _getApparelCategoryMeta(category = this.apparelActiveTab || 'outfits') {
       const CS = window.MythosCharacterSprites || {};
-      if (category === 'pants') {
-        return {
-          key: 'pants',
-          label: 'Pants & Shorts',
-          items: CS.APPAREL_PANTS || [],
-          slotKey: 'pantsStyle',
-          ownedProp: 'ownedPants'
-        };
-      }
-      if (category === 'shoes') {
-        return {
-          key: 'shoes',
-          label: 'Shoes',
-          items: CS.APPAREL_SHOES || [],
-          slotKey: 'shoeStyle',
-          ownedProp: 'ownedShoes'
-        };
-      }
       return {
-        key: 'shirts',
-        label: 'Shirts',
-        items: CS.APPAREL_SHIRTS || [],
-        slotKey: 'shirtStyle',
+        key: 'outfits',
+        label: 'Outfits',
+        items: CS.PLAYER_OUTFIT_OPTIONS || [],
+        slotKey: 'styleDOutfit',
         ownedProp: 'ownedShirts'
       };
     }
@@ -6687,7 +6650,7 @@
               <span class="apparel-badge" aria-hidden="true">👔</span>
               <div>
                 <h2>OAKHAVEN APPAREL</h2>
-                <div class="apparel-subtitle">Shirts, Pants, Shorts &amp; Shoes • $1.00 – $10.00</div>
+                <div class="apparel-subtitle">Full Style Outfits • $4.00 – $8.00</div>
               </div>
             </div>
             <div class="apparel-header-actions">
@@ -6712,14 +6675,12 @@
                 <p id="apparel-selected-desc" class="apparel-selected-desc"></p>
               </div>
               <button type="button" id="apparel-action-btn" class="apparel-action-btn">Equip</button>
-              <button type="button" id="apparel-default-btn" class="apparel-default-btn">↩ Reset Slot to Default</button>
+              <button type="button" id="apparel-default-btn" class="apparel-default-btn">↩ Reset Outfit to Default</button>
               <div id="apparel-status-msg" class="apparel-status-msg"></div>
             </div>
             <div class="apparel-catalog-pane">
               <div class="apparel-tabs" role="tablist">
-                <button type="button" class="apparel-tab-btn active" data-tab="shirts">👕 Shirts (10)</button>
-                <button type="button" class="apparel-tab-btn" data-tab="pants">👖 Pants &amp; Shorts (10)</button>
-                <button type="button" class="apparel-tab-btn" data-tab="shoes">👟 Shoes (5)</button>
+                <button type="button" class="apparel-tab-btn active" data-tab="outfits">🧥 Outfits (3)</button>
               </div>
               <div id="apparel-item-grid" class="apparel-grid"></div>
             </div>
@@ -6752,10 +6713,11 @@
       modal.querySelectorAll('.apparel-tab-btn').forEach(btn => {
         btn.addEventListener('click', () => {
           if (window.sounds?.playClick) window.sounds.playClick();
-          this.apparelActiveTab = btn.dataset.tab || 'shirts';
+          this.apparelActiveTab = btn.dataset.tab || 'outfits';
           const meta = this._getApparelCategoryMeta(this.apparelActiveTab);
-          const equippedId = this.draftAppearance?.[meta.slotKey];
-          this.apparelPreviewItemId = equippedId || meta.items[0]?.id || null;
+          const rawEq = this.draftAppearance?.[meta.slotKey];
+          const equippedId = meta.items.some(x => x.id === rawEq) ? rawEq : (meta.items.find(x => x.isStarter)?.id || meta.items[0]?.id || 'default_jacket');
+          this.apparelPreviewItemId = equippedId;
           const statusEl = document.getElementById('apparel-status-msg');
           if (statusEl) {
             statusEl.textContent = '';
@@ -6767,11 +6729,11 @@
 
       document.getElementById('apparel-action-btn')?.addEventListener('click', () => {
         if (this.apparelPreviewItemId) {
-          this.buyOrEquipApparelItem(this.apparelActiveTab || 'shirts', this.apparelPreviewItemId);
+          this.buyOrEquipApparelItem(this.apparelActiveTab || 'outfits', this.apparelPreviewItemId);
         }
       });
       document.getElementById('apparel-default-btn')?.addEventListener('click', () => {
-        this.resetApparelSlot(this.apparelActiveTab || 'shirts');
+        this.resetApparelSlot(this.apparelActiveTab || 'outfits');
       });
     }
 
@@ -6782,9 +6744,10 @@
       const shouldOpen = forceOpen !== undefined ? forceOpen : modal.classList.contains('hidden');
       if (window.sounds?.playClick) window.sounds.playClick();
       if (shouldOpen) {
-        this.apparelActiveTab = 'shirts';
-        const meta = this._getApparelCategoryMeta('shirts');
-        this.apparelPreviewItemId = this.draftAppearance?.[meta.slotKey] || meta.items[0]?.id || null;
+        this.apparelActiveTab = 'outfits';
+        const meta = this._getApparelCategoryMeta('outfits');
+        const rawEq = this.draftAppearance?.[meta.slotKey];
+        this.apparelPreviewItemId = meta.items.some(x => x.id === rawEq) ? rawEq : (meta.items.find(x => x.isStarter)?.id || meta.items[0]?.id || 'default_jacket');
         this.apparelPreviewDir = 'down';
         const statusEl = document.getElementById('apparel-status-msg');
         if (statusEl) {
@@ -6819,10 +6782,12 @@
       ctx.ellipse(w * 0.5, 148, 44, 10, 0, 0, Math.PI * 2);
       ctx.fill();
 
-      const meta = this._getApparelCategoryMeta(this.apparelActiveTab || 'shirts');
-      const previewApp = { ...this.draftAppearance };
-      if (this.apparelPreviewItemId) {
-        previewApp[meta.slotKey] = this.apparelPreviewItemId;
+      const previewApp = {
+        ...this.draftAppearance,
+        styleDOutfit: this.apparelPreviewItemId || this.draftAppearance?.styleDOutfit || 'default_jacket'
+      };
+      if (CS.resolvePlayerCustomSprite) {
+        previewApp.customSprite = CS.resolvePlayerCustomSprite(previewApp);
       }
       ctx.imageSmoothingEnabled = false;
       CS.drawVariation3B(ctx, previewApp, w * 0.5, 148, this.apparelPreviewDir || 'down', 0, 3.5);
@@ -6834,26 +6799,29 @@
       const walletEl = document.getElementById('apparel-wallet-display');
       if (walletEl) walletEl.textContent = `💰 ${this.formatMoney(this.gold || 0)}`;
 
-      const meta = this._getApparelCategoryMeta(this.apparelActiveTab || 'shirts');
+      const meta = this._getApparelCategoryMeta(this.apparelActiveTab || 'outfits');
       modal.querySelectorAll('.apparel-tab-btn').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.tab === meta.key);
       });
 
       const ownedList = Array.isArray(this[meta.ownedProp]) ? this[meta.ownedProp] : [];
       const ownedSet = new Set(ownedList);
-      const equippedId = this.draftAppearance?.[meta.slotKey] || null;
-      const previewId = this.apparelPreviewItemId || equippedId || meta.items[0]?.id || null;
+      const rawEquipped = this.draftAppearance?.[meta.slotKey];
+      const defaultId = meta.items.find(x => x.isStarter)?.id || meta.items[0]?.id || 'default_jacket';
+      const equippedId = meta.items.some(x => x.id === rawEquipped) ? rawEquipped : defaultId;
+      const previewId = meta.items.some(x => x.id === this.apparelPreviewItemId) ? this.apparelPreviewItemId : equippedId;
       this.apparelPreviewItemId = previewId;
 
       const gridEl = document.getElementById('apparel-item-grid');
       if (gridEl) {
         gridEl.innerHTML = '';
         for (const item of meta.items) {
+          const isStarter = !!item.isStarter;
           const isEquipped = item.id === equippedId;
-          const isOwned = ownedSet.has(item.id);
+          const isOwned = isStarter || ownedSet.has(item.id);
           const isSelected = item.id === previewId;
           const swatchColor = item.colors?.base || '#94a3b8';
-          const pillText = isEquipped ? '✓ EQUIPPED' : (isOwned ? 'OWNED' : this.formatMoney(item.price));
+          const pillText = isEquipped ? '✓ EQUIPPED' : (isStarter ? 'FREE' : (isOwned ? 'OWNED' : this.formatMoney(item.price)));
           const pillClass = isEquipped ? 'equipped' : (isOwned ? 'owned' : '');
 
           const card = document.createElement('button');
@@ -6890,19 +6858,19 @@
       const descEl = document.getElementById('apparel-selected-desc');
       if (selectedItem) {
         if (nameEl) nameEl.textContent = `${selectedItem.icon} ${selectedItem.name}`;
-        if (tierEl) tierEl.textContent = `${selectedItem.tier} • ${this.formatMoney(selectedItem.price)}`;
+        if (tierEl) tierEl.textContent = selectedItem.isStarter ? `${selectedItem.tier} • Free` : `${selectedItem.tier} • ${this.formatMoney(selectedItem.price)}`;
         if (descEl) descEl.textContent = selectedItem.desc;
       }
 
       const actionBtn = document.getElementById('apparel-action-btn');
       if (actionBtn && selectedItem) {
-        const isOwned = ownedSet.has(selectedItem.id);
+        const isOwned = !!selectedItem.isStarter || ownedSet.has(selectedItem.id);
         if (selectedItem.id === equippedId) {
           actionBtn.textContent = '✓ Currently Equipped';
           actionBtn.disabled = true;
           actionBtn.className = 'apparel-action-btn equipped';
         } else if (isOwned) {
-          actionBtn.textContent = '✨ Equip Item (Free)';
+          actionBtn.textContent = '✨ Equip Outfit (Free)';
           actionBtn.disabled = false;
           actionBtn.className = 'apparel-action-btn equip';
         } else if ((this.gold || 0) >= selectedItem.price) {
@@ -6918,21 +6886,22 @@
 
       const defaultBtn = document.getElementById('apparel-default-btn');
       if (defaultBtn) {
-        const hasEquipped = !!equippedId;
-        defaultBtn.disabled = !hasEquipped;
-        defaultBtn.textContent = hasEquipped ? `↩ Reset ${meta.label} to Default` : `✓ Using Default ${meta.label}`;
+        const isDefault = equippedId === defaultId;
+        defaultBtn.disabled = isDefault;
+        defaultBtn.textContent = isDefault ? '✓ Using Default Outfit' : '↩ Reset Outfit to Default';
       }
 
       this.renderApparelPreview();
     }
 
     buyOrEquipApparelItem(category, itemId) {
+      const CS = window.MythosCharacterSprites;
       const meta = this._getApparelCategoryMeta(category);
       const targetItem = meta.items.find(x => x.id === itemId);
       if (!targetItem) return;
 
       if (!Array.isArray(this[meta.ownedProp])) this[meta.ownedProp] = [];
-      const alreadyOwned = this[meta.ownedProp].includes(itemId);
+      const alreadyOwned = !!targetItem.isStarter || this[meta.ownedProp].includes(itemId);
       const statusEl = document.getElementById('apparel-status-msg');
 
       if (!alreadyOwned) {
@@ -6964,6 +6933,9 @@
       }
 
       this.draftAppearance[meta.slotKey] = itemId;
+      if (CS?.resolvePlayerCustomSprite) {
+        this.draftAppearance.customSprite = CS.resolvePlayerCustomSprite(this.draftAppearance);
+      }
       this.playerSprite?.setAppearance(this.draftAppearance);
       this.saveWorldData(this.draftAppearance);
       this.updateHUDSaveInfo();
@@ -6971,17 +6943,22 @@
     }
 
     resetApparelSlot(category) {
+      const CS = window.MythosCharacterSprites;
       const meta = this._getApparelCategoryMeta(category);
-      if (!this.draftAppearance?.[meta.slotKey]) return;
+      const defaultId = meta.items.find(x => x.isStarter)?.id || meta.items[0]?.id || 'default_jacket';
+      if ((this.draftAppearance?.[meta.slotKey] || defaultId) === defaultId) return;
       if (window.sounds?.playClick) window.sounds.playClick();
-      this.draftAppearance[meta.slotKey] = null;
-      this.apparelPreviewItemId = meta.items[0]?.id || null;
+      this.draftAppearance[meta.slotKey] = defaultId;
+      this.apparelPreviewItemId = defaultId;
+      if (CS?.resolvePlayerCustomSprite) {
+        this.draftAppearance.customSprite = CS.resolvePlayerCustomSprite(this.draftAppearance);
+      }
       this.playerSprite?.setAppearance(this.draftAppearance);
       this.saveWorldData(this.draftAppearance);
       this.updateHUDSaveInfo();
       const statusEl = document.getElementById('apparel-status-msg');
       if (statusEl) {
-        statusEl.textContent = `↩ Restored default ${meta.label.toLowerCase()}.`;
+        statusEl.textContent = '↩ Restored default outfit.';
         statusEl.className = 'apparel-status-msg success';
       }
       this.renderApparelModal();
@@ -8763,6 +8740,7 @@
     // -------------------------------------------------------------------------
     getRefillablePackCatalog() {
       return [
+        { role: 'Bear Family', slug: 'bear_family', icon: '🐻', cardImg: 'Cards/Koda_Brother_Bear_Card.jpg', packImg: 'Cards/ClassPacks/bear_family.jpg', tagline: 'Armored woodland guardians', buyPrice: 1.00 },
         { role: 'Goblin Army', slug: 'goblin_army', icon: '🧌', cardImg: 'Cards/Gooba_Goblin_King_Card.jpg', packImg: 'Cards/ClassPacks/goblin_army.jpg', tagline: 'Goblin muster swarms', buyPrice: 1.00 },
         { role: 'Lizard',      slug: 'lizard',      icon: '🦎', cardImg: 'Cards/Krythos_the_Basilisk_Card.jpg', packImg: 'Cards/ClassPacks/lizard.jpg', tagline: 'Flame, frost & venom', buyPrice: 1.00 },
         { role: 'Machine',     slug: 'machine',     icon: '⚙️', cardImg: 'Cards/Jallopy_Card.jpg', packImg: 'Cards/ClassPacks/machine.jpg', tagline: 'Armored contraptions', buyPrice: 1.00 },
@@ -18152,10 +18130,14 @@
 
       const rawApp = this.worldSave.playerAppearance || {};
       const app = (rawApp && rawApp.playerAppearance) ? rawApp.playerAppearance : rawApp;
+      const CSLoad = window.MythosCharacterSprites;
+      const resolvedLoadApp = {
+        ...(CSLoad?.DEFAULT_APPEARANCE || {}),
+        ...app
+      };
       this.draftAppearance = {
-        ...(window.MythosCharacterSprites?.DEFAULT_APPEARANCE || {}),
-        ...app,
-        customSprite: 'player_hero_d'
+        ...resolvedLoadApp,
+        customSprite: CSLoad?.resolvePlayerCustomSprite ? CSLoad.resolvePlayerCustomSprite(resolvedLoadApp) : 'player_hero_d'
       };
       this.wins = this.worldSave.wins ?? 0;
       this.losses = this.worldSave.losses ?? 0;
@@ -18354,11 +18336,14 @@
 
       const CS = window.MythosCharacterSprites;
       if (isNewWorld && CS?.DEFAULT_APPEARANCE) {
-        this.draftAppearance = {
+        const newWorldApp = {
           ...CS.DEFAULT_APPEARANCE,
           name: 'Asher',
-          worldName: 'Oakhaven',
-          customSprite: 'player_hero_d'
+          worldName: 'Oakhaven'
+        };
+        this.draftAppearance = {
+          ...newWorldApp,
+          customSprite: CS.resolvePlayerCustomSprite ? CS.resolvePlayerCustomSprite(newWorldApp) : 'player_hero_d'
         };
         this.playerSprite.setAppearance(this.draftAppearance);
       }
@@ -18384,10 +18369,14 @@
         if (this.worldSave) {
           const rawApp = this.worldSave.playerAppearance || {};
           const app = (rawApp && rawApp.playerAppearance) ? rawApp.playerAppearance : rawApp;
+          const CSClose = window.MythosCharacterSprites;
+          const baseCloseApp = {
+            ...(CSClose?.DEFAULT_APPEARANCE || {}),
+            ...app
+          };
           this.draftAppearance = {
-            ...window.MythosCharacterSprites.DEFAULT_APPEARANCE,
-            ...app,
-            customSprite: 'player_hero_d'
+            ...baseCloseApp,
+            customSprite: CSClose?.resolvePlayerCustomSprite ? CSClose.resolvePlayerCustomSprite(baseCloseApp) : 'player_hero_d'
           };
           this.playerSprite.setAppearance(this.draftAppearance);
         }
@@ -18727,6 +18716,10 @@
 
       window.addEventListener('blur', () => {
         this.keys = {};
+      });
+
+      window.addEventListener('resize', () => {
+        this.syncCanvasViewport();
       });
 
       const screenToWorldTile = (clientX, clientY) => {
@@ -21277,7 +21270,8 @@
       let dx = 0;
       let dy = 0;
       let moved = false;
-      const moveScale = this.isMobileViewport() ? 1.0 : 0.75;
+      const isInterior = this.currentArea !== 'exterior';
+      const moveScale = (this.isMobileViewport() ? 1.0 : 1.0125) * (isInterior ? 0.6 : 1.0);
 
       if (this.keys['w'] || this.keys['arrowup']) { dy = -1; this.player.dir = 'up'; this.clearClickMoveTarget(); }
       else if (this.keys['s'] || this.keys['arrowdown']) { dy = -1 * -1; this.player.dir = 'down'; this.clearClickMoveTarget(); }
@@ -22018,29 +22012,29 @@
       } else if (this.currentArea === 'convention_center_interior') {
         const hallW = 34 * this.TILE;
         const hallH = 26 * this.TILE;
-        const minCenterX = visibleW / 2;
-        const maxCenterX = Math.max(minCenterX, hallW - visibleW / 2);
-        const targetCenterX = Math.max(minCenterX, Math.min(maxCenterX, this.player.x * this.TILE));
+        const targetCenterX = hallW <= visibleW
+          ? hallW / 2
+          : Math.max(visibleW / 2, Math.min(hallW - visibleW / 2, this.player.x * this.TILE));
         const targetCamX = targetCenterX - viewW / 2;
         this.cameraX += (targetCamX - this.cameraX) * 0.18;
 
-        const minCenterY = visibleH / 2;
-        const maxCenterY = Math.max(minCenterY, hallH - visibleH / 2);
-        const targetCenterY = Math.max(minCenterY, Math.min(maxCenterY, this.player.y * this.TILE));
+        const targetCenterY = hallH <= visibleH
+          ? hallH / 2
+          : Math.max(visibleH / 2, Math.min(hallH - visibleH / 2, this.player.y * this.TILE));
         const targetCamY = targetCenterY - viewH / 2;
         this.cameraY += (targetCamY - this.cameraY) * 0.18;
       } else if (this.currentArea === 'school_interior') {
         const hallW = 22 * this.TILE;
         const hallH = 14 * this.TILE;
-        const minCenterX = visibleW / 2;
-        const maxCenterX = Math.max(minCenterX, hallW - visibleW / 2);
-        const targetCenterX = Math.max(minCenterX, Math.min(maxCenterX, this.player.x * this.TILE));
+        const targetCenterX = hallW <= visibleW
+          ? hallW / 2
+          : Math.max(visibleW / 2, Math.min(hallW - visibleW / 2, this.player.x * this.TILE));
         const targetCamX = targetCenterX - viewW / 2;
         this.cameraX += (targetCamX - this.cameraX) * 0.18;
 
-        const minCenterY = visibleH / 2;
-        const maxCenterY = Math.max(minCenterY, hallH - visibleH / 2);
-        const targetCenterY = Math.max(minCenterY, Math.min(maxCenterY, this.player.y * this.TILE));
+        const targetCenterY = hallH <= visibleH
+          ? hallH / 2
+          : Math.max(visibleH / 2, Math.min(hallH - visibleH / 2, this.player.y * this.TILE));
         const targetCamY = targetCenterY - viewH / 2;
         this.cameraY += (targetCamY - this.cameraY) * 0.18;
       } else if (isCover || zoom !== 1) {
@@ -22059,8 +22053,10 @@
         const targetCamY = targetCenterY - viewH / 2;
         this.cameraY += (targetCamY - this.cameraY) * 0.18;
       } else {
-        this.cameraY = 0;
-        this.cameraX = 0;
+        const baseW = this.COLS * this.TILE;
+        const baseH = this.ROWS * this.TILE;
+        this.cameraX = (baseW - viewW) / 2;
+        this.cameraY = (baseH - viewH) / 2;
       }
 
       this.updateFreeRoamPrompt();
@@ -22079,7 +22075,7 @@
       // 1. Warm Timber Cutaway Diorama Void
       this.initCobblestonePattern();
       ctx.fillStyle = '#1f1712';
-      ctx.fillRect(0, 0, W, H);
+      ctx.fillRect(-2000, -2000, W + 4000, H + 4000);
 
       // Room coordinates
       const rx = 1.5 * S;      // 96
@@ -22621,7 +22617,7 @@
 
       // Deep warm cutaway void around the architectural shell
       ctx.fillStyle = '#1b1411';
-      ctx.fillRect(0, 0, W, H);
+      ctx.fillRect(-2000, -2000, W + 4000, H + 4000);
 
       // Room coordinates (matching collision & Player House diorama geometry)
       const rx = 1.5 * S;        // 96
@@ -23974,7 +23970,7 @@
 
       // 1. Warm Timber Cutaway Diorama Void
       ctx.fillStyle = '#1f1712';
-      ctx.fillRect(0, 0, W, H);
+      ctx.fillRect(-2000, -2000, W + 4000, H + 4000);
 
       // Room coordinates (matching cutaway architectural shell)
       const rx = 1.5 * S;        // 96
@@ -25004,7 +25000,7 @@
 
       // Deep midnight diorama void framing the cutaway cottage
       ctx.fillStyle = '#151722';
-      ctx.fillRect(0, 0, W, H);
+      ctx.fillRect(-2000, -2000, W + 4000, H + 4000);
 
       // Standard cutaway architectural bounds (matching collision geometry)
       const rx = 1.5 * S;        // 96
@@ -25784,7 +25780,7 @@
 
       // Deep diorama void around cutaway room
       ctx.fillStyle = opts.voidColor || '#151722';
-      ctx.fillRect(0, 0, W, H);
+      ctx.fillRect(-2000, -2000, W + 4000, H + 4000);
 
       const rx = opts.rx !== undefined ? opts.rx : 1.5 * S;        // 96
       const ry = opts.ry !== undefined ? opts.ry : 0.8 * S;        // 51.2
@@ -29326,10 +29322,10 @@
     // =========================================================================
     _renderCutawayBuildingInterior(spriteKey) {
       const ctx = this.ctx;
-      const W = this.canvas.width;
-      const H = this.canvas.height;
+      const W = this.COLS * this.TILE;
+      const H = this.ROWS * this.TILE;
       ctx.fillStyle = '#1c1917';
-      ctx.fillRect(0, 0, W, H);
+      ctx.fillRect(-2000, -2000, W + 4000, H + 4000);
       if (this.isImgReady(spriteKey)) {
         const img = this.owSprites[spriteKey];
         const scale = Math.min(W / img.width, H / img.height);
@@ -35655,6 +35651,41 @@
       return active;
     }
 
+    syncCanvasViewport() {
+      if (!this.canvas) return;
+      const baseW = this.COLS * this.TILE;
+      const baseH = this.ROWS * this.TILE;
+      let targetW = baseW;
+      let targetH = baseH;
+
+      if (this.isMobileViewport()) {
+        this._lastStageW = 0;
+        this._lastStageH = 0;
+      } else {
+        const rect = this.canvas.getBoundingClientRect();
+        if (rect.width < 100 || rect.height < 100) return;
+        const rw = Math.round(rect.width);
+        const rh = Math.round(rect.height);
+        if (rw === this._lastStageW && rh === this._lastStageH) return;
+        this._lastStageW = rw;
+        this._lastStageH = rh;
+
+        const aspect = rect.width / rect.height;
+        if (aspect >= baseW / baseH) {
+          targetH = baseH;
+          targetW = Math.min(2400, Math.max(baseW, Math.round(baseH * aspect)));
+        } else {
+          targetW = baseW;
+          targetH = Math.min(1600, Math.max(baseH, Math.round(baseW / aspect)));
+        }
+      }
+
+      if (this.canvas.width !== targetW || this.canvas.height !== targetH) {
+        this.canvas.width = targetW;
+        this.canvas.height = targetH;
+      }
+    }
+
     isMobileViewport() {
       return window.innerWidth <= 820 || (('ontouchstart' in window || navigator.maxTouchPoints > 0) && window.innerWidth <= 1024);
     }
@@ -35668,12 +35699,18 @@
 
     render() {
       if (!this.ctx || !this.canvas) return;
+      this.syncCanvasViewport();
       const ctx = this.ctx;
       const S = this.TILE;
+      const isExt = this.currentArea === 'exterior';
 
       ctx.save();
       try {
         ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        if (!isExt) {
+          ctx.fillStyle = '#181310';
+          ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        }
 
         ctx.imageSmoothingEnabled = false;
         if (this.shakeTicks > 0) {
@@ -35683,7 +35720,6 @@
           ctx.translate(sx, sy);
         }
 
-        const isExt = this.currentArea === 'exterior';
         const zoom = this.getAreaZoom();
         const camX = Number.isFinite(this.cameraX) ? this.cameraX : 0;
         const camY = Number.isFinite(this.cameraY) ? this.cameraY : 0;

@@ -2732,12 +2732,14 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
 
 .overworld-container {
   flex: 1;
+  width: 100%;
+  min-height: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 14px;
+  padding: 0;
   overflow: hidden;
-  background: radial-gradient(circle at center, #2d1f16 0%, #130d09 100%);
+  background: #140e0a;
 }
 
 .overworld-stage {
@@ -2746,22 +2748,26 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
   max-width: 100%;
   max-height: 100%;
-  border: 3px solid var(--border-gold);
-  border-radius: 12px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.85), inset 0 0 0 2px #4a2f1d, 0 0 22px rgba(223, 180, 86, 0.2);
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
   overflow: hidden;
   background: #140e0a;
 }
 
 #overworld-canvas {
   display: block;
+  width: 100%;
+  height: 100%;
   max-width: 100%;
-  max-height: calc(100vh - 105px);
-  width: auto;
-  height: auto;
-  aspect-ratio: 16 / 12;
+  max-height: 100%;
+  aspect-ratio: auto;
   cursor: pointer;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
@@ -12032,6 +12038,78 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   z-index: 15;
 }
 
+.gwent-hand-tray.can-play-card {
+  border-color: #fbbf24;
+  border-width: 2px;
+  animation: handTrayGoldPulse 1.35s ease-in-out infinite;
+}
+
+@keyframes handTrayGoldPulse {
+  0%, 100% { box-shadow: 0 0 14px rgba(251, 191, 36, 0.55), inset 0 0 12px rgba(251, 191, 36, 0.22); }
+  50% { border-color: #fde68a; box-shadow: 0 0 32px rgba(251, 191, 36, 1), 0 0 12px rgba(254, 240, 138, 0.9), inset 0 0 22px rgba(251, 191, 36, 0.42); }
+}
+
+.gwent-turn-checklist {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin: -13px auto 4px;
+  position: relative;
+  z-index: 20;
+  pointer-events: none;
+}
+
+.gwent-phase-pill {
+  font-family: 'Inter', sans-serif;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1.5px solid #475569;
+  background: rgba(15, 12, 9, 0.95);
+  color: #cbd5e1;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
+  transition: all 0.2s ease;
+}
+
+.gwent-phase-pill.phase-gold-ready {
+  background: linear-gradient(135deg, #b45309, #eab308);
+  border-color: #fef08a;
+  color: #fffbeb;
+  animation: phaseGoldPulse 1.25s ease-in-out infinite;
+}
+
+@keyframes phaseGoldPulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(251, 191, 36, 0.7); transform: scale(1); }
+  50% { box-shadow: 0 0 20px rgba(253, 224, 71, 1); transform: scale(1.05); }
+}
+
+.gwent-phase-pill.phase-attack-ready {
+  background: linear-gradient(135deg, #991b1b, #ef4444);
+  border-color: #fca5a5;
+  color: #fef2f2;
+  animation: phaseRedPulse 1.25s ease-in-out infinite;
+}
+
+@keyframes phaseRedPulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(239, 68, 68, 0.7); }
+  50% { box-shadow: 0 0 18px rgba(248, 113, 113, 1); }
+}
+
+.gwent-phase-pill.phase-done {
+  background: rgba(20, 83, 45, 0.88);
+  border-color: #22c55e;
+  color: #bbf7d0;
+}
+
+.gwent-phase-pill.phase-locked {
+  background: rgba(30, 41, 59, 0.88);
+  border-color: #475569;
+  color: #94a3b8;
+}
+
 .gwent-hand-hint {
   font-size: 10.5px;
   color: #cbd5e1;
@@ -12092,6 +12170,79 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   font-weight: 700;
   color: #f8fafc;
   margin-top: 6px;
+}
+
+/* Turn Switch / Auto-End Center Ribbon Banner & End-Turn Flash */
+.gwent-turn-switch-banner {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 25;
+  pointer-events: none;
+  min-width: 260px;
+  max-width: 86%;
+  padding: 12px 28px;
+  border-radius: 12px;
+  text-align: center;
+  background: linear-gradient(90deg, rgba(12, 10, 8, 0.15) 0%, rgba(18, 14, 10, 0.94) 18%, rgba(18, 14, 10, 0.94) 82%, rgba(12, 10, 8, 0.15) 100%);
+  border-top: 2px solid #f59e0b;
+  border-bottom: 2px solid #f59e0b;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.85), 0 0 24px rgba(245, 158, 11, 0.35);
+  backdrop-filter: blur(4px);
+  animation: gwentTurnBannerPop 1.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.gwent-turn-switch-banner.to-team1 {
+  border-color: #22c55e;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.85), 0 0 24px rgba(34, 197, 94, 0.4);
+}
+
+.gwent-turn-switch-banner.to-team2 {
+  border-color: #ef4444;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.85), 0 0 24px rgba(239, 68, 68, 0.4);
+}
+
+.gwent-turn-switch-banner-reason {
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  color: #fbbf24;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.9);
+}
+
+.gwent-turn-switch-banner-next {
+  font-family: 'Cinzel', serif;
+  font-size: 20px;
+  font-weight: 900;
+  color: #f8fafc;
+  margin-top: 3px;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.95);
+}
+
+@keyframes gwentTurnBannerPop {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
+  14% { opacity: 1; transform: translate(-50%, -50%) scale(1.02); }
+  22% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  80% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -54%) scale(0.97); }
+}
+
+.gwent-end-turn-btn.auto-ending,
+.gwent-hud-end-turn-btn.auto-ending {
+  background: linear-gradient(135deg, #d97706, #f59e0b) !important;
+  border-color: #fde68a !important;
+  color: #fffbeb !important;
+  box-shadow: 0 0 16px rgba(251, 191, 36, 0.9) !important;
+  opacity: 1 !important;
+  animation: autoEndBtnPulse 0.65s ease-in-out infinite;
+}
+
+@keyframes autoEndBtnPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
 }
 
 /* Graveyard Panel */
@@ -12589,13 +12740,49 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
 
 /* Board Card Attack States */
 .gwent-card.attack-ready {
-  box-shadow: 0 0 10px rgba(251, 191, 36, 0.5);
+  border-color: #22c55e !important;
+  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.75), 0 0 14px rgba(34, 197, 94, 0.85);
+  animation: readyPulse 1.8s infinite ease-in-out;
+  cursor: pointer;
+}
+
+@keyframes readyPulse {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.65), 0 0 11px rgba(34, 197, 94, 0.75); }
+  50% { box-shadow: 0 0 0 2px rgba(74, 222, 128, 0.95), 0 0 20px rgba(74, 222, 128, 0.95); }
+}
+
+.gwent-card.board-card.attack-ready:not(.attacker-selected):hover {
+  transform: translateY(-4px) scale(1.04);
+}
+
+.gwent-card.attack-spent {
+  filter: grayscale(0.75) brightness(0.45) contrast(0.9);
+  opacity: 0.72;
+  transform: translateY(2px) scale(0.96);
+  border-color: #475569 !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.75) !important;
+  transition: filter 0.2s ease, opacity 0.2s ease, transform 0.2s ease;
+}
+
+.gwent-card.attack-spent:hover {
+  filter: grayscale(0.35) brightness(0.78);
+  opacity: 0.92;
+  transform: translateY(-2px) scale(1.01);
+}
+
+.gwent-card.attack-spent.boost-target {
+  filter: none;
+  opacity: 1;
+  transform: none;
+  border-color: #4ade80 !important;
+  box-shadow: 0 0 16px rgba(74, 222, 128, 0.85) !important;
 }
 
 .gwent-card.attacker-selected {
   transform: translateY(-6px) scale(1.06);
-  border-color: #fbbf24;
+  border-color: #fbbf24 !important;
   box-shadow: 0 0 18px rgba(251, 191, 36, 0.9);
+  animation: none;
   z-index: 7;
 }
 
@@ -12698,6 +12885,63 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
     stroke-dashoffset: 0;
     opacity: 0;
   }
+}
+
+.gwent-target-preview-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 28;
+  overflow: visible;
+}
+
+.gwent-target-line-glow {
+  fill: none;
+  stroke: rgba(239, 68, 68, 0.35);
+  stroke-width: 10;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.85));
+  pointer-events: none;
+}
+
+.gwent-target-line-core {
+  fill: none;
+  stroke: #ef4444;
+  stroke-width: 3.5;
+  stroke-linecap: round;
+  stroke-dasharray: 10 8;
+  filter: drop-shadow(0 0 4px rgba(248, 113, 113, 0.95));
+  animation: gwentTargetDashFlow 0.7s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes gwentTargetDashFlow {
+  0% {
+    stroke-dashoffset: 18;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+.gwent-target-dot {
+  fill: #ef4444;
+  stroke: #fecaca;
+  stroke-width: 2;
+  filter: drop-shadow(0 0 6px rgba(239, 68, 68, 0.9));
+  pointer-events: none;
+}
+
+.gwent-target-reticle {
+  fill: none;
+  stroke: #ef4444;
+  stroke-width: 2.5;
+  stroke-dasharray: 6 4;
+  opacity: 0.9;
+  filter: drop-shadow(0 0 6px rgba(239, 68, 68, 0.85));
+  pointer-events: none;
 }
 
 .gwent-attack-source-ring,
@@ -13209,6 +13453,17 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   border-color: rgba(96, 165, 250, 0.75);
   background: rgba(96, 165, 250, 0.06);
   box-shadow: 0 0 22px rgba(96, 165, 250, 0.22), inset 0 0 14px rgba(96, 165, 250, 0.08);
+}
+
+.gwent-side.active-turn-side.has-board-actions {
+  border: 2px solid #ef4444;
+  background: rgba(239, 68, 68, 0.08);
+  animation: boardSideRedPulse 1.3s ease-in-out infinite;
+}
+
+@keyframes boardSideRedPulse {
+  0%, 100% { border-color: rgba(239, 68, 68, 0.85); box-shadow: 0 0 14px rgba(239, 68, 68, 0.55), inset 0 0 12px rgba(239, 68, 68, 0.18); }
+  50% { border-color: #fca5a5; box-shadow: 0 0 30px rgba(239, 68, 68, 1), 0 0 12px rgba(248, 113, 113, 0.9), inset 0 0 22px rgba(239, 68, 68, 0.34); }
 }
 
 
@@ -14891,7 +15146,8 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   text-shadow: 0 1px 3px #000;
 }
 
-/* 9 Class Frame Themes */
+/* Class Frame Themes */
+.role-bear_family { --pack-accent: #f59e0b; --pack-bg-1: #78350f; --pack-bg-2: #291509; }
 .role-goblin_army { --pack-accent: #4ade80; --pack-bg-1: #166534; --pack-bg-2: #052e16; }
 .role-lizard      { --pack-accent: #fb923c; --pack-bg-1: #9a3412; --pack-bg-2: #431407; }
 .role-machine     { --pack-accent: #fbbf24; --pack-bg-1: #78350f; --pack-bg-2: #292524; }
@@ -15470,7 +15726,7 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
 .shop-class-tray-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  grid-template-rows: repeat(3, minmax(0, 1fr));
+  grid-auto-rows: minmax(86px, 1fr);
   gap: 8px;
   padding: 8px;
   border-radius: 10px;
@@ -15481,6 +15737,7 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   box-shadow: inset 0 6px 14px rgba(0, 0, 0, 0.72);
   flex: 1 1 auto;
   min-height: 0;
+  overflow-y: auto;
 }
 
 .shop-class-tray-tile {

@@ -1122,6 +1122,158 @@
           : 0;
         return 4 + 2 + alliedMachines * 2;
       }
+    },
+
+    koda_brother_bear: {
+      id: 'koda_brother_bear',
+      name: 'Koda, Brother Bear',
+      role: 'Bear Family',
+      element: 'earth',
+      stars: 3,
+      rarity: 'gold',
+      border: 'gold',
+      row: 'melee',
+      basePower: 3,
+      armor: 4,
+      cardImg: 'Cards/Koda_Brother_Bear_Card.jpg',
+      traditionalCardImg: 'Cards/Koda_Brother_Bear_Traditional.jpg',
+      frameImg: 'Cards/Koda_Brother_Bear_Frame.png',
+      abilityTitle: "Brother's Shield",
+      abilityDesc: 'When deployed, add a Shield to any Bear Family cards to his immediate left and right.',
+      passiveTitle: '',
+      passiveDesc: '',
+      effects: [
+        { type: 'grant_adjacent_role_shield', roles: ['Bear Family'], sound: 'rock', label: "🔰 Brother's Shield" }
+      ]
+    },
+
+    treena_sister_bear: {
+      id: 'treena_sister_bear',
+      name: 'Treena, Sister Bear',
+      role: 'Bear Family',
+      element: 'earth',
+      stars: 3,
+      rarity: 'gold',
+      border: 'gold',
+      row: 'ranged',
+      basePower: 3,
+      armor: 3,
+      boostRoleAbility: { role: 'Bear Family', stat: 'armor', amount: 1, replacesAttack: true, icon: '🛡️' },
+      cardImg: 'Cards/Treena_Sister_Bear_Card.jpg',
+      traditionalCardImg: 'Cards/Treena_Sister_Bear_Traditional.jpg',
+      frameImg: 'Cards/Treena_Sister_Bear_Frame.png',
+      abilityTitle: "Sister's Ward",
+      abilityDesc: 'Each turn, either attack or select an allied Bear Family card to give it +1 Armor.',
+      passiveTitle: '',
+      passiveDesc: '',
+      effects: []
+    },
+
+    ralph_brother_bear: {
+      id: 'ralph_brother_bear',
+      name: 'Ralph, Brother Bear',
+      role: 'Bear Family',
+      element: 'earth',
+      stars: 3,
+      rarity: 'gold',
+      border: 'gold',
+      row: 'melee',
+      basePower: 2,
+      armor: 2,
+      cardImg: 'Cards/Ralph_Brother_Bear_Card.jpg',
+      traditionalCardImg: 'Cards/Ralph_Brother_Bear_Traditional.jpg',
+      frameImg: 'Cards/Ralph_Brother_Bear_Frame.png',
+      abilityTitle: 'Flank Formation',
+      abilityDesc: 'On deploy, give +1 Power to Bear Family cards to his left and +1 Armor to those to his right.',
+      passiveTitle: '',
+      passiveDesc: '',
+      effects: [
+        { type: 'directional_role_buff', roles: ['Bear Family'], leftPower: 1, rightArmor: 1, sound: 'rock', label: '🐻 Flank Formation' }
+      ]
+    },
+
+    zorbo_brother_bear: {
+      id: 'zorbo_brother_bear',
+      name: 'Zorbo, Brother Bear',
+      role: 'Bear Family',
+      element: 'earth',
+      stars: 3,
+      rarity: 'gold',
+      border: 'gold',
+      row: 'melee',
+      basePower: 2,
+      armor: 1,
+      cardImg: 'Cards/Zorbo_Brother_Bear_Card.jpg',
+      traditionalCardImg: 'Cards/Zorbo_Brother_Bear_Traditional.jpg',
+      frameImg: 'Cards/Zorbo_Brother_Bear_Frame.png',
+      abilityTitle: 'Lazy Swipe',
+      abilityDesc: 'On deploy, deal 1 damage to 3 adjoining enemy cards.',
+      passiveTitle: '',
+      passiveDesc: '',
+      effects: [],
+      onPlay(ctx) {
+        const { game, team, oppTeam, card, logType } = ctx;
+        const oppRows = game.state?.players?.[oppTeam]?.rows;
+        if (!oppRows) return;
+        const candidates = [];
+        ['melee', 'ranged'].forEach(rk => {
+          (oppRows[rk] || []).forEach(c => candidates.push({ card: c, rowKey: rk }));
+        });
+        if (candidates.length === 0) {
+          game.log(`🐻 ${card.name} yawned — no enemy cards on the board to swat.`, logType);
+          return;
+        }
+        const getCluster = (chosen) => {
+          const rowArr = oppRows[chosen.rowKey] || [];
+          const idx = rowArr.indexOf(chosen.card);
+          if (idx === -1) return [];
+          return [rowArr[idx - 1], rowArr[idx], rowArr[idx + 1]].filter(Boolean);
+        };
+        const strikeCluster = (chosen) => {
+          const targets = getCluster(chosen);
+          if (targets.length === 0) return;
+          targets.forEach(t => game.damageUnit(t, 1, oppTeam, chosen.rowKey));
+          playSound('rock');
+          game.log(`🐻 ${card.name}'s Lazy Swipe dealt 1 damage to ${targets.map(t => t.name).join(', ')}!`, logType);
+        };
+        if (game.isAiTeam ? game.isAiTeam(team) : (game.gameMode === 'ai' && team === 2)) {
+          let best = candidates[0];
+          let bestScore = -1;
+          candidates.forEach(cand => {
+            const cl = getCluster(cand);
+            const score = cl.length * 100 + cl.reduce((s, u) => s + (u.power || 0), 0);
+            if (score > bestScore) {
+              bestScore = score;
+              best = cand;
+            }
+          });
+          strikeCluster(best);
+        } else {
+          game.promptEnemyTargetChoice({
+            team,
+            logType,
+            sourceName: card.name,
+            title: '🐻 Lazy Swipe — Choose Center Target',
+            subtitle: 'Select an enemy card to deal 1 damage to it and the cards immediately to its left and right (up to 3 adjoining cards):',
+            skipLog: '🐻 Zorbo yawned and skipped Lazy Swipe.',
+            accentColor: '#f59e0b',
+            candidates,
+            onSelect: strikeCluster
+          });
+        }
+      },
+      aiScore(ctx) {
+        const { game, oppTeam } = ctx || {};
+        const oppRows = game?.state?.players?.[oppTeam]?.rows;
+        let bestCluster = 0;
+        if (oppRows) {
+          ['melee', 'ranged'].forEach(rk => {
+            const len = (oppRows[rk] || []).length;
+            if (len > 0) bestCluster = Math.max(bestCluster, Math.min(3, len));
+          });
+        }
+        return 2 + 0.5 + bestCluster;
+      }
     }
   };
 
@@ -1156,7 +1308,11 @@
       'the_nieces', 'the_nieces',
       'baby_lucia', 'baby_lucia',
       'jank', 'jank',
-      'jallopy'
+      'jallopy',
+      'koda_brother_bear',
+      'treena_sister_bear',
+      'ralph_brother_bear',
+      'zorbo_brother_bear'
     ]
   };
 
@@ -1366,7 +1522,75 @@
           });
           if (count > 0) {
             playSound(eff.sound || 'rock');
-            game.log(`${eff.label || '🛡️ Pack Armor'} granted +${amt} Armor to ${count} Wolf Pack unit(s)!`, logType);
+            game.log(`${eff.label || '🛡️ Pack Armor'} granted +${amt} Armor to ${count} ${allowedRoles.join('/')} unit(s)!`, logType);
+          }
+          break;
+        }
+        case 'grant_role_shield': {
+          const allowedRoles = eff.roles || [];
+          let count = 0;
+          ['melee', 'ranged'].forEach(rk => {
+            (myRows[rk] || []).forEach(c => {
+              if ((!eff.excludeSelf || c.uid !== card.uid) && allowedRoles.includes(c.role) && !c.shield) {
+                c.shield = true;
+                count++;
+              }
+            });
+          });
+          if (count > 0) {
+            playSound(eff.sound || 'rock');
+            game.log(`${eff.label || '🔰 Shield'} granted Shield to ${count} ${allowedRoles.join('/')} unit(s)!`, logType);
+          }
+          break;
+        }
+        case 'grant_adjacent_role_shield': {
+          const allowedRoles = eff.roles || [];
+          const rowArr = myRows[targetRow] || [];
+          const idx = rowArr.indexOf(card);
+          const neighbors = idx === -1 ? [] : [rowArr[idx - 1], rowArr[idx + 1]].filter(Boolean);
+          const shieldedNames = [];
+          neighbors.forEach(n => {
+            if (allowedRoles.includes(n.role) && !n.shield) {
+              n.shield = true;
+              shieldedNames.push(n.name);
+            }
+          });
+          if (shieldedNames.length > 0) {
+            playSound(eff.sound || 'rock');
+            game.log(`${eff.label || '🔰 Shield'} granted Shield to adjacent ${shieldedNames.join(' & ')}!`, logType);
+          }
+          break;
+        }
+        case 'directional_role_buff': {
+          const allowedRoles = eff.roles || [];
+          const rowArr = myRows[targetRow] || [];
+          const idx = rowArr.indexOf(card);
+          const leftPower = eff.leftPower || 0;
+          const rightArmor = eff.rightArmor || 0;
+          let leftCount = 0;
+          let rightCount = 0;
+          if (idx !== -1) {
+            for (let i = 0; i < idx; i++) {
+              const ally = rowArr[i];
+              if (ally && allowedRoles.includes(ally.role) && leftPower > 0) {
+                ally.power += leftPower;
+                leftCount++;
+              }
+            }
+            for (let i = idx + 1; i < rowArr.length; i++) {
+              const ally = rowArr[i];
+              if (ally && allowedRoles.includes(ally.role) && rightArmor > 0) {
+                ally.armor = (ally.armor || 0) + rightArmor;
+                rightCount++;
+              }
+            }
+          }
+          if (leftCount > 0 || rightCount > 0) {
+            playSound(eff.sound || 'rock');
+            const parts = [];
+            if (leftCount > 0) parts.push(`+${leftPower} Power to ${leftCount} Bear Family ally left`);
+            if (rightCount > 0) parts.push(`+${rightArmor} Armor to ${rightCount} Bear Family ally right`);
+            game.log(`${eff.label || '🐻 Flank Formation'} granted ${parts.join(' and ')}!`, logType);
           }
           break;
         }
@@ -1498,6 +1722,26 @@
           const amt = eff.amount || 2;
           const matches = game.getAllBoardCards(team).filter(c => allowedRoles.includes(c.role)).length;
           est += matches * amt + (eff.excludeSelf ? 0 : amt);
+          break;
+        }
+        case 'grant_role_shield': {
+          const allowedRoles = eff.roles || [];
+          const matches = game.getAllBoardCards(team).filter(c => allowedRoles.includes(c.role) && !c.shield).length;
+          est += matches * 2 + (eff.excludeSelf ? 0 : 2);
+          break;
+        }
+        case 'grant_adjacent_role_shield': {
+          const allowedRoles = eff.roles || [];
+          const rowArr = myRows[rowKey] || [];
+          const last = rowArr[rowArr.length - 1];
+          if (last && allowedRoles.includes(last.role) && !last.shield) est += 2;
+          break;
+        }
+        case 'directional_role_buff': {
+          const allowedRoles = eff.roles || [];
+          const rowArr = myRows[rowKey] || [];
+          const matches = rowArr.filter(c => allowedRoles.includes(c.role)).length;
+          est += matches * (eff.leftPower || 1);
           break;
         }
       }

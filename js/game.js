@@ -357,6 +357,8 @@
       this.isMatchOver = false;
       this.winnerTeam = null;
       this.aiTimeout = null;
+      this.autoEndTimeout = null;
+      this.turnBannerTimeout = null;
 
       this.state = null;
       if (this.headless) {
@@ -466,6 +468,7 @@
 
     returnToOverworld() {
       if (this.aiTimeout) clearTimeout(this.aiTimeout);
+      this.clearAutoEndTimers();
       this.tutorialState = null;
       this.clearTutorialFocusGlow();
       document.getElementById('gwent-tutorial-banner')?.classList.add('hidden');
@@ -751,6 +754,7 @@
 
     startNewGwentMatch(p1Guaranteed = [], p2Guaranteed = [], p2CustomDeck = null) {
       if (this.aiTimeout) clearTimeout(this.aiTimeout);
+      this.clearAutoEndTimers();
       this.overworld?.applyEquippedBoardTheme?.();
       this.isMatchOver = false;
       this.elWinnerModal?.classList.add('hidden');
@@ -1246,9 +1250,13 @@
 
     getBoostableAlliesFor(sourceCard, team) {
       if (!sourceCard?.boostRoleAbility) return [];
-      const targetRole = sourceCard.boostRoleAbility.role;
+      const cfg = sourceCard.boostRoleAbility;
+      if (cfg.replacesAttack && sourceCard.attackedThisTurn) return [];
+      const targetRole = cfg.role;
       return this.getAllBoardCards(team).filter(c =>
-        c.uid !== sourceCard.uid && c.role === targetRole && !c.mansonBoostedThisTurn
+        c.uid !== sourceCard.uid &&
+        c.role === targetRole &&
+        (cfg.replacesAttack || !c.mansonBoostedThisTurn)
       );
     }
 
@@ -1345,8 +1353,47 @@
       return this.canPlaceAnyCard(team) || this.canUseAnyAbility(team) || this.canPerformAnyAttack(team);
     }
 
+    clearAutoEndTimers() {
+      if (this.autoEndTimeout) {
+        clearTimeout(this.autoEndTimeout);
+        this.autoEndTimeout = null;
+      }
+      if (this.turnBannerTimeout) {
+        clearTimeout(this.turnBannerTimeout);
+        this.turnBannerTimeout = null;
+      }
+      if (this.state) this.state.autoEndingTurn = false;
+      document.getElementById('gwent-turn-switch-banner')?.classList.add('hidden');
+    }
+
+    showTurnSwitchBanner(reasonText, nextText, nextTeam = null, durationMs = 1500) {
+      if (this.headless) return;
+      const banner = document.getElementById('gwent-turn-switch-banner');
+      const reasonEl = document.getElementById('gwent-turn-switch-banner-reason');
+      const nextEl = document.getElementById('gwent-turn-switch-banner-next');
+      if (!banner || !reasonEl || !nextEl) return;
+
+      if (this.turnBannerTimeout) {
+        clearTimeout(this.turnBannerTimeout);
+        this.turnBannerTimeout = null;
+      }
+
+      reasonEl.textContent = reasonText || 'NO VALID MOVES LEFT';
+      nextEl.textContent = nextText || '';
+      banner.classList.remove('hidden', 'to-team1', 'to-team2');
+      if (nextTeam === 1) banner.classList.add('to-team1');
+      else if (nextTeam === 2) banner.classList.add('to-team2');
+      void banner.offsetWidth;
+
+      this.turnBannerTimeout = setTimeout(() => {
+        banner.classList.add('hidden');
+        this.turnBannerTimeout = null;
+      }, durationMs);
+    }
+
     /** Automatically end the active turn when no card placements, abilities, or attacks remain. */
     checkAutoEndTurn(team = this.state?.turnTeam) {
+      if (this.autoEndTimeout) return true;
       if (this.isMatchOver || !this.state || this.state.mulliganActive || this.state.pendingOptionalPlay) {
         return false;
       }
@@ -1357,12 +1404,43 @@
       if (!player || player.passed) return false;
       if (this.hasAnyAvailableAction(team)) return false;
 
+      const hasPlaceableHandCard = (player.hand || []).some(
+        c => c && (c.row === 'agile' || c.row === 'melee' || c.row === 'ranged')
+      );
+      let reasonText = 'NO VALID MOVES LEFT';
+      if (!this.state.playedCardThisTurn && !hasPlaceableHandCard) {
+        reasonText = 'OUT OF CARDS — AUTO-PASSED';
+      } else if (this.state.playedCardThisTurn && !this.canTeamAttackThisTurn(team)) {
+        reasonText = 'CARD DEPLOYED — ATTACKS UNLOCK NEXT TURN';
+      }
+
       const oppTeam = team === 1 ? 2 : 1;
       const opp = this.state.players?.[oppTeam];
-      if (opp?.passed && player.hand.length > 0) {
-        this.log(`⏭️ ${player.name} has no remaining attacks, abilities, or card placements — turn ended automatically.`, team === 1 ? 'team1' : 'team2');
+      const playerWillAutoPass = !hasPlaceableHandCard;
+      let nextText = '';
+      let bannerTeam = null;
+      if (opp?.passed && playerWillAutoPass) {
+        nextText = '⚖️ Resolving Round...';
+      } else if (!opp?.passed && opp) {
+        bannerTeam = oppTeam;
+        nextText = `${oppTeam === 1 ? '☀️ ' : '🌙 '}${opp.name}'s Turn`;
+      } else {
+        bannerTeam = team;
+        nextText = `${team === 1 ? '☀️ ' : '🌙 '}${player.name}'s Next Turn`;
       }
-      this.advanceTurn();
+
+      this.state.autoEndingTurn = true;
+      window.soundFX?.playMove?.();
+      this.showTurnSwitchBanner(reasonText, nextText, bannerTeam, 1500);
+      this.render();
+      this.log(`⏭️ ${player.name}: ${reasonText} — switching turn.`, team === 1 ? 'team1' : 'team2');
+
+      this.autoEndTimeout = setTimeout(() => {
+        this.autoEndTimeout = null;
+        if (!this.state || this.isMatchOver || this.state.turnTeam !== team) return;
+        this.state.autoEndingTurn = false;
+        this.advanceTurn();
+      }, 700);
       return true;
     }
 
@@ -1524,10 +1602,21 @@
     }
 
     executeAllyBoost(team, sourceCard, targetCard) {
-      const amt = sourceCard.boostRoleAbility?.amount || 1;
-      targetCard.power += amt;
-      targetCard.mansonBoostedThisTurn = true;
+      const cfg = sourceCard.boostRoleAbility || {};
+      const amt = cfg.amount || 1;
+      const isArmor = cfg.stat === 'armor';
+      if (isArmor) {
+        targetCard.armor = (targetCard.armor || 0) + amt;
+      } else {
+        targetCard.power += amt;
+      }
+      if (cfg.replacesAttack) {
+        sourceCard.attackedThisTurn = true;
+      } else {
+        targetCard.mansonBoostedThisTurn = true;
+      }
 
+      const icon = cfg.icon || (isArmor ? '🛡️' : '🐺');
       const battlefield = document.getElementById('gwent-battlefield');
       const tgtEl = battlefield?.querySelector(`.gwent-card[data-uid="${targetCard.uid}"]`);
       if (battlefield && tgtEl) {
@@ -1535,16 +1624,24 @@
         const tRect = tgtEl.getBoundingClientRect();
         const pop = document.createElement('div');
         pop.className = 'gwent-dmg-pop boost-pop';
-        pop.textContent = `+${amt} 🐺`;
+        pop.textContent = `+${amt} ${icon}`;
         pop.style.left = `${(tRect.left + tRect.width / 2) - bfRect.left}px`;
         pop.style.top = `${(tRect.top + tRect.height / 2) - bfRect.top}px`;
         battlefield.appendChild(pop);
         setTimeout(() => pop.remove(), 680);
       }
 
-      window.soundFX?.playHowl?.();
-      window.soundFX?.playHeal?.();
-      this.log(`🐺 ${sourceCard.name} raised ${targetCard.name}'s Power by +${amt}!`, team === 1 ? 'team1' : 'team2');
+      if (isArmor) {
+        window.soundFX?.playRock?.();
+        this.log(
+          `${icon} ${sourceCard.name} granted ${targetCard.name} +${amt} Armor${cfg.replacesAttack ? ' (in place of attacking)' : ''}!`,
+          team === 1 ? 'team1' : 'team2'
+        );
+      } else {
+        window.soundFX?.playHowl?.();
+        window.soundFX?.playHeal?.();
+        this.log(`🐺 ${sourceCard.name} raised ${targetCard.name}'s Power by +${amt}!`, team === 1 ? 'team1' : 'team2');
+      }
 
       const noAttacksLeftForSource = sourceCard.attackedThisTurn || this.getValidAttackTargets(team, sourceCard.uid).length === 0;
       if (noAttacksLeftForSource && this.getBoostableAlliesFor(sourceCard, team).length === 0) {
@@ -1649,20 +1746,44 @@
       return colors[element] || '#f87171';
     }
 
-    spawnAttackBeam(battlefield, x1, y1, x2, y2, element = 'fire', durationMs = 1150) {
-      const len = Math.max(10, Math.hypot(x2 - x1, y2 - y1));
-      const strokeColor = this.getElementBeamColor(element);
+    spawnAttackBeam(battlefield, x1, y1, x2, y2, element = 'fire', durationMs = 1150, colorOverride = null) {
+      const dx = x2 - x1;
+      const dy = y2 - y1;
+      const dist = Math.max(10, Math.hypot(dx, dy));
+      const pullback = Math.min(12, dist * 0.2);
+      const endX = x2 - (dx / dist) * pullback;
+      const endY = y2 - (dy / dist) * pullback;
+      const len = Math.max(10, Math.hypot(endX - x1, endY - y1));
+      const strokeColor = colorOverride || this.getElementBeamColor(element);
+      const markerId = `gwent-beam-arrow-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
 
       const svgNS = 'http://www.w3.org/2000/svg';
       const svg = document.createElementNS(svgNS, 'svg');
       svg.setAttribute('class', 'gwent-attack-svg');
 
+      const defs = document.createElementNS(svgNS, 'defs');
+      const marker = document.createElementNS(svgNS, 'marker');
+      marker.setAttribute('id', markerId);
+      marker.setAttribute('markerWidth', '7');
+      marker.setAttribute('markerHeight', '7');
+      marker.setAttribute('refX', '5');
+      marker.setAttribute('refY', '3');
+      marker.setAttribute('orient', 'auto');
+      marker.setAttribute('markerUnits', 'strokeWidth');
+      const arrowPath = document.createElementNS(svgNS, 'path');
+      arrowPath.setAttribute('d', 'M 0 0.5 L 6 3 L 0 5.5 z');
+      arrowPath.setAttribute('fill', strokeColor);
+      marker.appendChild(arrowPath);
+      defs.appendChild(marker);
+      svg.appendChild(defs);
+
       const line = document.createElementNS(svgNS, 'line');
       line.setAttribute('x1', x1);
       line.setAttribute('y1', y1);
-      line.setAttribute('x2', x2);
-      line.setAttribute('y2', y2);
+      line.setAttribute('x2', endX);
+      line.setAttribute('y2', endY);
       line.setAttribute('class', 'gwent-attack-beam');
+      line.setAttribute('marker-end', `url(#${markerId})`);
       line.style.color = strokeColor;
       line.style.stroke = strokeColor;
       line.style.strokeDasharray = `${len}`;
@@ -1686,16 +1807,104 @@
       setTimeout(() => ring.remove(), durationMs);
     }
 
+    clearAttackTargetPreviewLine() {
+      document.getElementById('gwent-target-preview-svg')?.remove();
+    }
+
+    renderAttackTargetPreviewLine() {
+      this.clearAttackTargetPreviewLine();
+      if (!this.state || this.isMatchOver || this.state.mulliganActive || !this.state.selectedAttackerUid) return;
+
+      const activeTeam = this.state.turnTeam;
+      const attacker = this.getAllBoardCards(activeTeam).find(c => c.uid === this.state.selectedAttackerUid);
+      if (!attacker || attacker.attackedThisTurn || !this.canTeamAttackThisTurn(activeTeam)) return;
+
+      const validTargets = this.getValidAttackTargets(activeTeam, attacker.uid);
+      if (!validTargets || validTargets.length === 0) return;
+
+      const meleeTargets = validTargets.filter(t => t.rowKey === 'melee');
+      const pool = meleeTargets.length > 0 ? meleeTargets : validTargets;
+      const target = pool[Math.floor((pool.length - 1) / 2)];
+      if (!target?.card) return;
+
+      const from = this.getBattlefieldCardMetrics(attacker.uid);
+      const to = this.getBattlefieldCardMetrics(target.card.uid);
+      if (!from || !to) return;
+
+      const dx = to.x - from.x;
+      const dy = to.y - from.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist < 4) return;
+
+      const pullback = Math.min(16, dist * 0.25);
+      const endX = to.x - (dx / dist) * pullback;
+      const endY = to.y - (dy / dist) * pullback;
+
+      const svgNS = 'http://www.w3.org/2000/svg';
+      const svg = document.createElementNS(svgNS, 'svg');
+      svg.setAttribute('id', 'gwent-target-preview-svg');
+      svg.setAttribute('class', 'gwent-attack-svg gwent-target-preview-svg');
+
+      const defs = document.createElementNS(svgNS, 'defs');
+      const marker = document.createElementNS(svgNS, 'marker');
+      marker.setAttribute('id', 'gwent-attack-arrow-red');
+      marker.setAttribute('markerWidth', '10');
+      marker.setAttribute('markerHeight', '10');
+      marker.setAttribute('refX', '7');
+      marker.setAttribute('refY', '3.5');
+      marker.setAttribute('orient', 'auto');
+      marker.setAttribute('markerUnits', 'strokeWidth');
+      const arrowPath = document.createElementNS(svgNS, 'path');
+      arrowPath.setAttribute('d', 'M 0 0.5 L 8 3.5 L 0 6.5 z');
+      arrowPath.setAttribute('fill', '#ef4444');
+      marker.appendChild(arrowPath);
+      defs.appendChild(marker);
+      svg.appendChild(defs);
+
+      const glowLine = document.createElementNS(svgNS, 'line');
+      glowLine.setAttribute('x1', from.x);
+      glowLine.setAttribute('y1', from.y);
+      glowLine.setAttribute('x2', endX);
+      glowLine.setAttribute('y2', endY);
+      glowLine.setAttribute('class', 'gwent-target-line-glow');
+      svg.appendChild(glowLine);
+
+      const coreLine = document.createElementNS(svgNS, 'line');
+      coreLine.setAttribute('x1', from.x);
+      coreLine.setAttribute('y1', from.y);
+      coreLine.setAttribute('x2', endX);
+      coreLine.setAttribute('y2', endY);
+      coreLine.setAttribute('class', 'gwent-target-line-core');
+      coreLine.setAttribute('marker-end', 'url(#gwent-attack-arrow-red)');
+      svg.appendChild(coreLine);
+
+      const dot = document.createElementNS(svgNS, 'circle');
+      dot.setAttribute('cx', from.x);
+      dot.setAttribute('cy', from.y);
+      dot.setAttribute('r', '5.5');
+      dot.setAttribute('class', 'gwent-target-dot');
+      svg.appendChild(dot);
+
+      const reticle = document.createElementNS(svgNS, 'circle');
+      reticle.setAttribute('cx', to.x);
+      reticle.setAttribute('cy', to.y);
+      reticle.setAttribute('r', '13');
+      reticle.setAttribute('class', 'gwent-target-reticle');
+      svg.appendChild(reticle);
+
+      from.battlefield.appendChild(svg);
+    }
+
     playAttackLineAnimation(attackerUid, targetUid, dmg, element = 'fire') {
       const src = this.getBattlefieldCardMetrics(attackerUid);
       const tgt = this.getBattlefieldCardMetrics(targetUid);
       if (!src || !tgt) return;
 
       const durationMs = 1150;
-      const color = this.getElementBeamColor(element);
+      const color = '#ef4444';
       this.spawnAttackRing(src.battlefield, src, 'gwent-attack-source-ring', color, durationMs);
       this.spawnAttackRing(src.battlefield, tgt, 'gwent-attack-target-ring', color, durationMs);
-      this.spawnAttackBeam(src.battlefield, src.x, src.y, tgt.x, tgt.y, element, durationMs);
+      this.spawnAttackBeam(src.battlefield, src.x, src.y, tgt.x, tgt.y, element, durationMs, color);
 
       const dmgPop = document.createElement('div');
       dmgPop.className = 'gwent-dmg-pop';
@@ -2169,7 +2378,7 @@
     // Passing, Turn Progression & Round Resolution
     // -------------------------------------------------------------------------
     endTurn(team = this.state?.turnTeam) {
-      if (this.isMatchOver || !this.state || this.state.mulliganActive) return;
+      if (this.isMatchOver || !this.state || this.state.mulliganActive || this.state.autoEndingTurn) return;
       if (team !== this.state.turnTeam) return;
       if (this.gameMode === 'ai' && team !== 1) return;
 
@@ -2287,7 +2496,7 @@
     }
 
     passRound(team = this.state?.turnTeam) {
-      if (this.isMatchOver || !this.state || this.state.mulliganActive) return;
+      if (this.isMatchOver || !this.state || this.state.mulliganActive || this.state.autoEndingTurn) return;
       if (team !== this.state.turnTeam) return;
 
       if (team === 1 && this.tutorialState?.active && [6, 7, 8].includes(this.tutorialState.step)) {
@@ -2332,6 +2541,7 @@
     }
 
     advanceTurn() {
+      this.state.autoEndingTurn = false;
       const p1 = this.state.players[1];
       const p2 = this.state.players[2];
       const finishedTeam = this.state.turnTeam;
@@ -2346,13 +2556,16 @@
       const hasPlaceableHandCard = (teamNum) => (this.state.players[teamNum]?.hand || []).some(
         c => c && (c.row === 'agile' || c.row === 'melee' || c.row === 'ranged')
       );
+      let autoPassedName = null;
       if (!p1.passed && !hasPlaceableHandCard(1) && (finishedTeam === 1 || !this.hasReadyAttackers(1))) {
         p1.passed = true;
+        autoPassedName = p1.name;
         this.log(`🏳️ ${p1.name} has no cards left and passes automatically.`, 'team1');
       }
       const p2CanActBeforePass = this.gameMode === '2p' && finishedTeam !== 2 && this.hasReadyAttackers(2);
       if (!p2.passed && !hasPlaceableHandCard(2) && !p2CanActBeforePass) {
         p2.passed = true;
+        autoPassedName = p2.name;
         this.log(`🏳️ ${p2.name} has no cards left and passes automatically.`, 'team2');
       }
 
@@ -2365,6 +2578,15 @@
       const nextTeam = this.state.turnTeam === 1 ? 2 : 1;
       if (!this.state.players[nextTeam].passed) {
         this.state.turnTeam = nextTeam;
+      }
+
+      if (autoPassedName && !this.turnBannerTimeout) {
+        this.showTurnSwitchBanner(
+          `${autoPassedName.toUpperCase()} OUT OF CARDS — AUTO-PASSED`,
+          `${this.state.turnTeam === 1 ? '☀️' : '🌙'} ${this.state.players[this.state.turnTeam].name}'s Turn`,
+          this.state.turnTeam,
+          1500
+        );
       }
 
       // Reset per-turn attack & card-play state for the active player's new turn
@@ -2463,6 +2685,7 @@
     }
 
     endRound() {
+      this.clearAutoEndTimers();
       const s1 = this.getTotalScore(1);
       const s2 = this.getTotalScore(2);
       const p1 = this.state.players[1];
@@ -3297,8 +3520,58 @@
       document.querySelector('.gwent-side-player')?.classList.toggle('team-passed', Boolean(p1.passed));
       document.querySelector('.gwent-side-opp')?.classList.toggle('team-passed', Boolean(p2.passed));
       const showTurnHighlight = !this.state.mulliganActive && !this.isMatchOver;
-      document.querySelector('.gwent-side-player')?.classList.toggle('active-turn-side', showTurnHighlight && this.state.turnTeam === 1);
-      document.querySelector('.gwent-side-opp')?.classList.toggle('active-turn-side', showTurnHighlight && this.state.turnTeam === 2);
+      const isAutoEnding = Boolean(this.state.autoEndingTurn);
+      const turnTeam = this.state.turnTeam;
+      const turnPlayer = this.state.players[turnTeam];
+      const isControllableTurn = showTurnHighlight && !isAutoEnding && (this.gameMode === '2p' || turnTeam === 1) && !turnPlayer.passed;
+      const hasPlaceableHand = (turnPlayer.hand || []).some(c => c && (c.row === 'agile' || c.row === 'melee' || c.row === 'ranged'));
+      const canPlayCardNow = isControllableTurn && !this.state.playedCardThisTurn && hasPlaceableHand;
+      const canAttackTurn = this.canTeamAttackThisTurn(turnTeam);
+      const readyBoardActionCount = isControllableTurn
+        ? this.getAllBoardCards(turnTeam).filter(c =>
+            (canAttackTurn && !c.attackedThisTurn && this.getValidAttackTargets(turnTeam, c.uid).length > 0) ||
+            this.getBoostableAlliesFor(c, turnTeam).length > 0
+          ).length
+        : 0;
+
+      document.querySelector('.gwent-side-player')?.classList.toggle('active-turn-side', showTurnHighlight && turnTeam === 1);
+      document.querySelector('.gwent-side-opp')?.classList.toggle('active-turn-side', showTurnHighlight && turnTeam === 2);
+      document.querySelector('.gwent-side-player')?.classList.toggle('has-board-actions', isControllableTurn && turnTeam === 1 && readyBoardActionCount > 0);
+      document.querySelector('.gwent-side-opp')?.classList.toggle('has-board-actions', isControllableTurn && turnTeam === 2 && readyBoardActionCount > 0);
+      document.querySelector('.gwent-hand-tray')?.classList.toggle('can-play-card', canPlayCardNow);
+
+      const checklistEl = document.getElementById('gwent-turn-checklist');
+      const playPillEl = document.getElementById('phase-pill-play');
+      const attackPillEl = document.getElementById('phase-pill-attack');
+      if (checklistEl) {
+        checklistEl.classList.toggle('hidden', !isControllableTurn);
+        if (isControllableTurn) {
+          if (playPillEl) {
+            if (this.state.playedCardThisTurn) {
+              playPillEl.className = 'gwent-phase-pill phase-done';
+              playPillEl.textContent = '✅ Card Played';
+            } else if (canPlayCardNow) {
+              playPillEl.className = 'gwent-phase-pill phase-gold-ready';
+              playPillEl.textContent = '🃏 Play a Card';
+            } else {
+              playPillEl.className = 'gwent-phase-pill phase-locked';
+              playPillEl.textContent = '🃏 No Cards Left';
+            }
+          }
+          if (attackPillEl) {
+            if (readyBoardActionCount > 0) {
+              attackPillEl.className = 'gwent-phase-pill phase-attack-ready';
+              attackPillEl.textContent = `⚔️ ${readyBoardActionCount} Action${readyBoardActionCount === 1 ? '' : 's'} Ready`;
+            } else if (!canAttackTurn) {
+              attackPillEl.className = 'gwent-phase-pill phase-locked';
+              attackPillEl.textContent = '⏳ Attacks Next Turn';
+            } else {
+              attackPillEl.className = 'gwent-phase-pill phase-done';
+              attackPillEl.textContent = '✅ Board Actions Done';
+            }
+          }
+        }
+      }
 
       this.renderGems('gwent-p1-gems', p1.gems);
       this.renderGems('gwent-p2-gems', p2.gems);
@@ -3311,11 +3584,19 @@
         : (this.state.turnTeam === 1 ? `☀️ ${p1.name}'s Turn` : `🌙 ${p2.name}'s Turn`);
 
       // End Turn & Pass Buttons (Sidebar + Floating HUD)
-      const canAct = !this.isMatchOver && !this.state.mulliganActive && (this.gameMode === '2p' || this.state.turnTeam === 1) && !this.state.players[this.state.turnTeam].passed;
+      const canAct = !this.isMatchOver && !this.state.mulliganActive && !isAutoEnding && (this.gameMode === '2p' || this.state.turnTeam === 1) && !this.state.players[this.state.turnTeam].passed;
       const endTurnBtn = document.getElementById('btn-gwent-end-turn');
-      if (endTurnBtn) endTurnBtn.disabled = !canAct;
+      if (endTurnBtn) {
+        endTurnBtn.disabled = !canAct;
+        endTurnBtn.classList.toggle('auto-ending', isAutoEnding);
+        endTurnBtn.textContent = isAutoEnding ? '⏭️ AUTO-ENDING...' : '⏭️ END TURN';
+      }
       const hudEndTurnBtn = document.getElementById('hud-btn-end-turn');
-      if (hudEndTurnBtn) hudEndTurnBtn.disabled = !canAct;
+      if (hudEndTurnBtn) {
+        hudEndTurnBtn.disabled = !canAct;
+        hudEndTurnBtn.classList.toggle('auto-ending', isAutoEnding);
+        hudEndTurnBtn.textContent = isAutoEnding ? '⏭️ Auto-Ending...' : '⏭️ End Turn';
+      }
       const passBtn = document.getElementById('btn-gwent-pass');
       if (passBtn) passBtn.disabled = !canAct;
       const hudPassBtn = document.getElementById('hud-btn-pass');
@@ -3418,11 +3699,17 @@
           hintEl.textContent = `Mulligan: Click up to ${this.state.mulliganLeft} cards to select (${selCount} selected), then click Mulligan — or hold click to inspect.`;
         } else if (activeAttacker) {
           const boostTargets = this.getBoostableAlliesFor(activeAttacker, this.state.turnTeam);
+          const cfg = activeAttacker.boostRoleAbility || {};
+          const boostStatLabel = cfg.stat === 'armor' ? 'Armor' : 'Power';
+          const boostAmt = cfg.amount || 1;
+          const boostIcon = cfg.icon || (cfg.stat === 'armor' ? '🛡️' : '🐺');
+          const boostRoleName = cfg.role || 'ally';
           if (boostTargets.length > 0 && !activeAttacker.attackedThisTurn) {
             const atkDmg = Math.max(1, activeAttacker.power);
-            hintEl.textContent = `🐺 ${activeAttacker.name} (${atkDmg} Dmg): Click a glowing Wolf Pack ally to give +1 Power, or click an enemy to attack.`;
+            const insteadNote = cfg.replacesAttack ? ' (in place of attacking)' : '';
+            hintEl.textContent = `${boostIcon} ${activeAttacker.name} (${atkDmg} Dmg): Click a glowing ${boostRoleName} ally to give +${boostAmt} ${boostStatLabel}${insteadNote}, or click an enemy to attack.`;
           } else if (boostTargets.length > 0) {
-            hintEl.textContent = `🐺 ${activeAttacker.name}: Click a glowing Wolf Pack ally to give +1 Power, or click ${activeAttacker.name} to cancel.`;
+            hintEl.textContent = `${boostIcon} ${activeAttacker.name}: Click a glowing ${boostRoleName} ally to give +${boostAmt} ${boostStatLabel}, or click ${activeAttacker.name} to cancel.`;
           } else {
             const atkDmg = Math.max(1, activeAttacker.power);
             hintEl.textContent = `⚔️ ${activeAttacker.name} ready (${atkDmg} Dmg): Click a glowing opposing card to attack, or click ${activeAttacker.name} again to cancel.`;
@@ -3459,6 +3746,8 @@
       // Graveyards
       this.renderGraveyard(1);
       this.renderGraveyard(2);
+
+      requestAnimationFrame(() => this.renderAttackTargetPreviewLine());
     }
 
     renderGems(elId, count) {
@@ -3537,9 +3826,11 @@
         const canControl = this.gameMode === '2p' || activeTeam === 1;
         const canAttack = this.canTeamAttackThisTurn(activeTeam);
         const hasValidTargets = this.getValidAttackTargets(activeTeam, card.uid).length > 0;
-        const canAct = (canAttack && !card.attackedThisTurn && hasValidTargets) || this.getBoostableAlliesFor(card, activeTeam).length > 0;
-        if (canControl && ownerTeam === activeTeam && canAct) {
-          extraClasses += ' attack-ready';
+        const canAttackCard = canAttack && !card.attackedThisTurn && hasValidTargets;
+        const canBoostCard = this.getBoostableAlliesFor(card, activeTeam).length > 0;
+        const canAct = canAttackCard || canBoostCard;
+        if (canControl && ownerTeam === activeTeam) {
+          extraClasses += canAct ? ' attack-ready' : ' attack-spent';
         }
         if (this.state.selectedAttackerUid === card.uid) {
           extraClasses += ' attacker-selected';
@@ -3887,6 +4178,7 @@
       window.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') this.closeCardModal();
       });
+      window.addEventListener('resize', () => this.renderAttackTargetPreviewLine());
 
       const toggleModeHandler = () => {
         this.gameMode = this.gameMode === 'ai' ? '2p' : 'ai';
