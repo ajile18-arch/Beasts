@@ -696,7 +696,8 @@
           outfitStyle: 'jacket',
           outfitColor: 'ranger',
           pantsColor: 'denim',
-          hatStyle: 'none'
+          hatStyle: 'none',
+          customSprite: 'maya_d'
         })
       };
     }
@@ -21250,7 +21251,7 @@
       let dx = 0;
       let dy = 0;
       let moved = false;
-      const moveScale = this.isMobileViewport() ? 1.0 : 0.5;
+      const moveScale = this.isMobileViewport() ? 1.0 : 0.75;
 
       if (this.keys['w'] || this.keys['arrowup']) { dy = -1; this.player.dir = 'up'; this.clearClickMoveTarget(); }
       else if (this.keys['s'] || this.keys['arrowdown']) { dy = -1 * -1; this.player.dir = 'down'; this.clearClickMoveTarget(); }

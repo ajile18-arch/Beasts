@@ -256,6 +256,7 @@
     return (entry.loaded && entry.img.naturalWidth > 0) ? entry.img : null;
   }
   getCustomSpriteImage('player_hero_d');
+  getCustomSpriteImage('maya_d');
 
   function isArchReady(arch) {
     const set = spriteBank[arch];
