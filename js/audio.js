@@ -142,23 +142,32 @@ class SoundController {
       this._bgmGain = this.ctx.createGain();
       this._bgmGain.connect(this.ctx.destination);
     }
-    const targetVol = track === 'battle' ? 0.26 : 0.22;
+    const trackMeta = {
+      battle:    { stepDur: 0.105, loopSteps: 32, vol: 0.26 },
+      overworld: { stepDur: 0.29,  loopSteps: 32, vol: 0.22 },
+      shop:      { stepDur: 0.20,  loopSteps: 32, vol: 0.21 },
+      bistro:    { stepDur: 0.24,  loopSteps: 24, vol: 0.21 },
+      barber:    { stepDur: 0.21,  loopSteps: 32, vol: 0.21 },
+      boutique:  { stepDur: 0.23,  loopSteps: 32, vol: 0.20 },
+      school:    { stepDur: 0.22,  loopSteps: 32, vol: 0.20 },
+      civic:     { stepDur: 0.21,  loopSteps: 32, vol: 0.21 },
+      grand:     { stepDur: 0.27,  loopSteps: 32, vol: 0.21 },
+      cozy_home: { stepDur: 0.32,  loopSteps: 32, vol: 0.19 }
+    };
+    const meta = trackMeta[track] || trackMeta.overworld;
     this._bgmGain.gain.cancelScheduledValues(this.ctx.currentTime);
     this._bgmGain.gain.setValueAtTime(0.001, this.ctx.currentTime);
-    this._bgmGain.gain.linearRampToValueAtTime(targetVol, this.ctx.currentTime + 0.35);
+    this._bgmGain.gain.linearRampToValueAtTime(meta.vol, this.ctx.currentTime + 0.35);
 
-    const stepDur = track === 'battle' ? 0.105 : 0.29;
+    const stepDur = meta.stepDur;
+    const loopSteps = meta.loopSteps;
     this._bgmTimer = setInterval(() => {
       if (!this.enabled || !this.ctx || this.ctx.state !== 'running') return;
       const horizon = this.ctx.currentTime + 0.22;
       while (this._bgmNextTime < horizon) {
-        if (this._activeBgm === 'battle') {
-          this._scheduleBattleStep(this._bgmStep, this._bgmNextTime, stepDur);
-        } else {
-          this._scheduleOverworldStep(this._bgmStep, this._bgmNextTime, stepDur);
-        }
+        this._scheduleBgmTrackStep(this._activeBgm, this._bgmStep, this._bgmNextTime, stepDur);
         this._bgmNextTime += stepDur;
-        this._bgmStep = (this._bgmStep + 1) % 32;
+        this._bgmStep = (this._bgmStep + 1) % loopSteps;
       }
     }, 75);
   }
@@ -290,6 +299,198 @@ class SoundController {
     if (step % 4 === 0 || step === 14 || step === 30) this._playBgmDrum('kick', time);
     if (step % 8 === 4) this._playBgmDrum('snare', time);
     if (step % 2 === 1) this._playBgmDrum('hat', time);
+  }
+
+  _scheduleBgmTrackStep(track, step, time, stepDur) {
+    if (track === 'battle') return this._scheduleBattleStep(step, time, stepDur);
+    if (track === 'shop') return this._scheduleShopStep(step, time, stepDur);
+    if (track === 'bistro') return this._scheduleBistroStep(step, time, stepDur);
+    if (track === 'barber') return this._scheduleBarberStep(step, time, stepDur);
+    if (track === 'boutique') return this._scheduleBoutiqueStep(step, time, stepDur);
+    if (track === 'school') return this._scheduleSchoolStep(step, time, stepDur);
+    if (track === 'civic') return this._scheduleCivicStep(step, time, stepDur);
+    if (track === 'grand') return this._scheduleGrandStep(step, time, stepDur);
+    if (track === 'cozy_home') return this._scheduleCozyHomeStep(step, time, stepDur);
+    return this._scheduleOverworldStep(step, time, stepDur);
+  }
+
+  // Upbeat G-major Shop Theme (Leo's Card Shop & Corner Market)
+  _scheduleShopStep(step, time, stepDur) {
+    const bass = [
+      196.00, 0, 293.66, 0, 196.00, 0, 246.94, 0,
+      164.81, 0, 246.94, 0, 146.83, 0, 220.00, 0,
+      130.81, 0, 196.00, 0, 146.83, 0, 220.00, 0,
+      196.00, 0, 146.83, 0, 196.00, 246.94, 293.66, 0
+    ];
+    const lead = [
+      783.99, 0, 987.77, 880.00, 783.99, 659.25, 783.99, 0,
+      659.25, 0, 783.99, 659.25, 587.33, 0,      440.00, 0,
+      523.25, 659.25, 783.99, 0, 587.33, 739.99, 880.00, 0,
+      987.77, 880.00, 783.99, 659.25, 587.33, 0, 783.99, 0
+    ];
+    if (bass[step]) this._playBgmTone(bass[step], time, stepDur * 1.1, 'triangle', 0.22, 750);
+    if (lead[step]) this._playBgmTone(lead[step], time, stepDur * 1.15, 'square', 0.08, 1900);
+    if (step % 2 === 1) this._playBgmDrum('hat', time);
+    if (step % 8 === 0) this._playBgmDrum('kick', time);
+  }
+
+  // Warm 3/4 Cafe Waltz in F Major (Oakhaven Bistro, 24 steps)
+  _scheduleBistroStep(step, time, stepDur) {
+    const bass = [
+      174.61, 0, 0, 130.81, 0, 0,
+      146.83, 0, 0, 110.00, 0, 0,
+      116.54, 0, 0, 174.61, 0, 0,
+      130.81, 0, 0, 196.00, 0, 0
+    ];
+    const chord = [
+      0, 349.23, 349.23, 0, 329.63, 329.63,
+      0, 293.66, 293.66, 0, 261.63, 261.63,
+      0, 233.08, 233.08, 0, 261.63, 261.63,
+      0, 261.63, 261.63, 0, 329.63, 329.63
+    ];
+    const lead = [
+      698.46, 0, 659.25, 587.33, 523.25, 0,
+      587.33, 0, 523.25, 440.00, 0,      392.00,
+      466.16, 0, 523.25, 587.33, 698.46, 0,
+      587.33, 523.25, 440.00, 523.25, 0, 0
+    ];
+    if (bass[step]) this._playBgmTone(bass[step], time, stepDur * 1.4, 'triangle', 0.24, 600);
+    if (chord[step]) this._playBgmTone(chord[step], time, stepDur * 0.75, 'sine', 0.09);
+    if (lead[step]) this._playBgmTone(lead[step], time, stepDur * 1.45, 'sawtooth', 0.11, 1350);
+  }
+
+  // Jaunty Ragtime / Barbershop Groove in Bb Major (Oakhaven Barber Shop)
+  _scheduleBarberStep(step, time, stepDur) {
+    const bass = [
+      116.54, 0, 146.83, 0, 174.61, 0, 196.00, 0,
+      130.81, 0, 164.81, 0, 174.61, 0, 130.81, 0,
+      155.56, 0, 196.00, 0, 116.54, 0, 174.61, 0,
+      130.81, 0, 174.61, 0, 116.54, 146.83, 174.61, 0
+    ];
+    const lead = [
+      466.16, 587.33, 698.46, 0, 739.99, 698.46, 587.33, 0,
+      659.25, 0, 698.46, 587.33, 523.25, 0, 466.16, 0,
+      622.25, 0, 783.99, 698.46, 587.33, 0, 698.46, 0,
+      659.25, 698.46, 587.33, 523.25, 466.16, 0, 587.33, 0
+    ];
+    if (bass[step]) this._playBgmTone(bass[step], time, stepDur * 1.15, 'triangle', 0.23, 850);
+    if (lead[step]) this._playBgmTone(lead[step], time, stepDur * 1.05, 'triangle', 0.17, 2600);
+    if (step % 4 === 2) this._playBgmDrum('snare', time);
+    if (step % 4 === 0) this._playBgmDrum('kick', time);
+  }
+
+  // Chic Lounge Bossa / Jazz in Eb Major (Oakhaven Apparel Boutique)
+  _scheduleBoutiqueStep(step, time, stepDur) {
+    const bass = [
+      155.56, 0, 0, 155.56, 116.54, 0, 0, 155.56,
+      130.81, 0, 0, 130.81, 98.00,  0, 0, 130.81,
+      103.83, 0, 0, 103.83, 116.54, 0, 0, 116.54,
+      155.56, 0, 0, 196.00, 116.54, 0, 0, 138.59
+    ];
+    const arp = [
+      311.13, 392.00, 466.16, 587.33, 311.13, 392.00, 466.16, 0,
+      261.63, 311.13, 392.00, 466.16, 261.63, 311.13, 392.00, 0,
+      277.18, 349.23, 415.30, 523.25, 293.66, 349.23, 466.16, 0,
+      311.13, 392.00, 466.16, 587.33, 293.66, 392.00, 466.16, 0
+    ];
+    const lead = [
+      0, 783.99, 0, 698.46, 622.25, 0, 587.33, 0,
+      0, 622.25, 0, 587.33, 523.25, 0, 466.16, 0,
+      0, 698.46, 0, 622.25, 587.33, 0, 523.25, 0,
+      622.25, 0, 783.99, 698.46, 622.25, 0, 0, 0
+    ];
+    if (bass[step]) this._playBgmTone(bass[step], time, stepDur * 1.6, 'sine', 0.24);
+    if (arp[step]) this._playBgmTone(arp[step], time, stepDur * 1.1, 'sine', 0.085);
+    if (lead[step]) this._playBgmTone(lead[step], time, stepDur * 1.6, 'triangle', 0.14, 1600);
+    if (step % 2 === 0) this._playBgmDrum('hat', time);
+  }
+
+  // Bright D-Major Academy Study Theme (Oakhaven Elementary)
+  _scheduleSchoolStep(step, time, stepDur) {
+    const arp = [
+      146.83, 220.00, 293.66, 369.99, 146.83, 220.00, 293.66, 369.99,
+      110.00, 164.81, 220.00, 277.18, 110.00, 164.81, 220.00, 277.18,
+      123.47, 185.00, 246.94, 293.66, 98.00,  146.83, 196.00, 246.94,
+      146.83, 220.00, 293.66, 220.00, 110.00, 164.81, 220.00, 164.81
+    ];
+    const lead = [
+      587.33, 0, 739.99, 880.00, 739.99, 659.25, 587.33, 0,
+      659.25, 0, 739.99, 659.25, 554.37, 0,      440.00, 0,
+      493.88, 587.33, 739.99, 0, 783.99, 659.25, 587.33, 0,
+      659.25, 587.33, 554.37, 659.25, 587.33, 0, 0, 0
+    ];
+    if (arp[step]) this._playBgmTone(arp[step], time, stepDur * 1.15, 'triangle', 0.14, 1500);
+    if (lead[step]) this._playBgmTone(lead[step], time, stepDur * 1.5, 'sine', 0.16);
+  }
+
+  // Heroic Town-Marshal March in F Major (Fire & Police Stations)
+  _scheduleCivicStep(step, time, stepDur) {
+    const bass = [
+      174.61, 0, 130.81, 0, 174.61, 0, 196.00, 0,
+      116.54, 0, 174.61, 0, 130.81, 0, 98.00,  0,
+      146.83, 0, 110.00, 0, 116.54, 0, 174.61, 0,
+      130.81, 0, 196.00, 0, 174.61, 0, 130.81, 0
+    ];
+    const brass = [
+      349.23, 0, 440.00, 0, 523.25, 0, 698.46, 0,
+      587.33, 0, 523.25, 466.16, 523.25, 0, 392.00, 0,
+      440.00, 0, 523.25, 0, 587.33, 0, 698.46, 0,
+      659.25, 0, 587.33, 523.25, 698.46, 0, 0, 0
+    ];
+    if (bass[step]) this._playBgmTone(bass[step], time, stepDur * 1.25, 'triangle', 0.23, 700);
+    if (brass[step]) this._playBgmTone(brass[step], time, stepDur * 1.4, 'sawtooth', 0.11, 1450);
+    if (step % 4 === 0) this._playBgmDrum('kick', time);
+    if (step % 4 === 2 || step === 15 || step === 31) this._playBgmDrum('snare', time);
+  }
+
+  // Noble Stately A-Major Chamber Theme (Mayor's Manor & Convention Center)
+  _scheduleGrandStep(step, time, stepDur) {
+    const bass = [
+      110.00, 0, 0, 0, 164.81, 0, 0, 0,
+      123.47, 0, 0, 0, 164.81, 0, 0, 0,
+      138.59, 0, 0, 0, 146.83, 0, 0, 0,
+      164.81, 0, 130.81, 0, 110.00, 0, 0, 0
+    ];
+    const strings = [
+      220.00, 277.18, 329.63, 277.18, 220.00, 277.18, 329.63, 277.18,
+      246.94, 293.66, 369.99, 293.66, 246.94, 329.63, 415.30, 329.63,
+      277.18, 329.63, 440.00, 329.63, 293.66, 369.99, 440.00, 369.99,
+      329.63, 415.30, 493.88, 415.30, 220.00, 277.18, 329.63, 0
+    ];
+    const lead = [
+      440.00, 0, 554.37, 0, 659.25, 0, 554.37, 0,
+      587.33, 0, 659.25, 587.33, 493.88, 0, 0, 0,
+      554.37, 0, 659.25, 0, 739.99, 0, 659.25, 587.33,
+      659.25, 0, 493.88, 0, 440.00, 0, 0, 0
+    ];
+    if (bass[step]) this._playBgmTone(bass[step], time, stepDur * 2.8, 'triangle', 0.22, 550);
+    if (strings[step]) this._playBgmTone(strings[step], time, stepDur * 1.4, 'sawtooth', 0.06, 950);
+    if (lead[step]) this._playBgmTone(lead[step], time, stepDur * 1.8, 'triangle', 0.16, 2000);
+  }
+
+  // Gentle Warm Acoustic Lullaby in F Major (Houses & Apartments)
+  _scheduleCozyHomeStep(step, time, stepDur) {
+    const bass = [
+      174.61, 0, 0, 0, 0, 0, 0, 0,
+      130.81, 0, 0, 0, 0, 0, 0, 0,
+      146.83, 0, 0, 0, 0, 0, 0, 0,
+      116.54, 0, 0, 0, 130.81, 0, 0, 0
+    ];
+    const arp = [
+      349.23, 440.00, 523.25, 440.00, 349.23, 440.00, 523.25, 440.00,
+      261.63, 329.63, 392.00, 329.63, 261.63, 329.63, 392.00, 329.63,
+      293.66, 349.23, 440.00, 349.23, 293.66, 349.23, 440.00, 349.23,
+      233.08, 293.66, 349.23, 293.66, 261.63, 329.63, 392.00, 329.63
+    ];
+    const bell = [
+      698.46, 0, 0, 880.00, 783.99, 0, 698.46, 0,
+      659.25, 0, 0, 523.25, 587.33, 0, 659.25, 0,
+      587.33, 0, 698.46, 0, 659.25, 0, 587.33, 0,
+      466.16, 0, 587.33, 0, 523.25, 0, 0, 0
+    ];
+    if (bass[step]) this._playBgmTone(bass[step], time, stepDur * 3.5, 'sine', 0.20);
+    if (arp[step]) this._playBgmTone(arp[step], time, stepDur * 1.4, 'sine', 0.08);
+    if (bell[step]) this._playBgmTone(bell[step], time, stepDur * 1.8, 'triangle', 0.13, 1800);
   }
 
   // UI Click
@@ -819,6 +1020,100 @@ class SoundController {
       g.connect(this.ctx.destination);
       osc.start(startTime);
       osc.stop(startTime + (i === chord.length - 1 ? 1.2 : 0.6));
+    });
+  }
+
+  // Cheerful dual-burst smartphone ringtone for incoming Duel Challenge calls
+  playPhoneRingtone() {
+    if (!this.enabled) return;
+    this.init();
+    const now = this.ctx.currentTime;
+    const notes = [659.25, 830.61, 987.77, 1318.51]; // E5, G#5, B5, E6
+    [0, 0.45].forEach((burstOffset) => {
+      notes.forEach((freq, i) => {
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        const t = now + burstOffset + i * 0.065;
+        osc.type = i % 2 === 0 ? 'triangle' : 'sine';
+        osc.frequency.setValueAtTime(freq, t);
+        g.gain.setValueAtTime(0.13, t);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.19);
+        osc.connect(g);
+        g.connect(this.ctx.destination);
+        osc.start(t);
+        osc.stop(t + 0.19);
+      });
+    });
+  }
+
+  // Ambient dog barks ("small" puppy yip, "medium" bark, "big" hound woof) for the Animal Hospital
+  playDogBark(variant = null) {
+    if (!this.enabled) return;
+    this.init();
+    if (!this.ctx) return;
+
+    const presets = {
+      small: { bursts: [0, 0.17], dur: 0.115, fStart: 560, fPeak: 820, fEnd: 410, formantHi: 1850, formantLo: 950, peakVol: 0.11, noiseFreq: 1350 },
+      medium: { bursts: Math.random() < 0.65 ? [0, 0.22] : [0], dur: 0.145, fStart: 320, fPeak: 510, fEnd: 230, formantHi: 1250, formantLo: 640, peakVol: 0.13, noiseFreq: 1100 },
+      big: { bursts: [0], dur: 0.185, fStart: 185, fPeak: 295, fEnd: 130, formantHi: 860, formantLo: 410, peakVol: 0.14, noiseFreq: 950 }
+    };
+    const keys = Object.keys(presets);
+    const chosen = presets[variant] || presets[keys[Math.floor(Math.random() * keys.length)]];
+    const pitchJitter = 0.94 + Math.random() * 0.12;
+    const now = this.ctx.currentTime;
+    const noiseLen = Math.max(1, Math.floor(this.ctx.sampleRate * 0.07));
+    const noiseBuf = this.ctx.createBuffer(1, noiseLen, this.ctx.sampleRate);
+    const noiseData = noiseBuf.getChannelData(0);
+    for (let i = 0; i < noiseLen; i++) {
+      noiseData[i] = Math.random() * 2 - 1;
+    }
+
+    chosen.bursts.forEach((offset) => {
+      const t = now + offset;
+      const dur = chosen.dur;
+
+      // Vocal cord sawtooth sweep shaped by resonant mouth formant filter
+      const osc = this.ctx.createOscillator();
+      const formant = this.ctx.createBiquadFilter();
+      const vGain = this.ctx.createGain();
+
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(chosen.fStart * pitchJitter, t);
+      osc.frequency.exponentialRampToValueAtTime(chosen.fPeak * pitchJitter, t + dur * 0.24);
+      osc.frequency.exponentialRampToValueAtTime(chosen.fEnd * pitchJitter, t + dur);
+
+      formant.type = 'bandpass';
+      formant.Q.value = 2.2;
+      formant.frequency.setValueAtTime(chosen.formantHi, t);
+      formant.frequency.exponentialRampToValueAtTime(chosen.formantLo, t + dur);
+
+      vGain.gain.setValueAtTime(0.001, t);
+      vGain.gain.linearRampToValueAtTime(chosen.peakVol, t + 0.022);
+      vGain.gain.exponentialRampToValueAtTime(0.001, t + dur);
+
+      osc.connect(formant);
+      formant.connect(vGain);
+      vGain.connect(this.ctx.destination);
+      osc.start(t);
+      osc.stop(t + dur + 0.02);
+
+      // Breath/chuff attack transient
+      const nSrc = this.ctx.createBufferSource();
+      const nFilter = this.ctx.createBiquadFilter();
+      const nGain = this.ctx.createGain();
+      nSrc.buffer = noiseBuf;
+      nFilter.type = 'bandpass';
+      nFilter.Q.value = 1.5;
+      nFilter.frequency.setValueAtTime(chosen.noiseFreq, t);
+      nGain.gain.setValueAtTime(0.001, t);
+      nGain.gain.linearRampToValueAtTime(0.06, t + 0.012);
+      nGain.gain.exponentialRampToValueAtTime(0.001, t + 0.07);
+
+      nSrc.connect(nFilter);
+      nFilter.connect(nGain);
+      nGain.connect(this.ctx.destination);
+      nSrc.start(t);
+      nSrc.stop(t + 0.075);
     });
   }
 

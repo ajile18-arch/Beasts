@@ -393,6 +393,8 @@
       this.currentView = 'arena';
       this.currentChallenger = challenger;
       this._parkTourneyMatchRecorded = false;
+      this._phoneDuelRecorded = false;
+      this._leagueMatchRecorded = false;
       if (this.overworld) this.overworld.active = false;
 
       document.getElementById('btn-rematch')?.classList.remove('hidden');
@@ -416,6 +418,12 @@
         subtitleText = `Park Rnd ${tourneyCtx.round || 1}/3 vs ${challenger.name}`;
       } else if (tourneyCtx?.type === 'booster_bash') {
         subtitleText = `Booster Bash Rnd ${tourneyCtx.round || 1}/3 vs ${challenger.name}`;
+      } else if (tourneyCtx?.type === 'phone_duel_challenge') {
+        subtitleText = `📞 Duel Challenge vs ${challenger.name}`;
+      } else if (tourneyCtx?.type === 'oakhaven_league') {
+        subtitleText = tourneyCtx.stage === 'group'
+          ? `🏆 Oakhaven League W${tourneyCtx.week} M${tourneyCtx.matchNum}`
+          : `🏆 League ${tourneyCtx.stage === 'final' ? 'Grand Final' : 'Semifinal'}`;
       } else if (challenger?.isTutorial) {
         subtitleText = '🎓 Mythos Tutorial';
       } else if (challenger?.id === 'pluto') {
@@ -476,7 +484,9 @@
 
       document.getElementById('overworld-view')?.classList.remove('hidden');
       document.getElementById('overworld-toolbar')?.classList.remove('hidden');
-      window.sounds?.playBgm?.('overworld');
+      const areaTrack = this.overworld?.getBgmTrackForArea?.() || 'overworld';
+      if (this.overworld) this.overworld._lastBgmArea = this.overworld.currentArea;
+      window.sounds?.playBgm?.(areaTrack);
 
       const sub = document.getElementById('header-subtitle');
       if (sub) sub.textContent = '';
@@ -2630,6 +2640,50 @@
     // -------------------------------------------------------------------------
     // Smart Gwent AI
     // -------------------------------------------------------------------------
+    shouldPassRound2ToSaveLastCard(team, oppTeam, myScore, oppScore) {
+      if (!this.state || this.state.round !== 2) return false;
+      const me = this.state.players[team];
+      // Only save for Round 3 when AI still has 2 gems (won Round 1); never concede a must-win Round 2 at 1 gem
+      if (!me || me.gems < 2 || me.hand.length !== 1) return false;
+
+      const lastCard = me.hand[0];
+      const candidateRows = lastCard.row === 'agile' ? ['melee', 'ranged'] : [lastCard.row];
+      let bestEst = -Infinity;
+      candidateRows.forEach(rk => {
+        const est = CardReg.estimateCardValue(lastCard, rk, {
+          game: this,
+          team,
+          oppTeam,
+          myScore,
+          oppScore
+        });
+        if (est > bestEst) bestEst = est;
+      });
+
+      // Include any ready board boost or attack swing available this turn
+      let boardSwing = 0;
+      const boardCards = this.getAllBoardCards(team);
+      boardCards.forEach(c => {
+        if (this.getBoostableAlliesFor(c, team).length > 0) {
+          boardSwing += (c.allyBoostAmount || 2);
+        }
+      });
+      if (this.canTeamAttackThisTurn(team)) {
+        boardCards.forEach(c => {
+          if (!c.attackedThisTurn) {
+            const targets = this.getValidAttackTargets(team, c.uid);
+            if (targets.length > 0) {
+              const dmg = Math.max(1, c.power);
+              const bestHit = targets.reduce((mx, t) => Math.max(mx, Math.min(t.card.power || 0, dmg)), 0);
+              boardSwing += bestHit;
+            }
+          }
+        });
+      }
+
+      return (myScore + bestEst + boardSwing) <= oppScore;
+    }
+
     runAiTurn() {
       if (this.isMatchOver || !this.state || this.state.turnTeam !== 2) return;
       const p1 = this.state.players[1];
@@ -2651,6 +2705,12 @@
 
       // 2. If Round 1 or 2 (AI still has 2 gems) and trailing by 16+ with fewer cards, pass to save cards
       if (p2.gems === 2 && !p1.passed && (oppScore - myScore >= 16) && p2.hand.length <= p1.hand.length) {
+        this.passRound(2);
+        return;
+      }
+
+      // 2b. Round 2 with 1 card left & 2 gems: if playing the last card cannot win the round, pass to save it for Round 3
+      if (this.shouldPassRound2ToSaveLastCard(2, 1, myScore, oppScore)) {
         this.passRound(2);
         return;
       }
@@ -2785,6 +2845,12 @@
 
       // 1. If opponent already passed and AI is ahead, pass immediately
       if (opp.passed && myScore > oppScore) {
+        this.passRound(team);
+        return;
+      }
+
+      // 1b. Round 2 with 1 card left & 2 gems: if playing the last card cannot win the round, pass to save it for Round 3
+      if (passProfile !== 'never_early' && passProfile !== 'r2_bleed' && this.shouldPassRound2ToSaveLastCard(team, oppTeam, myScore, oppScore)) {
         this.passRound(team);
         return;
       }
@@ -3060,6 +3126,42 @@
         msgEl.innerHTML = isPlayerVictory
           ? `🏆 You defeated <b>${p2.name}</b> in Match ${this.currentChallenger.tournamentContext.round || 1}/3 of the <b>Booster Bash</b>!`
           : `⚔️ <b>${p2.name}</b> won Match ${this.currentChallenger.tournamentContext.round || 1}/3 of the <b>Booster Bash</b>!`;
+      } else if (this.currentChallenger?.tournamentContext?.type === 'phone_duel_challenge' && msgEl) {
+        const ctx = this.currentChallenger.tournamentContext;
+        document.getElementById('btn-rematch')?.classList.add('hidden');
+        if (!this._phoneDuelRecorded && this.overworld?.handlePhoneDuelChallengeResult) {
+          this._phoneDuelRecorded = true;
+          this.overworld.handlePhoneDuelChallengeResult(ctx.meetupId, isPlayerVictory);
+        }
+        if (isPlayerVictory) {
+          let rewardBanner = '';
+          if (ctx.rewardType === 'money' && ctx.rewardMoney > 0) {
+            const moneyTxt = this.overworld?.formatMoney ? this.overworld.formatMoney(ctx.rewardMoney) : `$${Number(ctx.rewardMoney).toFixed(2)}`;
+            rewardBanner = `<div style="margin-top: 12px; padding: 10px 14px; background: rgba(16, 185, 129, 0.2); border: 1.5px solid #34d399; border-radius: 10px; color: #6ee7b7;">💵 <b>CASH PRIZE WON: +${moneyTxt}!</b></div>`;
+          } else if (ctx.rewardType === 'card_pick') {
+            rewardBanner = `<div style="margin-top: 12px; padding: 10px 14px; background: rgba(245, 158, 11, 0.2); border: 1.5px solid #facc15; border-radius: 10px; color: #fde68a;">🃏 <b>CARD REWARD READY!</b> Return to the Overworld to pick 1 of 3 cards ${p2.name} used!</div>`;
+          } else {
+            rewardBanner = `<div style="margin-top: 10px; color: #93c5fd;">🤝 Friendly Meetup Complete (+Bond)!</div>`;
+          }
+          msgEl.innerHTML = `🏆 You defeated <b>${p2.name}</b> in your scheduled Duel Challenge (${p1.gems}–${p2.gems} Gems)!${rewardBanner}`;
+        } else {
+          msgEl.innerHTML = `⚔️ <b>${p2.name}</b> took this scheduled Duel Challenge (${p1.gems}–${p2.gems} Gems).<div style="margin-top: 10px; color: #cbd5e1;">Good match! Your bond grew slightly (+Bond).</div>`;
+        }
+      } else if (this.currentChallenger?.tournamentContext?.type === 'oakhaven_league' && msgEl) {
+        const ctx = this.currentChallenger.tournamentContext;
+        document.getElementById('btn-rematch')?.classList.add('hidden');
+        const returnOverworldBtn = document.getElementById('btn-return-overworld');
+        if (returnOverworldBtn) returnOverworldBtn.innerHTML = '🏆 View League Standings';
+        if (!this._leagueMatchRecorded && this.overworld?.recordOakhavenLeagueMatchResult) {
+          this._leagueMatchRecorded = true;
+          this.overworld.recordOakhavenLeagueMatchResult(ctx, isPlayerVictory, p1.gems, p2.gems);
+        }
+        const stageTxt = ctx.stage === 'group'
+          ? `Week ${ctx.week} Match ${ctx.matchNum}`
+          : (ctx.stage === 'final' ? 'Grand Final' : 'Semifinal');
+        msgEl.innerHTML = isPlayerVictory
+          ? `🏆 You defeated <b>${p2.name}</b> in Oakhaven League ${stageTxt} (${p1.gems}–${p2.gems} Rounds Won)!<div style="margin-top: 10px; color: #fde68a;">✨ Earned <b>+1 Pt</b> &amp; <b>+${p1.gems} Tiebreak Rounds</b>!</div>`
+          : `⚔️ <b>${p2.name}</b> won Oakhaven League ${stageTxt} (${p1.gems}–${p2.gems}).<div style="margin-top: 10px; color: #cbd5e1;">Added <b>+${p1.gems}</b> tiebreak round${p1.gems === 1 ? '' : 's'} to your Season total.</div>`;
       } else if (this.currentChallenger?.id === 'pluto' && msgEl) {
         if (isPlayerVictory) {
           const activeEvent = this.overworld?.getCurrentDayEvent?.();

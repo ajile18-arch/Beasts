@@ -53,7 +53,8 @@
       const cleanSavedApp = (rawApp && rawApp.playerAppearance) ? rawApp.playerAppearance : (rawApp || {});
       this.draftAppearance = {
         ...CS.DEFAULT_APPEARANCE,
-        ...cleanSavedApp
+        ...cleanSavedApp,
+        customSprite: 'player_hero_d'
       };
       this.wins = this.worldSave?.wins ?? 0;
       this.losses = this.worldSave?.losses ?? 0;
@@ -68,6 +69,21 @@
       this.friendWaitingAtHouse = this.worldSave?.friendWaitingAtHouse ?? false;
       this.hasOldCardBinder = this.worldSave?.hasOldCardBinder ?? false;
       this.equippedBoardTheme = this.worldSave?.equippedBoardTheme || 'classic';
+      this.ownedHairStyles = Array.isArray(this.worldSave?.ownedHairStyles) ? [...this.worldSave.ownedHairStyles] : [];
+      this.barberPreviewHairId = null;
+      this.barberPreviewDir = 'down';
+      this.ownedShirts = Array.isArray(this.worldSave?.ownedShirts) ? [...this.worldSave.ownedShirts] : [];
+      this.ownedPants = Array.isArray(this.worldSave?.ownedPants) ? [...this.worldSave.ownedPants] : [];
+      this.ownedShoes = Array.isArray(this.worldSave?.ownedShoes) ? [...this.worldSave.ownedShoes] : [];
+      this.apparelActiveTab = 'shirts';
+      this.apparelPreviewItemId = null;
+      this.apparelPreviewDir = 'down';
+      this.duelCallsTodayDay = this.worldSave?.duelCallsTodayDay || (this.dayNumber || 1);
+      this.duelCallsTodayCount = this.worldSave?.duelCallsTodayCount || 0;
+      this.lastDuelCallTotalMinute = this.worldSave?.lastDuelCallTotalMinute ?? -999;
+      this.activeIncomingDuelCall = null;
+      this.pendingPhoneDuelCardReward = null;
+      this._duelCallToastTimer = null;
       this.duoSelectedBeasts = [];
       this.migratedMom25 = this.worldSave?.migratedMom25 ?? false;
 
@@ -301,6 +317,20 @@
           extDoor: { x: -21.70, y: 20.45 },
           intEntry: { x: 7.90, y: 9.75 },
           spots: [{ x: 9.2, y: 7.6, dir: 'down' }, { x: 5.5, y: 8.2, dir: 'up' }]
+        },
+        clothing_store_interior: {
+          area: 'clothing_store_interior',
+          name: 'Oakhaven Apparel',
+          extDoor: { x: -15.80, y: 20.45 },
+          intEntry: { x: 7.90, y: 9.75 },
+          spots: [{ x: 10.6, y: 7.8, dir: 'left' }, { x: 5.7, y: 7.6, dir: 'right' }]
+        },
+        animal_hospital_interior: {
+          area: 'animal_hospital_interior',
+          name: 'Oakhaven Animal Hospital',
+          extDoor: { x: -10.45, y: 27.45 },
+          intEntry: { x: 7.90, y: 9.75 },
+          spots: [{ x: 10.55, y: 7.8, dir: 'left' }, { x: 5.8, y: 7.8, dir: 'right' }]
         }
       };
       this.AREA_PORTALS = {
@@ -317,7 +347,9 @@
         school_interior: { extDoor: { x: 23.65, y: 27.85 }, intEntry: { x: 3.15, y: 7.05 } },
         fire_station_interior: { extDoor: { x: 6.10, y: 27.45 }, intEntry: { x: 13.30, y: 9.75 } },
         police_station_interior: { extDoor: { x: 9.90, y: 27.45 }, intEntry: { x: 7.90, y: 9.75 } },
-        barber_shop_interior: { extDoor: { x: -21.70, y: 20.45 }, intEntry: { x: 7.90, y: 9.75 } }
+        barber_shop_interior: { extDoor: { x: -21.70, y: 20.45 }, intEntry: { x: 7.90, y: 9.75 } },
+        clothing_store_interior: { extDoor: { x: -15.80, y: 20.45 }, intEntry: { x: 7.90, y: 9.75 } },
+        animal_hospital_interior: { extDoor: { x: -10.45, y: 27.45 }, intEntry: { x: 7.90, y: 9.75 } }
       };
 
       // Scripted intro cutscene beats where the clock is frozen
@@ -417,6 +449,14 @@
       this.evelynNpc = this.createEvelynNpc();
       this.fireChiefNpc = this.createFireChiefNpc();
       this.policeChiefNpc = this.createPoliceChiefNpc();
+      this.aptTessaNpc = this.createAptTessaNpc();
+      this.aptDanteNpc = this.createAptDanteNpc();
+      this.aptNinaNpc = this.createAptNinaNpc();
+      this.aptMilesNpc = this.createAptMilesNpc();
+      this.barberNpc = this.createBarberNpc();
+      this.tailorNpc = this.createTailorNpc();
+      this.vetNpc = this.createVetNpc();
+      this.leagueRegistrarNpc = this.createLeagueRegistrarNpc();
       this.syncParkNpcBubbles();
       this.npcs = [
         this.createFriendNpc(this.friendName),
@@ -429,6 +469,10 @@
         this.jasperNpc,
         this.bertoNpc
       ];
+      this.oakhavenLeague = this.worldSave?.oakhavenLeague
+        ? this.normalizeOakhavenLeagueState(this.worldSave.oakhavenLeague)
+        : this.createFreshOakhavenLeagueState(1);
+      window.testOakhavenLeague = () => this.runOakhavenLeagueSelfTest();
 
       // Player starts by the round wooden table facing Mike/AJ
       this.player = {
@@ -707,6 +751,206 @@
       };
     }
 
+    createAptTessaNpc() {
+      const CS = window.MythosCharacterSprites;
+      return {
+        id: 'apt_tessa',
+        name: 'Tessa',
+        x: 7.7,
+        y: 6.2,
+        dir: 'down',
+        walkTick: 0,
+        bubble: '🎧',
+        hangoutSpot: { area: 'apt_1_interior', x: 7.7, y: 6.2, dir: 'down', radius: 4, label: 'Apt. 101' },
+        sprite: new CS.CharacterSpriteSheet({
+          name: 'Tessa',
+          skin: 'light',
+          hairStyle: 'ponytail',
+          hairColor: 'auburn',
+          eyeColor: 'amber',
+          outfitStyle: 'hoodie',
+          outfitColor: 'royal',
+          pantsColor: 'denim',
+          hatStyle: 'none'
+        })
+      };
+    }
+
+    createAptDanteNpc() {
+      const CS = window.MythosCharacterSprites;
+      return {
+        id: 'apt_dante',
+        name: 'Dante',
+        x: 8.2,
+        y: 6.2,
+        dir: 'down',
+        walkTick: 0,
+        bubble: '⚓',
+        hangoutSpot: { area: 'apt_2_interior', x: 8.2, y: 6.2, dir: 'down', radius: 4, label: 'Apt. 102' },
+        sprite: new CS.CharacterSpriteSheet({
+          name: 'Dante',
+          skin: 'tan',
+          hairStyle: 'swept',
+          hairColor: 'silver',
+          eyeColor: 'slate',
+          outfitStyle: 'vest',
+          outfitColor: 'ranger',
+          pantsColor: 'khaki',
+          hatStyle: 'cap'
+        })
+      };
+    }
+
+    createAptNinaNpc() {
+      const CS = window.MythosCharacterSprites;
+      return {
+        id: 'apt_nina',
+        name: 'Nina',
+        x: 7.8,
+        y: 6.3,
+        dir: 'down',
+        walkTick: 0,
+        bubble: '🍜',
+        hangoutSpot: { area: 'apt_3_interior', x: 7.8, y: 6.3, dir: 'down', radius: 4, label: 'Apt. 103' },
+        sprite: new CS.CharacterSpriteSheet({
+          name: 'Nina',
+          skin: 'warm',
+          hairStyle: 'long',
+          hairColor: 'midnight',
+          eyeColor: 'violet',
+          outfitStyle: 'jacket',
+          outfitColor: 'crimson',
+          pantsColor: 'dark',
+          hatStyle: 'none'
+        })
+      };
+    }
+
+    createAptMilesNpc() {
+      const CS = window.MythosCharacterSprites;
+      return {
+        id: 'apt_miles',
+        name: 'Miles',
+        x: 8.1,
+        y: 6.2,
+        dir: 'down',
+        walkTick: 0,
+        bubble: '⏱️',
+        hangoutSpot: { area: 'apt_4_interior', x: 8.1, y: 6.2, dir: 'down', radius: 4, label: 'Apt. 104' },
+        sprite: new CS.CharacterSpriteSheet({
+          name: 'Miles',
+          skin: 'olive',
+          hairStyle: 'short',
+          hairColor: 'auburn',
+          eyeColor: 'emerald',
+          outfitStyle: 'vest',
+          outfitColor: 'royal',
+          pantsColor: 'denim',
+          hatStyle: 'none'
+        })
+      };
+    }
+
+    createBarberNpc() {
+      const CS = window.MythosCharacterSprites;
+      return {
+        id: 'barber_enzo',
+        name: 'Barber Enzo',
+        x: 10.95,
+        y: 7.25,
+        dir: 'down',
+        walkTick: 0,
+        bubble: '💈',
+        hangoutSpot: { area: 'barber_shop_interior', x: 10.95, y: 7.25, dir: 'down', radius: 4, label: 'Barber Shop' },
+        sprite: new CS.CharacterSpriteSheet({
+          name: 'Barber Enzo',
+          skin: 'tan',
+          hairStyle: 'swept',
+          hairColor: 'midnight',
+          eyeColor: 'amber',
+          outfitStyle: 'vest',
+          outfitColor: 'crimson',
+          pantsColor: 'dark',
+          hatStyle: 'none'
+        })
+      };
+    }
+
+    createTailorNpc() {
+      const CS = window.MythosCharacterSprites;
+      return {
+        id: 'tailor_celeste',
+        name: 'Celeste',
+        x: 10.65,
+        y: 7.25,
+        dir: 'down',
+        walkTick: 0,
+        bubble: '👔',
+        hangoutSpot: { area: 'clothing_store_interior', x: 10.65, y: 7.25, dir: 'down', radius: 4, label: 'Oakhaven Apparel' },
+        sprite: new CS.CharacterSpriteSheet({
+          name: 'Celeste',
+          skin: 'fair',
+          hairStyle: 'ponytail',
+          hairColor: 'auburn',
+          eyeColor: 'violet',
+          outfitStyle: 'jacket',
+          outfitColor: 'royal',
+          pantsColor: 'dark',
+          hatStyle: 'none'
+        })
+      };
+    }
+
+    createVetNpc() {
+      const CS = window.MythosCharacterSprites;
+      return {
+        id: 'vet_hannah',
+        name: 'Dr. Hannah',
+        x: 10.55,
+        y: 7.25,
+        dir: 'down',
+        walkTick: 0,
+        bubble: '🐾',
+        hangoutSpot: { area: 'animal_hospital_interior', x: 10.55, y: 7.25, dir: 'down', radius: 4, label: 'Oakhaven Animal Hospital' },
+        sprite: new CS.CharacterSpriteSheet({
+          name: 'Dr. Hannah',
+          skin: 'medium',
+          hairStyle: 'bun',
+          hairColor: 'brown',
+          eyeColor: 'green',
+          outfitStyle: 'trench',
+          outfitColor: 'cream',
+          pantsColor: 'teal',
+          hatStyle: 'none'
+        })
+      };
+    }
+
+    createLeagueRegistrarNpc() {
+      const CS = window.MythosCharacterSprites;
+      return {
+        id: 'league_registrar',
+        name: 'Valerie',
+        x: 12.2,
+        y: 20.15,
+        dir: 'down',
+        walkTick: 0,
+        bubble: '🏆',
+        hangoutSpot: { area: 'convention_center_interior', x: 12.2, y: 20.15, dir: 'down', radius: 0, label: 'Convention Check-In' },
+        sprite: new CS.CharacterSpriteSheet({
+          name: 'Valerie',
+          skin: 'warm',
+          hairStyle: 'ponytail',
+          hairColor: 'midnight',
+          eyeColor: 'amber',
+          outfitStyle: 'vest',
+          outfitColor: 'crimson',
+          pantsColor: 'dark',
+          hatStyle: 'none'
+        })
+      };
+    }
+
     createMayorNpc() {
       const CS = window.MythosCharacterSprites;
       return {
@@ -814,6 +1058,7 @@
     }
 
     createFireChiefNpc() {
+      const CS = window.MythosCharacterSprites;
       return {
         id: 'fire_chief',
         name: 'Chief Blaze',
@@ -823,11 +1068,22 @@
         walkTick: 0,
         bubble: '🚒',
         hangoutSpot: { area: 'fire_station_interior', x: 11.4, y: 7.4, dir: 'down', radius: 6, label: 'Oakhaven Fire Department' },
-        sprite: this.createStaticNpcSprite('npc_fire_chief')
+        sprite: new CS.CharacterSpriteSheet({
+          name: 'Chief Blaze',
+          skin: 'warm',
+          hairStyle: 'short',
+          hairColor: 'brown',
+          eyeColor: 'brown',
+          outfitStyle: 'jacket',
+          outfitColor: 'crimson',
+          pantsColor: 'charcoal',
+          hatStyle: 'fire_helmet'
+        })
       };
     }
 
     createPoliceChiefNpc() {
+      const CS = window.MythosCharacterSprites;
       return {
         id: 'police_chief',
         name: 'Chief Miller',
@@ -837,7 +1093,17 @@
         walkTick: 0,
         bubble: '🚓',
         hangoutSpot: { area: 'police_station_interior', x: 10.6, y: 6.4, dir: 'down', radius: 6, label: 'Oakhaven Police Department' },
-        sprite: this.createStaticNpcSprite('npc_police_chief')
+        sprite: new CS.CharacterSpriteSheet({
+          name: 'Chief Miller',
+          skin: 'light',
+          hairStyle: 'short',
+          hairColor: 'brown',
+          eyeColor: 'blue',
+          outfitStyle: 'jacket',
+          outfitColor: 'cobalt',
+          pantsColor: 'navy',
+          hatStyle: 'police_cap'
+        })
       };
     }
 
@@ -1236,7 +1502,7 @@
         'nova_interior', 'silas_interior', 'maya_interior', 'clara_interior',
         'bram_interior', 'mayor_interior', 'mayor_2f_interior', 'restaurant_interior',
         'corner_store_interior', 'fire_station_interior', 'police_station_interior',
-        'barber_shop_interior', 'school_interior'
+        'barber_shop_interior', 'clothing_store_interior', 'animal_hospital_interior', 'school_interior'
       ];
       const visitedBuildingsCount = buildingAreas.filter(a => qs.visitedAreas?.[a]).length;
       const patrolCount = Object.keys(qs.patrolNpcs || {}).length;
@@ -1821,6 +2087,7 @@
           if (l.status === 'waiting') l.respondAt = Date.now();
         });
         this.checkPlayerSellListingResponses(true);
+        this.checkOakhavenLeagueAutoAdvance?.();
         this.syncParkNpcBubbles();
         this.saveWorldData(this.draftAppearance);
         this.updateHUDSaveInfo();
@@ -1993,6 +2260,7 @@
       if (this.activeParkTourney && this.activeParkTourney.dayNumber !== this.dayNumber) {
         this.activeParkTourney = null;
       }
+      this.checkOakhavenLeagueAutoAdvance?.();
       this.syncParkNpcBubbles();
       this.updateMeetupBadgeCount?.();
       this.saveWorldData(this.draftAppearance);
@@ -2227,6 +2495,8 @@
         if (!this.mayaNpc) this.mayaNpc = this.createMayaNpc();
         return this.mayaNpc.sprite;
       }
+      const known = this.getAllKnownNpcs?.().find(n => n && n.id === npcId);
+      if (known?.sprite) return known.sprite;
       const friend = this.getFriendNpc() || this.createFriendNpc(this.friendName);
       return friend?.sprite || this.playerSprite;
     }
@@ -2438,7 +2708,7 @@
           y: base.y,
           dir: base.dir || 'down',
           sprite: this.getNpcSpriteForMeetup(m.npcId),
-          bubble: '🤝',
+          bubble: m.type === 'duel_challenge' ? '⚔️' : '🤝',
           meetup: m
         });
         return arr;
@@ -2500,18 +2770,18 @@
           color: '#3b82f6',
           location: `${fName}'s Cottage (104 Oakhaven Lane)`,
           preview: this.hasOpenedStarterPack
-            ? `Ready for our battle at my house whenever you are, ${pName}!`
-            : `Let's get those packs at Leo's Card Shop!`,
+            ? `Ready for our Mythos duel whenever you are, ${pName}!`
+            : `Let's grab packs at Leo's Card Shop!`,
           chat: [
             { sender: 'npc', text: `Yo ${pName}! Welcome to summer vacation!` },
             { sender: 'npc', text: this.hasOpenedStarterPack
-                ? `I built my deck with Werewolf and Hydra. Come over to my house to battle!`
-                : `Mom gave us money for booster packs at Leo's Card Shop! Text me when you're there!` }
+                ? `I built my 18-card Wolf Pack deck around Werewolf Pup and Minerva, Wolf Mother. Come battle me at my house!`
+                : `Mom gave us money for 1st-Edition booster packs at Leo's Card Shop! Text me once you rip yours open!` }
           ],
           replies: [
-            { text: `⚔️ "Are you ready to duel right now, ${fName}?"`, reply: `You know it! Head to my bedroom whenever you want to test out your cards!` },
-            { text: `🃏 "What's the best beast card you pulled?"`, reply: `My Werewolf is insanely fast! But I hear there are foils like Dreadnaught and Pegasus floating around town!` },
-            { text: `📅 "Let's enter the Friday Night Mythos League together!"`, reply: `Deal! Check the Tournaments app on your phone so we don't miss check-in!` }
+            { text: `⚔️ "Are you ready to duel right now, ${fName}?"`, reply: `You know it! Head over to my house whenever you want to test your Playing Deck!` },
+            { text: `🃏 "What's the best card you're chasing right now?"`, reply: `Minerva, Wolf Mother puts +2 Armor on the whole Wolf Pack, and Manson, Wolf Father buffs them even more! I'm also hunting a 5★ Gooba, Goblin King or Krythos the Basilisk!` },
+            { text: `📅 "Let's enter the Friday Night Mythos League together!"`, reply: `Deal! Keep your deck between 18–24 cards under the 40★ star cap and check the Tournaments app!` }
           ]
         },
         {
@@ -2521,78 +2791,78 @@
           avatar: '🃏',
           color: '#f59e0b',
           location: "Leo's Card Shop (Far East Commercial Block)",
-          preview: `Fresh 1st-Edition Booster Packs in stock!`,
+          preview: `1st-Edition Base, Premium & Fillable Class Packs in stock!`,
           chat: [
-            { sender: 'npc', text: `Hello ${pName}! Thanks for stopping by the shop.` },
-            { sender: 'npc', text: `Check the Leo's Alerts app anytime to see when we restock or run pack sales!` }
+            { sender: 'npc', text: `Hello ${pName}! Thanks for stopping by Leo's Card Shop.` },
+            { sender: 'npc', text: `Check my Counter anytime for Base Packs ($10), Premium Packs ($15), and $1 Fillable Class Packs!` }
           ],
           replies: [
-            { text: `📦 "Do you have any foil packs left in stock?"`, reply: `Always! Base Set boosters are $10.00 each, and remember that Mondays have a +25% Foil Holo surge rate!` },
-            { text: `💵 "Do you buy duplicate singles from players?"`, reply: `Yes! You can sell to me directly at my shop counter or post listings on the Card Exchange app to find town buyers!` }
+            { text: `📦 "What's inside the $15 Premium Pack?"`, reply: `5 Mythos cards with heavily boosted 3★–5★ pull rates, at least one 3★+ guaranteed, and 2× Animated Special odds—like Animated Gooba, Goblin King or Lothar, Vampire Prince! Plus Saturdays knock packs down to $8 Base / $12 Premium!` },
+            { text: `💵 "How do Fillable Class Packs and single sales work?"`, reply: `You can sell spare cards directly out of your Card Binder at my Ledger (just keep 18 cards for your deck), or buy a $1 Fillable Class Pack, pack 5 matching-class cards inside, and permanently seal it for a +25% payout bonus!` }
           ]
         },
         {
           id: 'pluto',
           name: 'Pluto',
-          title: 'Tech Prodigy & Collector',
+          title: 'Tech Prodigy & Machine Tactician',
           avatar: '💻',
           color: '#a855f7',
           location: "Pluto's Cottage (201 South Connector Ave)",
-          preview: `Analyzing beast combat algorithms and high-stakes wagers.`,
+          preview: `Optimizing Machine & Orc Army armor builds under 40★.`,
           chat: [
-            { sender: 'npc', text: `Greetings, ${pName}. My deck analytics are clocking peak efficiency.` }
+            { sender: 'npc', text: `Greetings, ${pName}. My deck analytics show Machine armor efficiency is peaking.` }
           ],
           replies: [
-            { text: `⚔️ "Want to test your deck in a wager duel?"`, reply: `I wager $1.00 on my battles! On Tuesdays, my wager doubles to $2.00. Drop by my house if you have the funds!` },
-            { text: `💻 "Have you checked the Card Exchange app today?"`, reply: `Affirmative. I'm frequently looking to buy tech and combo cards to complete my algorithm testing.` }
+            { text: `⚙️ "Which Machine & Orc cards run your deck?"`, reply: `Scrap Heap and Jank lock down the board while Rust Bucket keeps tempo cheap—and my dream 5★ anchor is Jallopy! I also pair Orc Infantry's Shield Wall with Orc Slinger.` },
+            { text: `⚔️ "Want to test our decks in a wager duel?"`, reply: `My standard stake is $1.00, doubling to $2.00 on Tuesdays! Drop by my house if you want a tactical match.` }
           ]
         },
         {
           id: 'nova',
           name: 'Nova',
-          title: 'Stargazer & Celestial Master',
+          title: 'Witchcraft & Night-Deck Duelist',
           avatar: '✨',
           color: '#38bdf8',
-          location: "Nova's Observatory (301 South Cobblestone Way)",
-          preview: `The constellations align over Oakhaven tonight.`,
+          location: "Nova's Conservatory (301 South Cobblestone Way)",
+          preview: `Brewing Witch hexes and Vampire crimson combos.`,
           chat: [
-            { sender: 'npc', text: `Hello ${pName}! Have you gazed at the stars from the observatory yet?` }
+            { sender: 'npc', text: `Hello ${pName}! Have you tested any Witch or Vampire synergies yet?` }
           ],
           replies: [
-            { text: `✨ "How do Celestial beasts fight?"`, reply: `Pegasus can soar across all ground hazards! On Sundays, all flying beasts gain +1 Move Range under the astral transit.` },
-            { text: `🔭 "Are you competing in the town tournaments?"`, reply: `I am! Look for me in the Oakhaven Summer Open and Friday League.` }
+            { text: `🔮 "How do Witch and Vampire cards play together?"`, reply: `Armantha the Witch and Zavela the Witch pair amazingly with The Nieces and Baby Lucia—or you can run Vampire Bat and Vampire Thrall behind 5★ Lothar, Vampire Prince!` },
+            { text: `🦇 "Have you pulled any spooky Monster cards?"`, reply: `Mothman and Jersey Devil fit right into my late-round setups! Look for me on the Card Exchange if you're hunting rare pulls.` }
           ]
         },
         {
           id: 'silas',
           name: 'Silas',
-          title: 'Master Craftsman & Dwarf Warden',
+          title: 'Master Craftsman & Armored Duelist',
           avatar: '⚒️',
           color: '#10b981',
           location: "Silas's Workshop (303 South Cobblestone Way)",
-          preview: `Carving new tournament tables and sturdy shield tokens.`,
+          preview: `Heavy Shield Wall armor & iron Machine builds.`,
           chat: [
-            { sender: 'npc', text: `Ho there, ${pName}! Hammer and woodcraft wait for no duelist.` }
+            { sender: 'npc', text: `Ho there, ${pName}! Sturdy Armor beats flashy tricks when the round goes long.` }
           ],
           replies: [
-            { text: `🛡️ "Tell me about Dwarf Warden's defense."`, reply: `Runic Shield Wall blocks incoming attacks from all sides! Solid heartwood strength, just like my furniture.` },
-            { text: `🤝 "Any woodworking meetups planned?"`, reply: `Wednesdays at Leo's shop! Drop by or check my listings on Card Exchange.` }
+            { text: `🛡️ "Tell me about your Shield Wall strategy."`, reply: `Orc Infantry's Shield Wall passes +1 Armor to adjacent Orc Army allies! Put Oscar, Orc Giant next to it alongside Scrap Heap and enemies can barely scratch you.` },
+            { text: `🤝 "Any rare cards you're looking to trade?"`, reply: `Check the Card Exchange app! I always keep an eye out for Goblin Soldier swarms, Orc Infantry, and Scrap Heap.` }
           ]
         },
         {
           id: 'maya',
           name: 'Maya',
-          title: 'Botanist & Nature Duelist',
+          title: 'Reptile, Tide & Ambush Duelist',
           avatar: '🌿',
           color: '#22c55e',
           location: "Maya's Conservatory (305 South Cobblestone Way)",
-          preview: `Tending to orchid blooms and sweet-pea vines.`,
+          preview: `Testing Lizard fire-and-frost & Water Tribe combos.`,
           chat: [
-            { sender: 'npc', text: `Hi ${pName}! The flowers in the conservatory are blooming beautifully today.` }
+            { sender: 'npc', text: `Hi ${pName}! I've been tuning a mix of Lizard, Water Tribe, and Goblin Army cards.` }
           ],
           replies: [
-            { text: `🌿 "What happens during Botanical Bloom on Thursdays?"`, reply: `My rare orchid pollen gives all Earth and Nature beasts +15 bonus Max HP in duels! Earth Golem becomes an absolute titan!` },
-            { text: `🌸 "Are you trading any floral beast cards?"`, reply: `Check the Card Exchange app! I occasionally trade Terra Mother and Verdant Guardian duplicates.` }
+            { text: `🦎 "Which Lizard & Water cards hit the hardest?"`, reply: `PyroManda and Frost Skink set up huge swings beneath 5★ Krythos the Basilisk—and putting Merfolk on the same row with Sea Dragon triggers double-hit bursts!` },
+            { text: `🏹 "Are you looking for trades on Card Exchange?"`, reply: `Always! I sometimes list spare Werewolf Pup cards and pick up extra Goblin Archer copies straight from traders' Binders.` }
           ]
         },
         {
@@ -2602,12 +2872,12 @@
           avatar: '🧺',
           color: '#f43f5e',
           location: 'Central Park Courtyard (Picnic Table 1)',
-          preview: `Picnicking by the park fountain with berry iced tea!`,
+          preview: `Picnicking by the park fountain & hosting Monday casuals!`,
           chat: [
-            { sender: 'npc', text: `Hi ${pName}! Whenever you need a break from dueling, meet us at the picnic tables!` }
+            { sender: 'npc', text: `Hi ${pName}! Whenever you want a break—or a friendly Monday Round Robin—meet us at the park tables!` }
           ],
           replies: [
-            { text: `🍋 "What's happening at the park today?"`, reply: `Rowan is trading cards at table two, and Jasper is drawing wildlife in his sketchbook. Drop by anytime!` }
+            { text: `🍋 "What's happening at the park today?"`, reply: `Rowan is comparing Card Binder pages at table two, Jasper is sketching beasts, and on Mondays you can join our 4-player Park Casual ($10 first-place prize)!` }
           ]
         },
         {
@@ -2617,27 +2887,27 @@
           avatar: '🃏',
           color: '#6366f1',
           location: 'Central Park Courtyard (Picnic Table 2)',
-          preview: `Organizing binder spreads for the upcoming tournament.`,
+          preview: `Completing every 5★ Mythos page in my binder.`,
           chat: [
-            { sender: 'npc', text: `Hey ${pName}! I'm always looking to swap cards and arrange meetups.` }
+            { sender: 'npc', text: `Hey ${pName}! Still trying to track down every 5★ Mythos headliner—Gooba, Oscar, Lothar, Krythos, and Jallopy!` }
           ],
           replies: [
-            { text: `🤝 "Got any advice on trading cards in town?"`, reply: `Check the Card Exchange app on your phone right now! Maya, Silas, Pluto, Nova, and ${this.friendName || 'Rocky'} all negotiate prices and arrange meetups across town.` }
+            { text: `🤝 "Got any advice on trading cards in town?"`, reply: `Check the Card Exchange app on your phone! You can list spares straight from your Card Binder—Maya, Silas, Pluto, Nova, and ${fName} all negotiate meetups across Oakhaven.` }
           ]
         },
         {
           id: 'jasper',
           name: 'Jasper',
-          title: 'Wildlife Artist & Naturalist',
+          title: 'Cryptid & Beast Illustrator',
           avatar: '🎨',
           color: '#eab308',
           location: 'Central Park Courtyard (Picnic Table 3)',
-          preview: `Sketching songbirds in the park treetops.`,
+          preview: `Sketching Mothman, Sea Dragon & Krythos in the park.`,
           chat: [
-            { sender: 'npc', text: `Hey ${pName}! Nature is filled with incredible beast ideas if you watch closely.` }
+            { sender: 'npc', text: `Hey ${pName}! Have you seen the foil details on some of the town's rarest Mythos cards?` }
           ],
           replies: [
-            { text: `🎨 "What are you working on next?"`, reply: `A field study of winged celestial beasts! Meet me at the park picnic tables if you want to see the sketchbook.` }
+            { text: `🎨 "Which creatures are you sketching today?"`, reply: `Mothman and Jersey Devil tonight—plus I'm studying Sea Dragon and Krythos the Basilisk! Stop by the park tables anytime.` }
           ]
         }
       ];
@@ -3006,8 +3276,9 @@
       if (nameEl) nameEl.textContent = contact.name;
       if (statusEl) statusEl.textContent = `● Active in ${contact.location}`;
 
-      // Initialize saved history for contact if none exists
-      if (!this.phoneChatHistories[contact.id]) {
+      // Initialize saved history for contact if missing or containing legacy card references
+      const legacyChatPattern = /Hydra|Dreadnaught|Pegasus|Dwarf Warden|Earth Golem|Terra Mother|Verdant Guardian|Move Range|Max HP|winged celestial|Runic Shield Wall|Werewolf and|My Werewolf is/i;
+      if (!this.phoneChatHistories[contact.id] || this.phoneChatHistories[contact.id].some(m => legacyChatPattern.test(m?.text || ''))) {
         this.phoneChatHistories[contact.id] = [...contact.chat];
       }
 
@@ -3776,24 +4047,30 @@
         const statusText = isNow
           ? `🤝 NOW (${winMeta.icon} ${winMeta.label})`
           : (isMissed ? `⚠️ MISSED (${this.formatMeetupWindowLabel(m)})` : `🕒 ${this.formatMeetupWindowLabel(m)}`);
+        const isDuel = m.type === 'duel_challenge';
         const isBuy = m.type === 'buy';
+        const duelRewardLine = m.rewardType === 'money'
+          ? `🏆 Win Reward: <b style="color:#4ade80;">${this.formatMoney(m.rewardMoney || 0)}</b>`
+          : (m.rewardType === 'card_pick'
+            ? `🏆 Win Reward: <b style="color:#fde68a;">Pick 1 of 3 Cards Used</b>`
+            : `🏆 Stakes: <b style="color:#cbd5e1;">Friendly Exhibition</b>`);
 
         const cardEl = document.createElement('div');
         cardEl.className = 'phone-listing-card';
         cardEl.innerHTML = `
           <div class="phone-listing-top">
             <div>
-              <span class="phone-listing-card-title">${isBuy ? '🛒 Buy' : '💰 Sell'} ${m.cardName}</span>
-              <div style="font-size: 10px; color: #cbd5e1;">with ${m.npcAvatar || '🤝'} <b>${m.npcName}</b></div>
+              <span class="phone-listing-card-title">${isDuel ? '⚔️ Duel Challenge' : `${isBuy ? '🛒 Buy' : '💰 Sell'} ${m.cardName}`}</span>
+              <div style="font-size: 10px; color: #cbd5e1;">with ${m.npcAvatar || (isDuel ? '⚔️' : '🤝')} <b>${m.npcName}</b></div>
             </div>
             <span class="phone-meetup-status-pill ${statusCls}">${statusText}</span>
           </div>
           <div class="phone-listing-meetup">
             📍 Location: <b>${m.venueLabel}</b><br/>
-            💵 Agreed Price: <b style="color:#4ade80;">${isBuy ? '' : '+'}${this.formatMoney(m.agreedPrice)}</b>
+            ${isDuel ? duelRewardLine : `💵 Agreed Price: <b style="color:#4ade80;">${isBuy ? '' : '+'}${this.formatMoney(m.agreedPrice)}</b>`}
           </div>
           <div class="phone-neg-actions-row">
-            <button class="phone-neg-btn-send" data-action="reschedule">📅 Reschedule</button>
+            ${isDuel ? '' : `<button class="phone-neg-btn-send" data-action="reschedule">📅 Reschedule</button>`}
             <button class="phone-neg-btn-cancel" data-action="cancel">✖ Cancel</button>
           </div>
         `;
@@ -6049,6 +6326,2183 @@
       }
     }
 
+    ensureBarberModal() {
+      if (document.getElementById('barber-modal')) return;
+      const modal = document.createElement('div');
+      modal.id = 'barber-modal';
+      modal.className = 'barber-modal-backdrop hidden';
+      modal.setAttribute('role', 'dialog');
+      modal.setAttribute('aria-modal', 'true');
+      modal.setAttribute('aria-label', "Enzo's Barber Shop");
+      modal.innerHTML = `
+        <div class="barber-modal-dialog">
+          <div class="barber-header">
+            <div class="barber-header-title">
+              <span class="barber-pole-badge" aria-hidden="true">💈</span>
+              <div>
+                <h2>ENZO'S BARBER SHOP</h2>
+                <div class="barber-subtitle">Custom Main Street Cuts • $1.00 – $5.00</div>
+              </div>
+            </div>
+            <div class="barber-header-actions">
+              <span id="barber-wallet-display" class="barber-wallet-pill">💰 $0.00</span>
+              <button type="button" id="barber-close-btn" class="barber-close-btn" aria-label="Close Barber Shop">✕</button>
+            </div>
+          </div>
+          <div class="barber-layout">
+            <div class="barber-mirror-pane">
+              <div class="barber-mirror-frame">
+                <canvas id="barber-preview-canvas" width="160" height="160"></canvas>
+              </div>
+              <div class="barber-turn-row">
+                <button type="button" id="barber-turn-left" class="barber-turn-btn">◀ Turn</button>
+                <button type="button" id="barber-turn-right" class="barber-turn-btn">Turn ▶</button>
+              </div>
+              <div class="barber-selected-card">
+                <div class="barber-selected-head">
+                  <span id="barber-selected-name" class="barber-selected-name">—</span>
+                  <span id="barber-selected-tier" class="barber-selected-tier">—</span>
+                </div>
+                <p id="barber-selected-desc" class="barber-selected-desc"></p>
+              </div>
+              <button type="button" id="barber-action-btn" class="barber-action-btn">Equip Style</button>
+              <div id="barber-status-msg" class="barber-status-msg"></div>
+            </div>
+            <div class="barber-catalog-pane">
+              <div class="barber-section-label">💈 Signature Hair Styles ($1.00 – $5.00)</div>
+              <div id="barber-style-grid" class="barber-grid"></div>
+              <div class="barber-section-label barber-starter-heading">✂️ Starter Styles (Free)</div>
+              <div id="barber-starter-row" class="barber-starter-row"></div>
+            </div>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) this.toggleBarberModal(false);
+      });
+      document.getElementById('barber-close-btn')?.addEventListener('click', () => {
+        this.toggleBarberModal(false);
+      });
+      const dirs = ['down', 'left', 'up', 'right'];
+      document.getElementById('barber-turn-left')?.addEventListener('click', () => {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        const idx = dirs.indexOf(this.barberPreviewDir || 'down');
+        this.barberPreviewDir = dirs[(idx + 3) % 4];
+        this.renderBarberPreview();
+      });
+      document.getElementById('barber-turn-right')?.addEventListener('click', () => {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        const idx = dirs.indexOf(this.barberPreviewDir || 'down');
+        this.barberPreviewDir = dirs[(idx + 1) % 4];
+        this.renderBarberPreview();
+      });
+      document.getElementById('barber-action-btn')?.addEventListener('click', () => {
+        if (this.barberPreviewHairId) {
+          this.buyOrEquipBarberHairStyle(this.barberPreviewHairId);
+        }
+      });
+    }
+
+    toggleBarberModal(forceOpen) {
+      this.ensureBarberModal();
+      const modal = document.getElementById('barber-modal');
+      if (!modal) return;
+      const shouldOpen = forceOpen !== undefined ? forceOpen : modal.classList.contains('hidden');
+      if (window.sounds?.playClick) window.sounds.playClick();
+      if (shouldOpen) {
+        this.barberPreviewHairId = this.draftAppearance?.hairStyle || 'spiky';
+        this.barberPreviewDir = 'down';
+        const statusEl = document.getElementById('barber-status-msg');
+        if (statusEl) {
+          statusEl.textContent = '';
+          statusEl.className = 'barber-status-msg';
+        }
+        this.renderBarberModal();
+        modal.classList.remove('hidden');
+      } else {
+        modal.classList.add('hidden');
+      }
+    }
+
+    renderBarberPreview() {
+      const canvas = document.getElementById('barber-preview-canvas');
+      const CS = window.MythosCharacterSprites;
+      if (!canvas || !CS?.drawVariation3B) return;
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width;
+      const h = canvas.height;
+      ctx.clearRect(0, 0, w, h);
+
+      const bgGrad = ctx.createRadialGradient(w * 0.5, h * 0.42, 10, w * 0.5, h * 0.5, w * 0.65);
+      bgGrad.addColorStop(0, '#3e2723');
+      bgGrad.addColorStop(0.65, '#251714');
+      bgGrad.addColorStop(1, '#140c0a');
+      ctx.fillStyle = bgGrad;
+      ctx.fillRect(0, 0, w, h);
+
+      ctx.fillStyle = 'rgba(245, 208, 138, 0.14)';
+      ctx.beginPath();
+      ctx.ellipse(w * 0.5, 148, 44, 10, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      const previewApp = {
+        ...this.draftAppearance,
+        hairStyle: this.barberPreviewHairId || this.draftAppearance?.hairStyle || 'spiky'
+      };
+      ctx.imageSmoothingEnabled = false;
+      CS.drawVariation3B(ctx, previewApp, w * 0.5, 148, this.barberPreviewDir || 'down', 0, 3.5);
+    }
+
+    renderBarberModal() {
+      const CS = window.MythosCharacterSprites;
+      if (!CS) return;
+      const walletEl = document.getElementById('barber-wallet-display');
+      if (walletEl) walletEl.textContent = `💰 ${this.formatMoney(this.gold || 0)}`;
+
+      const barberStyles = CS.BARBER_HAIR_STYLES || [];
+      const starterStyles = CS.HAIR_STYLES || [];
+      const ownedSet = new Set(Array.isArray(this.ownedHairStyles) ? this.ownedHairStyles : []);
+      const equippedId = this.draftAppearance?.hairStyle || 'spiky';
+      const previewId = this.barberPreviewHairId || equippedId;
+
+      const gridEl = document.getElementById('barber-style-grid');
+      if (gridEl) {
+        gridEl.innerHTML = '';
+        for (const style of barberStyles) {
+          const isEquipped = style.id === equippedId;
+          const isOwned = ownedSet.has(style.id);
+          const isSelected = style.id === previewId;
+          const card = document.createElement('button');
+          card.type = 'button';
+          card.className = `barber-style-card${isSelected ? ' selected' : ''}${isEquipped ? ' equipped' : ''}${isOwned ? ' owned' : ''}`;
+          const pillText = isEquipped ? '✓ EQUIPPED' : (isOwned ? 'OWNED' : this.formatMoney(style.price));
+          const pillClass = isEquipped ? 'equipped' : (isOwned ? 'owned' : `price-${style.price}`);
+          card.innerHTML = `
+            <div class="barber-card-top">
+              <span class="barber-card-icon">${style.icon}</span>
+              <span class="barber-price-pill ${pillClass}">${pillText}</span>
+            </div>
+            <div class="barber-card-name">${style.name}</div>
+            <div class="barber-card-tier">${style.tier}</div>
+          `;
+          card.addEventListener('click', () => {
+            if (window.sounds?.playClick) window.sounds.playClick();
+            this.barberPreviewHairId = style.id;
+            const statusEl = document.getElementById('barber-status-msg');
+            if (statusEl) {
+              statusEl.textContent = '';
+              statusEl.className = 'barber-status-msg';
+            }
+            this.renderBarberModal();
+          });
+          gridEl.appendChild(card);
+        }
+      }
+
+      const starterRowEl = document.getElementById('barber-starter-row');
+      if (starterRowEl) {
+        starterRowEl.innerHTML = '';
+        for (const st of starterStyles) {
+          const isEquipped = st.id === equippedId;
+          const isSelected = st.id === previewId;
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = `barber-starter-pill${isSelected ? ' selected' : ''}${isEquipped ? ' equipped' : ''}`;
+          btn.textContent = isEquipped ? `✓ ${st.name}` : st.name;
+          btn.addEventListener('click', () => {
+            if (window.sounds?.playClick) window.sounds.playClick();
+            this.barberPreviewHairId = st.id;
+            const statusEl = document.getElementById('barber-status-msg');
+            if (statusEl) {
+              statusEl.textContent = '';
+              statusEl.className = 'barber-status-msg';
+            }
+            this.renderBarberModal();
+          });
+          starterRowEl.appendChild(btn);
+        }
+      }
+
+      const selectedBarber = barberStyles.find(s => s.id === previewId);
+      const selectedStarter = starterStyles.find(s => s.id === previewId);
+      const nameEl = document.getElementById('barber-selected-name');
+      const tierEl = document.getElementById('barber-selected-tier');
+      const descEl = document.getElementById('barber-selected-desc');
+      if (selectedBarber) {
+        if (nameEl) nameEl.textContent = `${selectedBarber.icon} ${selectedBarber.name}`;
+        if (tierEl) tierEl.textContent = `${selectedBarber.tier} • ${this.formatMoney(selectedBarber.price)}`;
+        if (descEl) descEl.textContent = selectedBarber.desc;
+      } else if (selectedStarter) {
+        if (nameEl) nameEl.textContent = `✂️ ${selectedStarter.name}`;
+        if (tierEl) tierEl.textContent = 'Starter Style • Free';
+        if (descEl) descEl.textContent = 'Classic starter cut available anytime at no cost.';
+      }
+
+      const actionBtn = document.getElementById('barber-action-btn');
+      if (actionBtn) {
+        const isStarter = !!selectedStarter;
+        const isOwned = isStarter || ownedSet.has(previewId);
+        if (previewId === equippedId) {
+          actionBtn.textContent = '✓ Currently Equipped';
+          actionBtn.disabled = true;
+          actionBtn.className = 'barber-action-btn equipped';
+        } else if (isOwned) {
+          actionBtn.textContent = '✨ Equip Style (Free)';
+          actionBtn.disabled = false;
+          actionBtn.className = 'barber-action-btn equip';
+        } else if (selectedBarber) {
+          const canAfford = (this.gold || 0) >= selectedBarber.price;
+          if (canAfford) {
+            actionBtn.textContent = `💈 Buy & Equip — ${this.formatMoney(selectedBarber.price)}`;
+            actionBtn.disabled = false;
+            actionBtn.className = 'barber-action-btn buy';
+          } else {
+            actionBtn.textContent = `🔒 Need ${this.formatMoney(selectedBarber.price)}`;
+            actionBtn.disabled = true;
+            actionBtn.className = 'barber-action-btn locked';
+          }
+        }
+      }
+
+      this.renderBarberPreview();
+    }
+
+    buyOrEquipBarberHairStyle(styleId) {
+      const CS = window.MythosCharacterSprites;
+      if (!CS) return;
+      const barberStyle = (CS.BARBER_HAIR_STYLES || []).find(s => s.id === styleId);
+      const starterStyle = (CS.HAIR_STYLES || []).find(s => s.id === styleId);
+      const targetStyle = barberStyle || starterStyle;
+      if (!targetStyle) return;
+
+      if (!Array.isArray(this.ownedHairStyles)) this.ownedHairStyles = [];
+      const alreadyOwned = !!starterStyle || this.ownedHairStyles.includes(styleId);
+      const statusEl = document.getElementById('barber-status-msg');
+
+      if (!alreadyOwned && barberStyle) {
+        if ((this.gold || 0) < barberStyle.price) {
+          if (window.sounds?.playClick) window.sounds.playClick();
+          if (statusEl) {
+            statusEl.textContent = `⚠️ You need ${this.formatMoney(barberStyle.price)} for ${barberStyle.name}.`;
+            statusEl.className = 'barber-status-msg error';
+          }
+          return;
+        }
+        this.gold = (this.gold || 0) - barberStyle.price;
+        this.ownedHairStyles.push(styleId);
+        if (window.sounds?.playVictory) {
+          window.sounds.playVictory();
+        } else if (window.sounds?.playClick) {
+          window.sounds.playClick();
+        }
+        if (statusEl) {
+          statusEl.textContent = `💈 Fresh cut! Purchased & equipped ${barberStyle.name} for ${this.formatMoney(barberStyle.price)}!`;
+          statusEl.className = 'barber-status-msg success';
+        }
+      } else {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        if (statusEl) {
+          statusEl.textContent = `✨ Equipped ${targetStyle.name}!`;
+          statusEl.className = 'barber-status-msg success';
+        }
+      }
+
+      this.draftAppearance.hairStyle = styleId;
+      this.playerSprite?.setAppearance(this.draftAppearance);
+      this.saveWorldData(this.draftAppearance);
+      this.updateHUDSaveInfo();
+      this.renderBarberModal();
+    }
+
+    _getApparelCategoryMeta(category = this.apparelActiveTab || 'shirts') {
+      const CS = window.MythosCharacterSprites || {};
+      if (category === 'pants') {
+        return {
+          key: 'pants',
+          label: 'Pants & Shorts',
+          items: CS.APPAREL_PANTS || [],
+          slotKey: 'pantsStyle',
+          ownedProp: 'ownedPants'
+        };
+      }
+      if (category === 'shoes') {
+        return {
+          key: 'shoes',
+          label: 'Shoes',
+          items: CS.APPAREL_SHOES || [],
+          slotKey: 'shoeStyle',
+          ownedProp: 'ownedShoes'
+        };
+      }
+      return {
+        key: 'shirts',
+        label: 'Shirts',
+        items: CS.APPAREL_SHIRTS || [],
+        slotKey: 'shirtStyle',
+        ownedProp: 'ownedShirts'
+      };
+    }
+
+    ensureApparelModal() {
+      if (document.getElementById('apparel-modal')) return;
+      const modal = document.createElement('div');
+      modal.id = 'apparel-modal';
+      modal.className = 'apparel-modal-backdrop hidden';
+      modal.setAttribute('role', 'dialog');
+      modal.setAttribute('aria-modal', 'true');
+      modal.setAttribute('aria-label', 'Oakhaven Apparel Boutique');
+      modal.innerHTML = `
+        <div class="apparel-modal-dialog">
+          <div class="apparel-header">
+            <div class="apparel-header-title">
+              <span class="apparel-badge" aria-hidden="true">👔</span>
+              <div>
+                <h2>OAKHAVEN APPAREL</h2>
+                <div class="apparel-subtitle">Shirts, Pants, Shorts &amp; Shoes • $1.00 – $10.00</div>
+              </div>
+            </div>
+            <div class="apparel-header-actions">
+              <span id="apparel-wallet-display" class="apparel-wallet-pill">💰 $0.00</span>
+              <button type="button" id="apparel-close-btn" class="apparel-close-btn" aria-label="Close Oakhaven Apparel">✕</button>
+            </div>
+          </div>
+          <div class="apparel-layout">
+            <div class="apparel-mirror-pane">
+              <div class="apparel-mirror-frame">
+                <canvas id="apparel-preview-canvas" width="160" height="160"></canvas>
+              </div>
+              <div class="apparel-turn-row">
+                <button type="button" id="apparel-turn-left" class="apparel-turn-btn">◀ Turn</button>
+                <button type="button" id="apparel-turn-right" class="apparel-turn-btn">Turn ▶</button>
+              </div>
+              <div class="apparel-selected-card">
+                <div class="apparel-selected-head">
+                  <span id="apparel-selected-name" class="apparel-selected-name">—</span>
+                  <span id="apparel-selected-tier" class="apparel-selected-tier">—</span>
+                </div>
+                <p id="apparel-selected-desc" class="apparel-selected-desc"></p>
+              </div>
+              <button type="button" id="apparel-action-btn" class="apparel-action-btn">Equip</button>
+              <button type="button" id="apparel-default-btn" class="apparel-default-btn">↩ Reset Slot to Default</button>
+              <div id="apparel-status-msg" class="apparel-status-msg"></div>
+            </div>
+            <div class="apparel-catalog-pane">
+              <div class="apparel-tabs" role="tablist">
+                <button type="button" class="apparel-tab-btn active" data-tab="shirts">👕 Shirts (10)</button>
+                <button type="button" class="apparel-tab-btn" data-tab="pants">👖 Pants &amp; Shorts (10)</button>
+                <button type="button" class="apparel-tab-btn" data-tab="shoes">👟 Shoes (5)</button>
+              </div>
+              <div id="apparel-item-grid" class="apparel-grid"></div>
+            </div>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) this.toggleApparelModal(false);
+      });
+      document.getElementById('apparel-close-btn')?.addEventListener('click', () => {
+        this.toggleApparelModal(false);
+      });
+
+      const dirs = ['down', 'left', 'up', 'right'];
+      document.getElementById('apparel-turn-left')?.addEventListener('click', () => {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        const idx = dirs.indexOf(this.apparelPreviewDir || 'down');
+        this.apparelPreviewDir = dirs[(idx + 3) % 4];
+        this.renderApparelPreview();
+      });
+      document.getElementById('apparel-turn-right')?.addEventListener('click', () => {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        const idx = dirs.indexOf(this.apparelPreviewDir || 'down');
+        this.apparelPreviewDir = dirs[(idx + 1) % 4];
+        this.renderApparelPreview();
+      });
+
+      modal.querySelectorAll('.apparel-tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          if (window.sounds?.playClick) window.sounds.playClick();
+          this.apparelActiveTab = btn.dataset.tab || 'shirts';
+          const meta = this._getApparelCategoryMeta(this.apparelActiveTab);
+          const equippedId = this.draftAppearance?.[meta.slotKey];
+          this.apparelPreviewItemId = equippedId || meta.items[0]?.id || null;
+          const statusEl = document.getElementById('apparel-status-msg');
+          if (statusEl) {
+            statusEl.textContent = '';
+            statusEl.className = 'apparel-status-msg';
+          }
+          this.renderApparelModal();
+        });
+      });
+
+      document.getElementById('apparel-action-btn')?.addEventListener('click', () => {
+        if (this.apparelPreviewItemId) {
+          this.buyOrEquipApparelItem(this.apparelActiveTab || 'shirts', this.apparelPreviewItemId);
+        }
+      });
+      document.getElementById('apparel-default-btn')?.addEventListener('click', () => {
+        this.resetApparelSlot(this.apparelActiveTab || 'shirts');
+      });
+    }
+
+    toggleApparelModal(forceOpen) {
+      this.ensureApparelModal();
+      const modal = document.getElementById('apparel-modal');
+      if (!modal) return;
+      const shouldOpen = forceOpen !== undefined ? forceOpen : modal.classList.contains('hidden');
+      if (window.sounds?.playClick) window.sounds.playClick();
+      if (shouldOpen) {
+        this.apparelActiveTab = 'shirts';
+        const meta = this._getApparelCategoryMeta('shirts');
+        this.apparelPreviewItemId = this.draftAppearance?.[meta.slotKey] || meta.items[0]?.id || null;
+        this.apparelPreviewDir = 'down';
+        const statusEl = document.getElementById('apparel-status-msg');
+        if (statusEl) {
+          statusEl.textContent = '';
+          statusEl.className = 'apparel-status-msg';
+        }
+        this.renderApparelModal();
+        modal.classList.remove('hidden');
+      } else {
+        modal.classList.add('hidden');
+      }
+    }
+
+    renderApparelPreview() {
+      const canvas = document.getElementById('apparel-preview-canvas');
+      const CS = window.MythosCharacterSprites;
+      if (!canvas || !CS?.drawVariation3B) return;
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width;
+      const h = canvas.height;
+      ctx.clearRect(0, 0, w, h);
+
+      const bgGrad = ctx.createRadialGradient(w * 0.5, h * 0.42, 12, w * 0.5, h * 0.5, w * 0.68);
+      bgGrad.addColorStop(0, '#2c1f4a');
+      bgGrad.addColorStop(0.65, '#191330');
+      bgGrad.addColorStop(1, '#0c091a');
+      ctx.fillStyle = bgGrad;
+      ctx.fillRect(0, 0, w, h);
+
+      ctx.fillStyle = 'rgba(250, 204, 21, 0.14)';
+      ctx.beginPath();
+      ctx.ellipse(w * 0.5, 148, 44, 10, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      const meta = this._getApparelCategoryMeta(this.apparelActiveTab || 'shirts');
+      const previewApp = { ...this.draftAppearance };
+      if (this.apparelPreviewItemId) {
+        previewApp[meta.slotKey] = this.apparelPreviewItemId;
+      }
+      ctx.imageSmoothingEnabled = false;
+      CS.drawVariation3B(ctx, previewApp, w * 0.5, 148, this.apparelPreviewDir || 'down', 0, 3.5);
+    }
+
+    renderApparelModal() {
+      const modal = document.getElementById('apparel-modal');
+      if (!modal) return;
+      const walletEl = document.getElementById('apparel-wallet-display');
+      if (walletEl) walletEl.textContent = `💰 ${this.formatMoney(this.gold || 0)}`;
+
+      const meta = this._getApparelCategoryMeta(this.apparelActiveTab || 'shirts');
+      modal.querySelectorAll('.apparel-tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === meta.key);
+      });
+
+      const ownedList = Array.isArray(this[meta.ownedProp]) ? this[meta.ownedProp] : [];
+      const ownedSet = new Set(ownedList);
+      const equippedId = this.draftAppearance?.[meta.slotKey] || null;
+      const previewId = this.apparelPreviewItemId || equippedId || meta.items[0]?.id || null;
+      this.apparelPreviewItemId = previewId;
+
+      const gridEl = document.getElementById('apparel-item-grid');
+      if (gridEl) {
+        gridEl.innerHTML = '';
+        for (const item of meta.items) {
+          const isEquipped = item.id === equippedId;
+          const isOwned = ownedSet.has(item.id);
+          const isSelected = item.id === previewId;
+          const swatchColor = item.colors?.base || '#94a3b8';
+          const pillText = isEquipped ? '✓ EQUIPPED' : (isOwned ? 'OWNED' : this.formatMoney(item.price));
+          const pillClass = isEquipped ? 'equipped' : (isOwned ? 'owned' : '');
+
+          const card = document.createElement('button');
+          card.type = 'button';
+          card.className = `apparel-item-card${isSelected ? ' selected' : ''}${isEquipped ? ' equipped' : ''}${isOwned ? ' owned' : ''}`;
+          card.innerHTML = `
+            <div class="apparel-card-top">
+              <span class="apparel-card-left">
+                <span class="apparel-card-icon">${item.icon}</span>
+                <span class="apparel-swatch" style="background:${swatchColor};"></span>
+              </span>
+              <span class="apparel-price-pill ${pillClass}">${pillText}</span>
+            </div>
+            <div class="apparel-card-name">${item.name}</div>
+            <div class="apparel-card-tier">${item.tier}</div>
+          `;
+          card.addEventListener('click', () => {
+            if (window.sounds?.playClick) window.sounds.playClick();
+            this.apparelPreviewItemId = item.id;
+            const statusEl = document.getElementById('apparel-status-msg');
+            if (statusEl) {
+              statusEl.textContent = '';
+              statusEl.className = 'apparel-status-msg';
+            }
+            this.renderApparelModal();
+          });
+          gridEl.appendChild(card);
+        }
+      }
+
+      const selectedItem = meta.items.find(x => x.id === previewId) || meta.items[0];
+      const nameEl = document.getElementById('apparel-selected-name');
+      const tierEl = document.getElementById('apparel-selected-tier');
+      const descEl = document.getElementById('apparel-selected-desc');
+      if (selectedItem) {
+        if (nameEl) nameEl.textContent = `${selectedItem.icon} ${selectedItem.name}`;
+        if (tierEl) tierEl.textContent = `${selectedItem.tier} • ${this.formatMoney(selectedItem.price)}`;
+        if (descEl) descEl.textContent = selectedItem.desc;
+      }
+
+      const actionBtn = document.getElementById('apparel-action-btn');
+      if (actionBtn && selectedItem) {
+        const isOwned = ownedSet.has(selectedItem.id);
+        if (selectedItem.id === equippedId) {
+          actionBtn.textContent = '✓ Currently Equipped';
+          actionBtn.disabled = true;
+          actionBtn.className = 'apparel-action-btn equipped';
+        } else if (isOwned) {
+          actionBtn.textContent = '✨ Equip Item (Free)';
+          actionBtn.disabled = false;
+          actionBtn.className = 'apparel-action-btn equip';
+        } else if ((this.gold || 0) >= selectedItem.price) {
+          actionBtn.textContent = `👔 Buy & Equip — ${this.formatMoney(selectedItem.price)}`;
+          actionBtn.disabled = false;
+          actionBtn.className = 'apparel-action-btn buy';
+        } else {
+          actionBtn.textContent = `🔒 Need ${this.formatMoney(selectedItem.price)}`;
+          actionBtn.disabled = true;
+          actionBtn.className = 'apparel-action-btn locked';
+        }
+      }
+
+      const defaultBtn = document.getElementById('apparel-default-btn');
+      if (defaultBtn) {
+        const hasEquipped = !!equippedId;
+        defaultBtn.disabled = !hasEquipped;
+        defaultBtn.textContent = hasEquipped ? `↩ Reset ${meta.label} to Default` : `✓ Using Default ${meta.label}`;
+      }
+
+      this.renderApparelPreview();
+    }
+
+    buyOrEquipApparelItem(category, itemId) {
+      const meta = this._getApparelCategoryMeta(category);
+      const targetItem = meta.items.find(x => x.id === itemId);
+      if (!targetItem) return;
+
+      if (!Array.isArray(this[meta.ownedProp])) this[meta.ownedProp] = [];
+      const alreadyOwned = this[meta.ownedProp].includes(itemId);
+      const statusEl = document.getElementById('apparel-status-msg');
+
+      if (!alreadyOwned) {
+        if ((this.gold || 0) < targetItem.price) {
+          if (window.sounds?.playClick) window.sounds.playClick();
+          if (statusEl) {
+            statusEl.textContent = `⚠️ You need ${this.formatMoney(targetItem.price)} for ${targetItem.name}.`;
+            statusEl.className = 'apparel-status-msg error';
+          }
+          return;
+        }
+        this.gold = (this.gold || 0) - targetItem.price;
+        this[meta.ownedProp].push(itemId);
+        if (window.sounds?.playVictory) {
+          window.sounds.playVictory();
+        } else if (window.sounds?.playClick) {
+          window.sounds.playClick();
+        }
+        if (statusEl) {
+          statusEl.textContent = `👔 Tailored & equipped ${targetItem.name} for ${this.formatMoney(targetItem.price)}!`;
+          statusEl.className = 'apparel-status-msg success';
+        }
+      } else {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        if (statusEl) {
+          statusEl.textContent = `✨ Equipped ${targetItem.name}!`;
+          statusEl.className = 'apparel-status-msg success';
+        }
+      }
+
+      this.draftAppearance[meta.slotKey] = itemId;
+      this.playerSprite?.setAppearance(this.draftAppearance);
+      this.saveWorldData(this.draftAppearance);
+      this.updateHUDSaveInfo();
+      this.renderApparelModal();
+    }
+
+    resetApparelSlot(category) {
+      const meta = this._getApparelCategoryMeta(category);
+      if (!this.draftAppearance?.[meta.slotKey]) return;
+      if (window.sounds?.playClick) window.sounds.playClick();
+      this.draftAppearance[meta.slotKey] = null;
+      this.apparelPreviewItemId = meta.items[0]?.id || null;
+      this.playerSprite?.setAppearance(this.draftAppearance);
+      this.saveWorldData(this.draftAppearance);
+      this.updateHUDSaveInfo();
+      const statusEl = document.getElementById('apparel-status-msg');
+      if (statusEl) {
+        statusEl.textContent = `↩ Restored default ${meta.label.toLowerCase()}.`;
+        statusEl.className = 'apparel-status-msg success';
+      }
+      this.renderApparelModal();
+    }
+
+    // -------------------------------------------------------------------------
+    // Random Incoming Duel Challenge Calls & 3-Hour Meetup Scheduling
+    // -------------------------------------------------------------------------
+    getDuelCallChallengerPool() {
+      const fName = this.friendName || 'Rocky';
+      return [
+        {
+          id: 'pluto',
+          name: 'Pluto',
+          avatar: '💻',
+          line: `"Yo! Just finished calibrating my Machine + Orc deck. Meet up and see if your roster can handle high-armor pressure!"`,
+          cardNames: ['Rust Bucket', 'Scrap Heap', 'Orc Infantry', 'Orc Slinger', 'Jank', 'Goblin Soldier']
+        },
+        {
+          id: 'nova',
+          name: 'Nova',
+          avatar: '✨',
+          line: `"Hey ${this.playerName}! The moon's bright and my Vampire swarm is itching for a match. Up for a scheduled duel?"`,
+          cardNames: ['Vampire Thrall', 'Vampire Bat', 'The Nieces', 'Goblin Archer', 'Werewolf Pup']
+        },
+        {
+          id: 'silas',
+          name: 'Silas',
+          avatar: '⚒️',
+          line: `"Good timing! Looking for a solid warm-up bout against someone who actually knows Shield Wall tactics. Meet me out there?"`,
+          cardNames: ['Orc Infantry', 'Scrap Heap', 'Rust Bucket', 'Goblin Soldier', 'Werewolf Pup']
+        },
+        {
+          id: 'maya',
+          name: 'Maya',
+          avatar: '🌿',
+          line: `"Hello! My Wolf Pack deck just found a great rhythm today—would you care to meet for a lively three-round match?"`,
+          cardNames: ['Werewolf Pup', 'Minerva, Wolf Mother', 'Merfolk', 'Goblin Soldier', 'Goblin Archer']
+        },
+        {
+          id: 'evelyn',
+          name: 'Ms. Evelyn',
+          avatar: '🏫',
+          line: `"Good day, ${this.playerName}! After-school duel prep gave me a new strategy to test. Shall we set a meetup?"`,
+          cardNames: ['Frost Skink', 'Merfolk', 'Goblin Soldier', 'Goblin Archer', 'Werewolf Pup']
+        },
+        {
+          id: 'rowan',
+          name: 'Rowan',
+          avatar: '🕯️',
+          line: `"Hey—I've been tuning a Witch & Vampire ambush list down by the creek. Meet up for a quick best-of-3?"`,
+          cardNames: ['Baby Lucia', 'Vampire Thrall', 'Vampire Bat', 'Rust Bucket', 'Goblin Archer']
+        },
+        {
+          id: 'jasper',
+          name: 'Jasper',
+          avatar: '🦎',
+          line: `"Heard you've been climbing the town rankings! My Lizard ambush lineup wants a shot at you—pick a spot!"`,
+          cardNames: ['Jersey Devil', 'PyroManda', 'Goblin Soldier', 'Werewolf Pup', 'Merfolk']
+        },
+        {
+          id: 'apt_tessa',
+          name: 'Tessa',
+          avatar: '🌊',
+          line: `"Hey neighbor from Main Street! Just organized my Water Tribe binder in Suite 101—fancy a match sometime today?"`,
+          customDeck: true,
+          cardNames: ['Sea Dragon', 'Merfolk', 'Frost Skink', 'Goblin Archer', 'Werewolf Pup']
+        },
+        {
+          id: 'apt_dante',
+          name: 'Dante',
+          avatar: '🦇',
+          line: `"Sup! Been cooking up cryptid combos in Suite 102 with Mothman and Jersey Devil. Name a 3-hour window!"`,
+          customDeck: true,
+          cardNames: ['Mothman', 'Jersey Devil', 'Vampire Bat', 'Scrap Heap', 'Orc Slinger']
+        },
+        {
+          id: 'apt_nina',
+          name: 'Nina',
+          avatar: '🔮',
+          line: `"Calling from Suite 103! My Witch coven deck needs real match testing—care to meet up and play a set?"`,
+          customDeck: true,
+          cardNames: ['The Nieces', 'Baby Lucia', 'Vampire Thrall', 'Merfolk', 'Rust Bucket']
+        },
+        {
+          id: 'apt_miles',
+          name: 'Miles',
+          avatar: '⏱️',
+          line: `"Got a break between clock repairs in Suite 104! Let's run my Machine scrapyard list against yours—pick a spot!"`,
+          customDeck: true,
+          cardNames: ['Jank', 'Scrap Heap', 'Rust Bucket', 'Orc Infantry', 'Goblin Soldier']
+        },
+        {
+          id: 'barber_enzo',
+          name: 'Barber Enzo',
+          avatar: '💈',
+          line: `"Quiet hour at the Barber Shop! Before the evening rush hits, want to meet up and clash decks? I'm bringing my Wolf Pack crew!"`,
+          customDeck: true,
+          cardNames: ['Minerva, Wolf Mother', 'Werewolf Pup', 'Goblin Soldier', 'Goblin Archer', 'Vampire Bat']
+        },
+        {
+          id: 'tailor_celeste',
+          name: 'Celeste',
+          avatar: '👔',
+          line: `"Stepping away from Oakhaven Apparel's tailoring table for a bit! Meet me for a stylish Mythos match?"`,
+          customDeck: true,
+          cardNames: ['PyroManda', 'The Nieces', 'Vampire Thrall', 'Sea Dragon', 'Merfolk']
+        },
+        {
+          id: 'vet_hannah',
+          name: 'Dr. Hannah',
+          avatar: '🐾',
+          line: `"Quiet afternoon between clinic checkups at the Animal Hospital! Care to meet for a friendly Mythos match?"`,
+          customDeck: true,
+          cardNames: ['Werewolf Pup', 'Minerva, Wolf Mother', 'Manson, Wolf Father', 'Frost Skink', 'PyroManda']
+        },
+        {
+          id: 'friend',
+          name: fName,
+          avatar: '🧢',
+          line: `"Yo! I tweaked my Goblin & Wolf list and I'm feeling unbeatable today—let's schedule a real throwdown!"`,
+          cardNames: ['Minerva, Wolf Mother', 'Werewolf Pup', 'Goblin Soldier', 'Rust Bucket', 'Merfolk']
+        }
+      ];
+    }
+
+    _resolveGwentCardDefByName(name) {
+      const target = String(name || '').trim().toLowerCase();
+      if (!target) return null;
+      const catalog = this.getMythosPackCatalog ? this.getMythosPackCatalog() : [];
+      let match = catalog.find(c =>
+        c && ((c.name || '').toLowerCase() === target || (c.shortName || '').toLowerCase() === target)
+      );
+      if (!match) {
+        const cardsMap = window.MythosGwentCards?.CARDS || {};
+        match = Object.values(cardsMap).find(c =>
+          c && ((c.name || '').toLowerCase() === target || (c.shortName || '').toLowerCase() === target)
+        );
+      }
+      return match || null;
+    }
+
+    maybeTriggerRandomDuelCall(force = false) {
+      if (this.storyState !== 'free_roam' || this._isSleeping) return null;
+      const curDay = this.dayNumber || 1;
+      if ((this.duelCallsTodayDay || 1) !== curDay) {
+        this.duelCallsTodayDay = curDay;
+        this.duelCallsTodayCount = 0;
+      }
+
+      if (!force) {
+        if (this.activeIncomingDuelCall) return null;
+        const activeDuels = (this.scheduledMeetups || []).filter(m => m.status === 'scheduled' && m.type === 'duel_challenge');
+        if (activeDuels.length >= 3) return null;
+
+        const dayMin = Number(this.timeOfDayMinutes) || 0;
+        if (dayMin < 480 || dayMin > 1260) return null; // Daytime/evening calls (8 AM - 9 PM)
+        const nowTotal = this.getTotalGameMinutes();
+        if (nowTotal - (this.lastDuelCallTotalMinute ?? -999) < 180) return null; // At least 3h between calls
+        if ((this.duelCallsTodayCount || 0) >= 3) return null;
+
+        // With 3h cooldown across 8 AM - 9 PM (~5 eligible hourly checks/day), 0.25–0.32 averages ~2 calls/day
+        const rollChance = (this.duelCallsTodayCount || 0) < 2 ? 0.30 : 0.10;
+        if (Math.random() >= rollChance) return null;
+      }
+
+      const activeNpcIds = new Set(
+        (this.scheduledMeetups || [])
+          .filter(m => m.status === 'scheduled' && m.type === 'duel_challenge')
+          .map(m => m.npcId)
+      );
+      const pool = this.getDuelCallChallengerPool().filter(c => !activeNpcIds.has(c.id));
+      const candidates = pool.length ? pool : this.getDuelCallChallengerPool();
+      const challenger = candidates[Math.floor(Math.random() * candidates.length)];
+      if (!challenger) return null;
+
+      const resolvedCards = (challenger.cardNames || [])
+        .map(n => this._resolveGwentCardDefByName(n))
+        .filter(Boolean);
+
+      // Roll win reward: ~40% cash prize ($2-$6), ~35% pick 1 of 3 cards they use, ~25% friendly exhibition
+      const r = Math.random();
+      let rewardType = 'none';
+      let rewardMoney = 0;
+      let rewardCards = [];
+      if (r < 0.40) {
+        rewardType = 'money';
+        rewardMoney = 2 + Math.floor(Math.random() * 5);
+      } else if (r < 0.75 && resolvedCards.length >= 3) {
+        rewardType = 'card_pick';
+        const shuffled = [...resolvedCards];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+        rewardCards = shuffled.slice(0, 3).map(c => ({
+          id: c.id,
+          beastId: c.beastId || c.id,
+          name: c.name,
+          shortName: c.shortName || c.name,
+          stars: c.stars || 1,
+          element: c.element || 'Neutral',
+          role: c.role || '',
+          cardImg: c.traditionalCardImg || c.cardImg || ''
+        }));
+      }
+
+      const customDeckIds = challenger.customDeck
+        ? resolvedCards.map(c => c.beastId || c.id).filter(Boolean)
+        : null;
+
+      const callObj = {
+        id: `dcall_${curDay}_${Date.now()}_${Math.floor(Math.random() * 999)}`,
+        dayNumber: curDay,
+        npcId: challenger.id,
+        npcName: challenger.name,
+        npcAvatar: challenger.avatar,
+        message: challenger.line,
+        rewardType,
+        rewardMoney,
+        rewardCards,
+        customDeckIds
+      };
+
+      this.duelCallsTodayCount = (this.duelCallsTodayCount || 0) + 1;
+      this.lastDuelCallTotalMinute = this.getTotalGameMinutes();
+      this.activeIncomingDuelCall = callObj;
+      this.saveWorldData(this.draftAppearance);
+
+      if (window.sounds?.playPhoneRingtone) {
+        window.sounds.playPhoneRingtone();
+      } else if (window.sounds?.playCollect) {
+        window.sounds.playCollect();
+      }
+      this.showDuelCallToast(callObj);
+      return callObj;
+    }
+
+    ensureDuelCallUI() {
+      if (!document.getElementById('duel-call-toast')) {
+        const toast = document.createElement('div');
+        toast.id = 'duel-call-toast';
+        toast.className = 'duel-call-toast hidden';
+        toast.setAttribute('role', 'button');
+        toast.setAttribute('tabindex', '0');
+        toast.innerHTML = `
+          <div class="duel-call-toast-ring" aria-hidden="true">📞</div>
+          <div class="duel-call-toast-body">
+            <div class="duel-call-toast-title" id="duel-toast-caller">Incoming Call</div>
+            <div class="duel-call-toast-sub" id="duel-toast-reward">Duel Challenge!</div>
+            <div class="duel-call-toast-hint">Click to read challenge</div>
+          </div>
+          <button type="button" id="duel-toast-dismiss" class="duel-call-toast-close" aria-label="Dismiss call notification">✕</button>
+        `;
+        document.body.appendChild(toast);
+
+        toast.addEventListener('click', (e) => {
+          if (e.target.closest('#duel-toast-dismiss')) return;
+          if (window.sounds?.playClick) window.sounds.playClick();
+          this.openDuelCallModal();
+        });
+        toast.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            this.openDuelCallModal();
+          }
+        });
+        document.getElementById('duel-toast-dismiss')?.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (window.sounds?.playClick) window.sounds.playClick();
+          this.hideDuelCallToast(true);
+        });
+      }
+
+      if (!document.getElementById('duel-call-modal')) {
+        const modal = document.createElement('div');
+        modal.id = 'duel-call-modal';
+        modal.className = 'duel-call-modal-backdrop hidden';
+        modal.setAttribute('role', 'dialog');
+        modal.setAttribute('aria-modal', 'true');
+        modal.setAttribute('aria-label', 'Incoming Duel Challenge');
+        modal.innerHTML = `
+          <div class="duel-call-dialog">
+            <div class="duel-call-header">
+              <div class="duel-call-header-left">
+                <span class="duel-call-badge" aria-hidden="true">📞</span>
+                <div>
+                  <h2 id="duel-modal-title">INCOMING DUEL CHALLENGE</h2>
+                  <div class="duel-call-subtitle" id="duel-modal-subtitle">Mythos Phone Line</div>
+                </div>
+              </div>
+              <button type="button" id="duel-call-close-btn" class="duel-call-close-btn" aria-label="Close">✕</button>
+            </div>
+            <div id="duel-call-body" class="duel-call-body"></div>
+          </div>
+        `;
+        document.body.appendChild(modal);
+        modal.addEventListener('click', (e) => {
+          if (e.target === modal) this.closeDuelCallModal();
+        });
+        document.getElementById('duel-call-close-btn')?.addEventListener('click', () => {
+          this.closeDuelCallModal();
+        });
+      }
+
+      if (!document.getElementById('duel-card-reward-modal')) {
+        const rewardModal = document.createElement('div');
+        rewardModal.id = 'duel-card-reward-modal';
+        rewardModal.className = 'duel-call-modal-backdrop hidden';
+        rewardModal.setAttribute('role', 'dialog');
+        rewardModal.setAttribute('aria-modal', 'true');
+        rewardModal.setAttribute('aria-label', 'Duel Victory Card Reward');
+        rewardModal.innerHTML = `
+          <div class="duel-call-dialog duel-reward-dialog">
+            <div class="duel-call-header">
+              <div class="duel-call-header-left">
+                <span class="duel-call-badge" aria-hidden="true">🏆</span>
+                <div>
+                  <h2 id="duel-reward-title">CHALLENGER SPOILS</h2>
+                  <div class="duel-call-subtitle" id="duel-reward-subtitle">Pick 1 card from your opponent's deck to keep!</div>
+                </div>
+              </div>
+              <button type="button" id="duel-reward-close-btn" class="duel-call-close-btn" aria-label="Close">✕</button>
+            </div>
+            <div id="duel-reward-grid" class="duel-reward-grid"></div>
+          </div>
+        `;
+        document.body.appendChild(rewardModal);
+        document.getElementById('duel-reward-close-btn')?.addEventListener('click', () => {
+          this.closePhoneDuelCardRewardModal();
+        });
+      }
+    }
+
+    showDuelCallToast(callObj) {
+      if (!callObj) return;
+      this.ensureDuelCallUI();
+      const toast = document.getElementById('duel-call-toast');
+      if (!toast) return;
+      const callerEl = document.getElementById('duel-toast-caller');
+      const rewardEl = document.getElementById('duel-toast-reward');
+      if (callerEl) callerEl.textContent = `${callObj.npcAvatar || '📞'} ${callObj.npcName} is calling!`;
+      if (rewardEl) {
+        if (callObj.rewardType === 'money') {
+          rewardEl.textContent = `⚔️ Duel Challenge • Win ${this.formatMoney(callObj.rewardMoney)}`;
+        } else if (callObj.rewardType === 'card_pick') {
+          rewardEl.textContent = `⚔️ Duel Challenge • Win a Card Pick!`;
+        } else {
+          rewardEl.textContent = `⚔️ Friendly Duel Challenge`;
+        }
+      }
+      toast.classList.remove('hidden');
+      if (this._duelCallToastTimer) clearTimeout(this._duelCallToastTimer);
+      this._duelCallToastTimer = setTimeout(() => {
+        this.hideDuelCallToast(true);
+      }, 28000);
+    }
+
+    hideDuelCallToast(clearActiveCallIfClosed = false) {
+      const toast = document.getElementById('duel-call-toast');
+      toast?.classList.add('hidden');
+      if (this._duelCallToastTimer) {
+        clearTimeout(this._duelCallToastTimer);
+        this._duelCallToastTimer = null;
+      }
+      if (clearActiveCallIfClosed) {
+        const modal = document.getElementById('duel-call-modal');
+        if (!modal || modal.classList.contains('hidden')) {
+          this.activeIncomingDuelCall = null;
+        }
+      }
+    }
+
+    openDuelCallModal(mode = 'read') {
+      const callObj = this.activeIncomingDuelCall;
+      if (!callObj) return;
+      this.ensureDuelCallUI();
+      this.hideDuelCallToast(false);
+      this._duelCallModalState = {
+        mode,
+        venueIdx: 0,
+        slotIdx: 0
+      };
+      this.renderDuelCallModal();
+      document.getElementById('duel-call-modal')?.classList.remove('hidden');
+    }
+
+    closeDuelCallModal(clearCall = true) {
+      if (window.sounds?.playClick) window.sounds.playClick();
+      document.getElementById('duel-call-modal')?.classList.add('hidden');
+      if (clearCall) {
+        this.activeIncomingDuelCall = null;
+      }
+    }
+
+    renderDuelCallModal() {
+      const call = this.activeIncomingDuelCall;
+      const body = document.getElementById('duel-call-body');
+      if (!call || !body) return;
+      const state = this._duelCallModalState || { mode: 'read', venueIdx: 0, slotIdx: 0 };
+      const titleEl = document.getElementById('duel-modal-title');
+      const subEl = document.getElementById('duel-modal-subtitle');
+
+      if (state.mode === 'read') {
+        if (titleEl) titleEl.textContent = `CALL FROM ${call.npcName.toUpperCase()}`;
+        if (subEl) subEl.textContent = 'Incoming Duel Challenge • Accept & pick a 3-hour window';
+        let rewardBlock = `
+          <div class="duel-call-reward-box">
+            <span class="duel-call-reward-label">🤝 Stakes</span>
+            <span>Friendly Exhibition Match (Bond Boost)</span>
+          </div>
+        `;
+        if (call.rewardType === 'money') {
+          rewardBlock = `
+            <div class="duel-call-reward-box money">
+              <span class="duel-call-reward-label">💵 Cash Bounty on Win</span>
+              <b>${this.formatMoney(call.rewardMoney)}</b>
+            </div>
+          `;
+        } else if (call.rewardType === 'card_pick') {
+          const cardChips = (call.rewardCards || [])
+            .map(c => `<span class="duel-call-card-chip">🃏 ${c.shortName || c.name} (${'★'.repeat(c.stars || 1)})</span>`)
+            .join('');
+          rewardBlock = `
+            <div class="duel-call-reward-box cards">
+              <div class="duel-call-reward-label">🃏 Card Spoils on Win — Pick 1 of 3 they use:</div>
+              <div class="duel-call-card-chips">${cardChips}</div>
+            </div>
+          `;
+        }
+
+        body.innerHTML = `
+          <div class="duel-call-caller-row">
+            <div class="duel-call-avatar-wrap">
+              <canvas id="duel-caller-canvas" width="96" height="96"></canvas>
+            </div>
+            <div class="duel-call-quote-wrap">
+              <div class="duel-call-caller-name">${call.npcAvatar || '📞'} ${call.npcName}</div>
+              <div class="duel-call-quote">${call.message}</div>
+            </div>
+          </div>
+          ${rewardBlock}
+          <div class="duel-call-actions">
+            <button type="button" id="duel-btn-accept" class="duel-btn-accept">⚔️ Accept &amp; Schedule Meetup</button>
+            <button type="button" id="duel-btn-decline" class="duel-btn-decline">📵 Decline Call</button>
+          </div>
+        `;
+
+        const cvs = document.getElementById('duel-caller-canvas');
+        const sprite = this.getNpcSpriteForMeetup(call.npcId);
+        if (cvs && sprite?.draw) {
+          const ctx = cvs.getContext('2d');
+          ctx.clearRect(0, 0, cvs.width, cvs.height);
+          ctx.imageSmoothingEnabled = false;
+          sprite.draw(ctx, 48, 86, 'down', 0, 2.3);
+        }
+
+        document.getElementById('duel-btn-accept')?.addEventListener('click', () => {
+          if (window.sounds?.playClick) window.sounds.playClick();
+          this._duelCallModalState = { mode: 'schedule', venueIdx: 0, slotIdx: 0 };
+          this.renderDuelCallModal();
+        });
+        document.getElementById('duel-btn-decline')?.addEventListener('click', () => {
+          this.closeDuelCallModal(true);
+          this.showAutosaveIndicator?.(`📵 Declined ${call.npcName}'s duel call.`);
+        });
+        return;
+      }
+
+      // Schedule Meetup view (matching card-trade 3-hour windows)
+      if (titleEl) titleEl.textContent = `SCHEDULE DUEL VS ${call.npcName.toUpperCase()}`;
+      if (subEl) subEl.textContent = 'Pick a meeting spot and a 3-hour time window';
+
+      const landmarks = this.getKnownMarketLandmarks ? this.getKnownMarketLandmarks() : [];
+      const venues = [
+        ...landmarks.map(l => ({ venueType: 'landmark', landmarkId: l.id, label: `${l.icon} ${l.shortName}` })),
+        { venueType: 'player_house', landmarkId: null, label: '🏡 Your House' }
+      ];
+      const slots = this.getAvailableMeetupSlots ? this.getAvailableMeetupSlots(6) : [];
+      const vIdx = Math.max(0, Math.min(venues.length - 1, state.venueIdx || 0));
+      const sIdx = Math.max(0, Math.min(slots.length - 1, state.slotIdx || 0));
+      state.venueIdx = vIdx;
+      state.slotIdx = sIdx;
+
+      const venueBtnsHtml = venues.map((v, idx) =>
+        `<button type="button" class="duel-sched-pill${idx === vIdx ? ' active' : ''}" data-duel-venue="${idx}">${v.label}</button>`
+      ).join('');
+      const slotBtnsHtml = slots.map((s, idx) =>
+        `<button type="button" class="duel-sched-pill${idx === sIdx ? ' active' : ''}" data-duel-slot="${idx}">
+          <span>${s.icon} ${s.relTitle}</span>
+          <b>${s.rangeLabel}</b>
+        </button>`
+      ).join('');
+
+      body.innerHTML = `
+        <div class="duel-sched-section">
+          <div class="duel-sched-label">📍 Where to Meet</div>
+          <div class="duel-sched-grid">${venueBtnsHtml}</div>
+        </div>
+        <div class="duel-sched-section">
+          <div class="duel-sched-label">🕒 Pick a 3-Hour Window</div>
+          <div class="duel-sched-grid slots">${slotBtnsHtml}</div>
+        </div>
+        <div class="duel-call-actions">
+          <button type="button" id="duel-btn-confirm-sched" class="duel-btn-accept">📅 Confirm Duel Meetup</button>
+          <button type="button" id="duel-btn-back-read" class="duel-btn-decline">← Back</button>
+        </div>
+      `;
+
+      body.querySelectorAll('[data-duel-venue]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          if (window.sounds?.playClick) window.sounds.playClick();
+          this._duelCallModalState.venueIdx = Number(btn.getAttribute('data-duel-venue')) || 0;
+          this.renderDuelCallModal();
+        });
+      });
+      body.querySelectorAll('[data-duel-slot]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          if (window.sounds?.playClick) window.sounds.playClick();
+          this._duelCallModalState.slotIdx = Number(btn.getAttribute('data-duel-slot')) || 0;
+          this.renderDuelCallModal();
+        });
+      });
+      document.getElementById('duel-btn-back-read')?.addEventListener('click', () => {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        this._duelCallModalState.mode = 'read';
+        this.renderDuelCallModal();
+      });
+      document.getElementById('duel-btn-confirm-sched')?.addEventListener('click', () => {
+        this.confirmDuelCallMeetup(venues[vIdx], slots[sIdx]);
+      });
+    }
+
+    confirmDuelCallMeetup(venue, slot) {
+      const call = this.activeIncomingDuelCall;
+      if (!call || !venue || !slot) return;
+
+      const target = this.getMeetupTargetDetails(call.npcId, venue.venueType, venue.landmarkId);
+      const meetupRecord = {
+        id: `duel_${call.id}`,
+        listingId: `duel_${call.id}`,
+        type: 'duel_challenge',
+        npcId: call.npcId,
+        npcName: call.npcName,
+        npcAvatar: call.npcAvatar || '⚔️',
+        beastId: 'mythos_duel',
+        cardName: 'Mythos Duel',
+        agreedPrice: call.rewardType === 'money' ? call.rewardMoney : 0,
+        rewardType: call.rewardType,
+        rewardMoney: call.rewardMoney || 0,
+        rewardCards: Array.isArray(call.rewardCards) ? call.rewardCards : [],
+        customDeckIds: Array.isArray(call.customDeckIds) ? call.customDeckIds : null,
+        scheduledDay: slot.dayNum,
+        scheduledWindow: slot.windowId,
+        venueType: target.venueType,
+        landmarkId: target.landmarkId,
+        area: target.area,
+        venueLabel: target.venueLabel,
+        shortVenueLabel: target.shortVenueLabel,
+        meetupPos: target.meetupPos,
+        status: 'scheduled'
+      };
+
+      this.scheduledMeetups = (this.scheduledMeetups || []).filter(
+        m => !(m.status === 'scheduled' && m.type === 'duel_challenge' && m.npcId === call.npcId)
+      );
+      this.scheduledMeetups.push(meetupRecord);
+
+      const rewardDesc = meetupRecord.rewardType === 'money'
+        ? `Win ${this.formatMoney(meetupRecord.rewardMoney)}`
+        : (meetupRecord.rewardType === 'card_pick' ? 'Win Pick 1 of 3 Cards' : 'Friendly Exhibition');
+      this.upsertNotebookNote({
+        id: `meetup_${meetupRecord.id}`,
+        title: `Duel ${meetupRecord.npcName} (${rewardDesc})`,
+        category: 'meetup',
+        icon: '⚔️',
+        source: `${meetupRecord.npcName} • Duel Call`,
+        body: `Meet ${meetupRecord.npcName} at ${meetupRecord.venueLabel || meetupRecord.shortVenueLabel} • ${this.formatMeetupWindowLabel(meetupRecord)}`
+      }, { pin: true });
+
+      if (window.sounds?.playVictory) {
+        window.sounds.playVictory();
+      } else if (window.sounds?.playClick) {
+        window.sounds.playClick();
+      }
+
+      this.activeIncomingDuelCall = null;
+      this.hideDuelCallToast(false);
+      document.getElementById('duel-call-modal')?.classList.add('hidden');
+      this.saveWorldData(this.draftAppearance);
+      this.updateMeetupBadgeCount?.();
+      this.syncPhoneAlertBadges?.();
+      this.showAutosaveIndicator?.(
+        `⚔️ Duel Scheduled: ${meetupRecord.npcName} @ ${meetupRecord.shortVenueLabel} (${this.formatMeetupWindowLabel(meetupRecord)})`
+      );
+    }
+
+    handlePhoneDuelChallengeResult(meetupId, won) {
+      const m = (this.scheduledMeetups || []).find(item => item.id === meetupId);
+      if (!m || m.status !== 'scheduled') return;
+      m.status = 'completed';
+      this.deleteNotebookNote?.(`meetup_${meetupId}`);
+
+      if (won) {
+        if (m.rewardType === 'money' && m.rewardMoney > 0) {
+          this.gold = Math.round(((this.gold || 0) + m.rewardMoney) * 100) / 100;
+        } else if (m.rewardType === 'card_pick' && Array.isArray(m.rewardCards) && m.rewardCards.length > 0) {
+          this.pendingPhoneDuelCardReward = {
+            npcName: m.npcName,
+            cards: m.rewardCards
+          };
+        }
+        this.changeRelationship?.(m.npcId, 4, 'phone duel victory');
+      } else {
+        this.changeRelationship?.(m.npcId, 2, 'good sport in duel');
+      }
+
+      this.saveWorldData(this.draftAppearance);
+      this.updateHUDSaveInfo();
+      this.updateMeetupBadgeCount?.();
+    }
+
+    openPhoneDuelCardRewardModal() {
+      const pending = this.pendingPhoneDuelCardReward;
+      if (!pending || !Array.isArray(pending.cards) || pending.cards.length === 0) return;
+      this.ensureDuelCallUI();
+      const modal = document.getElementById('duel-card-reward-modal');
+      const grid = document.getElementById('duel-reward-grid');
+      const titleEl = document.getElementById('duel-reward-title');
+      const subEl = document.getElementById('duel-reward-subtitle');
+      if (!modal || !grid) return;
+
+      if (titleEl) titleEl.textContent = `🏆 VICTORY OVER ${pending.npcName.toUpperCase()}`;
+      if (subEl) subEl.textContent = `Pick 1 card ${pending.npcName} brought to keep in your Card Binder:`;
+
+      grid.innerHTML = '';
+      let claimed = false;
+      pending.cards.forEach((c) => {
+        const resolved = this._resolveGwentCardDefByName(c.name) || c;
+        const imgSrc = resolved.traditionalCardImg || resolved.cardImg || c.cardImg || '';
+        const starsStr = '★'.repeat(Math.round(Number(resolved.stars || c.stars) || 1));
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'duel-reward-card';
+        btn.innerHTML = `
+          ${imgSrc ? `<img src="${imgSrc}" alt="${c.shortName || c.name}">` : `<div class="duel-reward-fallback">🃏</div>`}
+          <div class="duel-reward-card-name">${c.shortName || c.name}</div>
+          <div class="duel-reward-card-meta">${starsStr} • ${resolved.element || c.element || 'Unit'}</div>
+        `;
+        btn.addEventListener('click', () => {
+          if (claimed) return;
+          claimed = true;
+          this.addCardToBinder(resolved);
+          this.pendingPhoneDuelCardReward = null;
+          this.saveWorldData(this.draftAppearance);
+          this.updateHUDSaveInfo();
+          this.renderBinderModal?.();
+          if (window.sounds?.playVictory) {
+            window.sounds.playVictory();
+          } else if (window.sounds?.playHeal) {
+            window.sounds.playHeal();
+          }
+          modal.classList.add('hidden');
+          this.showAutosaveIndicator?.(`📖 Added ${c.shortName || c.name} (${starsStr}) to your Card Binder!`);
+        });
+        grid.appendChild(btn);
+      });
+
+      modal.classList.remove('hidden');
+    }
+
+    closePhoneDuelCardRewardModal() {
+      if (window.sounds?.playClick) window.sounds.playClick();
+      document.getElementById('duel-card-reward-modal')?.classList.add('hidden');
+      this.pendingPhoneDuelCardReward = null;
+    }
+
+    // -------------------------------------------------------------------------
+    // Oakhaven League (Convention Center — Saturdays 3 PM Check-In / 4 PM Start)
+    // -------------------------------------------------------------------------
+    getOakhavenLeagueNpcRoster() {
+      const ids = ['pluto', 'nova', 'silas', 'maya', 'evelyn', 'rowan', 'jasper', 'apt_tessa', 'apt_dante', 'apt_nina', 'apt_miles', 'barber_enzo'];
+      const known = this.getAllKnownNpcs?.() || [];
+      return ids.map((id) => {
+        const npc = known.find(n => n && n.id === id);
+        return {
+          id,
+          name: npc?.name || id,
+          sprite: npc?.sprite || this.getNpcSpriteForMeetup(id)
+        };
+      });
+    }
+
+    createFreshOakhavenLeagueState(season = 1) {
+      const roster = this.getOakhavenLeagueNpcRoster();
+      const core10 = roster.slice(0, 10);
+      const standings = {};
+      core10.forEach((c) => {
+        standings[c.id] = { id: c.id, name: c.name, points: 0, roundWins: 0, matchesPlayed: 0 };
+      });
+      // Alternate seats 11 & stand-in fill pods to 3x4; tracked in standings if they play
+      roster.slice(10).forEach((c) => {
+        standings[c.id] = { id: c.id, name: c.name, points: 0, roundWins: 0, matchesPlayed: 0, isAlternate: true };
+      });
+      return {
+        season: Number(season) || 1,
+        week: 1,
+        phase: 'group', // 'group' | 'playoff' | 'complete'
+        playerEntered: false,
+        playerEntryWeek: null,
+        checkedInWeek: 0,
+        lastSimulatedDay: Math.max(0, (this.dayNumber || 1) - 1),
+        standings,
+        weekResults: {},
+        playerWeekMatchesDone: [],
+        playoff: null,
+        champion: null,
+        seasonHistory: []
+      };
+    }
+
+    normalizeOakhavenLeagueState(raw) {
+      const base = this.createFreshOakhavenLeagueState(raw?.season || 1);
+      if (!raw || typeof raw !== 'object') return base;
+      const mergedStandings = { ...base.standings };
+      if (raw.standings && typeof raw.standings === 'object') {
+        Object.keys(raw.standings).forEach((k) => {
+          const s = raw.standings[k];
+          if (!s) return;
+          mergedStandings[k] = {
+            id: s.id || k,
+            name: k === 'player' ? (this.playerName || s.name || 'Player') : (s.name || mergedStandings[k]?.name || k),
+            points: Number(s.points) || 0,
+            roundWins: Number(s.roundWins) || 0,
+            matchesPlayed: Number(s.matchesPlayed) || 0,
+            isAlternate: !!mergedStandings[k]?.isAlternate
+          };
+        });
+      }
+      return {
+        ...base,
+        ...raw,
+        season: Number(raw.season) || 1,
+        week: Number(raw.week) || 1,
+        phase: raw.phase || 'group',
+        playerEntered: !!raw.playerEntered,
+        playerEntryWeek: raw.playerEntryWeek ?? null,
+        checkedInWeek: Number(raw.checkedInWeek) || 0,
+        lastSimulatedDay: Number(raw.lastSimulatedDay) || 0,
+        standings: mergedStandings,
+        weekResults: (raw.weekResults && typeof raw.weekResults === 'object') ? { ...raw.weekResults } : {},
+        playerWeekMatchesDone: Array.isArray(raw.playerWeekMatchesDone) ? [...raw.playerWeekMatchesDone] : [],
+        playoff: raw.playoff ? JSON.parse(JSON.stringify(raw.playoff)) : null,
+        champion: raw.champion || null,
+        seasonHistory: Array.isArray(raw.seasonHistory) ? [...raw.seasonHistory] : []
+      };
+    }
+
+    isSaturdayToday(dayNum = this.dayNumber || 1) {
+      return ((((Number(dayNum) || 1) - 1) % 7 + 7) % 7) === 5;
+    }
+
+    getLeagueWeekPods(weekNum = 1, playerEntered = this.oakhavenLeague?.playerEntered) {
+      const roster = this.getOakhavenLeagueNpcRoster();
+      const ids = roster.map(r => r.id); // 0..9 = 10 participating NPCs, 10 = Miles (reserve), 11 = Barber Enzo (stand-in)
+      const s0 = playerEntered ? 'player' : ids[11];
+      const s = [s0, ids[0], ids[1], ids[2], ids[3], ids[4], ids[5], ids[6], ids[7], ids[8], ids[9], ids[10]];
+      const w = ((Math.max(1, Number(weekNum) || 1) - 1) % 3) + 1;
+      if (w === 1) {
+        return [
+          { podLabel: 'POD A', players: [s[0], s[1], s[2], s[3]] },
+          { podLabel: 'POD B', players: [s[4], s[5], s[6], s[10]] },
+          { podLabel: 'POD C', players: [s[7], s[8], s[9], s[11]] }
+        ];
+      }
+      if (w === 2) {
+        return [
+          { podLabel: 'POD A', players: [s[0], s[4], s[5], s[6]] },
+          { podLabel: 'POD B', players: [s[1], s[7], s[8], s[10]] },
+          { podLabel: 'POD C', players: [s[2], s[3], s[9], s[11]] }
+        ];
+      }
+      return [
+        { podLabel: 'POD A', players: [s[0], s[7], s[8], s[9]] },
+        { podLabel: 'POD B', players: [s[1], s[2], s[4], s[10]] },
+        { podLabel: 'POD C', players: [s[3], s[5], s[6], s[11]] }
+      ];
+    }
+
+    getOakhavenLeagueParticipantName(id) {
+      if (id === 'player') return this.playerName || 'Player';
+      const standing = this.oakhavenLeague?.standings?.[id];
+      if (standing?.name) return standing.name;
+      const found = this.getOakhavenLeagueNpcRoster().find(r => r.id === id);
+      return found?.name || id;
+    }
+
+    getSortedOakhavenLeagueStandings() {
+      const league = this.oakhavenLeague || this.createFreshOakhavenLeagueState(1);
+      const rows = Object.values(league.standings || {}).filter((s) => {
+        if (!s) return false;
+        if (s.id === 'player') return !!league.playerEntered;
+        if (s.isAlternate) return s.matchesPlayed > 0;
+        return true;
+      });
+      rows.sort((a, b) => {
+        if ((b.points || 0) !== (a.points || 0)) return (b.points || 0) - (a.points || 0);
+        if ((b.roundWins || 0) !== (a.roundWins || 0)) return (b.roundWins || 0) - (a.roundWins || 0);
+        return String(a.name || '').localeCompare(String(b.name || ''));
+      });
+      return rows;
+    }
+
+    _simulateNpcBestOf3(idA, idB) {
+      const winsA = Math.random() < 0.5;
+      const loserRounds = Math.random() < 0.45 ? 1 : 0;
+      return {
+        winnerId: winsA ? idA : idB,
+        roundsA: winsA ? 2 : loserRounds,
+        roundsB: winsA ? loserRounds : 2
+      };
+    }
+
+    _ensureLeagueStandingEntry(id) {
+      const league = this.oakhavenLeague;
+      if (!league.standings) league.standings = {};
+      if (!league.standings[id]) {
+        league.standings[id] = {
+          id,
+          name: this.getOakhavenLeagueParticipantName(id),
+          points: 0,
+          roundWins: 0,
+          matchesPlayed: 0,
+          isAlternate: id === 'apt_miles' || id === 'barber_enzo'
+        };
+      }
+      return league.standings[id];
+    }
+
+    _applyLeagueMatchScore(idA, idB, winnerId, roundsA, roundsB) {
+      const entryA = this._ensureLeagueStandingEntry(idA);
+      const entryB = this._ensureLeagueStandingEntry(idB);
+      entryA.roundWins = (entryA.roundWins || 0) + (Number(roundsA) || 0);
+      entryB.roundWins = (entryB.roundWins || 0) + (Number(roundsB) || 0);
+      entryA.matchesPlayed = (entryA.matchesPlayed || 0) + 1;
+      entryB.matchesPlayed = (entryB.matchesPlayed || 0) + 1;
+      if (winnerId === idA) {
+        entryA.points = (entryA.points || 0) + 1;
+      } else if (winnerId === idB) {
+        entryB.points = (entryB.points || 0) + 1;
+      }
+    }
+
+    _buildTop4PlayoffBracket() {
+      const sorted = this.getSortedOakhavenLeagueStandings();
+      const top4 = sorted.slice(0, 4).map(s => s.id);
+      if (top4.length < 4) return null;
+      return {
+        seeds: top4,
+        sf1: { p1: top4[0], p2: top4[3], winner: null, p1Rounds: 0, p2Rounds: 0 },
+        sf2: { p1: top4[1], p2: top4[2], winner: null, p1Rounds: 0, p2Rounds: 0 },
+        final: { p1: null, p2: null, winner: null, p1Rounds: 0, p2Rounds: 0 }
+      };
+    }
+
+    _simulateGroupWeekMatches(weekNum, satDayNum) {
+      const league = this.oakhavenLeague;
+      if (!league || league.weekResults?.[weekNum]) return;
+      const pods = this.getLeagueWeekPods(weekNum, league.playerEntered);
+      const playedAgainstPlayer = new Set(league.playerWeekMatchesDone || []);
+      const log = [];
+
+      pods.forEach((pod) => {
+        const list = pod.players;
+        for (let i = 0; i < list.length; i++) {
+          for (let j = i + 1; j < list.length; j++) {
+            const pA = list[i];
+            const pB = list[j];
+            // Never overwrite a match the player already played in person
+            if (pA === 'player' && playedAgainstPlayer.has(pB)) continue;
+            if (pB === 'player' && playedAgainstPlayer.has(pA)) continue;
+            const res = this._simulateNpcBestOf3(pA, pB);
+            this._applyLeagueMatchScore(pA, pB, res.winnerId, res.roundsA, res.roundsB);
+            log.push({ pod: pod.podLabel, p1: pA, p2: pB, winner: res.winnerId, score: `${res.roundsA}-${res.roundsB}` });
+          }
+        }
+      });
+
+      league.weekResults[weekNum] = log;
+      league.playerWeekMatchesDone = [];
+      league.lastSimulatedDay = Math.max(league.lastSimulatedDay || 0, satDayNum || (this.dayNumber || 1));
+
+      if (weekNum < 3) {
+        league.week = weekNum + 1;
+        league.phase = 'group';
+      } else {
+        league.week = 4;
+        league.phase = 'playoff';
+        league.playoff = this._buildTop4PlayoffBracket();
+      }
+    }
+
+    _simulateRemainingPlayoffMatches(satDayNum) {
+      const league = this.oakhavenLeague;
+      if (!league || league.phase !== 'playoff') return;
+      if (!league.playoff) league.playoff = this._buildTop4PlayoffBracket();
+      const b = league.playoff;
+      if (!b) return;
+
+      [b.sf1, b.sf2].forEach((sf) => {
+        if (!sf.winner && sf.p1 && sf.p2) {
+          const res = this._simulateNpcBestOf3(sf.p1, sf.p2);
+          sf.winner = res.winnerId;
+          sf.p1Rounds = res.roundsA;
+          sf.p2Rounds = res.roundsB;
+        }
+      });
+
+      b.final.p1 = b.sf1.winner;
+      b.final.p2 = b.sf2.winner;
+      if (!b.final.winner && b.final.p1 && b.final.p2) {
+        const res = this._simulateNpcBestOf3(b.final.p1, b.final.p2);
+        b.final.winner = res.winnerId;
+        b.final.p1Rounds = res.roundsA;
+        b.final.p2Rounds = res.roundsB;
+      }
+
+      if (b.final.winner) {
+        this._finalizeOakhavenLeagueSeason(b.final.winner, satDayNum);
+      }
+    }
+
+    _finalizeOakhavenLeagueSeason(championId, satDayNum) {
+      const league = this.oakhavenLeague;
+      if (!league) return;
+      league.champion = {
+        id: championId,
+        name: this.getOakhavenLeagueParticipantName(championId),
+        season: league.season
+      };
+      league.phase = 'complete';
+      league.lastSimulatedDay = Math.max(league.lastSimulatedDay || 0, satDayNum || (this.dayNumber || 1));
+      if (!Array.isArray(league.seasonHistory)) league.seasonHistory = [];
+      league.seasonHistory.unshift({ ...league.champion });
+      league.seasonHistory = league.seasonHistory.slice(0, 6);
+      // Reward hook: award Oakhaven League prizes here when championId === 'player'
+    }
+
+    startNextOakhavenLeagueSeason() {
+      const prevSeason = this.oakhavenLeague?.season || 1;
+      const prevHistory = Array.isArray(this.oakhavenLeague?.seasonHistory) ? [...this.oakhavenLeague.seasonHistory] : [];
+      const next = this.createFreshOakhavenLeagueState(prevSeason + 1);
+      next.seasonHistory = prevHistory;
+      next.lastSimulatedDay = this.oakhavenLeague?.lastSimulatedDay || Math.max(0, (this.dayNumber || 1) - 1);
+      this.oakhavenLeague = next;
+      this.saveWorldData(this.draftAppearance);
+    }
+
+    checkOakhavenLeagueAutoAdvance() {
+      if (!this.oakhavenLeague) return;
+      const curDay = this.dayNumber || 1;
+      const lastDay = this.oakhavenLeague.lastSimulatedDay || 0;
+      if (curDay <= lastDay + 1) return;
+
+      let changed = false;
+      for (let d = Math.max(1, lastDay + 1); d < curDay; d++) {
+        if (this.isSaturdayToday(d)) {
+          if (this.oakhavenLeague.phase === 'complete') {
+            this.startNextOakhavenLeagueSeason();
+          }
+          if (this.oakhavenLeague.phase === 'group') {
+            this._simulateGroupWeekMatches(this.oakhavenLeague.week, d);
+            changed = true;
+          } else if (this.oakhavenLeague.phase === 'playoff') {
+            this._simulateRemainingPlayoffMatches(d);
+            changed = true;
+          }
+        }
+      }
+      if (changed) {
+        this.saveWorldData(this.draftAppearance);
+      }
+    }
+
+    getConventionLeagueSeatedNpcs() {
+      const league = this.oakhavenLeague;
+      if (!league || !this.isSaturdayToday() || (this.timeOfDayMinutes || 0) < 900) return [];
+      const podSeatMap = {
+        'POD A': [
+          { x: 13.2, y: 9.15, dir: 'down' },
+          { x: 11.55, y: 10.6, dir: 'right' },
+          { x: 14.85, y: 10.6, dir: 'left' },
+          { x: 13.2, y: 12.05, dir: 'up' }
+        ],
+        'POD B': [
+          { x: 20.8, y: 9.15, dir: 'down' },
+          { x: 19.15, y: 10.6, dir: 'right' },
+          { x: 22.45, y: 10.6, dir: 'left' },
+          { x: 20.8, y: 12.05, dir: 'up' }
+        ],
+        'POD C': [
+          { x: 13.2, y: 15.15, dir: 'down' },
+          { x: 11.55, y: 16.6, dir: 'right' },
+          { x: 14.85, y: 16.6, dir: 'left' },
+          { x: 13.2, y: 18.05, dir: 'up' }
+        ]
+      };
+
+      const seated = [];
+      if (league.phase === 'group') {
+        const pods = this.getLeagueWeekPods(league.week, league.playerEntered);
+        pods.forEach((pod) => {
+          const seats = podSeatMap[pod.podLabel] || [];
+          pod.players.forEach((id, idx) => {
+            if (id === 'player' || !seats[idx]) return;
+            const pos = seats[idx];
+            seated.push({
+              id: `league_seat_${id}`,
+              name: this.getOakhavenLeagueParticipantName(id),
+              x: pos.x,
+              y: pos.y,
+              dir: pos.dir,
+              walkTick: 0,
+              bubble: '🃏',
+              sprite: this.getNpcSpriteForMeetup(id)
+            });
+          });
+        });
+      } else if (league.phase === 'playoff' && league.playoff?.seeds) {
+        const seats = podSeatMap['POD A'] || [];
+        league.playoff.seeds.forEach((id, idx) => {
+          if (id === 'player' || !seats[idx]) return;
+          const pos = seats[idx];
+          seated.push({
+            id: `league_seat_${id}`,
+            name: this.getOakhavenLeagueParticipantName(id),
+            x: pos.x,
+            y: pos.y,
+            dir: pos.dir,
+            walkTick: 0,
+            bubble: '🏆',
+            sprite: this.getNpcSpriteForMeetup(id)
+          });
+        });
+      }
+      return seated;
+    }
+
+    enterOakhavenLeague() {
+      const league = this.oakhavenLeague;
+      if (!league) return;
+      const statusEl = document.getElementById('league-status-msg');
+      if (league.playerEntered) return;
+      if (league.phase !== 'group') {
+        if (statusEl) {
+          statusEl.textContent = '⚠️ Season Top-4 Playoffs are underway! Join Season ' + (league.season + 1) + ' on Week 1.';
+          statusEl.className = 'league-status-msg error';
+        }
+        return;
+      }
+      if ((this.gold || 0) < 10) {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        if (statusEl) {
+          statusEl.textContent = `⚠️ Entry requires $10.00 (Wallet: ${this.formatMoney(this.gold || 0)}).`;
+          statusEl.className = 'league-status-msg error';
+        }
+        return;
+      }
+      this.gold = Math.round(((this.gold || 0) - 10) * 100) / 100;
+      league.playerEntered = true;
+      league.playerEntryWeek = league.week;
+      league.playerWeekMatchesDone = [];
+      league.standings.player = {
+        id: 'player',
+        name: this.playerName || 'Player',
+        points: 0,
+        roundWins: 0,
+        matchesPlayed: 0
+      };
+      if (this.isSaturdayToday() && (this.timeOfDayMinutes || 0) >= 900) {
+        league.checkedInWeek = league.week;
+      }
+      if (window.sounds?.playVictory) {
+        window.sounds.playVictory();
+      } else if (window.sounds?.playClick) {
+        window.sounds.playClick();
+      }
+      this.saveWorldData(this.draftAppearance);
+      this.updateHUDSaveInfo();
+      this.renderOakhavenLeagueModal();
+      const postStatusEl = document.getElementById('league-status-msg');
+      if (postStatusEl) {
+        postStatusEl.textContent = league.week > 1
+          ? `🎟️ Late Entry confirmed for $10.00! Joined Week ${league.week} at POD A.`
+          : `🎟️ Entered Season ${league.season} for $10.00! Welcome to the Oakhaven League!`;
+        postStatusEl.className = 'league-status-msg success';
+      }
+    }
+
+    checkInOakhavenLeague() {
+      const league = this.oakhavenLeague;
+      if (!league) return;
+      if (!league.playerEntered) {
+        this.enterOakhavenLeague();
+        return;
+      }
+      if (window.sounds?.playClick) window.sounds.playClick();
+      if (this.isSaturdayToday() && (this.timeOfDayMinutes || 0) >= 900) {
+        league.checkedInWeek = league.week;
+        this.saveWorldData(this.draftAppearance);
+      }
+      this.renderOakhavenLeagueModal();
+    }
+
+    _getLeagueOpponentDeckIds(npcId) {
+      const callPool = this.getDuelCallChallengerPool ? this.getDuelCallChallengerPool() : [];
+      const found = callPool.find(c => c.id === npcId && c.customDeck);
+      if (!found || !Array.isArray(found.cardNames)) return null;
+      const ids = found.cardNames
+        .map(n => this._resolveGwentCardDefByName?.(n))
+        .filter(Boolean)
+        .map(c => c.beastId || c.id)
+        .filter(Boolean);
+      return ids.length ? ids : null;
+    }
+
+    startNextOakhavenLeagueMatch() {
+      const league = this.oakhavenLeague;
+      if (!league || !league.playerEntered) return;
+      const statusEl = document.getElementById('league-status-msg');
+      if (!this.isSaturdayToday() || (this.timeOfDayMinutes || 0) < 960) {
+        if (statusEl) {
+          statusEl.textContent = '⏰ Matches start Saturdays at 4:00 PM! Use Check-In at 3:00 PM or Quick Test below.';
+          statusEl.className = 'league-status-msg error';
+        }
+        return;
+      }
+
+      if (league.phase === 'group') {
+        const podA = this.getLeagueWeekPods(league.week, true)[0];
+        const doneSet = new Set(league.playerWeekMatchesDone || []);
+        const oppId = podA.players.find(id => id !== 'player' && !doneSet.has(id));
+        if (!oppId) {
+          this._simulateGroupWeekMatches(league.week, this.dayNumber || 1);
+          this.saveWorldData(this.draftAppearance);
+          this.renderOakhavenLeagueModal();
+          return;
+        }
+        const oppName = this.getOakhavenLeagueParticipantName(oppId);
+        const matchNum = (league.playerWeekMatchesDone?.length || 0) + 1;
+        this.closeOakhavenLeagueModal();
+        this.triggerDuel(
+          {
+            id: oppId,
+            name: oppName,
+            sprite: this.getNpcSpriteForMeetup(oppId),
+            tournamentContext: {
+              type: 'oakhaven_league',
+              stage: 'group',
+              season: league.season,
+              week: league.week,
+              matchNum,
+              opponentId: oppId
+            }
+          },
+          'standard_10x8',
+          null,
+          this._getLeagueOpponentDeckIds(oppId)
+        );
+        return;
+      }
+
+      if (league.phase === 'playoff' && league.playoff) {
+        const b = league.playoff;
+        let oppId = null;
+        let stage = null;
+        if (b.sf1 && !b.sf1.winner && (b.sf1.p1 === 'player' || b.sf1.p2 === 'player')) {
+          stage = 'semifinal';
+          oppId = b.sf1.p1 === 'player' ? b.sf1.p2 : b.sf1.p1;
+        } else if (b.sf2 && !b.sf2.winner && (b.sf2.p1 === 'player' || b.sf2.p2 === 'player')) {
+          stage = 'semifinal';
+          oppId = b.sf2.p1 === 'player' ? b.sf2.p2 : b.sf2.p1;
+        } else {
+          // Ensure other SF is resolved before final
+          [b.sf1, b.sf2].forEach((sf) => {
+            if (!sf.winner && sf.p1 && sf.p2 && sf.p1 !== 'player' && sf.p2 !== 'player') {
+              const res = this._simulateNpcBestOf3(sf.p1, sf.p2);
+              sf.winner = res.winnerId;
+              sf.p1Rounds = res.roundsA;
+              sf.p2Rounds = res.roundsB;
+            }
+          });
+          b.final.p1 = b.sf1.winner;
+          b.final.p2 = b.sf2.winner;
+          if (!b.final.winner && (b.final.p1 === 'player' || b.final.p2 === 'player')) {
+            stage = 'final';
+            oppId = b.final.p1 === 'player' ? b.final.p2 : b.final.p1;
+          }
+        }
+        if (!oppId) {
+          this._simulateRemainingPlayoffMatches(this.dayNumber || 1);
+          this.saveWorldData(this.draftAppearance);
+          this.renderOakhavenLeagueModal();
+          return;
+        }
+        const oppName = this.getOakhavenLeagueParticipantName(oppId);
+        this.closeOakhavenLeagueModal();
+        this.triggerDuel(
+          {
+            id: oppId,
+            name: oppName,
+            sprite: this.getNpcSpriteForMeetup(oppId),
+            tournamentContext: {
+              type: 'oakhaven_league',
+              stage,
+              season: league.season,
+              week: 4,
+              opponentId: oppId
+            }
+          },
+          'standard_10x8',
+          null,
+          this._getLeagueOpponentDeckIds(oppId)
+        );
+      }
+    }
+
+    recordOakhavenLeagueMatchResult(ctx, won, playerRounds, oppRounds) {
+      const league = this.oakhavenLeague;
+      if (!league || !ctx) return;
+      const oppId = ctx.opponentId;
+      const pR = Math.max(0, Math.round(Number(playerRounds) || (won ? 2 : 0)));
+      const oR = Math.max(0, Math.round(Number(oppRounds) || (won ? 0 : 2)));
+
+      if (ctx.stage === 'group' && oppId) {
+        this._applyLeagueMatchScore('player', oppId, won ? 'player' : oppId, pR, oR);
+        if (!Array.isArray(league.playerWeekMatchesDone)) league.playerWeekMatchesDone = [];
+        if (!league.playerWeekMatchesDone.includes(oppId)) {
+          league.playerWeekMatchesDone.push(oppId);
+        }
+        if (league.playerWeekMatchesDone.length >= 3) {
+          this._simulateGroupWeekMatches(league.week, this.dayNumber || 1);
+        }
+      } else if (ctx.stage === 'semifinal' && league.playoff) {
+        const b = league.playoff;
+        const targetSf = [b.sf1, b.sf2].find(sf => sf && (sf.p1 === 'player' || sf.p2 === 'player'));
+        if (targetSf) {
+          const isP1 = targetSf.p1 === 'player';
+          targetSf.winner = won ? 'player' : oppId;
+          targetSf.p1Rounds = isP1 ? pR : oR;
+          targetSf.p2Rounds = isP1 ? oR : pR;
+        }
+        [b.sf1, b.sf2].forEach((sf) => {
+          if (sf && !sf.winner && sf.p1 && sf.p2) {
+            const res = this._simulateNpcBestOf3(sf.p1, sf.p2);
+            sf.winner = res.winnerId;
+            sf.p1Rounds = res.roundsA;
+            sf.p2Rounds = res.roundsB;
+          }
+        });
+        b.final.p1 = b.sf1.winner;
+        b.final.p2 = b.sf2.winner;
+        if (!won) {
+          // Player eliminated in SF — resolve NPC final immediately
+          const res = this._simulateNpcBestOf3(b.final.p1, b.final.p2);
+          b.final.winner = res.winnerId;
+          b.final.p1Rounds = res.roundsA;
+          b.final.p2Rounds = res.roundsB;
+          this._finalizeOakhavenLeagueSeason(b.final.winner, this.dayNumber || 1);
+        }
+      } else if (ctx.stage === 'final' && league.playoff?.final) {
+        const fin = league.playoff.final;
+        const isP1 = fin.p1 === 'player';
+        fin.winner = won ? 'player' : oppId;
+        fin.p1Rounds = isP1 ? pR : oR;
+        fin.p2Rounds = isP1 ? oR : pR;
+        this._finalizeOakhavenLeagueSeason(fin.winner, this.dayNumber || 1);
+      }
+
+      this.saveWorldData(this.draftAppearance);
+      this.updateHUDSaveInfo();
+    }
+
+    runOakhavenLeagueSelfTest() {
+      const seen = [];
+      for (let w = 1; w <= 3; w++) {
+        const podA = this.getLeagueWeekPods(w, true)[0];
+        podA.players.filter(id => id !== 'player').forEach(id => seen.push(id));
+      }
+      const uniqueOpponents = new Set(seen);
+      const report = {
+        weeks: 3,
+        totalPlayerOpponents: seen.length,
+        uniqueOpponents: uniqueOpponents.size,
+        noRepeats: seen.length === 9 && uniqueOpponents.size === 9,
+        weeklyPods: [1, 2, 3].map(w => this.getLeagueWeekPods(w, true).map(p => `${p.podLabel}:[${p.players.join(',')}]`))
+      };
+      console.log('[Oakhaven League Self-Test]', report);
+      return report;
+    }
+
+    ensureOakhavenLeagueModal() {
+      if (document.getElementById('oakhaven-league-modal')) return;
+      const modal = document.createElement('div');
+      modal.id = 'oakhaven-league-modal';
+      modal.className = 'league-modal-backdrop hidden';
+      modal.setAttribute('role', 'dialog');
+      modal.setAttribute('aria-modal', 'true');
+      modal.setAttribute('aria-label', 'Oakhaven League Hub');
+      modal.innerHTML = `
+        <div class="league-modal-dialog">
+          <div class="league-header">
+            <div class="league-header-title">
+              <span class="league-trophy-badge" aria-hidden="true">🏆</span>
+              <div>
+                <h2 id="league-modal-title">OAKHAVEN LEAGUE</h2>
+                <div class="league-subtitle" id="league-modal-subtitle">Convention Center • Saturdays 3 PM Check-In / 4 PM Start</div>
+              </div>
+            </div>
+            <div class="league-header-actions">
+              <span id="league-wallet-display" class="league-wallet-pill">💰 $0.00</span>
+              <button type="button" id="league-close-btn" class="league-close-btn" aria-label="Close League">✕</button>
+            </div>
+          </div>
+          <div id="league-modal-body" class="league-modal-body"></div>
+          <div class="league-test-bar">
+            <span class="league-test-label">🛠️ Quick Test:</span>
+            <button type="button" id="league-test-sat3" class="league-test-btn">📅 Sat 3:00 PM</button>
+            <button type="button" id="league-test-sat4" class="league-test-btn">⏰ Sat 4:00 PM</button>
+            <button type="button" id="league-test-sim" class="league-test-btn">⏩ Sim Week</button>
+            <button type="button" id="league-test-verify" class="league-test-btn">✅ Check 9-Opp</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) this.closeOakhavenLeagueModal();
+      });
+      document.getElementById('league-close-btn')?.addEventListener('click', () => {
+        this.closeOakhavenLeagueModal();
+      });
+
+      const jumpToSaturday = (minutes) => {
+        while (!this.isSaturdayToday()) {
+          this.dayNumber = (this.dayNumber || 1) + 1;
+        }
+        this.timeOfDayMinutes = minutes;
+        this.syncTimeOfDayPhase(false);
+        this.updateClockHUD(true);
+        this.saveWorldData(this.draftAppearance);
+        this.updateHUDSaveInfo();
+        this.renderOakhavenLeagueModal();
+      };
+      document.getElementById('league-test-sat3')?.addEventListener('click', () => {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        jumpToSaturday(900); // 3:00 PM
+      });
+      document.getElementById('league-test-sat4')?.addEventListener('click', () => {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        jumpToSaturday(960); // 4:00 PM
+      });
+      document.getElementById('league-test-sim')?.addEventListener('click', () => {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        const league = this.oakhavenLeague;
+        if (!league) return;
+        if (league.phase === 'complete') {
+          this.startNextOakhavenLeagueSeason();
+        } else if (league.phase === 'group') {
+          this._simulateGroupWeekMatches(league.week, this.dayNumber || 1);
+          this.saveWorldData(this.draftAppearance);
+        } else if (league.phase === 'playoff') {
+          this._simulateRemainingPlayoffMatches(this.dayNumber || 1);
+          this.saveWorldData(this.draftAppearance);
+        }
+        this.renderOakhavenLeagueModal();
+      });
+      document.getElementById('league-test-verify')?.addEventListener('click', () => {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        const res = this.runOakhavenLeagueSelfTest();
+        const st = document.getElementById('league-status-msg');
+        if (st) {
+          st.textContent = res.noRepeats
+            ? `✅ Verified: 3 weeks × 3 opponents = ${res.uniqueOpponents}/9 distinct opponents (0 repeats)!`
+            : `❌ Opponent mismatch detected (${res.uniqueOpponents}/9).`;
+          st.className = `league-status-msg ${res.noRepeats ? 'success' : 'error'}`;
+        }
+      });
+    }
+
+    openOakhavenLeagueModal() {
+      this.ensureOakhavenLeagueModal();
+      this.renderOakhavenLeagueModal();
+      document.getElementById('oakhaven-league-modal')?.classList.remove('hidden');
+    }
+
+    closeOakhavenLeagueModal() {
+      if (window.sounds?.playClick) window.sounds.playClick();
+      document.getElementById('oakhaven-league-modal')?.classList.add('hidden');
+    }
+
+    renderOakhavenLeagueModal() {
+      const body = document.getElementById('league-modal-body');
+      const league = this.oakhavenLeague;
+      if (!body || !league) return;
+
+      const walletEl = document.getElementById('league-wallet-display');
+      if (walletEl) walletEl.textContent = `💰 ${this.formatMoney(this.gold || 0)}`;
+      const titleEl = document.getElementById('league-modal-title');
+      if (titleEl) {
+        titleEl.textContent = `OAKHAVEN LEAGUE — SEASON ${league.season}`;
+      }
+
+      const isSat = this.isSaturdayToday();
+      const mins = Number(this.timeOfDayMinutes) || 0;
+      const isCheckInOpen = isSat && mins >= 900;
+      const isMatchTime = isSat && mins >= 960;
+      const sorted = this.getSortedOakhavenLeagueStandings();
+
+      let phaseLabel = `Week ${league.week} of 3 • Group Stage (Pods of 4)`;
+      if (league.phase === 'playoff') phaseLabel = 'Week 4 • Top-4 Bracket Playoff';
+      if (league.phase === 'complete') phaseLabel = `Season ${league.season} Complete • Champion: ${league.champion?.name || '—'}`;
+
+      let primaryActionHtml = '';
+      if (!league.playerEntered && league.phase === 'group') {
+        const lateTxt = league.week > 1 ? ` (Late Entry — Week ${league.week})` : '';
+        primaryActionHtml = `<button type="button" id="league-btn-enter" class="league-primary-btn">🎟️ Enter Oakhaven League ($10.00)${lateTxt}</button>`;
+      } else if (league.playerEntered && league.phase === 'group') {
+        const doneCount = league.playerWeekMatchesDone?.length || 0;
+        if (!isSat) {
+          primaryActionHtml = `<div class="league-schedule-pill">📅 Next Saturday • 3:00 PM Check-In / 4:00 PM Matches</div>`;
+        } else if (!isCheckInOpen) {
+          primaryActionHtml = `<div class="league-schedule-pill">🕒 Today is Saturday — Check-in opens at 3:00 PM (${this.formatClockTime()})</div>`;
+        } else if (league.checkedInWeek !== league.week) {
+          primaryActionHtml = `<button type="button" id="league-btn-checkin" class="league-primary-btn">📋 Check In for Week ${league.week}</button>`;
+        } else if (!isMatchTime) {
+          primaryActionHtml = `<div class="league-schedule-pill ready">✅ Checked In for Week ${league.week}! Matches begin at 4:00 PM</div>`;
+        } else if (doneCount < 3) {
+          primaryActionHtml = `<button type="button" id="league-btn-play" class="league-primary-btn battle">⚔️ Play Week ${league.week} Match ${doneCount + 1}/3</button>`;
+        } else {
+          primaryActionHtml = `<div class="league-schedule-pill ready">✅ All 3 Week ${league.week} matches complete!</div>`;
+        }
+      } else if (league.phase === 'playoff' && league.playoff) {
+        const inTop4 = (league.playoff.seeds || []).includes('player');
+        if (inTop4 && isMatchTime) {
+          primaryActionHtml = `<button type="button" id="league-btn-play" class="league-primary-btn battle">🏆 Play Top-4 Playoff Match</button>`;
+        } else if (inTop4) {
+          primaryActionHtml = `<div class="league-schedule-pill ready">🏆 You qualified Top 4! Playoff begins Saturday at 4:00 PM.</div>`;
+        } else {
+          primaryActionHtml = `<div class="league-schedule-pill">🏆 Top-4 Playoff in progress (${league.playerEntered ? 'Eliminated' : 'Not Entered'})</div>`;
+        }
+      } else if (league.phase === 'complete') {
+        primaryActionHtml = `<button type="button" id="league-btn-newseason" class="league-primary-btn">🎉 Start Season ${league.season + 1}</button>`;
+      }
+
+      const standingsRowsHtml = sorted.map((s, idx) => {
+        const isTop4 = idx < 4;
+        const isPlayer = s.id === 'player';
+        return `
+          <tr class="${isPlayer ? 'is-player' : ''}${isTop4 ? ' top-4' : ''}">
+            <td>${idx + 1}${isTop4 ? ' ★' : ''}</td>
+            <td>${s.name}${isPlayer ? ' (You)' : ''}</td>
+            <td><b>${s.points}</b></td>
+            <td>${s.roundWins}</td>
+            <td>${s.matchesPlayed}</td>
+          </tr>
+        `;
+      }).join('');
+
+      let rightPaneHtml = '';
+      if (league.phase === 'group') {
+        const pods = this.getLeagueWeekPods(league.week, league.playerEntered);
+        const doneSet = new Set(league.playerWeekMatchesDone || []);
+        rightPaneHtml = `
+          <div class="league-section-head">🪑 Week ${league.week} Tables (Groups of 4 • 3 Matches)</div>
+          <div class="league-pod-grid">
+            ${pods.map(pod => `
+              <div class="league-pod-card">
+                <div class="league-pod-title">${pod.podLabel}</div>
+                <ul class="league-pod-list">
+                  ${pod.players.map(id => {
+                    const isSelf = id === 'player';
+                    const isBeatenOrDone = !isSelf && pod.podLabel === 'POD A' && doneSet.has(id);
+                    return `<li class="${isSelf ? 'self' : ''}${isBeatenOrDone ? ' played' : ''}">${this.getOakhavenLeagueParticipantName(id)}${isSelf ? ' (You)' : (isBeatenOrDone ? ' ✓' : '')}</li>`;
+                  }).join('')}
+                </ul>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      } else if (league.playoff) {
+        const b = league.playoff;
+        const n = id => id ? this.getOakhavenLeagueParticipantName(id) : 'TBD';
+        rightPaneHtml = `
+          <div class="league-section-head">🏆 Top-4 Championship Bracket</div>
+          <div class="league-bracket">
+            <div class="league-bracket-match">
+              <div class="league-bm-title">Semifinal 1 (#1 vs #4)</div>
+              <div class="league-bm-row${b.sf1.winner === b.sf1.p1 ? ' win' : ''}">${n(b.sf1.p1)} <span>${b.sf1.p1Rounds || 0}</span></div>
+              <div class="league-bm-row${b.sf1.winner === b.sf1.p2 ? ' win' : ''}">${n(b.sf1.p2)} <span>${b.sf1.p2Rounds || 0}</span></div>
+            </div>
+            <div class="league-bracket-match">
+              <div class="league-bm-title">Semifinal 2 (#2 vs #3)</div>
+              <div class="league-bm-row${b.sf2.winner === b.sf2.p1 ? ' win' : ''}">${n(b.sf2.p1)} <span>${b.sf2.p1Rounds || 0}</span></div>
+              <div class="league-bm-row${b.sf2.winner === b.sf2.p2 ? ' win' : ''}">${n(b.sf2.p2)} <span>${b.sf2.p2Rounds || 0}</span></div>
+            </div>
+            <div class="league-bracket-match final">
+              <div class="league-bm-title">👑 Grand Final</div>
+              <div class="league-bm-row${b.final.winner && b.final.winner === b.final.p1 ? ' win' : ''}">${n(b.final.p1)} <span>${b.final.p1Rounds || 0}</span></div>
+              <div class="league-bm-row${b.final.winner && b.final.winner === b.final.p2 ? ' win' : ''}">${n(b.final.p2)} <span>${b.final.p2Rounds || 0}</span></div>
+            </div>
+          </div>
+        `;
+      }
+
+      body.innerHTML = `
+        <div class="league-status-banner">
+          <div>
+            <div class="league-phase-tag">${phaseLabel}</div>
+            <div class="league-clock-line">${this.getCurrentDayName()} Day ${this.dayNumber} • ${this.formatClockTime()}</div>
+          </div>
+          <div class="league-primary-wrap">${primaryActionHtml}</div>
+        </div>
+        <div id="league-status-msg" class="league-status-msg"></div>
+        <div class="league-columns">
+          <div class="league-standings-pane">
+            <div class="league-section-head">📊 Standings (1 Pt/Win • Tiebreak: Rounds Won)</div>
+            <table class="league-standings-table">
+              <thead><tr><th>#</th><th>Duelist</th><th>Pts</th><th>Rnds</th><th>GP</th></tr></thead>
+              <tbody>${standingsRowsHtml}</tbody>
+            </table>
+          </div>
+          <div class="league-pods-pane">
+            ${rightPaneHtml}
+          </div>
+        </div>
+      `;
+
+      document.getElementById('league-btn-enter')?.addEventListener('click', () => this.enterOakhavenLeague());
+      document.getElementById('league-btn-checkin')?.addEventListener('click', () => this.checkInOakhavenLeague());
+      document.getElementById('league-btn-play')?.addEventListener('click', () => this.startNextOakhavenLeagueMatch());
+      document.getElementById('league-btn-newseason')?.addEventListener('click', () => {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        this.startNextOakhavenLeagueSeason();
+        this.renderOakhavenLeagueModal();
+      });
+    }
+
     _purchaseStorePack(kind = 'base') {
       const isPremium = kind === 'premium';
       const activeEvent = this.getCurrentDayEvent();
@@ -6996,8 +9450,8 @@
         if (footerMsg) {
           const hasUnsealedFull = quote.filledPacks.some(p => p.cards.length >= (p.capacity || 5) && !p.sealed);
           footerMsg.innerHTML = hasUnsealedFull
-            ? `🔒 Permanently seal your 5/5 Class Pack(s) first (click <b>🔒 SEAL</b>) to unlock the +25% bonus and cash out!`
-            : `⚠️ Nothing ready to cash out — add loose extras or fill a Class Pack first!`;
+            ? `🔒 Permanently seal your 5/5 Fillable Class Pack(s) first (click <b>🔒 SEAL</b>) to unlock the +25% bonus and cash out!`
+            : `⚠️ Nothing ready to cash out — add loose extras or fill a Fillable Class Pack first!`;
           footerMsg.className = 'shop-footer-hint highlight';
         }
         return false;
@@ -7136,10 +9590,10 @@
         gridEl.innerHTML = '';
         if (visiblePacks.length === 0 && visibleCards.length === 0) {
           const emptyMsg = sellFilter === 'packs'
-            ? 'Buy a $1 Class Pack on the left and fill it with up to 5 matching-class cards from your Binder to sell here (+25% sealed bonus)!'
+            ? 'Buy a $1 Fillable Class Pack on the left and fill it with up to 5 matching-class cards from your Binder to sell here (+25% sealed bonus)!'
             : (sellFilter === 'cards'
               ? 'No loose cards in your Card Binder right now. Cards equipped in your Playing Deck stay protected!'
-              : 'You have no loose cards in your Binder or Refillable Class Packs right now. Playing Deck cards stay protected!');
+              : 'You have no loose cards in your Binder or Fillable Class Packs right now. Playing Deck cards stay protected!');
           gridEl.innerHTML = `
             <div class="shop-empty-sell">
               <span class="shop-empty-icon">📜</span>
@@ -8543,6 +10997,23 @@
         this.syncParkNpcBubbles();
         this.updateFreeRoamPrompt();
         this.toggleParkTournamentModal(true);
+        return;
+      }
+      if (challenger?.tournamentContext?.type === 'phone_duel_challenge') {
+        this.activeDialogueNpc = null;
+        this.lastShopPromptKey = null;
+        this.updateFreeRoamPrompt();
+        if (this.pendingPhoneDuelCardReward) {
+          if (window.sounds?.playVictory) window.sounds.playVictory();
+          this.openPhoneDuelCardRewardModal();
+        }
+        return;
+      }
+      if (challenger?.tournamentContext?.type === 'oakhaven_league') {
+        this.activeDialogueNpc = null;
+        this.lastShopPromptKey = null;
+        this.updateFreeRoamPrompt();
+        this.openOakhavenLeagueModal();
         return;
       }
       if (challenger?.id === 'pluto') {
@@ -10900,7 +13371,8 @@
     }
 
     getFriendNpc() {
-      return this.npcs.find(n => n.id === 'best_friend' || n.id === 'friend') || this.npcs[0];
+      if (!Array.isArray(this.npcs)) return null;
+      return this.npcs.find(n => n.id === 'best_friend' || n.id === 'friend') || this.npcs[0] || null;
     }
 
     clearPendingBattleResults() {
@@ -11644,9 +14116,68 @@
       if (!nearest || bestDist >= maxDist) return false;
 
       const m = nearest.meetup;
+      this.nearInteractable = nearest;
+
+      if (m.type === 'duel_challenge') {
+        const rewardHtml = m.rewardType === 'money'
+          ? `💵 a <b>${this.formatMoney(m.rewardMoney || 0)}</b> cash prize`
+          : (m.rewardType === 'card_pick'
+            ? `🃏 your pick of <b>1 of 3 cards</b> from my deck`
+            : `🤝 a <b>Friendly Exhibition Match</b>`);
+        this.renderNpcChoicePrompt({
+          npcId: nearest.id,
+          promptKey: `meetup_duel_${m.id}_${this.gold}`,
+          speakerText: `⚔️ ${m.npcName.toUpperCase()} — SCHEDULED DUEL`,
+          talkPromptHtml: `Press <b>Talk</b> to start your scheduled duel with <b>${m.npcName}</b>!`,
+          greetingHtml: `<b>${m.npcName}:</b> "Right on schedule at <b>${m.shortVenueLabel}</b> (${this.formatMeetupWindowLabel(m)})! Stakes: ${rewardHtml}. Ready to draw?"`,
+          choices: [
+            {
+              label: `1. ⚔️ "Let's start the duel right now!"`,
+              primary: true,
+              silentClick: true,
+              onSelect: () => {
+                this.closeDialogue();
+                this.triggerDuel(
+                  {
+                    id: m.npcId,
+                    name: m.npcName,
+                    sprite: nearest.sprite || this.getNpcSpriteForMeetup(m.npcId),
+                    tournamentContext: {
+                      type: 'phone_duel_challenge',
+                      meetupId: m.id,
+                      rewardType: m.rewardType,
+                      rewardMoney: m.rewardMoney,
+                      rewardCards: m.rewardCards
+                    }
+                  },
+                  'standard_10x8',
+                  null,
+                  Array.isArray(m.customDeckIds) && m.customDeckIds.length ? m.customDeckIds : null
+                );
+              }
+            },
+            {
+              label: `2. 💬 "What kind of cards are you packing for this meetup?"`,
+              onSelect: (el) => {
+                const hintNames = Array.isArray(m.rewardCards) && m.rewardCards.length
+                  ? m.rewardCards.map(c => `<b>${c.shortName || c.name}</b>`).join(', ')
+                  : `a sharp best-of-3 Mythos lineup`;
+                el.innerHTML = `<b>${m.npcName}:</b> "No holding back today! Expect ${hintNames} along with my full deck synergy!"`;
+              }
+            },
+            {
+              label: `3. 👋 "Let me tune my deck first. (Leave)"`,
+              onSelect: () => this.closeDialogue()
+            }
+          ],
+          challengeText: '⚔️ Start Duel (Space)',
+          topPosition
+        });
+        return true;
+      }
+
       const isBuy = m.type === 'buy';
       const priceTxt = `${isBuy ? '' : '+'}${this.formatMoney(m.agreedPrice)}`;
-      this.nearInteractable = nearest;
 
       const venueFlavor = m.venueType === 'player_house'
         ? (isBuy
@@ -12906,6 +15437,296 @@
           challengeBtn.classList.remove('ow-talk-btn');
           bar.classList.add('hidden');
         }
+      } else if (['apt_1_interior', 'apt_2_interior', 'apt_3_interior', 'apt_4_interior'].includes(this.currentArea)) {
+        const pName = this.draftAppearance?.name || 'Asher';
+        const aptResidents = {
+          apt_1_interior: {
+            npc: this.aptTessaNpc,
+            id: 'apt_tessa',
+            speaker: '🎧 TESSA — OAKHAVEN APARTMENTS • SUITE 101',
+            talkPrompt: 'Press <b>Talk</b> to chat with <b>Tessa</b> in Suite 101.',
+            greeting: `<b>Tessa:</b> "Hey ${pName}! Make yourself at home in Suite 101. I've been mixing late-night Witch & Vampire music playlists—and building a Mythos deck to match!"`,
+            topic1Label: `1. 🔮 "Which Mythos cards fit your deck?"`,
+            topic1Reply: `<b>Tessa:</b> "Armantha the Witch and Zavela the Witch hold down the backline, backed up by 5★ Lothar, Vampire Prince! If you seal 5 Vampire or Witch cards in Leo's $1 Fillable Class Packs, that +25% payout stacks up fast!"`,
+            topic2Label: `2. ✨ "Any pack-hunting luck lately?"`,
+            topic2Reply: `<b>Tessa:</b> "I sprung for a $15 1st-Edition Premium Pack at Leo's Shop yesterday—twice the Animated Special odds and a guaranteed 3★+ pull made all the difference!"`
+          },
+          apt_2_interior: {
+            npc: this.aptDanteNpc,
+            id: 'apt_dante',
+            speaker: '⚓ DANTE — OAKHAVEN APARTMENTS • SUITE 102',
+            talkPrompt: 'Press <b>Talk</b> to chat with <b>Dante</b> in Suite 102.',
+            greeting: `<b>Dante:</b> "Ahoy ${pName}! Welcome to Suite 102. Keeping the apartment stocked with sea-chart maps and Water & Lizard Mythos foils."`,
+            topic1Label: `1. 🌊 "Got a favorite combo for duels?"`,
+            topic1Reply: `<b>Dante:</b> "Drop Merfolk on the same row as Sea Dragon for double-hit pressure! Then anchor the heavy hits with PyroManda, Frost Skink, or 5★ Krythos the Basilisk!"`,
+            topic2Label: `2. 📋 "Do you trade with folks around Oakhaven?"`,
+            topic2Reply: `<b>Dante:</b> "You bet—you can post spare cards from your Card Binder right on the Card Exchange phone app and meet buyers right outside!"`
+          },
+          apt_3_interior: {
+            npc: this.aptNinaNpc,
+            id: 'apt_nina',
+            speaker: '🍜 NINA — OAKHAVEN APARTMENTS • SUITE 103',
+            talkPrompt: 'Press <b>Talk</b> to chat with <b>Nina</b> in Suite 103.',
+            greeting: `<b>Nina:</b> "Hi ${pName}! Just simmering ramen here in Suite 103 and sleeving up fresh pulls in my Card Binder."`,
+            topic1Label: `1. 🐺 "What archetype are you sleeving right now?"`,
+            topic1Reply: `<b>Nina:</b> "I'm splitting between Goblin Army swarms led by 5★ Gooba, Goblin King and a Wolf Pack core with Werewolf Pup and Minerva, Wolf Mother! Super snappy under the 40★ deck cap."`,
+            topic2Label: `2. 👗 "Have you checked out the shops north of Willow Way?"`,
+            topic2Reply: `<b>Nina:</b> "Right?! Between the Barber Shop and Oakhaven Apparel on the north road, this side of town feels lively now!"`
+          },
+          apt_4_interior: {
+            npc: this.aptMilesNpc,
+            id: 'apt_miles',
+            speaker: '⏱️ MILES — OAKHAVEN APARTMENTS • SUITE 104',
+            talkPrompt: 'Press <b>Talk</b> to chat with <b>Miles</b> in Suite 104.',
+            greeting: `<b>Miles:</b> "Step on in, ${pName}! Welcome to Suite 104—I'm crunching star budgets and timing clockwork Machine builds."`,
+            topic1Label: `1. ⚙️ "What's your best tip under the 40★ star cap?"`,
+            topic1Reply: `<b>Miles:</b> "Every 1★ Rust Bucket and 2★ Scrap Heap leaves room for a 5★ finisher like Jallopy or Oscar, Orc Giant next to Orc Infantry's Shield Wall! Never waste a star point."`,
+            topic2Label: `2. 🏆 "Where can I test a new 18-card list?"`,
+            topic2Reply: `<b>Miles:</b> "Try friendly wagers at Pluto's or join Chloe and Rowan for the Central Park Monday Casual Round Robin!"`
+          }
+        };
+        const suite = aptResidents[this.currentArea];
+        const aptNpc = suite?.npc;
+        const distToAptNpc = aptNpc ? Math.hypot(this.player.x - aptNpc.x, this.player.y - aptNpc.y) : 999;
+        if (suite && aptNpc && distToAptNpc < 1.55) {
+          this.nearInteractable = aptNpc;
+          this.renderNpcChoicePrompt({
+            npcId: suite.id,
+            promptKey: `${suite.id}_dialogue_${pName}`,
+            speakerText: suite.speaker,
+            speakerClass: 'ow-speaker-tag friend',
+            talkPromptHtml: suite.talkPrompt,
+            greetingHtml: suite.greeting,
+            choices: [
+              {
+                label: suite.topic1Label,
+                primary: true,
+                onSelect: (el) => {
+                  this.gainDialogueRelationship(suite.id, 2, 'apt deck talk');
+                  el.innerHTML = suite.topic1Reply;
+                }
+              },
+              {
+                label: suite.topic2Label,
+                onSelect: (el) => {
+                  this.gainDialogueRelationship(suite.id, 2, 'friendly neighbor chat');
+                  el.innerHTML = suite.topic2Reply;
+                }
+              },
+              {
+                label: `3. 👋 "Catch you around the building! (Leave)"`,
+                onSelect: () => this.closeDialogue()
+              }
+            ]
+          });
+        } else {
+          this.lastShopPromptKey = null;
+          this.nearInteractable = null;
+          this.activeDialogueNpc = null;
+          challengeBtn.classList.remove('ow-talk-btn');
+          bar.classList.add('hidden');
+        }
+      } else if (this.currentArea === 'barber_shop_interior') {
+        const pName = this.draftAppearance?.name || 'Asher';
+        const barber = this.barberNpc;
+        const dist = barber ? Math.hypot(this.player.x - barber.x, this.player.y - barber.y) : 999;
+        if (dist < 1.55) {
+          this.nearInteractable = barber;
+          this.renderNpcChoicePrompt({
+            npcId: 'barber_enzo',
+            promptKey: `barber_enzo_dialogue_${pName}`,
+            speakerText: '💈 ENZO — OAKHAVEN BARBER SHOP',
+            speakerClass: 'ow-speaker-tag friend',
+            talkPromptHtml: `Press <b>Talk</b> to speak with <b>Barber Enzo</b> beside the styling chairs.`,
+            greetingHtml: `<b>Barber Enzo:</b> "Step right in, ${pName}! Clean fades, hot towels, and 10 signature cuts from <b>$1.00 to $5.00</b>. Ready for a fresh look or just swapping deck talk?"`,
+            choices: [
+              {
+                label: `1. 💈 "Let's check out the Hair Style Menu! ($1–$5)"`,
+                primary: true,
+                silentClick: true,
+                onSelect: () => {
+                  this.closeDialogue();
+                  this.toggleBarberModal(true);
+                }
+              },
+              {
+                label: `2. 🐺 "Hear any Mythos buzz from folks in the chair lately?"`,
+                onSelect: (el) => {
+                  el.innerHTML = `<b>Barber Enzo:</b> "Everybody's chasing pack synergy right now—<b>Werewolf Pup</b> backing up <b>Minerva, Wolf Mother</b> and <b>Manson, Wolf Father</b>, plus folks hunting <b>Gooba, Goblin King</b> over at Leo's Plaza!"`;
+                  this.gainDialogueRelationship('barber_enzo', 2, 'barber shop rumors');
+                }
+              },
+              {
+                label: `3. 💈 "Sharp shop you've got here—how's Main Street treating you?"`,
+                onSelect: (el) => {
+                  el.innerHTML = `<b>Barber Enzo:</b> "Busy as ever! Half my regulars get lined up here and stroll straight next door to <b>Oakhaven Apparel</b> to match a fresh jacket before heading to the Card Shop."`;
+                  this.gainDialogueRelationship('barber_enzo', 2, 'complimented barber shop');
+                }
+              },
+              {
+                label: `4. 👋 "Catch you around the block, Enzo. (Leave)"`,
+                onSelect: () => this.closeDialogue()
+              }
+            ],
+            challengeText: '💈 Style Menu (Space)'
+          });
+        } else {
+          this.lastShopPromptKey = null;
+          this.nearInteractable = null;
+          this.activeDialogueNpc = null;
+          challengeBtn.classList.remove('ow-talk-btn');
+          bar.classList.add('hidden');
+        }
+      } else if (this.currentArea === 'clothing_store_interior') {
+        const pName = this.draftAppearance?.name || 'Asher';
+        const tailor = this.tailorNpc;
+        const dist = tailor ? Math.hypot(this.player.x - tailor.x, this.player.y - tailor.y) : 999;
+        if (dist < 1.55) {
+          this.nearInteractable = tailor;
+          this.renderNpcChoicePrompt({
+            npcId: 'tailor_celeste',
+            promptKey: `tailor_celeste_dialogue_${pName}`,
+            speakerText: '👔 CELESTE — OAKHAVEN APPAREL',
+            speakerClass: 'ow-speaker-tag friend',
+            talkPromptHtml: `Press <b>Talk</b> to speak with <b>Celeste</b> by the boutique counter.`,
+            greetingHtml: `<b>Celeste:</b> "Welcome to <b>Oakhaven Apparel</b>, ${pName}! Browse our curated racks of shirts, pants, shorts, and shoes from <b>$1.00 to $10.00</b>."`,
+            choices: [
+              {
+                label: `1. 👔 "Let's browse Oakhaven Apparel! (Shirts, Pants & Shoes — $1–$10)"`,
+                primary: true,
+                silentClick: true,
+                onSelect: () => {
+                  this.closeDialogue();
+                  this.toggleApparelModal(true);
+                }
+              },
+              {
+                label: `2. 🧥 "Do duelists pick outfits to match their Mythos decks?"`,
+                onSelect: (el) => {
+                  el.innerHTML = `<b>Celeste:</b> "Oh, constantly! Witch players love deep velvet cloaks for <b>Armantha the Witch</b> and <b>Zavela the Witch</b>, Vampire fans go dark-crimson like <b>Lothar, Vampire Prince</b>, and Water Tribe duelists grab teal accents for <b>Sea Dragon</b>."`;
+                  this.gainDialogueRelationship('tailor_celeste', 2, 'apparel style chat');
+                }
+              },
+              {
+                label: `3. 👔 "The new boutique looks great next to Enzo's Barber Shop!"`,
+                onSelect: (el) => {
+                  el.innerHTML = `<b>Celeste:</b> "Thank you! Setting up right east of <b>Barber Enzo</b> was the best call—folks walk out with a fresh cut and step straight over here to browse coats, vests, and match-day jackets."`;
+                  this.gainDialogueRelationship('tailor_celeste', 2, 'shop welcome');
+                }
+              },
+              {
+                label: `4. 👋 "Thanks, Celeste! Just browsing the racks. (Leave)"`,
+                onSelect: () => this.closeDialogue()
+              }
+            ],
+            challengeText: '👔 Shop Apparel (Space)'
+          });
+        } else {
+          this.lastShopPromptKey = null;
+          this.nearInteractable = null;
+          this.activeDialogueNpc = null;
+          challengeBtn.classList.remove('ow-talk-btn');
+          bar.classList.add('hidden');
+        }
+      } else if (this.currentArea === 'animal_hospital_interior') {
+        const pName = this.draftAppearance?.name || 'Asher';
+        const vet = this.vetNpc;
+        const dist = vet ? Math.hypot(this.player.x - vet.x, this.player.y - vet.y) : 999;
+        if (dist < 1.65) {
+          this.nearInteractable = vet;
+          this.renderNpcChoicePrompt({
+            npcId: 'vet_hannah',
+            promptKey: `vet_hannah_dialogue_${pName}`,
+            speakerText: '🐾 DR. HANNAH — OAKHAVEN ANIMAL HOSPITAL',
+            speakerClass: 'ow-speaker-tag friend',
+            talkPromptHtml: `Press <b>Talk</b> to speak with <b>Dr. Hannah</b> at the clinic reception desk.`,
+            greetingHtml: `<b>Dr. Hannah:</b> "Welcome to the <b>Oakhaven Animal Hospital</b>, ${pName}! Keeping every pet and critter in town healthy and bright-eyed."`,
+            choices: [
+              {
+                label: `1. 🩺 "How are the clinic's patients doing today?"`,
+                primary: true,
+                onSelect: (el) => {
+                  el.innerHTML = `<b>Dr. Hannah:</b> "Everyone in the recovery cubbies is resting nicely after their morning checkups! Honestly, I'm just relieved my patients are sleepy housepets rather than a real <b>Werewolf Pup</b> or <b>Vampire Bat</b>."`;
+                  this.gainDialogueRelationship('vet_hannah', 2, 'clinic checkup chat');
+                }
+              },
+              {
+                label: `2. 🦎 "Do you collect Mythos creature cards too?"`,
+                onSelect: (el) => {
+                  el.innerHTML = `<b>Dr. Hannah:</b> "I do! I love the beast and reptile illustrations—especially <b>Minerva, Wolf Mother</b>, <b>Manson, Wolf Father</b>, <b>Frost Skink</b>, <b>PyroManda</b>, and <b>Krythos the Basilisk</b>."`;
+                  this.gainDialogueRelationship('vet_hannah', 2, 'creature cards chat');
+                }
+              },
+              {
+                label: `3. 🏥 "Love the new hospital here on Willow Way!"`,
+                onSelect: (el) => {
+                  el.innerHTML = `<b>Dr. Hannah:</b> "Thanks, ${pName}! Having our clinic on <b>Willow Way</b> right between the Convention Center and Shaun's Corner Market makes it easy for everyone in town to stop by!"`;
+                  this.gainDialogueRelationship('vet_hannah', 2, 'hospital welcome');
+                }
+              },
+              {
+                label: `4. 👋 "Take care, Dr. Hannah! (Leave)"`,
+                onSelect: () => this.closeDialogue()
+              }
+            ],
+            challengeText: '🐾 Talk to Dr. Hannah (Space)'
+          });
+        } else {
+          this.lastShopPromptKey = null;
+          this.nearInteractable = null;
+          this.activeDialogueNpc = null;
+          challengeBtn.classList.remove('ow-talk-btn');
+          bar.classList.add('hidden');
+        }
+      } else if (this.currentArea === 'convention_center_interior') {
+        const pName = this.draftAppearance?.name || 'Asher';
+        const valerie = this.leagueRegistrarNpc;
+        const dist = valerie ? Math.hypot(this.player.x - valerie.x, this.player.y - valerie.y) : 999;
+        if (dist < 2.65) {
+          const league = this.oakhavenLeague || this.createFreshOakhavenLeagueState(1);
+          const statusLine = league.playerEntered
+            ? `Season ${league.season} • Week ${league.week}${league.phase === 'playoff' ? ' (Top-4 Playoffs!)' : ''} Standings are live.`
+            : `First-time & late entry are $10.00—stop in anytime before Playoffs!`;
+          this.nearInteractable = valerie;
+          this.renderNpcChoicePrompt({
+            npcId: 'league_registrar',
+            promptKey: `league_registrar_${league.season}_${league.week}_${league.playerEntered}_${league.checkedInWeek}`,
+            speakerText: '🏆 VALERIE — OAKHAVEN LEAGUE DESK',
+            speakerClass: 'ow-speaker-tag friend',
+            talkPromptHtml: `Press <b>Talk</b> to speak with <b>Valerie</b> at the Check-In Desk.`,
+            greetingHtml: `<b>Valerie:</b> "Welcome to the <b>Oakhaven Convention Center</b>, ${pName}! ${statusLine}"`,
+            choices: [
+              {
+                label: league.playerEntered
+                  ? `1. 🏆 "Check In / View Oakhaven League Status & Standings"`
+                  : `1. 🎟️ "Check In / Enter Oakhaven League ($10.00)"`,
+                primary: true,
+                silentClick: true,
+                onSelect: () => {
+                  this.closeDialogue();
+                  this.openOakhavenLeagueModal();
+                }
+              },
+              {
+                label: `2. 📋 "How does the 3-week League & Playoff format work?"`,
+                onSelect: (el) => {
+                  el.innerHTML = `<b>Valerie:</b> "Every <b>Saturday</b> at the Convention Center: <b>3:00 PM</b> check-in, <b>4:00 PM</b> start! Tables of 4 play 3 matches for 3 weeks (9 unique opponents), scoring <b>1 pt/win</b> (tiebreak: rounds won). Top 4 enter the Week 4 Championship Bracket!"`;
+                }
+              },
+              {
+                label: `3. 👋 "Thanks, Valerie! I'll explore the hall. (Leave)"`,
+                onSelect: () => this.closeDialogue()
+              }
+            ],
+            challengeText: '🏆 League Check-In (Space)'
+          });
+        } else {
+          this.lastShopPromptKey = null;
+          this.nearInteractable = null;
+          this.activeDialogueNpc = null;
+          challengeBtn.classList.remove('ow-talk-btn');
+          bar.classList.add('hidden');
+        }
       } else if (this.currentArea === 'school_interior') {
         const pName = this.draftAppearance?.name || 'Asher';
         const evelyn = this.evelynNpc;
@@ -14047,6 +16868,14 @@
         playingDeck: [...(this.playingDeck || [])],
         deckStorageMigrated: this.deckStorageMigrated ?? true,
         equippedBoardTheme: this.equippedBoardTheme || 'classic',
+        ownedHairStyles: [...(this.ownedHairStyles || [])],
+        ownedShirts: [...(this.ownedShirts || [])],
+        ownedPants: [...(this.ownedPants || [])],
+        ownedShoes: [...(this.ownedShoes || [])],
+        duelCallsTodayDay: this.duelCallsTodayDay || (this.dayNumber || 1),
+        duelCallsTodayCount: this.duelCallsTodayCount || 0,
+        lastDuelCallTotalMinute: this.lastDuelCallTotalMinute ?? -999,
+        oakhavenLeague: this.oakhavenLeague ? JSON.parse(JSON.stringify(this.oakhavenLeague)) : null,
         storyState: this.storyState,
         currentArea: this.currentArea,
         playerPos: {
@@ -14162,6 +16991,10 @@
           areaLabel = `🚓 Oakhaven Police Department`;
         } else if (this.currentArea === 'barber_shop_interior') {
           areaLabel = `💈 Oakhaven Barber Shop`;
+        } else if (this.currentArea === 'clothing_store_interior') {
+          areaLabel = `👔 Oakhaven Apparel`;
+        } else if (this.currentArea === 'animal_hospital_interior') {
+          areaLabel = `🐾 Oakhaven Animal Hospital`;
         } else if (this.currentArea === 'apartment_hall_interior') {
           areaLabel = `🏢 Oakhaven Apartments — Main Hall`;
         } else if (this.currentArea === 'apt_1_interior') {
@@ -14216,6 +17049,8 @@
         else if (this.currentArea === 'fire_station_interior') shortArea = `🚒 Fire Dept.`;
         else if (this.currentArea === 'police_station_interior') shortArea = `🚓 Police Dept.`;
         else if (this.currentArea === 'barber_shop_interior') shortArea = `💈 Barber Shop`;
+        else if (this.currentArea === 'clothing_store_interior') shortArea = `👔 Apparel`;
+        else if (this.currentArea === 'animal_hospital_interior') shortArea = `🐾 Animal Hospital`;
         else if (this.currentArea === 'apartment_hall_interior') shortArea = `🏢 Apt. Hall`;
         else if (this.currentArea === 'apt_1_interior') shortArea = `🚪 Apt. 101`;
         else if (this.currentArea === 'apt_2_interior') shortArea = `🚪 Apt. 102`;
@@ -15267,7 +18102,10 @@
         return;
       }
       if (!options?.skipBgm) {
-        window.sounds?.playBgm?.('overworld');
+        const resumeArea = this.worldSave?.currentArea || this.currentArea;
+        const resumeTrack = this.getBgmTrackForArea(resumeArea);
+        this._lastBgmArea = resumeArea;
+        window.sounds?.playBgm?.(resumeTrack);
       }
 
       // Immediately reveal overworld containers and clear any lingering overlays
@@ -15289,7 +18127,8 @@
       const app = (rawApp && rawApp.playerAppearance) ? rawApp.playerAppearance : rawApp;
       this.draftAppearance = {
         ...(window.MythosCharacterSprites?.DEFAULT_APPEARANCE || {}),
-        ...app
+        ...app,
+        customSprite: 'player_hero_d'
       };
       this.wins = this.worldSave.wins ?? 0;
       this.losses = this.worldSave.losses ?? 0;
@@ -15322,6 +18161,10 @@
       if (this.activeParkTourney && (!this.isMondayToday() || this.activeParkTourney.dayNumber !== this.dayNumber)) {
         this.activeParkTourney = null;
       }
+      this.oakhavenLeague = this.worldSave.oakhavenLeague
+        ? this.normalizeOakhavenLeagueState(this.worldSave.oakhavenLeague)
+        : this.createFreshOakhavenLeagueState(1);
+      this.checkOakhavenLeagueAutoAdvance?.();
       try { this.syncParkNpcBubbles(); } catch (e) { console.warn('syncParkNpcBubbles:', e); }
       this.friendDefeatedRewardPending = false;
       try { this.initPhoneSystem(); } catch (e) { console.warn('initPhoneSystem:', e); }
@@ -15487,7 +18330,8 @@
         this.draftAppearance = {
           ...CS.DEFAULT_APPEARANCE,
           name: 'Asher',
-          worldName: 'Oakhaven'
+          worldName: 'Oakhaven',
+          customSprite: 'player_hero_d'
         };
         this.playerSprite.setAppearance(this.draftAppearance);
       }
@@ -15515,7 +18359,8 @@
           const app = (rawApp && rawApp.playerAppearance) ? rawApp.playerAppearance : rawApp;
           this.draftAppearance = {
             ...window.MythosCharacterSprites.DEFAULT_APPEARANCE,
-            ...app
+            ...app,
+            customSprite: 'player_hero_d'
           };
           this.playerSprite.setAppearance(this.draftAppearance);
         }
@@ -15637,7 +18482,7 @@
             this.npcs[0] = this.createFriendNpc(this.friendName);
             document.getElementById('creator-modal')?.classList.add('hidden');
             this.active = true;
-            window.sounds?.playBgm?.('overworld');
+            this.syncAreaBgm(true);
             this.startOpeningCutscene(true);
           } else {
             this.saveWorldData(this.draftAppearance);
@@ -15771,6 +18616,11 @@
           { id: 'binder-modal', close: () => this.toggleBinderModal(false) },
           { id: 'inventory-modal', close: () => this.toggleInventoryModal(false) },
           { id: 'shop-modal', close: () => this.toggleShopModal(false) },
+          { id: 'barber-modal', close: () => this.toggleBarberModal(false) },
+          { id: 'apparel-modal', close: () => this.toggleApparelModal(false) },
+          { id: 'duel-call-modal', close: () => this.closeDuelCallModal() },
+          { id: 'duel-card-reward-modal', close: () => this.closePhoneDuelCardRewardModal() },
+          { id: 'oakhaven-league-modal', close: () => this.closeOakhavenLeagueModal() },
           { id: 'creator-modal', close: () => this.closeCharacterCreator() }
         ];
         const openOverlayModal = overlayModalCloseOrder.find((m) => {
@@ -16019,6 +18869,70 @@
             tapRadius: 1.25,
             reachRadius: 1.6,
             yOffset: 0
+          },
+          {
+            active: this.currentArea === 'apt_1_interior',
+            npc: this.aptTessaNpc,
+            talkId: 'apt_tessa',
+            tapRadius: 1.25,
+            reachRadius: 1.55,
+            yOffset: 0.4
+          },
+          {
+            active: this.currentArea === 'apt_2_interior',
+            npc: this.aptDanteNpc,
+            talkId: 'apt_dante',
+            tapRadius: 1.25,
+            reachRadius: 1.55,
+            yOffset: 0.4
+          },
+          {
+            active: this.currentArea === 'apt_3_interior',
+            npc: this.aptNinaNpc,
+            talkId: 'apt_nina',
+            tapRadius: 1.25,
+            reachRadius: 1.55,
+            yOffset: 0.4
+          },
+          {
+            active: this.currentArea === 'apt_4_interior',
+            npc: this.aptMilesNpc,
+            talkId: 'apt_miles',
+            tapRadius: 1.25,
+            reachRadius: 1.55,
+            yOffset: 0.4
+          },
+          {
+            active: this.currentArea === 'barber_shop_interior',
+            npc: this.barberNpc,
+            talkId: 'barber_enzo',
+            tapRadius: 1.25,
+            reachRadius: 1.6,
+            yOffset: 0.35
+          },
+          {
+            active: this.currentArea === 'clothing_store_interior',
+            npc: this.tailorNpc,
+            talkId: 'tailor_celeste',
+            tapRadius: 1.25,
+            reachRadius: 1.6,
+            yOffset: 0.35
+          },
+          {
+            active: this.currentArea === 'animal_hospital_interior',
+            npc: this.vetNpc,
+            talkId: 'vet_hannah',
+            tapRadius: 1.25,
+            reachRadius: 1.65,
+            yOffset: 0.35
+          },
+          {
+            active: this.currentArea === 'convention_center_interior',
+            npc: this.leagueRegistrarNpc,
+            talkId: 'league_registrar',
+            tapRadius: 1.5,
+            reachRadius: 2.65,
+            yOffset: 0.35
           },
           ...this.getActiveNpcsForArea(this.currentArea)
             .filter(n => n && n.trip)
@@ -16472,6 +19386,42 @@
         // Lower-Right Waiting Sofa, Magazine Table & Coat Rack
         if (tx >= 12.8 && ty >= 7.5 && ty <= 10.1) return true;
         return false;
+      } else if (this.currentArea === 'clothing_store_interior') {
+        // Cutaway Oakhaven Apparel floor bounds (16 x 12 room matching clothing_store_interior.png @ dy=40.5, scale=0.8101)
+        // Allow stepping onto the centered OAKHAVEN doormat to exit cleanly
+        if (tx >= 7.0 && tx <= 8.8 && ty >= 10.15 && ty <= 10.65) return false;
+        if (tx < 1.15 || tx > 14.85 || ty < 5.15 || ty > 10.35) return true;
+        // Upper-Left Twin Fitting Rooms (wooden stalls & navy curtains extend down to ty ≈ 6.05)
+        if (tx <= 5.40 && ty <= 6.15) return true;
+        // Mid-Left Garment Rack & Lower-Left Twin Garment Racks
+        if (tx <= 4.30 && ty >= 6.15 && ty <= 8.28) return true;
+        if (tx <= 5.20 && ty >= 8.30) return true;
+        // Center Checkout Counter (block back-to-front so player stands cleanly in front without clipping register/chair)
+        if (tx >= 6.20 && tx <= 10.10 && ty <= 7.12) return true;
+        // Upper-Right Boot & Hat Wall Shelves
+        if (tx >= 11.35 && ty <= 5.40) return true;
+        // Mid-Right Folded Sweater Display Table
+        if (tx >= 11.95 && tx <= 14.70 && ty >= 5.60 && ty <= 8.05) return true;
+        // Lower-Right Try-On Bench
+        if (tx >= 11.95 && tx <= 14.80 && ty >= 8.98) return true;
+        return false;
+      } else if (this.currentArea === 'animal_hospital_interior') {
+        // Cutaway Oakhaven Animal Hospital floor bounds (16 x 12 room matching animal_hospital_interior.png @ 1264x848)
+        // Allow stepping onto the centered OAKHAVEN doormat to exit cleanly
+        if (tx >= 7.0 && tx <= 8.8 && ty >= 10.15 && ty <= 10.65) return false;
+        if (tx < 1.15 || tx > 14.85 || ty < 5.15 || ty > 10.35) return true;
+        // Upper-Left Recovery Kennels (glass-front blanket cubbies & shelves)
+        if (tx <= 5.45 && ty <= 6.25) return true;
+        // Lower-Left L-Shaped Cushioned Waiting Bench
+        if (tx <= 2.35 && ty >= 6.85) return true;
+        if (tx <= 5.15 && ty >= 9.45) return true;
+        // Center Reception Counter (ledger, brass lamp, and clerk chair behind)
+        if (tx >= 6.45 && tx <= 9.85 && ty <= 7.15) return true;
+        // Upper-Right Ceramic Washbasin Counter
+        if (tx >= 13.45 && ty <= 5.85) return true;
+        // Mid-Right Steel & Oak Veterinary Examination Table
+        if (tx >= 12.15 && tx <= 14.70 && ty >= 6.10 && ty <= 8.10) return true;
+        return false;
       } else if (this.currentArea === 'school_interior') {
         // Oakhaven Elementary Interior (22 x 14 Cutaway Hall & Main Classroom Wing)
         // Allow stepping into the West Entrance Doors threshold to exit cleanly back outside
@@ -16541,6 +19491,8 @@
         if (tx >= 1.8 && tx <= 6.8 && ty >= 23.6 && ty <= 27.08) return true; // Oakhaven Fire Station
         if (tx >= 7.4 && tx <= 12.4 && ty >= 23.6 && ty <= 27.08) return true; // Oakhaven Police Station
         if (tx >= -24.20 && tx <= -19.20 && ty >= 16.65 && ty <= 20.08) return true; // Oakhaven Barber Shop
+        if (tx >= -18.50 && tx <= -13.10 && ty >= 16.65 && ty <= 20.08) return true; // Oakhaven Apparel
+        if (tx >= -13.15 && tx <= -7.75 && ty >= 23.46 && ty <= 27.08) return true; // Oakhaven Animal Hospital
 
         // Shaun's Corner Market (NW corner of Willow Way & N-S Paved Road: x: -5.5..-1.3, y: 23.9..26.7)
         if (tx >= -5.5 && tx <= -1.3 && ty >= 23.9 && ty <= 26.7) {
@@ -16836,8 +19788,6 @@
         [32.45, 22.85, 23, true, 'town'],
         [32.45, 26.25, 24, false, 'town'],
         [32.35, 29.40, 23, true, 'town'],
-        [25.25, 30.85, 22, false, 'town'],
-        [28.55, 30.85, 24, true, 'town'],
         [31.20, 30.85, 22, false, 'town']
       ];
     }
@@ -16988,6 +19938,11 @@
           spriteBaseYFrac: 786 / 816,
           hx: 24.45, hy: 24.45, hw: 6.9, maxY: 28.45,
           doorX: 24.25, doorY: 27.85
+        },
+        {
+          id: 'animal_hospital',
+          hx: -13.15, hy: 23.46, hw: 5.4, maxY: 27.08,
+          doorX: -10.45, doorY: 27.20
         }
       ];
     }
@@ -17072,6 +20027,29 @@
         }
         return null;
       }
+      if ([
+        'police_station_interior',
+        'barber_shop_interior',
+        'clothing_store_interior',
+        'animal_hospital_interior'
+      ].includes(this.currentArea)) {
+        if (tx >= 6.2 && tx <= 9.6 && ty >= 9.3 && ty <= 12.0) {
+          return { id: 'interior_exit', x: 7.90, y: 10.40 };
+        }
+        return null;
+      }
+      if (this.currentArea === 'fire_station_interior') {
+        if (tx >= 11.6 && tx <= 15.0 && ty >= 9.3 && ty <= 12.0) {
+          return { id: 'interior_exit', x: 13.30, y: 10.40 };
+        }
+        return null;
+      }
+      if (this.currentArea === 'convention_center_interior') {
+        if (tx >= 14.5 && tx <= 19.5 && ty >= 23.0 && ty <= 26.0) {
+          return { id: 'interior_exit', x: 17.0, y: 24.30 };
+        }
+        return null;
+      }
       if (tx >= 7.8 && tx <= 11.8 && ty >= 9.2 && ty <= 12.0) {
         return { id: 'interior_exit', x: 9.8, y: 10.22 };
       }
@@ -17113,10 +20091,10 @@
         return { step, minX, minY, maxX, maxY, cols, rows };
       }
       const isExt = this.currentArea === 'exterior';
-      const minX = isExt ? ((this.EXT_MIN_COL ?? -26.5) + 0.5) : 2.0;
+      const minX = isExt ? ((this.EXT_MIN_COL ?? -26.5) + 0.5) : 1.0;
       const minY = isExt ? 0.5 : 4.0;
-      const maxX = isExt ? ((this.EXT_COLS ?? 33.5) - 0.4) : 14.0;
-      const maxY = isExt ? ((this.EXT_ROWS ?? 36.5) - 0.5) : 10.5;
+      const maxX = isExt ? ((this.EXT_COLS ?? 33.5) - 0.4) : 15.0;
+      const maxY = isExt ? ((this.EXT_ROWS ?? 36.5) - 0.5) : 10.75;
       const cols = Math.round((maxX - minX) / step) + 1;
       const rows = Math.round((maxY - minY) / step) + 1;
       return { step, minX, minY, maxX, maxY, cols, rows };
@@ -17278,18 +20256,20 @@
       // Cobblestone Town Roads & Connectors
       if (inBox(-0.35, 4.20, 15.35, 5.25)) return true;   // Upper E-W Cobblestone Road
       if (inBox(14.25, 0.00, 15.35, 5.25)) return true;   // NE Cobblestone Turn
-      if (inBox(-26.5, 9.55, 33.50, 10.70)) return true;  // South Connector Ave
-      if (inBox(-0.35, 14.80, 33.50, 15.95)) return true; // Lower Cobblestone Way
+      if (inBox(-26.00, 9.55, 33.50, 10.70)) return true;  // South Connector Ave
+      if (inBox(-26.00, 14.80, 33.50, 15.95)) return true; // Lower Cobblestone Way (extended West)
+      if (inBox(-26.00, 9.55, -24.85, 15.95)) return true; // West End Cobblestone Loop Connector
       if (inBox(5.55, 4.20, 6.65, 10.70)) return true;    // West N-S Connector
       if (inBox(9.95, 4.20, 10.95, 15.95)) return true;   // East N-S Connector
 
       // Urban Paved Avenue (Oakhaven Blvd), Willow Way, West Roundabout Ave & Roundabout
       if (inBox(-0.35, 0.00, 0.70, 33.50)) return true;   // N-S Oakhaven Blvd
       if (Math.hypot(tx - 0.175, ty - 32.85) <= 1.75) return true; // Roundabout
-      if (inBox(-21.45, 32.30, 15.70, 33.40)) return true; // Oakhaven Blvd (4 blocks West & 3 blocks East of Roundabout)
-      if (inBox(14.65, 27.05, 15.70, 33.40)) return true;  // East N-S Connector linking Willow Way East & Oakhaven Blvd
-      if (inBox(-24.50, 27.05, 24.50, 28.20)) return true;// Willow Way & School Drop-Off Lane
-      if (inBox(-24.50, 20.05, 0.70, 21.15)) return true; // West Road (1 block north of Willow Way, Oakhaven Blvd to Barber Shop)
+      if (inBox(-26.00, 32.30, 30.20, 33.40)) return true; // Oakhaven Blvd (extended West to West N-S Connector & East past Animal Hospital)
+      if (inBox(14.65, 15.80, 15.70, 33.40)) return true;  // East N-S Connector linking South Cobblestone Way, Willow Way East & Oakhaven Blvd
+      if (inBox(-26.00, 27.05, 24.50, 28.20)) return true;// Willow Way & School Drop-Off Lane
+      if (inBox(-26.00, 20.05, 0.70, 21.15)) return true; // West Road (1 block north of Willow Way, Oakhaven Blvd to West N-S Connector)
+      if (inBox(-26.00, 15.80, -24.95, 33.40)) return true; // West N-S Paved Connector linking South Cobblestone Way, Barber Road, Willow Way & Oakhaven Blvd
 
       // Building Entry Aprons & Plazas
       if (inBox(1.50, 2.70, 2.50, 4.30)) return true;     // Player's House
@@ -17307,6 +20287,8 @@
       if (inBox(-24.80, 26.20, -15.20, 27.70)) return true; // Convention Center Plaza
       if (inBox(15.50, 27.00, 24.50, 28.60)) return true; // School Portico Drop-Off
       if (inBox(-24.40, 19.70, -19.00, 21.15)) return true; // Oakhaven Barber Shop Front Apron
+      if (inBox(-18.70, 19.70, -12.90, 21.15)) return true; // Oakhaven Apparel Front Apron
+      if (inBox(-13.35, 26.70, -7.55, 28.20)) return true; // Oakhaven Animal Hospital Front Apron
       if (inBox(18.00, 6.80, 24.20, 11.60)) return true;  // Central Park Courtyard Walkways
 
       return false;
@@ -17747,7 +20729,9 @@
         this.mayaNpc, this.claraNpc, this.bramNpc, this.mayorNpc,
         this.chefNpc, this.shaunNpc, this.evelynNpc, this.chloeNpc,
         this.rowanNpc, this.jasperNpc, this.bertoNpc,
-        this.fireChiefNpc, this.policeChiefNpc
+        this.fireChiefNpc, this.policeChiefNpc,
+        this.aptTessaNpc, this.aptDanteNpc, this.aptNinaNpc, this.aptMilesNpc,
+        this.barberNpc, this.tailorNpc, this.vetNpc, this.leagueRegistrarNpc
       ].forEach(add);
       return list;
     }
@@ -17796,6 +20780,8 @@
 
     onInGameHourPassed() {
       if (this.storyState !== 'free_roam' || this._isSleeping) return;
+      this.maybeTriggerRandomDuelCall();
+      this.checkOakhavenLeagueAutoAdvance?.();
       const buildingKeys = Object.keys(this.TRIP_BUILDINGS || {});
       const houseKeys = Object.keys(this.TRIP_HOUSES || {});
       if (buildingKeys.length === 0 && houseKeys.length === 0) return;
@@ -18149,9 +21135,58 @@
       }
     }
 
+    getBgmTrackForArea(area = this.currentArea) {
+      const a = area || 'exterior';
+      if (a === 'exterior') return 'overworld';
+      if (a === 'card_shop_interior' || a === 'corner_store_interior') return 'shop';
+      if (a === 'restaurant_interior') return 'bistro';
+      if (a === 'barber_shop_interior') return 'barber';
+      if (a === 'clothing_store_interior') return 'boutique';
+      if (a === 'school_interior') return 'school';
+      if (a === 'fire_station_interior' || a === 'police_station_interior') return 'civic';
+      if (a === 'mayor_interior' || a === 'mayor_2f_interior' || a === 'convention_center_interior') return 'grand';
+      if ([
+        'interior', 'friend_interior', 'pluto_interior', 'nova_interior',
+        'silas_interior', 'maya_interior', 'clara_interior', 'bram_interior',
+        'animal_hospital_interior', 'apartment_hall_interior', 'apt_1_interior', 'apt_2_interior', 'apt_3_interior', 'apt_4_interior'
+      ].includes(a)) {
+        return 'cozy_home';
+      }
+      return 'overworld';
+    }
+
+    syncAreaBgm(force = false) {
+      if (!force && !this.active) return;
+      if (!force) {
+        const introModal = document.getElementById('intro-modal');
+        if (introModal && !introModal.classList.contains('hidden')) return;
+      }
+      const track = this.getBgmTrackForArea(this.currentArea);
+      if (
+        force ||
+        this._lastBgmArea !== this.currentArea ||
+        (window.sounds?.desiredBgm && window.sounds.desiredBgm !== track && window.sounds.desiredBgm !== 'battle')
+      ) {
+        this._lastBgmArea = this.currentArea;
+        window.sounds?.playBgm?.(track);
+      }
+    }
+
     update() {
       if (!this.active) return;
 
+      this.syncAreaBgm();
+      if (this.currentArea === 'animal_hospital_interior') {
+        const nowMs = performance.now();
+        if (!this._nextHospitalBarkAt) {
+          this._nextHospitalBarkAt = nowMs + 900;
+        } else if (nowMs >= this._nextHospitalBarkAt) {
+          window.sounds?.playDogBark?.();
+          this._nextHospitalBarkAt = nowMs + 5500 + Math.random() * 7000;
+        }
+      } else {
+        this._nextHospitalBarkAt = 0;
+      }
       this.tickClock();
       this.updateNpcTrips();
       this.updateNpcRoaming();
@@ -18762,6 +21797,55 @@
           this.currentArea = 'exterior';
           this.player.x = -21.70;
           this.player.y = 20.45;
+          this.player.dir = 'down';
+          this.player.targetX = null;
+          this.player.targetY = null;
+          this.areaTransitionCooldown = 25;
+          this.updateHUDSaveInfo();
+        } else if (this.currentArea === 'exterior' && this.player.x >= -16.30 && this.player.x <= -15.30 && this.player.y >= 19.85 && this.player.y <= 20.35) {
+          // Enter Oakhaven Apparel via centered double boutique doors
+          if (window.sounds?.playMove) window.sounds.playMove();
+          this.currentArea = 'clothing_store_interior';
+          this.player.x = 7.90;
+          this.player.y = 9.75;
+          this.player.dir = 'up';
+          this.player.targetX = null;
+          this.player.targetY = null;
+          this.areaTransitionCooldown = 25;
+          this.cameraX = 0;
+          this.cameraY = 0;
+          this.updateHUDSaveInfo();
+        } else if (this.currentArea === 'clothing_store_interior' && this.player.x >= 7.0 && this.player.x <= 8.8 && this.player.y >= 10.25) {
+          // Exit Oakhaven Apparel via centered OAKHAVEN mat
+          if (window.sounds?.playMove) window.sounds.playMove();
+          this.currentArea = 'exterior';
+          this.player.x = -15.80;
+          this.player.y = 20.45;
+          this.player.dir = 'down';
+          this.player.targetX = null;
+          this.player.targetY = null;
+          this.areaTransitionCooldown = 25;
+          this.updateHUDSaveInfo();
+        } else if (this.currentArea === 'exterior' && this.player.x >= -10.95 && this.player.x <= -9.95 && this.player.y >= 26.85 && this.player.y <= 27.35) {
+          // Enter Oakhaven Animal Hospital via centered double glass doors
+          if (window.sounds?.playMove) window.sounds.playMove();
+          this.currentArea = 'animal_hospital_interior';
+          this._nextHospitalBarkAt = performance.now() + 850;
+          this.player.x = 7.90;
+          this.player.y = 9.75;
+          this.player.dir = 'up';
+          this.player.targetX = null;
+          this.player.targetY = null;
+          this.areaTransitionCooldown = 25;
+          this.cameraX = 0;
+          this.cameraY = 0;
+          this.updateHUDSaveInfo();
+        } else if (this.currentArea === 'animal_hospital_interior' && this.player.x >= 7.0 && this.player.x <= 8.8 && this.player.y >= 10.25) {
+          // Exit Oakhaven Animal Hospital via centered OAKHAVEN mat
+          if (window.sounds?.playMove) window.sounds.playMove();
+          this.currentArea = 'exterior';
+          this.player.x = -10.45;
+          this.player.y = 27.45;
           this.player.dir = 'down';
           this.player.targetX = null;
           this.player.targetY = null;
@@ -21488,7 +24572,7 @@
         'cottage_player', 'cottage_friend', 'cottage_pluto',
         'cottage_nova', 'cottage_silas', 'cottage_maya',
         'card_shop', 'shop_banner', 'convention_center', 'oakhaven_apartments',
-        'school_exterior', 'school_bus', 'police_station', 'fire_station', 'fire_station_interior', 'police_station_interior', 'barber_shop', 'barber_shop_interior', 'npc_fire_chief', 'npc_fire_chief_back', 'npc_fire_chief_side', 'npc_police_chief', 'npc_police_chief_back', 'npc_police_chief_side',
+        'school_exterior', 'school_bus', 'police_station', 'fire_station', 'fire_station_interior', 'police_station_interior', 'barber_shop', 'barber_shop_interior', 'clothing_store', 'clothing_store_interior', 'animal_hospital', 'animal_hospital_interior', 'npc_fire_chief', 'npc_fire_chief_back', 'npc_fire_chief_side', 'npc_police_chief', 'npc_police_chief_back', 'npc_police_chief_side',
         'playground_ground', 'playground_fort', 'playground_swingset',
         'playground_seesaw', 'playground_spinner', 'playground_hoop',
         'tree_green', 'tree_autumn', 'tree_autumn_small',
@@ -26244,6 +29328,14 @@
       this._renderCutawayBuildingInterior('barber_shop_interior');
     }
 
+    renderClothingStoreInterior() {
+      this._renderCutawayBuildingInterior('clothing_store_interior');
+    }
+
+    renderAnimalHospitalInterior() {
+      this._renderCutawayBuildingInterior('animal_hospital_interior');
+    }
+
     renderSchoolInterior() {
       const ctx = this.ctx;
       const S = this.TILE; // 64px
@@ -27823,6 +30915,8 @@
       const fullConnH = (road3Y + road3H) - road1Y;
       const midConnH = (road2Y + road2H) - road1Y;
       const westConnH = (road3Y + road3H) - road2Y;
+      const westEndConnX = EXT_MIN_X + 0.5 * S; // -26.0 * S (aligned with walkable west edge)
+      const westEndConnW = 1.15 * S;            // -26.0..-24.85
 
       const oakhavenTurnX = 14.25 * S;
       const oakhavenTurnW = 1.10 * S;
@@ -27834,13 +30928,14 @@
       ctx.fillStyle = this.flagstonePattern || '#988878';
       ctx.fillRect(oakhavenWestTurnX + oakhavenWestTurnW, road1Y, oakhavenRoad1W - (oakhavenWestTurnX + oakhavenWestTurnW), road1H);
       ctx.fillRect(oakhavenTurnX, 0, oakhavenTurnW, road1Y + road1H);
-      ctx.fillRect(westConnX + westConnW, road3Y, EXT_W - (westConnX + westConnW), road3H);
+      ctx.fillRect(westEndConnX, road3Y, EXT_W - westEndConnX, road3H);
+      ctx.fillRect(westEndConnX, road2Y, westEndConnW, westConnH);
       ctx.fillRect(south1X, road1Y, south1W, midConnH);
       ctx.fillRect(south2X, road1Y, south2W, fullConnH);
 
       // Middle Commercial Road (South Connector Ave): Irregular Flagstone Cobblestone Street extended West!
       ctx.fillStyle = this.flagstonePattern || '#988878';
-      ctx.fillRect(EXT_MIN_X, road2Y, W - EXT_MIN_X, road2H);
+      ctx.fillRect(westEndConnX, road2Y, W - westEndConnX, road2H);
 
       // Continuous North-South Urban Paved Avenue (West of Player's, Pluto's & Nova's Houses: y = 0..15.95*S)
       const drawUrbanPavedRoad = (ux, uy, uw, uh) => {
@@ -27876,10 +30971,12 @@
       const rbCy = Math.round(32.85 * S);
       const rbOuterR = Math.round(1.65 * S);
       const rbIslandR = Math.round(0.58 * S);
-      const westExitEndX = Math.round(-21.45 * S); // 4 city blocks (4 x 5 tiles) west of roundabout
-      const willowWestEndX = Math.round(-24.5 * S); // Extends Willow Way to the Convention Center plaza
+      const westPavedConnX = Math.round(westEndConnX); // -26.0 * S (N-S paved road connecting west road ends up to Cobblestone Way)
+      const westExitEndX = westPavedConnX;
+      const willowWestEndX = westPavedConnX;
       const willowEastEndX = Math.round(15.70 * S); // Extends Willow Way 3 city blocks (3 x 5 tiles) east of Oakhaven Blvd
-      const eastExitEndX = willowEastEndX;          // 3 city blocks east of roundabout, connecting north to Willow Way East
+      const eastExitEndX = willowEastEndX;          // X-alignment of the East N-S Connector
+      const oakhavenBlvdEastEndX = Math.round(30.20 * S); // Extends Oakhaven Blvd east past the East Connector & Animal Hospital
       const westExitY = Math.round(rbCy - oakhavenWestTurnW / 2);
       const northWestPavedY = Math.round(27.60 * S - oakhavenWestTurnW / 2); // 1 city block (5.25 tiles) north of Oakhaven Blvd
       const barberRoadY = Math.round(20.60 * S - oakhavenWestTurnW / 2);     // 1 block north of Willow Way running west from Oakhaven Blvd
@@ -27915,45 +31012,33 @@
       };
 
       const eastConnX = Math.round(eastExitEndX - oakhavenWestTurnW);
-      const eastBendR = Math.round(1.6 * S);
-      const eastCurveCx = Math.round(eastConnX + oakhavenWestTurnW / 2 - eastBendR);
-      const eastCurveCy = Math.round(westExitY + oakhavenWestTurnW / 2 - eastBendR);
 
       drawUrbanPavedRoad(oakhavenWestTurnX, 0, oakhavenWestTurnW, southPavedEndY);
-      drawUrbanPavedRoadH(westExitEndX, westExitY, eastCurveCx - westExitEndX, oakhavenWestTurnW);
+      drawUrbanPavedRoadH(westExitEndX, westExitY, oakhavenBlvdEastEndX - westExitEndX, oakhavenWestTurnW);
+      // Clean concrete east end-cap past Oakhaven Animal Hospital
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillRect(oakhavenBlvdEastEndX - 5, westExitY, 5, Math.round(oakhavenWestTurnW));
+      ctx.fillStyle = '#64748b';
+      ctx.fillRect(oakhavenBlvdEastEndX - 7, westExitY + 5, 2, Math.round(oakhavenWestTurnW - 10));
       drawUrbanPavedRoadH(willowWestEndX, northWestPavedY, willowEastEndX - willowWestEndX, oakhavenWestTurnW);
       drawUrbanPavedRoadH(willowWestEndX, barberRoadY, oakhavenWestTurnX + oakhavenWestTurnW - willowWestEndX, oakhavenWestTurnW);
-      // Clean concrete end-cap at west dead-end beside Barber Shop
-      ctx.fillStyle = '#94a3b8';
-      ctx.fillRect(Math.round(willowWestEndX), barberRoadY, 5, Math.round(oakhavenWestTurnW));
-      ctx.fillStyle = '#64748b';
-      ctx.fillRect(Math.round(willowWestEndX) + 5, barberRoadY + 5, 2, Math.round(oakhavenWestTurnW - 10));
-      drawUrbanPavedRoad(eastConnX, northWestPavedY, oakhavenWestTurnW, eastCurveCy - northWestPavedY);
+      const eastConnTopY = Math.round(road3Y + road3H);
+      drawUrbanPavedRoad(eastConnX, eastConnTopY, oakhavenWestTurnW, (westExitY + oakhavenWestTurnW) - eastConnTopY);
+      const westPavedTopY = Math.round(road3Y + road3H);
+      const westPavedBotY = Math.round(westExitY + oakhavenWestTurnW);
+      drawUrbanPavedRoad(westPavedConnX, westPavedTopY, oakhavenWestTurnW, westPavedBotY - westPavedTopY);
 
-      // Curved 90-degree asphalt bend connecting Oakhaven Blvd East smoothly north into the East Connector
-      ctx.save();
-      ctx.lineCap = 'butt';
-      ctx.beginPath();
-      ctx.arc(eastCurveCx, eastCurveCy, eastBendR, Math.PI / 2, 0, true);
-      ctx.strokeStyle = '#94a3b8';
-      ctx.lineWidth = oakhavenWestTurnW;
-      ctx.stroke();
-      ctx.strokeStyle = '#64748b';
-      ctx.lineWidth = oakhavenWestTurnW - 10;
-      ctx.stroke();
-      ctx.strokeStyle = this.urbanRoadPattern || '#444d5c';
-      ctx.lineWidth = oakhavenWestTurnW - 14;
-      ctx.stroke();
-      ctx.strokeStyle = '#fde047';
-      ctx.lineWidth = 4;
-      ctx.setLineDash([13, 13]);
-      ctx.stroke();
-      ctx.restore();
-
-      // Open top corner seams where the East N-S Connector joins Willow Way East
+      // Open intersection seams where the East N-S Connector crosses Willow Way East & joins Oakhaven Blvd East
       ctx.fillStyle = this.urbanRoadPattern || '#444d5c';
-      ctx.fillRect(eastConnX + 7, northWestPavedY + 7, Math.round(oakhavenWestTurnW - 14), Math.round(oakhavenWestTurnW - 7));
-      ctx.fillRect(eastConnX - 6, northWestPavedY + 7, 14, Math.round(oakhavenWestTurnW - 14));
+      ctx.fillRect(eastConnX - 6, northWestPavedY + 7, Math.round(oakhavenWestTurnW + 12), Math.round(oakhavenWestTurnW - 14));
+      ctx.fillRect(eastConnX + 7, northWestPavedY - 6, Math.round(oakhavenWestTurnW - 14), Math.round(oakhavenWestTurnW + 12));
+      ctx.fillRect(eastConnX - 6, westExitY + 7, Math.round(oakhavenWestTurnW + 12), Math.round(oakhavenWestTurnW - 14));
+      ctx.fillRect(eastConnX + 7, westExitY - 6, Math.round(oakhavenWestTurnW - 14), Math.round(oakhavenWestTurnW));
+      // Re-stroke continuous south concrete shoulder across the East Connector T-junction
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillRect(eastConnX - 6, westExitY + Math.round(oakhavenWestTurnW) - 5, Math.round(oakhavenWestTurnW + 12), 5);
+      ctx.fillStyle = '#64748b';
+      ctx.fillRect(eastConnX - 6, westExitY + Math.round(oakhavenWestTurnW) - 7, Math.round(oakhavenWestTurnW + 12), 2);
       // Open 4-way intersection box so Willow Way (West & East) merges seamlessly into Oakhaven Blvd
       ctx.fillStyle = this.urbanRoadPattern || '#444d5c';
       ctx.fillRect(Math.round(oakhavenWestTurnX - 6), northWestPavedY + 7, Math.round(oakhavenWestTurnW + 12), Math.round(oakhavenWestTurnW - 14));
@@ -27961,6 +31046,19 @@
       // Open T-intersection mouth where the North West Road joins Oakhaven Blvd
       ctx.fillRect(Math.round(oakhavenWestTurnX - 6), barberRoadY + 7, Math.round(oakhavenWestTurnW), Math.round(oakhavenWestTurnW - 14));
       ctx.fillRect(Math.round(oakhavenWestTurnX + 7), barberRoadY - 6, Math.round(oakhavenWestTurnW - 14), Math.round(oakhavenWestTurnW + 12));
+      // Open seamless T-intersections & SW L-corner where West E-W Paved Roads meet the West N-S Paved Connector
+      ctx.fillStyle = this.urbanRoadPattern || '#444d5c';
+      ctx.fillRect(westPavedConnX + 7, barberRoadY + 7, Math.round(oakhavenWestTurnW), Math.round(oakhavenWestTurnW - 14));
+      ctx.fillRect(westPavedConnX + 7, northWestPavedY + 7, Math.round(oakhavenWestTurnW), Math.round(oakhavenWestTurnW - 14));
+      ctx.fillRect(westPavedConnX + 7, westExitY + 7, Math.round(oakhavenWestTurnW), Math.round(oakhavenWestTurnW - 14));
+      ctx.fillRect(westPavedConnX + 7, westExitY - 6, Math.round(oakhavenWestTurnW - 14), Math.round(oakhavenWestTurnW));
+      // Re-draw outer west & south concrete shoulders around the SW L-corner
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillRect(westPavedConnX, westExitY, 5, Math.round(oakhavenWestTurnW));
+      ctx.fillRect(westPavedConnX, westExitY + Math.round(oakhavenWestTurnW) - 5, Math.round(oakhavenWestTurnW) + 6, 5);
+      ctx.fillStyle = '#64748b';
+      ctx.fillRect(westPavedConnX + 5, westExitY, 2, Math.round(oakhavenWestTurnW) - 5);
+      ctx.fillRect(westPavedConnX + 5, westExitY + Math.round(oakhavenWestTurnW) - 7, Math.round(oakhavenWestTurnW) + 1, 2);
 
       // Urban Paved Roundabout at South End
       ctx.fillStyle = '#64748b';
@@ -28930,8 +32028,8 @@
       vGradNorth.addColorStop(1, 'rgba(36, 22, 10, 0.22)');
       ctx.fillStyle = vGradNorth;
       ctx.fillRect(oakhavenTurnX, 0, oakhavenTurnW, road1Y + road1H);
-      drawRoadVignette(road2Y, road2H, W - EXT_MIN_X, EXT_MIN_X);
-      drawRoadVignette(road3Y, road3H, EXT_W - (westConnX + westConnW), westConnX + westConnW);
+      drawRoadVignette(road2Y, road2H, W - westEndConnX, westEndConnX);
+      drawRoadVignette(road3Y, road3H, EXT_W - westEndConnX, westEndConnX);
 
       // Walkways with Organic Rounded Stepping Stones (no rigid grey box)
       const drawDrivewayPath = (px, py, pw, ph) => {
@@ -29807,6 +32905,82 @@
           }
           ctx.restore();
         }
+
+        // 4. Oakhaven Apparel (East next to Barber Shop along road north of Willow Way: x = -18.50..-13.10)
+        if (this.isImgReady('clothing_store')) {
+          const cImg = this.owSprites.clothing_store;
+          const dw = Math.round(5.4 * S);
+          const dh = Math.round(dw * (cImg.height / cImg.width));
+          const dx = Math.round(-18.50 * S);
+          const clothingRoadTopY = Math.round(20.08 * S);
+          const dy = Math.round(clothingRoadTopY - dh + 2);
+          ctx.save();
+          ctx.imageSmoothingEnabled = true;
+          ctx.drawImage(cImg, dx, dy, dw, dh);
+          if (isLit) {
+            ctx.globalCompositeOperation = 'lighter';
+            const clothingLights = [
+              [0.25, 0.36, 26, 0.36, '253, 224, 71'],
+              [0.50, 0.36, 26, 0.36, '253, 224, 71'],
+              [0.75, 0.36, 26, 0.36, '253, 224, 71'],
+              [0.22, 0.80, 42, 0.44, '251, 191, 36'],
+              [0.78, 0.80, 42, 0.44, '251, 191, 36'],
+              [0.39, 0.78, 22, 0.55, '253, 224, 71'],
+              [0.61, 0.78, 22, 0.55, '253, 224, 71'],
+              [0.50, 0.82, 34, 0.42, '253, 224, 71']
+            ];
+            clothingLights.forEach(([fx, fy, gr, ga, rgb]) => {
+              const gx = dx + dw * fx;
+              const gy = dy + dh * fy;
+              const glow = ctx.createRadialGradient(gx, gy, 2, gx, gy, gr);
+              glow.addColorStop(0, `rgba(${rgb}, ${(ga * glowMult).toFixed(3)})`);
+              glow.addColorStop(1, `rgba(${rgb}, 0)`);
+              ctx.fillStyle = glow;
+              ctx.beginPath();
+              ctx.arc(gx, gy, gr, 0, Math.PI * 2);
+              ctx.fill();
+            });
+          }
+          ctx.restore();
+        }
+
+        // 5. Oakhaven Animal Hospital (North side of Willow Way between Convention Center & Corner Market: x = -13.15..-7.75)
+        if (this.isImgReady('animal_hospital')) {
+          const aImg = this.owSprites.animal_hospital;
+          const dw = Math.round(5.4 * S);
+          const dh = Math.round(dw * (aImg.height / aImg.width));
+          const dx = Math.round(-13.15 * S);
+          const hospitalRoadTopY = Math.round(27.08 * S);
+          const dy = Math.round(hospitalRoadTopY - dh + 2);
+          ctx.save();
+          ctx.imageSmoothingEnabled = true;
+          ctx.drawImage(aImg, dx, dy, dw, dh);
+          if (isLit) {
+            ctx.globalCompositeOperation = 'lighter';
+            const hospitalLights = [
+              [0.25, 0.36, 26, 0.36, '253, 224, 71'],
+              [0.50, 0.36, 26, 0.36, '253, 224, 71'],
+              [0.75, 0.36, 26, 0.36, '253, 224, 71'],
+              [0.22, 0.80, 42, 0.44, '251, 191, 36'],
+              [0.78, 0.80, 42, 0.44, '251, 191, 36'],
+              [0.39, 0.78, 22, 0.55, '253, 224, 71'],
+              [0.61, 0.78, 22, 0.55, '253, 224, 71'],
+              [0.50, 0.82, 34, 0.42, '253, 224, 71']
+            ];
+            hospitalLights.forEach(([fx, fy, gr, ga, rgb]) => {
+              const gx = dx + dw * fx;
+              const gy = dy + dh * fy;
+              const glow = ctx.createRadialGradient(gx, gy, 2, gx, gy, gr);
+              glow.addColorStop(0, `rgba(${rgb}, ${(ga * glowMult).toFixed(3)})`);
+              glow.addColorStop(1, `rgba(${rgb}, 0)`);
+              ctx.fillStyle = glow;
+              ctx.beginPath();
+              ctx.arc(gx, gy, gr, 0, Math.PI * 2);
+              ctx.fill();
+            });
+          }
+          ctx.restore();
+        }
       };
 
       drawOakhavenBistro();
@@ -29877,11 +33051,13 @@
         { x: 10.29 * S, w: oakhavenTurnX - 10.29 * S }
       ].forEach(c => drawStoneCurbH(c.x, road1Y - 6, c.w, 'bot'));
       drawStoneCurbV(oakhavenWestTurnX - 6, 0, road2Y, 'right');
-      drawStoneCurbV(oakhavenWestTurnX - 6, road2Y + road2H, 26.0 * S - (road2Y + road2H), 'right');
+      drawStoneCurbV(oakhavenWestTurnX - 6, road2Y + road2H, road3Y - (road2Y + road2H), 'right');
+      drawStoneCurbV(oakhavenWestTurnX - 6, road3Y + road3H, 26.0 * S - (road3Y + road3H), 'right');
       drawStoneCurbV(oakhavenWestTurnX - 6, northWestPavedY + oakhavenWestTurnW, (rbCy - rbOuterR) - (northWestPavedY + oakhavenWestTurnW) + 12, 'right');
-      drawStoneCurbH(westExitEndX, northWestPavedY - 6, (-5.70 * S) - westExitEndX, 'bot');
-      drawStoneCurbH(westExitEndX, northWestPavedY + oakhavenWestTurnW, (oakhavenWestTurnX - westExitEndX), 'top');
-      drawStoneCurbV(westExitEndX - 6, northWestPavedY - 6, oakhavenWestTurnW + 12, 'right');
+      drawStoneCurbH(westPavedConnX + oakhavenWestTurnW, northWestPavedY - 6, (-24.80 * S) - (westPavedConnX + oakhavenWestTurnW), 'bot');
+      drawStoneCurbH(-15.20 * S, northWestPavedY - 6, (-13.15 - (-15.20)) * S, 'bot');
+      drawStoneCurbH(-7.75 * S, northWestPavedY - 6, (-5.70 - (-7.75)) * S, 'bot');
+      drawStoneCurbH(westPavedConnX + oakhavenWestTurnW, northWestPavedY + oakhavenWestTurnW, oakhavenWestTurnX - (westPavedConnX + oakhavenWestTurnW), 'top');
       drawStoneCurbV(oakhavenWestTurnX + oakhavenWestTurnW, 0, road1Y, 'left');
       drawStoneCurbV(oakhavenWestTurnX + oakhavenWestTurnW, road1Y + road1H, road2Y - (road1Y + road1H), 'left');
       drawStoneCurbV(oakhavenWestTurnX + oakhavenWestTurnW, road2Y + road2H, road3Y - (road2Y + road2H), 'left');
@@ -29889,11 +33065,20 @@
       drawStoneCurbV(oakhavenWestTurnX + oakhavenWestTurnW, northWestPavedY + oakhavenWestTurnW, (rbCy - rbOuterR) - (northWestPavedY + oakhavenWestTurnW) + 12, 'left');
       drawStoneCurbH(oakhavenWestTurnX + oakhavenWestTurnW, northWestPavedY - 6, Math.round(17.35 * S) - (oakhavenWestTurnX + oakhavenWestTurnW), 'bot');
       drawStoneCurbH(oakhavenWestTurnX + oakhavenWestTurnW, northWestPavedY + oakhavenWestTurnW, Math.round(17.35 * S) - (oakhavenWestTurnX + oakhavenWestTurnW), 'top');
-      drawStoneCurbH(westExitEndX, westExitY - 6, (-15.85 * S) - westExitEndX, 'bot');
+      drawStoneCurbH(westPavedConnX + oakhavenWestTurnW, westExitY - 6, (-15.85 * S) - (westPavedConnX + oakhavenWestTurnW), 'bot');
       drawStoneCurbH(-15.15 * S, westExitY - 6, (-9.55 - (-15.15)) * S, 'bot');
       drawStoneCurbH(-8.85 * S, westExitY - 6, (rbCx - rbOuterR) - (-8.85 * S) + 12, 'bot');
-      drawStoneCurbH(westExitEndX, westExitY + oakhavenWestTurnW, (rbCx - rbOuterR) - westExitEndX + 12, 'top');
-      drawStoneCurbV(westExitEndX - 6, westExitY - 6, oakhavenWestTurnW + 12, 'right');
+      drawStoneCurbH(westPavedConnX, westExitY + oakhavenWestTurnW, (rbCx - rbOuterR) - westPavedConnX + 12, 'top');
+      // Vertical stone curbs along West N-S Paved Connector
+      drawStoneCurbV(westPavedConnX - 6, road3Y + road3H, (westExitY + oakhavenWestTurnW + 6) - (road3Y + road3H), 'right');
+      drawStoneCurbV(westPavedConnX + oakhavenWestTurnW, road3Y + road3H, barberRoadY - (road3Y + road3H), 'left');
+      drawStoneCurbV(westPavedConnX + oakhavenWestTurnW, barberRoadY + oakhavenWestTurnW, northWestPavedY - (barberRoadY + oakhavenWestTurnW), 'left');
+      drawStoneCurbV(westPavedConnX + oakhavenWestTurnW, northWestPavedY + oakhavenWestTurnW, westExitY - (northWestPavedY + oakhavenWestTurnW), 'left');
+      // Stone curbs along Oakhaven Blvd East extension (east of Roundabout past East Connector)
+      drawStoneCurbH(rbCx + rbOuterR - 12, westExitY - 6, eastConnX - (rbCx + rbOuterR - 12), 'bot');
+      drawStoneCurbH(eastConnX + oakhavenWestTurnW, westExitY - 6, oakhavenBlvdEastEndX - (eastConnX + oakhavenWestTurnW), 'bot');
+      drawStoneCurbH(rbCx + rbOuterR - 12, westExitY + oakhavenWestTurnW, oakhavenBlvdEastEndX - (rbCx + rbOuterR - 12), 'top');
+      drawStoneCurbV(oakhavenBlvdEastEndX, westExitY - 6, oakhavenWestTurnW + 12, 'left');
       drawStoneCurbV(oakhavenTurnX - 6, 0, road1Y, 'right');
 
       // Upper Road Bottom Curbs (top lip of middle grass plots)
@@ -29905,12 +33090,12 @@
       drawStoneCurbV(oakhavenTurnX + oakhavenTurnW, 0, road1Y + road1H + 6, 'left');
 
       // Middle Road Top & Bottom Curbs (including West South Connector Ave extension)
-      drawStoneCurbH(EXT_MIN_X, road2Y - 6, (-17.20 * S) - EXT_MIN_X, 'bot');
+      drawStoneCurbH(westEndConnX, road2Y - 6, (-17.20 * S) - westEndConnX, 'bot');
       drawStoneCurbH(-16.40 * S, road2Y - 6, (-14.35 - (-16.40)) * S, 'bot');
       drawStoneCurbH(-13.25 * S, road2Y - 6, (-8.09 - (-13.25)) * S, 'bot');
       drawStoneCurbH(-7.59 * S, road2Y - 6, (-3.59 - (-7.59)) * S, 'bot');
       drawStoneCurbH(-3.09 * S, road2Y - 6, (-0.35 - (-3.09)) * S, 'bot');
-      drawStoneCurbH(EXT_MIN_X, road2Y + road2H, westConnX - EXT_MIN_X, 'top');
+      drawStoneCurbH(westEndConnX + westEndConnW, road2Y + road2H, westConnX - (westEndConnX + westEndConnW), 'top');
       [
         { x: oakhavenWestTurnX + oakhavenWestTurnW, w: 1.71 * S - (oakhavenWestTurnX + oakhavenWestTurnW) },
         { x: 2.21 * S, w: south1X - 2.21 * S },
@@ -29933,6 +33118,12 @@
         { x: south2X + south2W, w: (12.43 * S) - (south2X + south2W) },
         { x: 12.93 * S, w: EXT_W - 12.93 * S }
       ].forEach(c => drawStoneCurbH(c.x, road3Y - 6, c.w, 'bot'));
+
+      // Southern Avenue Western Extension & Loop Curbs
+      drawStoneCurbH(westEndConnX + westEndConnW, road3Y - 6, westConnX - (westEndConnX + westEndConnW), 'bot');
+      drawStoneCurbH(westPavedConnX + oakhavenWestTurnW, road3Y + road3H, westConnX - (westPavedConnX + oakhavenWestTurnW), 'top');
+      drawStoneCurbV(westEndConnX - 6, road2Y - 6, (road3Y + road3H + 6) - (road2Y - 6), 'right');
+      drawStoneCurbV(westEndConnX + westEndConnW, road2Y + road2H, road3Y - (road2Y + road2H), 'left');
 
       // Southern Avenue Bottom Continuous Curb
       drawStoneCurbH(westConnX + westConnW, road3Y + road3H, EXT_W - (westConnX + westConnW), 'top');
@@ -32364,6 +35555,32 @@
       } else if (area === 'police_station_interior') {
         if (!this.policeChiefNpc) this.policeChiefNpc = this.createPoliceChiefNpc();
         active.push(this.policeChiefNpc);
+      } else if (area === 'apt_1_interior') {
+        if (!this.aptTessaNpc) this.aptTessaNpc = this.createAptTessaNpc();
+        active.push(this.aptTessaNpc);
+      } else if (area === 'apt_2_interior') {
+        if (!this.aptDanteNpc) this.aptDanteNpc = this.createAptDanteNpc();
+        active.push(this.aptDanteNpc);
+      } else if (area === 'apt_3_interior') {
+        if (!this.aptNinaNpc) this.aptNinaNpc = this.createAptNinaNpc();
+        active.push(this.aptNinaNpc);
+      } else if (area === 'apt_4_interior') {
+        if (!this.aptMilesNpc) this.aptMilesNpc = this.createAptMilesNpc();
+        active.push(this.aptMilesNpc);
+      } else if (area === 'barber_shop_interior') {
+        if (!this.barberNpc) this.barberNpc = this.createBarberNpc();
+        active.push(this.barberNpc);
+      } else if (area === 'clothing_store_interior') {
+        if (!this.tailorNpc) this.tailorNpc = this.createTailorNpc();
+        active.push(this.tailorNpc);
+      } else if (area === 'animal_hospital_interior') {
+        if (!this.vetNpc) this.vetNpc = this.createVetNpc();
+        active.push(this.vetNpc);
+      } else if (area === 'convention_center_interior') {
+        if (!this.leagueRegistrarNpc) this.leagueRegistrarNpc = this.createLeagueRegistrarNpc();
+        active.push(this.leagueRegistrarNpc);
+        const leagueSeated = this.getConventionLeagueSeatedNpcs ? this.getConventionLeagueSeatedNpcs() : [];
+        if (leagueSeated.length) active.push(...leagueSeated);
       } else if (area === 'exterior') {
         const friend = this.npcs.find(n => n.id === 'best_friend' || n.id === 'friend');
         if (friend && friend.following && !this.friendWaitingAtHouse) {
@@ -32496,6 +35713,10 @@
         this.renderPoliceStationInterior();
       } else if (this.currentArea === 'barber_shop_interior') {
         this.renderBarberShopInterior();
+      } else if (this.currentArea === 'clothing_store_interior') {
+        this.renderClothingStoreInterior();
+      } else if (this.currentArea === 'animal_hospital_interior') {
+        this.renderAnimalHospitalInterior();
       } else {
         this.renderCraftsmanExterior();
       }
