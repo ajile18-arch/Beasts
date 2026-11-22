@@ -21250,13 +21250,14 @@
       let dx = 0;
       let dy = 0;
       let moved = false;
+      const moveScale = this.isMobileViewport() ? 1.0 : 0.5;
 
       if (this.keys['w'] || this.keys['arrowup']) { dy = -1; this.player.dir = 'up'; this.clearClickMoveTarget(); }
       else if (this.keys['s'] || this.keys['arrowdown']) { dy = -1 * -1; this.player.dir = 'down'; this.clearClickMoveTarget(); }
       else if (this.keys['a'] || this.keys['arrowleft']) { dx = -1; this.player.dir = 'left'; this.clearClickMoveTarget(); }
       else if (this.keys['d'] || this.keys['arrowright']) { dx = 1; this.player.dir = 'right'; this.clearClickMoveTarget(); }
       else if (this.player.targetX !== null && this.player.targetY !== null) {
-        const speed = this.currentArea === 'exterior' ? 0.042 : 0.046;
+        const speed = (this.currentArea === 'exterior' ? 0.042 : 0.046) * moveScale;
         if (!this.player.path || this.player._pathArea !== this.currentArea ||
             this.player._pathGoalX !== this.player.targetX || this.player._pathGoalY !== this.player.targetY) {
           this.setClickMoveTarget(this.player.targetX, this.player.targetY);
@@ -21269,7 +21270,7 @@
       }
 
       if (dx !== 0 || dy !== 0) {
-        const speed = this.currentArea === 'exterior' ? 0.042 : 0.046;
+        const speed = (this.currentArea === 'exterior' ? 0.042 : 0.046) * moveScale;
         const nx = this.player.x + dx * speed;
         const ny = this.player.y + dy * speed;
         if (!this.isBlocked(nx, this.player.y, null, this.player.x, this.player.y)) this.player.x = nx;
@@ -21279,7 +21280,7 @@
 
       if (moved) {
         this.player.moving = true;
-        this.player.walkTick += 0.11;
+        this.player.walkTick += 0.11 * moveScale;
 
         // If player walks toward the front door inside (before opening starter pack), Mike/AJ automatically starts following you out!
         if (this.currentArea === 'interior' && !this.hasOpenedStarterPack && this.player.y > 8.4 && this.npcs[0]) {
@@ -21299,10 +21300,10 @@
         const followThreshold = this.currentArea === 'exterior' ? 1.15 : 1.45;
 
         if (fdist > followThreshold) {
-          const fSpeed = this.currentArea === 'exterior' ? 0.039 : 0.043;
+          const fSpeed = (this.currentArea === 'exterior' ? 0.039 : 0.043) * moveScale;
           friend.x += (fdx / fdist) * fSpeed;
           friend.y += (fdy / fdist) * fSpeed;
-          friend.walkTick = (friend.walkTick || 0) + 0.11;
+          friend.walkTick = (friend.walkTick || 0) + 0.11 * moveScale;
           if (Math.abs(fdx) > Math.abs(fdy)) {
             friend.dir = fdx > 0 ? 'right' : 'left';
           } else {
