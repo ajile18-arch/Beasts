@@ -420,7 +420,12 @@
         farmhouse_1_1f_interior: { extDoor: { x: 23.70, y: -16.25 }, intEntry: { x: 11.0, y: 11.6 } },
         farmhouse_1_2f_interior: { extDoor: { x: 23.70, y: -16.25 }, intEntry: { x: 11.0, y: 11.6 } },
         farmhouse_2_1f_interior: { extDoor: { x: 42.60, y: -16.25 }, intEntry: { x: 11.0, y: 11.6 } },
-        farmhouse_2_2f_interior: { extDoor: { x: 42.60, y: -16.25 }, intEntry: { x: 11.0, y: 11.6 } }
+        farmhouse_2_2f_interior: { extDoor: { x: 42.60, y: -16.25 }, intEntry: { x: 11.0, y: 11.6 } },
+        apartment_hall_interior: { extDoor: { x: -9.20, y: 32.00 }, intEntry: { x: 8.0, y: 8.95 } },
+        apt_1_interior: { extDoor: { x: -9.20, y: 32.00 }, intEntry: { x: 8.0, y: 8.6 } },
+        apt_2_interior: { extDoor: { x: -9.20, y: 32.00 }, intEntry: { x: 8.0, y: 8.6 } },
+        apt_3_interior: { extDoor: { x: -9.20, y: 32.00 }, intEntry: { x: 8.0, y: 8.6 } },
+        apt_4_interior: { extDoor: { x: -9.20, y: 32.00 }, intEntry: { x: 8.0, y: 8.6 } }
       };
 
       // Scripted intro cutscene beats where the clock is frozen
@@ -2201,6 +2206,13 @@
         badgeEl.textContent = readyCount > 0 ? `${readyCount}!` : String(activeCount);
         badgeEl.style.background = readyCount > 0 ? '#16a34a' : '';
       }
+      this._readyQuestCount = readyCount;
+      const questsDot = document.getElementById('dot-quests');
+      if (questsDot) {
+        questsDot.classList.toggle('hidden', readyCount <= 0);
+        questsDot.style.background = readyCount > 0 ? '#22c55e' : '';
+      }
+      this.syncPhoneAlertBadges?.();
     }
 
     toggleQuestModal(force) {
@@ -2684,13 +2696,24 @@
       const phaseEl = document.getElementById('ow-clock-phase');
       const barEl = document.getElementById('ow-clock-progress');
       if (iconEl) iconEl.textContent = phase.icon;
-      if (timeEl) timeEl.textContent = this.formatClockTime(minuteNow);
+      const formattedTime = this.formatClockTime(minuteNow);
+      if (timeEl) timeEl.textContent = formattedTime;
+      const phoneDockTimeEl = document.getElementById('phone-dock-time');
+      if (phoneDockTimeEl) phoneDockTimeEl.textContent = formattedTime;
+      const phoneDockDayEl = document.getElementById('phone-dock-day');
+      if (phoneDockDayEl) {
+        const shortDay = (this.getCurrentDayName() || 'Mon').slice(0, 3);
+        phoneDockDayEl.textContent = `${shortDay} • D${this.dayNumber || 1}`;
+      }
+      const phoneStatusTimeEl = document.getElementById('phone-status-time');
+      if (phoneStatusTimeEl) phoneStatusTimeEl.textContent = formattedTime;
       if (phaseEl) {
         const shortDay = (this.getCurrentDayName() || 'Mon').slice(0, 3);
         phaseEl.textContent = `${phase.label} • ${shortDay} D${this.dayNumber || 1}`;
       }
       if (barEl) barEl.style.width = `${((minuteNow / 1440) * 100).toFixed(2)}%`;
       widget.title = `${phase.label} — ${this.formatClockTime(minuteNow)} (1 in-game hour = 2 real minutes)`;
+      this.syncPhoneAlertBadges?.();
     }
 
     /**
@@ -2782,18 +2805,85 @@
     syncPhoneAlertBadges() {
       const hasRespondedListing = (this.playerSellListings || []).some(l => l.status === 'responded');
       const marketAlert = Boolean(this.phoneUnreadMarket || hasRespondedListing);
+      const curDay = this.dayNumber || 1;
+      const curWin = typeof this.getCurrentMeetupWindowId === 'function' ? this.getCurrentMeetupWindowId() : null;
+      const activeMeetupNow = (this.scheduledMeetups || []).some(
+        m => m && m.status === 'scheduled' && typeof this.isMeetupActiveNow === 'function' && this.isMeetupActiveNow(m, curDay, curWin)
+      );
+      const parkActive = typeof this.isMondayToday === 'function'
+        && this.isMondayToday()
+        && typeof this.isParkMondayTourneyCompletedToday === 'function'
+        && !this.isParkMondayTourneyCompletedToday();
+      const leagueActive = typeof this.isSaturdayToday === 'function'
+        && this.isSaturdayToday()
+        && Number(this.timeOfDayMinutes || 0) >= 900
+        && Boolean(this.oakhavenLeague?.playerEntered)
+        && this.oakhavenLeague?.phase !== 'complete';
+      const tourneyAlert = Boolean(parkActive || leagueActive);
+
       const shopDot = document.getElementById('dot-shopfeed');
       if (shopDot) shopDot.classList.toggle('hidden', !this.phoneUnreadShop);
       const marketDot = document.getElementById('dot-market');
-      if (marketDot) marketDot.classList.toggle('hidden', !marketAlert);
+      if (marketDot) marketDot.classList.toggle('hidden', !(marketAlert || activeMeetupNow));
+      const tourneyDot = document.getElementById('dot-tournaments');
+      if (tourneyDot) tourneyDot.classList.toggle('hidden', !tourneyAlert);
+      const contactsDot = document.getElementById('dot-contacts');
+      if (contactsDot) contactsDot.classList.toggle('hidden', !this.activeIncomingDuelCall);
+
+      let dockIconSrc = 'Sprites/Overworld/phone_icon_binder.png?v=3.08';
+      let dockBadgeColor = '#ef4444';
+      let dockBadgeText = '!';
+      let dockTitle = 'Open Mythos Phone & All Menus (Key: P)';
+      let showDockBadge = false;
+
+      if (this.activeIncomingDuelCall) {
+        dockIconSrc = 'Sprites/Overworld/phone_icon_contacts.jpg?v=2.57';
+        dockBadgeColor = '#ef4444';
+        dockTitle = `Incoming Duel Call from ${this.activeIncomingDuelCall.npcName || 'Challenger'}!`;
+        showDockBadge = true;
+      } else if ((this._readyQuestCount || 0) > 0) {
+        dockIconSrc = 'Sprites/Overworld/phone_icon_quests.png?v=3.07';
+        dockBadgeColor = '#16a34a';
+        dockTitle = 'Quest Ready to Claim!';
+        showDockBadge = true;
+      } else if (activeMeetupNow || marketAlert) {
+        dockIconSrc = 'Sprites/Overworld/phone_icon_market.jpg?v=2.57';
+        dockBadgeColor = '#ef4444';
+        dockTitle = activeMeetupNow ? 'Scheduled Meetup Active Now!' : 'Card Exchange Alert!';
+        showDockBadge = true;
+      } else if (this.phoneUnreadShop) {
+        dockIconSrc = 'Sprites/Overworld/phone_icon_shop.jpg?v=2.57';
+        dockBadgeColor = '#ef4444';
+        dockTitle = "Leo's Card Shop Alert!";
+        showDockBadge = true;
+      } else if (tourneyAlert) {
+        dockIconSrc = 'Sprites/Overworld/phone_icon_tournaments.jpg?v=2.57';
+        dockBadgeColor = '#9333ea';
+        dockTitle = 'Town Tournament Active!';
+        showDockBadge = true;
+      }
+
+      const dockEl = document.getElementById('ow-phone-dock');
+      if (dockEl) dockEl.title = dockTitle;
+      const dockImg = document.getElementById('phone-dock-alert-img');
+      if (dockImg && !dockImg.getAttribute('src')?.endsWith(dockIconSrc)) {
+        dockImg.src = dockIconSrc;
+      }
+
       const badge = document.getElementById('phone-alert-badge');
       const mobBadge = document.getElementById('mob-phone-badge');
       const hdrMobPhoneBadge = document.getElementById('hdr-mob-phone-badge');
+      const dockBadge = document.getElementById('phone-dock-badge');
       const menuAlert = document.getElementById('header-menu-alert');
-      const hasAnyAlert = Boolean(this.phoneUnreadShop || marketAlert);
+      const hasAnyAlert = Boolean(showDockBadge);
       if (badge) badge.classList.toggle('hidden', !hasAnyAlert);
       if (mobBadge) mobBadge.classList.toggle('hidden', !hasAnyAlert);
       if (hdrMobPhoneBadge) hdrMobPhoneBadge.classList.toggle('hidden', !hasAnyAlert);
+      if (dockBadge) {
+        dockBadge.classList.toggle('hidden', !showDockBadge);
+        dockBadge.style.background = dockBadgeColor;
+        dockBadge.textContent = dockBadgeText;
+      }
       if (menuAlert) menuAlert.classList.toggle('hidden', !hasAnyAlert);
     }
 
@@ -3552,7 +3642,7 @@
 
     openPhoneApp(appName) {
       this.currentPhoneApp = appName;
-      const views = ['home', 'contacts', 'market', 'shopfeed', 'tournaments'];
+      const views = ['home', 'contacts', 'market', 'shopfeed', 'tournaments', 'system'];
       views.forEach(v => {
         const el = document.getElementById(`phone-view-${v}`);
         if (el) {
@@ -3566,18 +3656,27 @@
         }
       });
 
-      // Update Phone Status Bar
+      // Update Phone Status Bar & Dock Clock with actual live in-game time
       const timeEl = document.getElementById('phone-status-time');
+      const dockTimeEl = document.getElementById('phone-dock-time');
+      const dockDayEl = document.getElementById('phone-dock-day');
+      const dockMoneyEl = document.getElementById('phone-dock-money');
       const locEl = document.getElementById('phone-status-loc');
       const dayLabel = document.getElementById('phone-home-day-label');
       const walletVal = document.getElementById('phone-wallet-val');
       const widgetTitle = document.getElementById('phone-widget-title');
       const widgetDesc = document.getElementById('phone-widget-desc');
 
-      if (timeEl) timeEl.textContent = '2:30 PM';
-      if (locEl) locEl.textContent = this.draftAppearance?.worldName || 'Oakhaven';
+      const liveTime = this.formatClockTime();
+      const shortDay = (this.getCurrentDayName() || 'Mon').slice(0, 3);
+      const formattedMoney = this.formatMoney(this.gold || 0);
+      if (timeEl) timeEl.textContent = liveTime;
+      if (dockTimeEl) dockTimeEl.textContent = liveTime;
+      if (dockDayEl) dockDayEl.textContent = `${shortDay} • D${this.dayNumber || 1}`;
+      if (dockMoneyEl) dockMoneyEl.textContent = formattedMoney;
+      if (locEl) locEl.textContent = this._currentAreaLabel || this.draftAppearance?.worldName || 'Oakhaven';
       if (dayLabel) dayLabel.textContent = `${this.getCurrentDayName()}, Day ${this.dayNumber || 1}`;
-      if (walletVal) walletVal.textContent = this.formatMoney(this.gold || 0);
+      if (walletVal) walletVal.textContent = formattedMoney;
 
       const curEv = this.getCurrentDayEvent();
       if (widgetTitle) widgetTitle.textContent = `${curEv.icon} ${curEv.title}`;
@@ -3605,7 +3704,17 @@
         this.renderShopFeedApp();
       } else if (appName === 'tournaments') {
         this.renderTournamentsApp();
+      } else if (appName === 'system') {
+        this.syncPhoneSystemSoundButton?.();
       }
+    }
+
+    syncPhoneSystemSoundButton() {
+      const sysSoundBtn = document.getElementById('btn-phone-sys-sound');
+      if (!sysSoundBtn) return;
+      const btnSound = document.getElementById('btn-sound');
+      const isMuted = btnSound ? btnSound.textContent.includes('🔇') : false;
+      sysSoundBtn.textContent = isMuted ? '🔇 Sound: OFF' : '🔊 Sound: ON';
     }
 
     renderContactsApp() {
@@ -4440,7 +4549,11 @@
           ? `🏆 Win Reward: <b style="color:#4ade80;">${this.formatMoney(m.rewardMoney || 0)}</b>`
           : (m.rewardType === 'card_pick'
             ? `🏆 Win Reward: <b style="color:#fde68a;">Pick 1 of 3 Cards Used</b>`
-            : `🏆 Stakes: <b style="color:#cbd5e1;">Friendly Exhibition</b>`);
+            : (m.rewardType === 'standard_pack'
+              ? `🏆 Win Reward: <b style="color:#60a5fa;">1× Standard Booster Pack</b>`
+              : (m.rewardType === 'premium_pack'
+                ? `🏆 Win Reward: <b style="color:#e879f9;">1× Premium Booster Pack</b>`
+                : `🏆 Stakes: <b style="color:#cbd5e1;">Friendly Exhibition</b>`)));
 
         const cardEl = document.createElement('div');
         cardEl.className = 'phone-listing-card';
@@ -7495,22 +7608,22 @@
         .map(n => this._resolveGwentCardDefByName(n))
         .filter(Boolean);
 
-      // Roll win reward: ~40% cash prize ($2-$6), ~35% pick 1 of 3 cards they use, ~25% friendly exhibition
+      // Roll win reward: 50% cash prize ($2-$6), 25% copy of a card from opponent's deck, 15% standard pack, 10% premium pack
       const r = Math.random();
       let rewardType = 'none';
       let rewardMoney = 0;
       let rewardCards = [];
-      if (r < 0.40) {
+      if (r < 0.50 || (r < 0.75 && resolvedCards.length === 0)) {
         rewardType = 'money';
         rewardMoney = 2 + Math.floor(Math.random() * 5);
-      } else if (r < 0.75 && resolvedCards.length >= 3) {
+      } else if (r < 0.75) {
         rewardType = 'card_pick';
         const shuffled = [...resolvedCards];
         for (let i = shuffled.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));
           [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
         }
-        rewardCards = shuffled.slice(0, 3).map(c => ({
+        rewardCards = shuffled.slice(0, Math.min(3, shuffled.length)).map(c => ({
           id: c.id,
           beastId: c.beastId || c.id,
           name: c.name,
@@ -7520,6 +7633,10 @@
           role: c.role || '',
           cardImg: c.traditionalCardImg || c.cardImg || ''
         }));
+      } else if (r < 0.90) {
+        rewardType = 'standard_pack';
+      } else {
+        rewardType = 'premium_pack';
       }
 
       const customDeckIds = challenger.customDeck
@@ -7662,11 +7779,16 @@
           rewardEl.textContent = `⚔️ Duel Challenge • Win ${this.formatMoney(callObj.rewardMoney)}`;
         } else if (callObj.rewardType === 'card_pick') {
           rewardEl.textContent = `⚔️ Duel Challenge • Win a Card Pick!`;
+        } else if (callObj.rewardType === 'standard_pack') {
+          rewardEl.textContent = `⚔️ Duel Challenge • Win a Standard Pack!`;
+        } else if (callObj.rewardType === 'premium_pack') {
+          rewardEl.textContent = `⚔️ Duel Challenge • Win a Premium Pack!`;
         } else {
           rewardEl.textContent = `⚔️ Friendly Duel Challenge`;
         }
       }
       toast.classList.remove('hidden');
+      this.syncPhoneAlertBadges?.();
       if (this._duelCallToastTimer) clearTimeout(this._duelCallToastTimer);
       this._duelCallToastTimer = setTimeout(() => {
         this.hideDuelCallToast(true);
@@ -7686,6 +7808,7 @@
           this.activeIncomingDuelCall = null;
         }
       }
+      this.syncPhoneAlertBadges?.();
     }
 
     openDuelCallModal(mode = 'read') {
@@ -7708,6 +7831,7 @@
       if (clearCall) {
         this.activeIncomingDuelCall = null;
       }
+      this.syncPhoneAlertBadges?.();
     }
 
     renderDuelCallModal() {
@@ -7742,6 +7866,20 @@
             <div class="duel-call-reward-box cards">
               <div class="duel-call-reward-label">🃏 Card Spoils on Win — Pick 1 of 3 they use:</div>
               <div class="duel-call-card-chips">${cardChips}</div>
+            </div>
+          `;
+        } else if (call.rewardType === 'standard_pack') {
+          rewardBlock = `
+            <div class="duel-call-reward-box cards">
+              <span class="duel-call-reward-label">📦 Booster Pack Prize on Win</span>
+              <b>1× Standard Booster Pack</b>
+            </div>
+          `;
+        } else if (call.rewardType === 'premium_pack') {
+          rewardBlock = `
+            <div class="duel-call-reward-box cards">
+              <span class="duel-call-reward-label">💎 Premium Pack Prize on Win</span>
+              <b>1× 1st-Edition Premium Pack</b>
             </div>
           `;
         }
@@ -7885,7 +8023,11 @@
 
       const rewardDesc = meetupRecord.rewardType === 'money'
         ? `Win ${this.formatMoney(meetupRecord.rewardMoney)}`
-        : (meetupRecord.rewardType === 'card_pick' ? 'Win Pick 1 of 3 Cards' : 'Friendly Exhibition');
+        : (meetupRecord.rewardType === 'card_pick'
+          ? 'Win Pick 1 of 3 Cards'
+          : (meetupRecord.rewardType === 'standard_pack'
+            ? 'Win Standard Booster Pack'
+            : (meetupRecord.rewardType === 'premium_pack' ? 'Win Premium Booster Pack' : 'Friendly Exhibition')));
       this.upsertNotebookNote({
         id: `meetup_${meetupRecord.id}`,
         title: `Duel ${meetupRecord.npcName} (${rewardDesc})`,
@@ -7926,6 +8068,27 @@
             npcName: m.npcName,
             cards: m.rewardCards
           };
+        } else if (m.rewardType === 'standard_pack') {
+          this.addInventoryItem({
+            id: 'unopened_base_pack',
+            name: 'Unopened Mythos Base Card Pack',
+            qty: 1,
+            icon: '🃏',
+            cardImg: 'Cards/Mythos_Base_Pack.jpg',
+            type: 'booster_pack',
+            desc: `<b>Unopened Mythos Base Set Booster Pack (1st Edition)</b> — A factory-sealed foil booster pack featuring <b>The Seal of Mythos</b> and <b>5 Mythos Game Cards</b> inside. Click <b>✨ Open Booster Pack</b> to break the seal! <i>(Won in a Phone Duel Challenge against ${m.npcName})</i>`
+          });
+        } else if (m.rewardType === 'premium_pack') {
+          this.addInventoryItem({
+            id: 'unopened_premium_pack',
+            name: '1st-Edition Mythos Premium Pack',
+            qty: 1,
+            icon: '💎',
+            cardImg: 'Cards/Mythos_Premium_Pack.jpg',
+            type: 'booster_pack',
+            isPremiumPack: true,
+            desc: `<b>1st-Edition Mythos Premium Pack</b> — A collector-grade Astral Ivory foil booster featuring <b>5 Mythos Game Cards</b> with heavily boosted <b>3★–5★ rarity weights</b>, at least 1 guaranteed <b>3★+</b> pull, and <b>2× Animated Special odds</b>! Click <b>✨ Open Booster Pack</b> to break the seal! <i>(Won in a Phone Duel Challenge against ${m.npcName})</i>`
+          });
         }
         this.changeRelationship?.(m.npcId, 4, 'phone duel victory');
       } else {
@@ -14484,7 +14647,11 @@
           ? `💵 a <b>${this.formatMoney(m.rewardMoney || 0)}</b> cash prize`
           : (m.rewardType === 'card_pick'
             ? `🃏 your pick of <b>1 of 3 cards</b> from my deck`
-            : `🤝 a <b>Friendly Exhibition Match</b>`);
+            : (m.rewardType === 'standard_pack'
+              ? `📦 a <b>Standard Booster Pack</b>`
+              : (m.rewardType === 'premium_pack'
+                ? `💎 a <b>1st-Edition Premium Booster Pack</b>`
+                : `🤝 a <b>Friendly Exhibition Match</b>`)));
         this.renderNpcChoicePrompt({
           npcId: nearest.id,
           promptKey: `meetup_duel_${m.id}_${this.gold}`,
@@ -17849,14 +18016,27 @@
       if (calDayLabel) calDayLabel.textContent = this.getCurrentDayName();
       if (calDayNum) calDayNum.textContent = String(this.dayNumber || 1);
       this.updateClockHUD(true);
+      const shortDay = (this.getCurrentDayName() || 'Mon').slice(0, 3);
+      const formattedMoney = this.formatMoney(this.gold || 0);
       const headerMobileDay = document.getElementById('header-mobile-day');
       if (headerMobileDay) {
-        const shortDay = (this.getCurrentDayName() || 'Mon').slice(0, 3);
         headerMobileDay.textContent = `📅 ${shortDay} D${this.dayNumber || 1}`;
       }
       const headerMobileMoney = document.getElementById('header-mobile-money');
       if (headerMobileMoney) {
-        headerMobileMoney.textContent = this.formatMoney(this.gold || 0);
+        headerMobileMoney.textContent = formattedMoney;
+      }
+      const phoneDockDay = document.getElementById('phone-dock-day');
+      if (phoneDockDay) {
+        phoneDockDay.textContent = `${shortDay} • D${this.dayNumber || 1}`;
+      }
+      const phoneDockMoney = document.getElementById('phone-dock-money');
+      if (phoneDockMoney) {
+        phoneDockMoney.textContent = formattedMoney;
+      }
+      const phoneWalletVal = document.getElementById('phone-wallet-val');
+      if (phoneWalletVal) {
+        phoneWalletVal.textContent = formattedMoney;
       }
       if (badgeEl) {
         badgeEl.textContent = String(this.getTotalInventoryCount());
@@ -17874,89 +18054,92 @@
         openBinderBtn.innerHTML = `<img src="Sprites/Overworld/binder_tome_icon.png" class="hud-backpack-img" alt=""> Binder <span id="binder-badge-count" class="inv-badge-pill">${totalUnifiedBinderCount}</span>`;
       }
       this.evaluateQuests?.(true);
+      const pName = this.draftAppearance?.name || 'Asher';
+      const wName = this.draftAppearance?.worldName || 'Oakhaven';
+      let areaLabel = `🌲 ${wName}`;
+      if (this.currentArea === 'interior') {
+        areaLabel = `🏠 ${pName}'s House`;
+      } else if (this.currentArea === 'friend_interior') {
+        areaLabel = `🏠 ${this.friendName}'s House`;
+      } else if (this.currentArea === 'card_shop_interior') {
+        areaLabel = `🃏 Leo's Card Shop`;
+      } else if (this.currentArea === 'pluto_interior') {
+        areaLabel = `🏠 Pluto's House`;
+      } else if (this.currentArea === 'nova_interior') {
+        areaLabel = `🏠 Nova's House`;
+      } else if (this.currentArea === 'silas_interior') {
+        areaLabel = `🏠 Silas's House`;
+      } else if (this.currentArea === 'maya_interior') {
+        areaLabel = `🏠 Maya's House`;
+      } else if (this.currentArea === 'clara_interior') {
+        areaLabel = `🏠 Clara's House`;
+      } else if (this.currentArea === 'bram_interior') {
+        areaLabel = `🏠 Bram's House`;
+      } else if (this.currentArea === 'mayor_interior') {
+        areaLabel = `🏛️ Mayor Donald's Manor (1F)`;
+      } else if (this.currentArea === 'restaurant_interior') {
+        areaLabel = `🍽️ Oakhaven Bistro`;
+      } else if (this.currentArea === 'corner_store_interior') {
+        areaLabel = `🛒 Shaun's Corner Market`;
+      } else if (this.currentArea === 'convention_center_interior') {
+        areaLabel = `🏛️ Oakhaven Convention Center`;
+      } else if (this.currentArea === 'school_interior') {
+        areaLabel = `🏫 Oakhaven Elementary`;
+      } else if (this.currentArea === 'fire_station_interior') {
+        areaLabel = `🚒 Oakhaven Fire Department`;
+      } else if (this.currentArea === 'police_station_interior') {
+        areaLabel = `🚓 Oakhaven Police Department`;
+      } else if (this.currentArea === 'barber_shop_interior') {
+        areaLabel = `💈 Oakhaven Barber Shop`;
+      } else if (this.currentArea === 'clothing_store_interior') {
+        areaLabel = `👔 Oakhaven Apparel`;
+      } else if (this.currentArea === 'arcade_interior') {
+        areaLabel = `🕹️ Oakhaven Arcade`;
+      } else if (this.currentArea === 'arcade_back_interior') {
+        areaLabel = `🕹️ Oakhaven Arcade — Back Room`;
+      } else if (this.currentArea === 'animal_hospital_interior') {
+        areaLabel = `🐾 Oakhaven Animal Hospital`;
+      } else if (this.currentArea === 'west_house_1_interior') {
+        areaLabel = `🪵 Otis's Woodcarver Cottage`;
+      } else if (this.currentArea === 'west_house_2_interior') {
+        areaLabel = `🥖 Maren's Stone-Hearth Cottage`;
+      } else if (this.currentArea === 'west_house_3_interior') {
+        areaLabel = `🎵 Caleb's Sunroom Cottage`;
+      } else if (this.currentArea === 'west_oak_1_interior') {
+        areaLabel = `🌿 Juniper's Herbalist Cottage`;
+      } else if (this.currentArea === 'west_oak_2_interior') {
+        areaLabel = `⚙️ Gideon's Clockmaker Cottage`;
+      } else if (this.currentArea === 'farmhouse_1_1f_interior') {
+        areaLabel = `🏡 Homestead Dairy Farmhouse (1F)`;
+      } else if (this.currentArea === 'farmhouse_1_2f_interior') {
+        areaLabel = `🛏️ Homestead Dairy Farmhouse (2F)`;
+      } else if (this.currentArea === 'farmhouse_2_1f_interior') {
+        areaLabel = `🏛️ Harvest Manor Farmhouse (1F)`;
+      } else if (this.currentArea === 'farmhouse_2_2f_interior') {
+        areaLabel = `🛏️ Harvest Manor Farmhouse (2F)`;
+      } else if (this.currentArea === 'apartment_hall_interior') {
+        areaLabel = `🏢 Oakhaven Apartments — Main Hall`;
+      } else if (this.currentArea === 'apt_1_interior') {
+        areaLabel = `🚪 Oakhaven Apartments — Suite 101`;
+      } else if (this.currentArea === 'apt_2_interior') {
+        areaLabel = `🚪 Oakhaven Apartments — Suite 102`;
+      } else if (this.currentArea === 'apt_3_interior') {
+        areaLabel = `🚪 Oakhaven Apartments — Suite 103`;
+      } else if (this.currentArea === 'apt_4_interior') {
+        areaLabel = `🚪 Oakhaven Apartments — Suite 104`;
+      } else if (this.currentArea === 'mayor_2f_interior') {
+        areaLabel = `🏛️ Mayor Donald's Manor (2F)`;
+      } else if (this.currentArea === 'exterior' && this.player && (this.player.y < 0 || (this.player.x >= 33.5 && this.player.y < 17.5))) {
+        areaLabel = `🌾 Meadowbrook Countryside`;
+      } else if (this.currentArea === 'exterior' && this.player && this.player.x >= 16.0 && this.player.y >= 17.5) {
+        areaLabel = `🏫 Oakhaven Elementary Campus`;
+      } else if (this.currentArea === 'exterior' && this.player && this.player.x >= 16.0) {
+        areaLabel = `🌳 Central Park Courtyard`;
+      }
+      this._currentAreaLabel = areaLabel;
+      const phoneStatusLocEl = document.getElementById('phone-status-loc');
+      if (phoneStatusLocEl) phoneStatusLocEl.textContent = areaLabel;
       if (locPill) {
-        const pName = this.draftAppearance?.name || 'Asher';
-        const wName = this.draftAppearance?.worldName || 'Oakhaven';
-        let areaLabel = `🌲 ${wName}`;
-        if (this.currentArea === 'interior') {
-          areaLabel = `🏠 ${pName}'s House`;
-        } else if (this.currentArea === 'friend_interior') {
-          areaLabel = `🏠 ${this.friendName}'s House`;
-        } else if (this.currentArea === 'card_shop_interior') {
-          areaLabel = `🃏 Leo's Card Shop`;
-        } else if (this.currentArea === 'pluto_interior') {
-          areaLabel = `🏠 Pluto's House`;
-        } else if (this.currentArea === 'nova_interior') {
-          areaLabel = `🏠 Nova's House`;
-        } else if (this.currentArea === 'silas_interior') {
-          areaLabel = `🏠 Silas's House`;
-        } else if (this.currentArea === 'maya_interior') {
-          areaLabel = `🏠 Maya's House`;
-        } else if (this.currentArea === 'clara_interior') {
-          areaLabel = `🏠 Clara's House`;
-        } else if (this.currentArea === 'bram_interior') {
-          areaLabel = `🏠 Bram's House`;
-        } else if (this.currentArea === 'mayor_interior') {
-          areaLabel = `🏛️ Mayor Donald's Manor (1F)`;
-        } else if (this.currentArea === 'restaurant_interior') {
-          areaLabel = `🍽️ Oakhaven Bistro`;
-        } else if (this.currentArea === 'corner_store_interior') {
-          areaLabel = `🛒 Shaun's Corner Market`;
-        } else if (this.currentArea === 'convention_center_interior') {
-          areaLabel = `🏛️ Oakhaven Convention Center`;
-        } else if (this.currentArea === 'school_interior') {
-          areaLabel = `🏫 Oakhaven Elementary`;
-        } else if (this.currentArea === 'fire_station_interior') {
-          areaLabel = `🚒 Oakhaven Fire Department`;
-        } else if (this.currentArea === 'police_station_interior') {
-          areaLabel = `🚓 Oakhaven Police Department`;
-        } else if (this.currentArea === 'barber_shop_interior') {
-          areaLabel = `💈 Oakhaven Barber Shop`;
-        } else if (this.currentArea === 'clothing_store_interior') {
-          areaLabel = `👔 Oakhaven Apparel`;
-        } else if (this.currentArea === 'arcade_interior') {
-          areaLabel = `🕹️ Oakhaven Arcade`;
-        } else if (this.currentArea === 'arcade_back_interior') {
-          areaLabel = `🕹️ Oakhaven Arcade — Back Room`;
-        } else if (this.currentArea === 'animal_hospital_interior') {
-          areaLabel = `🐾 Oakhaven Animal Hospital`;
-        } else if (this.currentArea === 'west_house_1_interior') {
-          areaLabel = `🪵 Otis's Woodcarver Cottage`;
-        } else if (this.currentArea === 'west_house_2_interior') {
-          areaLabel = `🥖 Maren's Stone-Hearth Cottage`;
-        } else if (this.currentArea === 'west_house_3_interior') {
-          areaLabel = `🎵 Caleb's Sunroom Cottage`;
-        } else if (this.currentArea === 'west_oak_1_interior') {
-          areaLabel = `🌿 Juniper's Herbalist Cottage`;
-        } else if (this.currentArea === 'west_oak_2_interior') {
-          areaLabel = `⚙️ Gideon's Clockmaker Cottage`;
-        } else if (this.currentArea === 'farmhouse_1_1f_interior') {
-          areaLabel = `🏡 Homestead Dairy Farmhouse (1F)`;
-        } else if (this.currentArea === 'farmhouse_1_2f_interior') {
-          areaLabel = `🛏️ Homestead Dairy Farmhouse (2F)`;
-        } else if (this.currentArea === 'farmhouse_2_1f_interior') {
-          areaLabel = `🏛️ Harvest Manor Farmhouse (1F)`;
-        } else if (this.currentArea === 'farmhouse_2_2f_interior') {
-          areaLabel = `🛏️ Harvest Manor Farmhouse (2F)`;
-        } else if (this.currentArea === 'apartment_hall_interior') {
-          areaLabel = `🏢 Oakhaven Apartments — Main Hall`;
-        } else if (this.currentArea === 'apt_1_interior') {
-          areaLabel = `🚪 Oakhaven Apartments — Suite 101`;
-        } else if (this.currentArea === 'apt_2_interior') {
-          areaLabel = `🚪 Oakhaven Apartments — Suite 102`;
-        } else if (this.currentArea === 'apt_3_interior') {
-          areaLabel = `🚪 Oakhaven Apartments — Suite 103`;
-        } else if (this.currentArea === 'apt_4_interior') {
-          areaLabel = `🚪 Oakhaven Apartments — Suite 104`;
-        } else if (this.currentArea === 'mayor_2f_interior') {
-          areaLabel = `🏛️ Mayor Donald's Manor (2F)`;
-        } else if (this.currentArea === 'exterior' && this.player && (this.player.y < 0 || (this.player.x >= 33.5 && this.player.y < 17.5))) {
-          areaLabel = `🌾 Meadowbrook Countryside`;
-        } else if (this.currentArea === 'exterior' && this.player && this.player.x >= 16.0 && this.player.y >= 17.5) {
-          areaLabel = `🏫 Oakhaven Elementary Campus`;
-        } else if (this.currentArea === 'exterior' && this.player && this.player.x >= 16.0) {
-          areaLabel = `🌳 Central Park Courtyard`;
-        }
         const packCount = (this.inventory || [])
           .filter(i => i.type === 'booster_pack')
           .reduce((s, i) => s + (i.qty || 0), 0);
@@ -18194,6 +18377,10 @@
       if (hdrMobPhoneBtn) {
         hdrMobPhoneBtn.addEventListener('click', () => this.togglePhoneModal(true));
       }
+      const owPhoneDockBtn = document.getElementById('ow-phone-dock');
+      if (owPhoneDockBtn) {
+        owPhoneDockBtn.addEventListener('click', () => this.togglePhoneModal(true));
+      }
       const closePhoneBtn = document.getElementById('btn-close-phone');
       if (closePhoneBtn) {
         closePhoneBtn.addEventListener('click', () => this.togglePhoneModal(false));
@@ -18414,6 +18601,30 @@
         if (window.sounds?.playClick) window.sounds.playClick();
         this.openPhoneApp('tournaments');
       });
+      document.getElementById('app-btn-quests')?.addEventListener('click', () => {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        this.togglePhoneModal(false);
+        this.toggleQuestModal(true);
+      });
+      document.getElementById('app-btn-notebook')?.addEventListener('click', () => {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        this.togglePhoneModal(false);
+        this.toggleNotebookModal(true);
+      });
+      document.getElementById('app-btn-binder')?.addEventListener('click', () => {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        this.togglePhoneModal(false);
+        this.toggleBinderModal(true);
+      });
+      document.getElementById('app-btn-calendar')?.addEventListener('click', () => {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        this.togglePhoneModal(false);
+        this.toggleCalendarModal(true);
+      });
+      document.getElementById('app-btn-system')?.addEventListener('click', () => {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        this.openPhoneApp('system');
+      });
 
       // App Back Buttons
       document.getElementById('btn-contacts-back')?.addEventListener('click', () => {
@@ -18437,6 +18648,31 @@
       document.getElementById('btn-tournaments-back')?.addEventListener('click', () => {
         if (window.sounds?.playClick) window.sounds.playClick();
         this.openPhoneApp('home');
+      });
+      document.getElementById('btn-system-back')?.addEventListener('click', () => {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        this.openPhoneApp('home');
+      });
+
+      // System App Actions
+      document.getElementById('btn-phone-sys-save')?.addEventListener('click', () => {
+        document.getElementById('btn-save-world')?.click();
+        this.togglePhoneModal(false);
+      });
+      document.getElementById('btn-phone-sys-creator')?.addEventListener('click', () => {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        this.togglePhoneModal(false);
+        this.openCharacterCreator(false);
+      });
+      document.getElementById('btn-phone-sys-duel')?.addEventListener('click', () => {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        this.togglePhoneModal(false);
+        document.getElementById('btn-switch-view')?.click();
+      });
+      document.getElementById('btn-phone-sys-sound')?.addEventListener('click', () => {
+        document.getElementById('btn-sound')?.click();
+        if (window.sounds?.playClick) window.sounds.playClick();
+        this.syncPhoneSystemSoundButton?.();
       });
 
       // Market Tab Switches
@@ -21842,6 +22078,9 @@
       if (inBox(-12.60, 19.70, -6.80, 21.15)) return true;  // Oakhaven Arcade Front Apron
       if (inBox(-13.35, 26.70, -7.55, 28.20)) return true; // Oakhaven Animal Hospital Front Apron
       if (inBox(18.00, 6.80, 24.20, 11.60)) return true;  // Central Park Courtyard Walkways
+      if (inBox(-9.70, 31.60, -8.70, 32.40)) return true; // Oakhaven Apartments Entrance Apron
+      if (inBox(23.10, -16.65, 24.30, -14.00)) return true; // Homestead Dairy Farmhouse Driveway
+      if (inBox(42.00, -16.65, 43.20, -14.00)) return true; // Harvest Manor Farmhouse Driveway
 
       return false;
     }
@@ -22807,7 +23046,7 @@
       let dy = 0;
       let moved = false;
       const isInterior = this.currentArea !== 'exterior';
-      const moveScale = (this.isMobileViewport() ? 1.0 : 1.0125) * (isInterior ? 0.6 : 1.0);
+      const moveScale = (this.isMobileViewport() ? 1.0 : 1.0125) * (isInterior ? 0.6 : 1.3);
 
       if (this.keys['w'] || this.keys['arrowup']) { dy = -1; this.player.dir = 'up'; this.clearClickMoveTarget(); }
       else if (this.keys['s'] || this.keys['arrowdown']) { dy = -1 * -1; this.player.dir = 'down'; this.clearClickMoveTarget(); }

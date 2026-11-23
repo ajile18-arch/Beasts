@@ -6,8 +6,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>Mythos - Open World & Tabletop Card Game</title>
-  <link rel="stylesheet" href="css/style.css?v=2.99">
-  <link rel="stylesheet" href="css/mobile.css?v=2.76" media="(max-width: 820px), (hover: none) and (pointer: coarse)">
+  <link rel="stylesheet" href="css/style.css?v=3.02">
+  <link rel="stylesheet" href="css/mobile.css?v=2.77" media="(max-width: 820px), (hover: none) and (pointer: coarse)">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=MedievalSharp&family=Metamorphous&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
@@ -15,7 +15,7 @@
 <body>
   <div id="app">
     <!-- Top Header Bar -->
-    <header class="game-header">
+    <header class="game-header hidden">
       <div class="logo-area">
         <h1 class="game-title">MYTHOS</h1>
         <span class="version-tag" id="game-version">v2.75</span>
@@ -27,8 +27,8 @@
       <span class="ow-location-pill" id="ow-location-pill">🏠 Living Room (Day 2 of Summer)</span>
 
       <div class="header-right-group">
-        <!-- Mobile Header Quick Access Icons -->
-        <div class="header-mobile-icons" id="header-mobile-icons">
+        <!-- Mobile Header Quick Access Icons (Hidden — accessed via bottom-right Phone) -->
+        <div class="header-mobile-icons hidden" id="header-mobile-icons">
           <button type="button" id="btn-hdr-mob-phone" class="ui-btn primary-btn header-mob-icon-btn" title="Mythos Mobile Phone">
             <span class="hdr-mob-emoji">📱</span>
             <span id="hdr-mob-phone-badge" class="hdr-mob-badge hidden">!</span>
@@ -40,8 +40,8 @@
           </button>
         </div>
 
-        <!-- Unified Header Menu Button & Dropdown -->
-        <div class="header-menu-wrapper" id="header-menu-wrapper">
+        <!-- Unified Header Menu Button & Dropdown (Hidden — accessed via bottom-right Phone) -->
+        <div class="header-menu-wrapper hidden" id="header-menu-wrapper">
           <button type="button" id="btn-header-menu" class="ui-btn primary-btn header-menu-btn" aria-haspopup="true" aria-expanded="false" title="Open Game Menu">
             ☰ <span class="header-menu-label">Menu</span> <span id="header-menu-alert" class="phone-badge-pill hidden">!</span>
           </button>
@@ -50,8 +50,6 @@
           <!-- Overworld Menu Items (Visible in Overworld) -->
           <div class="overworld-toolbar header-menu-section" id="overworld-toolbar">
             <button id="btn-open-calendar" class="ui-btn primary-btn calendar-toolbar-btn" style="padding: 4px 10px; font-size: 12px; background: linear-gradient(135deg, #059669, #10b981); border-color: #34d399;" title="Town Weekly Calendar & Daily Events (Key: C)">📅 <span id="calendar-btn-day-label">Monday</span> • Day <span id="calendar-btn-day-num">1</span></button>
-            <button id="btn-open-notebook" class="ui-btn primary-btn notebook-toolbar-btn" style="padding: 4px 10px; font-size: 12px; background: linear-gradient(135deg, #b45309, #d97706); border-color: #fbbf24;" title="Adventurer's Notebook — Pinned Events, Signs & Dialogue (Key: N)">📓 Notebook <span id="notebook-badge-count" class="inv-badge-pill">0</span></button>
-            <button id="btn-open-quests" class="ui-btn primary-btn quest-toolbar-btn" style="padding: 4px 10px; font-size: 12px; background: linear-gradient(135deg, #7c2d12, #ea580c); border-color: #fdba74;" title="Quest Log — Active Quests, Progress & Rewards (Key: Q)">📜 Quest Log <span id="quest-badge-count" class="inv-badge-pill">0</span></button>
             <button id="btn-open-phone" class="ui-btn primary-btn phone-toolbar-btn" style="padding: 4px 10px; font-size: 12px; background: linear-gradient(135deg, #4f46e5, #6366f1); border-color: #818cf8;" title="Mythos Mobile Smartphone (Key: P)">📱 Phone <span id="phone-alert-badge" class="phone-badge-pill hidden">!</span></button>
             <button id="btn-open-inventory" class="ui-btn primary-btn backpack-toolbar-btn hidden" title="Open Adventurer Backpack & Inventory (Key: I)"><img src="Sprites/Overworld/backpack_icon.png" class="hud-backpack-img" alt=""> Backpack <span id="inv-badge-count" class="inv-badge-pill">0</span></button>
             <button id="btn-open-binder" class="ui-btn primary-btn binder-toolbar-btn" style="padding: 4px 10px; font-size: 12px; background: linear-gradient(135deg, #5c3322, #331a12); border-color: #fbbf24;" title="Open Binder, Playing Deck &amp; Inventory (Key: B or I)"><img src="Sprites/Overworld/binder_tome_icon.png" class="hud-backpack-img" alt=""> Binder <span id="binder-badge-count" class="inv-badge-pill">0</span></button>
@@ -114,6 +112,24 @@
         <div class="ow-controls-hint">
           Walk: <b>WASD / Arrow Keys</b> or <b>Click Tile</b> • Interact / Continue: <b>Space / Enter</b>
         </div>
+        <!-- Bottom-Right Peek-Up Mythos Phone Dock (Astral Arcane) -->
+        <button type="button" id="ow-phone-dock" class="ow-phone-dock ow-phone-astral" title="Open Mythos Phone &amp; All Menus (Key: P)">
+          <span class="phone-dock-notch"></span>
+          <span class="phone-dock-screen">
+            <span class="phone-dock-header-meta">
+              <span class="phone-dock-time" id="phone-dock-time">8:00 AM</span>
+              <span class="phone-dock-day" id="phone-dock-day">Mon • D1</span>
+            </span>
+            <span class="phone-dock-alert-wrap">
+              <span class="phone-dock-astral-halo" aria-hidden="true"></span>
+              <span class="phone-dock-alert-frame" id="phone-dock-alert-frame">
+                <img src="Sprites/Overworld/phone_icon_binder.png?v=3.08" id="phone-dock-alert-img" class="phone-dock-alert-img" alt="Mythos Phone">
+              </span>
+            </span>
+            <span class="phone-dock-money" id="phone-dock-money">$0.00</span>
+          </span>
+          <span id="phone-dock-badge" class="phone-dock-badge hidden">!</span>
+        </button>
       </div>
 
       <!-- Bottom: Black Open Space Beneath the Game Map for Text Boxes, Options & Controls -->
@@ -1593,7 +1609,7 @@
 
         <!-- Status Bar -->
         <div class="phone-status-bar">
-          <span class="phone-status-time" id="phone-status-time">9:41 AM</span>
+          <span class="phone-status-time" id="phone-status-time">8:00 AM</span>
           <span class="phone-status-location" id="phone-status-loc">Oakhaven</span>
           <div class="phone-status-icons">
             <span class="phone-signal">📶</span>
@@ -1611,15 +1627,15 @@
               <div class="phone-home-title">MythosOS 2.0</div>
             </div>
 
-            <!-- Home App Grid -->
+            <!-- Home App Grid (3x3 — Binder & Contacts swapped) -->
             <div class="phone-app-grid">
-              <!-- App 1: Contacts & Chat -->
-              <div class="phone-app-icon-item" data-app="contacts" id="app-btn-contacts">
-                <div class="phone-icon-box bg-contacts">
-                  <img src="Sprites/Overworld/phone_icon_contacts.jpg?v=2.57" class="phone-app-img" alt="Contacts">
-                  <span class="phone-app-unread-dot hidden" id="dot-contacts"></span>
+              <!-- App 1: Card Binder & Deck -->
+              <div class="phone-app-icon-item" data-app="binder" id="app-btn-binder">
+                <div class="phone-icon-box bg-binder">
+                  <img src="Sprites/Overworld/phone_icon_binder.png?v=3.08" class="phone-app-img" alt="Binder">
+                  <span class="phone-app-unread-dot hidden" id="dot-binder"></span>
                 </div>
-                <span class="phone-app-name">Contacts</span>
+                <span class="phone-app-name">Binder</span>
               </div>
 
               <!-- App 2: Mythos Marketplace (Card Listings) -->
@@ -1647,6 +1663,51 @@
                   <span class="phone-app-unread-dot hidden" id="dot-tournaments"></span>
                 </div>
                 <span class="phone-app-name">Tournaments</span>
+              </div>
+
+              <!-- App 5: Quest Log -->
+              <div class="phone-app-icon-item" data-app="quests" id="app-btn-quests">
+                <div class="phone-icon-box bg-quests">
+                  <img src="Sprites/Overworld/phone_icon_quests.png?v=3.07" class="phone-app-img" alt="Quests">
+                  <span class="phone-app-unread-dot hidden" id="dot-quests"></span>
+                </div>
+                <span class="phone-app-name">Quests</span>
+              </div>
+
+              <!-- App 6: Adventurer's Notebook -->
+              <div class="phone-app-icon-item" data-app="notebook" id="app-btn-notebook">
+                <div class="phone-icon-box bg-notebook">
+                  <img src="Sprites/Overworld/phone_icon_notebook.png?v=3.07" class="phone-app-img" alt="Notebook">
+                  <span class="phone-app-unread-dot hidden" id="dot-notebook"></span>
+                </div>
+                <span class="phone-app-name">Notebook</span>
+              </div>
+
+              <!-- App 7: Contacts & Chat -->
+              <div class="phone-app-icon-item" data-app="contacts" id="app-btn-contacts">
+                <div class="phone-icon-box bg-contacts">
+                  <img src="Sprites/Overworld/phone_icon_contacts.jpg?v=2.57" class="phone-app-img" alt="Contacts">
+                  <span class="phone-app-unread-dot hidden" id="dot-contacts"></span>
+                </div>
+                <span class="phone-app-name">Contacts</span>
+              </div>
+
+              <!-- App 8: Town Calendar -->
+              <div class="phone-app-icon-item" data-app="calendar" id="app-btn-calendar">
+                <div class="phone-icon-box bg-calendar">
+                  <img src="Sprites/Overworld/phone_icon_calendar.png?v=3.08" class="phone-app-img" alt="Calendar">
+                  <span class="phone-app-unread-dot hidden" id="dot-calendar"></span>
+                </div>
+                <span class="phone-app-name">Calendar</span>
+              </div>
+
+              <!-- App 9: System & Settings -->
+              <div class="phone-app-icon-item" data-app="system" id="app-btn-system">
+                <div class="phone-icon-box bg-system">
+                  <img src="Sprites/Overworld/phone_icon_system.png?v=3.08" class="phone-app-img" alt="System">
+                  <span class="phone-app-unread-dot hidden" id="dot-system"></span>
+                </div>
+                <span class="phone-app-name">System</span>
               </div>
             </div>
 
@@ -1740,6 +1801,21 @@
             </div>
             <div class="phone-tournaments-body" id="phone-tournaments-body">
               <!-- Dynamically populated tournament schedule & entry info -->
+            </div>
+          </div>
+
+          <!-- App View 5: System & Settings -->
+          <div class="phone-view phone-sub-view hidden" id="phone-view-system">
+            <div class="phone-app-header">
+              <button class="phone-back-btn" id="btn-system-back">‹ Home</button>
+              <div class="phone-app-title">⚙️ System</div>
+              <span style="width: 36px;"></span>
+            </div>
+            <div class="phone-system-body">
+              <button type="button" class="phone-sys-btn" id="btn-phone-sys-save">💾 Save Game</button>
+              <button type="button" class="phone-sys-btn" id="btn-phone-sys-creator">👤 Character &amp; World</button>
+              <button type="button" class="phone-sys-btn" id="btn-phone-sys-duel">🃏 Quick Duel Arena</button>
+              <button type="button" class="phone-sys-btn" id="btn-phone-sys-sound">🔊 Sound: ON</button>
             </div>
           </div>
         </div>
@@ -1877,7 +1953,7 @@
       </div>
 
       <div class="calendar-modal-footer">
-        <div class="calendar-tip">💡 <em>Tip: Press <strong>Q</strong> anytime in Oakhaven or open <strong>Menu → Quest Log</strong> to check progress &amp; claim rewards!</em></div>
+        <div class="calendar-tip">💡 <em>Tip: Press <strong>Q</strong> anytime in Oakhaven or open <strong>Phone → Quests</strong> to check progress &amp; claim rewards!</em></div>
         <button id="btn-done-quests" class="ui-btn primary-btn" style="min-width: 110px;">Done</button>
       </div>
     </div>
@@ -1885,8 +1961,8 @@
 
   <script src="js/audio.js?v=2.76"></script>
   <script src="js/character_sprites.js?v=2.86"></script>
-  <script src="js/overworld.js?v=3.03"></script>
+  <script src="js/overworld.js?v=3.09"></script>
   <script src="js/gwent_cards.js?v=2.92"></script>
-  <script src="js/game.js?v=3.00"></script>
+  <script src="js/game.js?v=3.01"></script>
 </body>
 </html>

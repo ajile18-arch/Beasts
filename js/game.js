@@ -3363,6 +3363,10 @@
             rewardBanner = `<div style="margin-top: 12px; padding: 10px 14px; background: rgba(16, 185, 129, 0.2); border: 1.5px solid #34d399; border-radius: 10px; color: #6ee7b7;">💵 <b>CASH PRIZE WON: +${moneyTxt}!</b></div>`;
           } else if (ctx.rewardType === 'card_pick') {
             rewardBanner = `<div style="margin-top: 12px; padding: 10px 14px; background: rgba(245, 158, 11, 0.2); border: 1.5px solid #facc15; border-radius: 10px; color: #fde68a;">🃏 <b>CARD REWARD READY!</b> Return to the Overworld to pick 1 of 3 cards ${p2.name} used!</div>`;
+          } else if (ctx.rewardType === 'standard_pack') {
+            rewardBanner = `<div style="margin-top: 12px; padding: 10px 14px; background: rgba(59, 130, 246, 0.2); border: 1.5px solid #60a5fa; border-radius: 10px; color: #bfdbfe;">📦 <b>STANDARD PACK WON!</b> 1× Mythos Base Booster Pack added to your Inventory!</div>`;
+          } else if (ctx.rewardType === 'premium_pack') {
+            rewardBanner = `<div style="margin-top: 12px; padding: 10px 14px; background: rgba(168, 85, 247, 0.22); border: 1.5px solid #e879f9; border-radius: 10px; color: #f5d0fe;">💎 <b>PREMIUM PACK WON!</b> 1× 1st-Edition Premium Pack added to your Inventory!</div>`;
           } else {
             rewardBanner = `<div style="margin-top: 10px; color: #93c5fd;">🤝 Friendly Meetup Complete (+Bond)!</div>`;
           }

@@ -61,6 +61,7 @@ body {
    Header Bar
    -------------------------------------------------------------------------- */
 .game-header {
+  display: none !important;
   position: relative;
   height: 64px;
   background: linear-gradient(180deg, #332217 0%, #20150e 100%);
@@ -9506,15 +9507,15 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
 
 /* Home Screen */
 .phone-home-view {
-  padding: 16px 18px;
+  padding: 12px 16px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 10px;
   flex: 1;
 }
 
 .phone-home-header {
-  margin-top: 4px;
+  margin-top: 2px;
 }
 
 .phone-home-day {
@@ -9537,19 +9538,19 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
 
 .phone-app-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 14px;
-  margin-top: 4px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px 6px;
+  margin-top: 2px;
 }
 
 .phone-app-icon-item {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 7px;
+  gap: 5px;
   cursor: pointer;
-  padding: 8px 4px;
-  border-radius: 16px;
+  padding: 5px 2px;
+  border-radius: 14px;
   transition: all 0.18s ease;
 }
 
@@ -9560,8 +9561,8 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
 }
 
 .phone-icon-box {
-  width: 64px;
-  height: 64px;
+  width: 54px;
+  height: 54px;
   border-radius: 14px;
   display: flex;
   align-items: center;
@@ -9609,6 +9610,257 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
 .bg-tournaments {
   background: linear-gradient(135deg, #7c3aed, #a855f7);
   border: 1px solid rgba(168, 85, 247, 0.4);
+}
+
+.bg-quests {
+  background: linear-gradient(135deg, #7c2d12, #ea580c);
+  border: 1px solid rgba(251, 146, 60, 0.45);
+}
+
+.bg-notebook {
+  background: linear-gradient(135deg, #b45309, #d97706);
+  border: 1px solid rgba(251, 191, 36, 0.45);
+}
+
+.bg-binder {
+  background: linear-gradient(135deg, #5c3322, #331a12);
+  border: 1px solid rgba(251, 191, 36, 0.45);
+}
+
+.bg-calendar {
+  background: linear-gradient(135deg, #059669, #10b981);
+  border: 1px solid rgba(52, 211, 153, 0.45);
+}
+
+.bg-system {
+  background: linear-gradient(135deg, #334155, #4f46e5);
+  border: 1px solid rgba(129, 140, 248, 0.45);
+}
+
+/* System Sub-View inside Phone */
+.phone-system-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.phone-sys-btn {
+  width: 100%;
+  padding: 13px 16px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.92), rgba(49, 46, 129, 0.55));
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  color: #f8fafc;
+  font-size: 13.5px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  transition: transform 0.14s ease, border-color 0.14s ease, background 0.14s ease;
+}
+
+.phone-sys-btn:hover {
+  transform: translateY(-1px);
+  border-color: rgba(251, 191, 36, 0.75);
+  background: linear-gradient(135deg, rgba(49, 46, 129, 0.9), rgba(67, 56, 202, 0.7));
+}
+
+.phone-sys-btn:active {
+  transform: scale(0.98);
+}
+
+/* Bottom-Right Peek-Up Mythos Phone Dock */
+.header-mobile-icons.hidden,
+.header-menu-wrapper.hidden {
+  display: none !important;
+}
+
+.ow-phone-dock {
+  position: absolute;
+  right: 16px;
+  bottom: -8px;
+  z-index: 45;
+  width: 94px;
+  height: 120px;
+  padding: 6px 6px 12px;
+  border-radius: 20px 20px 0 0;
+  border: 2px solid #a78bfa;
+  border-bottom: none;
+  background: linear-gradient(180deg, #2e1065 0%, #0f0724 65%, #05030e 100%);
+  box-shadow:
+    0 10px 28px rgba(0, 0, 0, 0.75),
+    0 0 20px rgba(168, 85, 247, 0.48),
+    inset 0 0 0 1px rgba(240, 171, 252, 0.35);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.ow-phone-dock:hover {
+  transform: translateY(-10px);
+  border-color: #f0abfc;
+  box-shadow:
+    0 14px 32px rgba(0, 0, 0, 0.85),
+    0 0 26px rgba(192, 132, 252, 0.65),
+    inset 0 0 0 1px rgba(253, 230, 138, 0.45);
+}
+
+.ow-phone-dock:active {
+  transform: translateY(-4px) scale(0.97);
+}
+
+.phone-dock-notch {
+  width: 24px;
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #c084fc, #fbbf24, #c084fc);
+  flex-shrink: 0;
+}
+
+.phone-dock-screen {
+  width: 100%;
+  flex: 1;
+  border-radius: 12px;
+  border: 1px solid rgba(240, 171, 252, 0.42);
+  background: radial-gradient(circle at 50% 48%, #4c1d95 0%, #1e1b4b 62%, #09061a 100%);
+  padding: 5px 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.55);
+  overflow: hidden;
+}
+
+.phone-dock-header-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.05;
+}
+
+.phone-dock-time {
+  font-size: 11px;
+  font-weight: 900;
+  color: #f5d0fe;
+  white-space: nowrap;
+  letter-spacing: 0.1px;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+}
+
+.phone-dock-day {
+  font-size: 9px;
+  font-weight: 800;
+  color: #fde68a;
+  margin-top: 1px;
+  white-space: nowrap;
+  letter-spacing: 0.3px;
+}
+
+.phone-dock-alert-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+}
+
+@keyframes phoneAstralSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.phone-dock-astral-halo {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1.5px dashed rgba(240, 171, 252, 0.65);
+  animation: phoneAstralSpin 14s linear infinite;
+  pointer-events: none;
+}
+
+.phone-dock-alert-frame {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  border: 1.5px solid rgba(240, 171, 252, 0.85);
+  overflow: hidden;
+  background: #140c28;
+  box-shadow: 0 0 12px rgba(192, 132, 252, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.phone-dock-alert-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.phone-dock-money {
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(17, 10, 42, 0.82);
+  border: 1px solid rgba(251, 191, 36, 0.58);
+  font-size: 10px;
+  font-weight: 800;
+  color: #fde047;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.phone-dock-badge {
+  position: absolute;
+  top: -7px;
+  left: -7px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #ef4444;
+  border: 2px solid #05030e;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+}
+
+.phone-dock-badge.hidden {
+  display: none !important;
+}
+
+@media (max-width: 820px), (hover: none) and (pointer: coarse) {
+  .ow-phone-dock {
+    right: 10px;
+    width: 84px;
+    height: 108px;
+  }
+
+  .phone-dock-alert-wrap {
+    width: 38px;
+    height: 38px;
+  }
+
+  .phone-dock-alert-frame {
+    width: 32px;
+    height: 32px;
+  }
 }
 
 .phone-app-unread-dot {

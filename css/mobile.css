@@ -1028,6 +1028,7 @@ select {
 }
 
 .game-header {
+  display: none !important;
   padding-top: max(6px, var(--sat)) !important;
   padding-left: calc(var(--mob-edge-x) + var(--sal)) !important;
   padding-right: calc(var(--mob-edge-x) + var(--sar)) !important;
