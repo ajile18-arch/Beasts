@@ -66,7 +66,6 @@ body {
   height: 64px;
   background: linear-gradient(180deg, #332217 0%, #20150e 100%);
   border-bottom: 2px solid var(--border-bronze);
-  display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
@@ -5577,8 +5576,9 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   opacity: 0.82;
 }
 
-/* Worn Oak Desk Backdrop for Old Card Binder (no lamp or pencil) */
-#binder-modal.modal-overlay {
+/* Worn Oak Desk Backdrop for Old Card Binder & Inventory Folio (no lamp or pencil) */
+#binder-modal.modal-overlay,
+#inventory-modal.modal-overlay {
   background:
     radial-gradient(ellipse at 50% 45%, rgba(120, 74, 36, 0.24) 0%, rgba(18, 10, 5, 0.88) 72%, rgba(8, 4, 2, 0.96) 100%),
     repeating-linear-gradient(
@@ -9637,6 +9637,11 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   border: 1px solid rgba(129, 140, 248, 0.45);
 }
 
+.bg-inventory {
+  background: linear-gradient(135deg, #78350f, #b45309);
+  border: 1px solid rgba(251, 191, 36, 0.45);
+}
+
 /* System Sub-View inside Phone */
 .phone-system-body {
   flex: 1;
@@ -9808,6 +9813,83 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   height: 100%;
   object-fit: cover;
   display: block;
+}
+
+.phone-dock-alert-img.hidden {
+  display: none !important;
+}
+
+.phone-dock-alert-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  image-rendering: pixelated;
+}
+
+.phone-dock-alert-canvas.hidden {
+  display: none !important;
+}
+
+@keyframes phonePurposeBounce {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.14); }
+}
+
+.phone-dock-purpose-badge {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 19px;
+  height: 19px;
+  border-radius: 50%;
+  border: 1.5px solid #05030e;
+  background: #16a34a;
+  color: #ffffff;
+  font-size: 10px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.7);
+  animation: phonePurposeBounce 1.4s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.phone-dock-purpose-badge.hidden {
+  display: none !important;
+}
+
+@keyframes phoneDockVibrate {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  15% { transform: translate(-1.5px, -2px) rotate(-2deg); }
+  30% { transform: translate(1.5px, 0) rotate(2deg); }
+  45% { transform: translate(-1.5px, -1px) rotate(-1.5deg); }
+  60% { transform: translate(1.5px, -2px) rotate(1.5deg); }
+  75% { transform: translate(0, 0) rotate(0deg); }
+}
+
+.ow-phone-dock.is-ringing {
+  border-color: #4ade80;
+  box-shadow:
+    0 10px 28px rgba(0, 0, 0, 0.78),
+    0 0 26px rgba(34, 197, 94, 0.8),
+    inset 0 0 0 1px rgba(134, 239, 172, 0.55);
+  animation: phoneDockVibrate 0.9s ease-in-out infinite;
+}
+
+.ow-phone-dock.is-ringing:hover {
+  animation: none;
+  transform: translateY(-10px);
+}
+
+.ow-phone-dock.is-ringing .phone-dock-astral-halo {
+  border-color: rgba(74, 222, 128, 0.9);
+}
+
+.ow-phone-dock.is-ringing .phone-dock-alert-frame {
+  border-color: rgba(74, 222, 128, 0.95);
+  box-shadow: 0 0 14px rgba(34, 197, 94, 0.75);
 }
 
 .phone-dock-money {
@@ -13207,6 +13289,27 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   pointer-events: none;
 }
 
+.gwent-target-line-glow.ally-target {
+  stroke: rgba(34, 197, 94, 0.35);
+  filter: drop-shadow(0 0 8px rgba(34, 197, 94, 0.85));
+}
+
+.gwent-target-line-core.ally-target {
+  stroke: #22c55e;
+  filter: drop-shadow(0 0 4px rgba(74, 222, 128, 0.95));
+}
+
+.gwent-target-dot.ally-target {
+  fill: #22c55e;
+  stroke: #bbf7d0;
+  filter: drop-shadow(0 0 6px rgba(34, 197, 94, 0.9));
+}
+
+.gwent-target-reticle.ally-target {
+  stroke: #22c55e;
+  filter: drop-shadow(0 0 6px rgba(34, 197, 94, 0.85));
+}
+
 .gwent-attack-source-ring,
 .gwent-attack-target-ring {
   position: absolute;
@@ -13730,6 +13833,7 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
    Three visual stages: Morning, Afternoon, Night
    ========================================================================== */
 .ow-clock-widget {
+  display: none !important;
   position: absolute;
   top: 10px;
   right: 10px;
@@ -14401,14 +14505,16 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
 }
 
 /* ============================================================================
-   Style 3: Saddle-Leather & Gouache 3-Section Sliding Folio
-   (Playing Deck ⇄ Card Binder ⇅ Inventory & Satchel)
+   Style 3: Saddle-Leather & Gouache 2-Section Sliding Folio + Standalone Inventory
+   (Playing Deck ⇄ Card Binder | Standalone Inventory & Satchel)
    ============================================================================ */
-#binder-modal.modal-overlay {
+#binder-modal.modal-overlay,
+#inventory-modal.modal-overlay {
   padding: 8px;
 }
 
-#binder-modal .folio-stage-dialog {
+#binder-modal .folio-stage-dialog,
+#inventory-modal .folio-stage-dialog {
   width: 97vw;
   height: 95vh;
   max-width: 1720px;
@@ -14433,7 +14539,8 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   animation: none;
 }
 
-#binder-modal .folio-stage-dialog > .menu-swipe-top-bar {
+#binder-modal .folio-stage-dialog > .menu-swipe-top-bar,
+#inventory-modal .folio-stage-dialog > .menu-swipe-top-bar {
   flex-shrink: 0;
   margin-bottom: 0;
   position: relative;
@@ -14450,21 +14557,12 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
 
 .folio-stage-world {
   width: 200%;
-  height: 200%;
+  height: 100%;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  grid-template-rows: 1fr 1fr;
+  grid-template-rows: 1fr;
   transition: transform 0.44s cubic-bezier(0.22, 1, 0.36, 1);
   will-change: transform;
-}
-
-.folio-section-inventory {
-  grid-column: 1 / 3;
-  grid-row: 2;
-  width: 100%;
-  height: 100%;
-  position: relative;
-  overflow: hidden;
 }
 
 .folio-panel {
@@ -14499,17 +14597,17 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
 }
 
 .folio-panel-deck {
-  padding: 16px 56px 64px 20px;
+  padding: 16px 56px 16px 20px;
 }
 
 .folio-panel-binder {
-  padding: 16px 20px 64px 56px;
+  padding: 16px 20px 16px 56px;
 }
 
 .folio-panel-inv {
-  width: 50%;
+  width: 100%;
   height: 100%;
-  padding: 52px 20px 16px 20px;
+  padding: 16px 20px 16px 20px;
 }
 
 /* Header & Chunky Gouache Leather Controls */
@@ -14774,7 +14872,8 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   margin: 0 auto;
 }
 
-#binder-modal .folio-paged-grid .binder-trad-slot {
+#binder-modal .folio-paged-grid .binder-trad-slot,
+#inventory-modal .folio-paged-grid .binder-trad-slot {
   min-height: 0 !important;
   height: 100%;
   overflow: hidden;
@@ -14783,17 +14882,20 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   box-sizing: border-box;
 }
 
-#binder-modal .folio-paged-grid .binder-trad-name {
+#binder-modal .folio-paged-grid .binder-trad-name,
+#inventory-modal .folio-paged-grid .binder-trad-name {
   font-size: 11px;
   line-height: 1.15;
 }
 
-#binder-modal .folio-paged-grid .binder-xfer-btn {
+#binder-modal .folio-paged-grid .binder-xfer-btn,
+#inventory-modal .folio-paged-grid .binder-xfer-btn {
   padding: 3px 4px;
   font-size: 10.5px;
 }
 
-#binder-modal .folio-paged-grid .binder-trad-art-wrap {
+#binder-modal .folio-paged-grid .binder-trad-art-wrap,
+#inventory-modal .folio-paged-grid .binder-trad-art-wrap {
   flex: 1 1 0;
   min-height: 0;
   width: 100%;
@@ -14803,7 +14905,8 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   justify-content: center;
 }
 
-#binder-modal .folio-paged-grid .binder-trad-art-img {
+#binder-modal .folio-paged-grid .binder-trad-art-img,
+#inventory-modal .folio-paged-grid .binder-trad-art-img {
   width: 100%;
   height: 100%;
   object-fit: contain;
@@ -14861,7 +14964,8 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
 }
 
 /* Stitched Saddle-Leather Card Pocket Slot */
-#binder-modal .binder-trad-slot {
+#binder-modal .binder-trad-slot,
+#inventory-modal .binder-trad-slot {
   background: linear-gradient(160deg, rgba(66, 38, 19, 0.94) 0%, rgba(36, 20, 9, 0.98) 100%);
   border: 2px solid #8c5527;
   outline: 1px dashed rgba(235, 185, 110, 0.34);
@@ -14875,13 +14979,15 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
 }
 
-#binder-modal .binder-trad-slot:hover {
+#binder-modal .binder-trad-slot:hover,
+#inventory-modal .binder-trad-slot:hover {
   transform: translateY(-2px);
   border-color: #d9a04e;
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.72);
 }
 
-#binder-modal .binder-trad-slot.is-animated-special {
+#binder-modal .binder-trad-slot.is-animated-special,
+#inventory-modal .binder-trad-slot.is-animated-special {
   border-color: #fde047;
   box-shadow:
     0 0 18px rgba(250, 204, 21, 0.45),
@@ -14889,7 +14995,8 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
     inset 0 0 12px rgba(253, 224, 71, 0.22);
 }
 
-#binder-modal .binder-trad-art-wrap {
+#binder-modal .binder-trad-art-wrap,
+#inventory-modal .binder-trad-art-wrap {
   position: relative;
   width: 100%;
   aspect-ratio: 5 / 7;
@@ -14899,14 +15006,16 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   border: 1.5px solid rgba(217, 160, 78, 0.55);
 }
 
-#binder-modal .binder-trad-art-img {
+#binder-modal .binder-trad-art-img,
+#inventory-modal .binder-trad-art-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
 }
 
-#binder-modal .binder-trad-name {
+#binder-modal .binder-trad-name,
+#inventory-modal .binder-trad-name {
   font-size: 12px;
   font-weight: 800;
   color: #fef3c7;
@@ -14916,12 +15025,14 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   text-overflow: ellipsis;
 }
 
-#binder-modal .binder-trad-actions {
+#binder-modal .binder-trad-actions,
+#inventory-modal .binder-trad-actions {
   display: flex;
   gap: 4px;
 }
 
-#binder-modal .binder-xfer-btn {
+#binder-modal .binder-xfer-btn,
+#inventory-modal .binder-xfer-btn {
   flex: 1;
   padding: 5px 4px;
   border-radius: 7px;
@@ -14937,13 +15048,15 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   box-shadow: inset 0 1px 0 rgba(254, 243, 199, 0.24);
 }
 
-#binder-modal .binder-xfer-btn.to-deck {
+#binder-modal .binder-xfer-btn.to-deck,
+#inventory-modal .binder-xfer-btn.to-deck {
   border-color: #eab308;
   background: linear-gradient(180deg, #b45309 0%, #78350f 100%);
   color: #fffbeb;
 }
 
-#binder-modal .binder-xfer-btn:hover {
+#binder-modal .binder-xfer-btn:hover,
+#inventory-modal .binder-xfer-btn:hover {
   filter: brightness(1.14);
 }
 
@@ -15129,10 +15242,12 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
 }
 
 @media (max-width: 768px) {
-  #binder-modal.modal-overlay {
+  #binder-modal.modal-overlay,
+  #inventory-modal.modal-overlay {
     padding: 4px;
   }
-  #binder-modal .folio-stage-dialog {
+  #binder-modal .folio-stage-dialog,
+  #inventory-modal .folio-stage-dialog {
     width: 99vw;
     height: 97dvh;
     max-height: 97dvh;
@@ -15140,13 +15255,13 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
     border-width: 2px;
   }
   .folio-panel-deck {
-    padding: 10px 38px 50px 10px;
+    padding: 10px 38px 10px 10px;
   }
   .folio-panel-binder {
-    padding: 10px 10px 50px 38px;
+    padding: 10px 10px 10px 38px;
   }
   .folio-panel-inv {
-    padding: 42px 10px 10px 10px;
+    padding: 10px;
   }
   .folio-sub {
     display: none;
@@ -15417,7 +15532,8 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
 .role-wolf_pack   { --pack-accent: #93c5fd; --pack-bg-1: #1e3a8a; --pack-bg-2: #0f172a; }
 
 /* Binder Inventory slot sizing adjustment for class packs */
-#binder-modal .binder-trad-art-wrap .class-pack-visual {
+#binder-modal .binder-trad-art-wrap .class-pack-visual,
+#inventory-modal .binder-trad-art-wrap .class-pack-visual {
   max-width: none;
   min-height: 0;
   height: 100%;

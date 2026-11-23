@@ -1817,28 +1817,31 @@
 
       const activeTeam = this.state.turnTeam;
       const attacker = this.getAllBoardCards(activeTeam).find(c => c.uid === this.state.selectedAttackerUid);
-      if (!attacker || attacker.attackedThisTurn || !this.canTeamAttackThisTurn(activeTeam)) return;
+      if (!attacker) return;
 
-      const validTargets = this.getValidAttackTargets(activeTeam, attacker.uid);
-      if (!validTargets || validTargets.length === 0) return;
+      let enemyTarget = null;
+      if (!attacker.attackedThisTurn && this.canTeamAttackThisTurn(activeTeam)) {
+        const validTargets = this.getValidAttackTargets(activeTeam, attacker.uid);
+        if (validTargets && validTargets.length > 0) {
+          const meleeTargets = validTargets.filter(t => t.rowKey === 'melee');
+          const pool = meleeTargets.length > 0 ? meleeTargets : validTargets;
+          enemyTarget = pool[Math.floor((pool.length - 1) / 2)]?.card || null;
+        }
+      }
 
-      const meleeTargets = validTargets.filter(t => t.rowKey === 'melee');
-      const pool = meleeTargets.length > 0 ? meleeTargets : validTargets;
-      const target = pool[Math.floor((pool.length - 1) / 2)];
-      if (!target?.card) return;
+      const boostableAllies = this.getBoostableAlliesFor(attacker, activeTeam);
+      const allyTarget = boostableAllies.length > 0
+        ? boostableAllies[Math.floor((boostableAllies.length - 1) / 2)]
+        : null;
+
+      if (!enemyTarget && !allyTarget) return;
 
       const from = this.getBattlefieldCardMetrics(attacker.uid);
-      const to = this.getBattlefieldCardMetrics(target.card.uid);
-      if (!from || !to) return;
+      if (!from) return;
 
-      const dx = to.x - from.x;
-      const dy = to.y - from.y;
-      const dist = Math.hypot(dx, dy);
-      if (dist < 4) return;
-
-      const pullback = Math.min(16, dist * 0.25);
-      const endX = to.x - (dx / dist) * pullback;
-      const endY = to.y - (dy / dist) * pullback;
+      const enemyTo = enemyTarget ? this.getBattlefieldCardMetrics(enemyTarget.uid) : null;
+      const allyTo = allyTarget ? this.getBattlefieldCardMetrics(allyTarget.uid) : null;
+      if (!enemyTo && !allyTo) return;
 
       const svgNS = 'http://www.w3.org/2000/svg';
       const svg = document.createElementNS(svgNS, 'svg');
@@ -1846,51 +1849,89 @@
       svg.setAttribute('class', 'gwent-attack-svg gwent-target-preview-svg');
 
       const defs = document.createElementNS(svgNS, 'defs');
-      const marker = document.createElementNS(svgNS, 'marker');
-      marker.setAttribute('id', 'gwent-attack-arrow-red');
-      marker.setAttribute('markerWidth', '10');
-      marker.setAttribute('markerHeight', '10');
-      marker.setAttribute('refX', '7');
-      marker.setAttribute('refY', '3.5');
-      marker.setAttribute('orient', 'auto');
-      marker.setAttribute('markerUnits', 'strokeWidth');
-      const arrowPath = document.createElementNS(svgNS, 'path');
-      arrowPath.setAttribute('d', 'M 0 0.5 L 8 3.5 L 0 6.5 z');
-      arrowPath.setAttribute('fill', '#ef4444');
-      marker.appendChild(arrowPath);
-      defs.appendChild(marker);
+      const createArrowMarker = (id, fill) => {
+        const marker = document.createElementNS(svgNS, 'marker');
+        marker.setAttribute('id', id);
+        marker.setAttribute('markerWidth', '10');
+        marker.setAttribute('markerHeight', '10');
+        marker.setAttribute('refX', '7');
+        marker.setAttribute('refY', '3.5');
+        marker.setAttribute('orient', 'auto');
+        marker.setAttribute('markerUnits', 'strokeWidth');
+        const arrowPath = document.createElementNS(svgNS, 'path');
+        arrowPath.setAttribute('d', 'M 0 0.5 L 8 3.5 L 0 6.5 z');
+        arrowPath.setAttribute('fill', fill);
+        marker.appendChild(arrowPath);
+        return marker;
+      };
+      defs.appendChild(createArrowMarker('gwent-attack-arrow-red', '#ef4444'));
+      defs.appendChild(createArrowMarker('gwent-ally-arrow-green', '#22c55e'));
       svg.appendChild(defs);
 
-      const glowLine = document.createElementNS(svgNS, 'line');
-      glowLine.setAttribute('x1', from.x);
-      glowLine.setAttribute('y1', from.y);
-      glowLine.setAttribute('x2', endX);
-      glowLine.setAttribute('y2', endY);
-      glowLine.setAttribute('class', 'gwent-target-line-glow');
-      svg.appendChild(glowLine);
+      const appendTargetLine = (to, isAlly) => {
+        const dx = to.x - from.x;
+        const dy = to.y - from.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist < 4) return false;
 
-      const coreLine = document.createElementNS(svgNS, 'line');
-      coreLine.setAttribute('x1', from.x);
-      coreLine.setAttribute('y1', from.y);
-      coreLine.setAttribute('x2', endX);
-      coreLine.setAttribute('y2', endY);
-      coreLine.setAttribute('class', 'gwent-target-line-core');
-      coreLine.setAttribute('marker-end', 'url(#gwent-attack-arrow-red)');
-      svg.appendChild(coreLine);
+        const pullback = Math.min(16, dist * 0.25);
+        const endX = to.x - (dx / dist) * pullback;
+        const endY = to.y - (dy / dist) * pullback;
+        const variantClass = isAlly ? ' ally-target' : '';
 
-      const dot = document.createElementNS(svgNS, 'circle');
-      dot.setAttribute('cx', from.x);
-      dot.setAttribute('cy', from.y);
-      dot.setAttribute('r', '5.5');
-      dot.setAttribute('class', 'gwent-target-dot');
-      svg.appendChild(dot);
+        const glowLine = document.createElementNS(svgNS, 'line');
+        glowLine.setAttribute('x1', from.x);
+        glowLine.setAttribute('y1', from.y);
+        glowLine.setAttribute('x2', endX);
+        glowLine.setAttribute('y2', endY);
+        glowLine.setAttribute('class', `gwent-target-line-glow${variantClass}`);
+        svg.appendChild(glowLine);
 
-      const reticle = document.createElementNS(svgNS, 'circle');
-      reticle.setAttribute('cx', to.x);
-      reticle.setAttribute('cy', to.y);
-      reticle.setAttribute('r', '13');
-      reticle.setAttribute('class', 'gwent-target-reticle');
-      svg.appendChild(reticle);
+        const coreLine = document.createElementNS(svgNS, 'line');
+        coreLine.setAttribute('x1', from.x);
+        coreLine.setAttribute('y1', from.y);
+        coreLine.setAttribute('x2', endX);
+        coreLine.setAttribute('y2', endY);
+        coreLine.setAttribute('class', `gwent-target-line-core${variantClass}`);
+        coreLine.setAttribute('marker-end', `url(#${isAlly ? 'gwent-ally-arrow-green' : 'gwent-attack-arrow-red'})`);
+        svg.appendChild(coreLine);
+
+        const reticle = document.createElementNS(svgNS, 'circle');
+        reticle.setAttribute('cx', to.x);
+        reticle.setAttribute('cy', to.y);
+        reticle.setAttribute('r', '13');
+        reticle.setAttribute('class', `gwent-target-reticle${variantClass}`);
+        svg.appendChild(reticle);
+
+        return true;
+      };
+
+      const drewEnemy = enemyTo ? appendTargetLine(enemyTo, false) : false;
+      const drewAlly = allyTo ? appendTargetLine(allyTo, true) : false;
+      if (!drewEnemy && !drewAlly) return;
+
+      if (drewEnemy && drewAlly) {
+        const allyDot = document.createElementNS(svgNS, 'circle');
+        allyDot.setAttribute('cx', from.x);
+        allyDot.setAttribute('cy', from.y);
+        allyDot.setAttribute('r', '7.5');
+        allyDot.setAttribute('class', 'gwent-target-dot ally-target');
+        svg.appendChild(allyDot);
+
+        const enemyDot = document.createElementNS(svgNS, 'circle');
+        enemyDot.setAttribute('cx', from.x);
+        enemyDot.setAttribute('cy', from.y);
+        enemyDot.setAttribute('r', '5');
+        enemyDot.setAttribute('class', 'gwent-target-dot');
+        svg.appendChild(enemyDot);
+      } else {
+        const dot = document.createElementNS(svgNS, 'circle');
+        dot.setAttribute('cx', from.x);
+        dot.setAttribute('cy', from.y);
+        dot.setAttribute('r', '5.5');
+        dot.setAttribute('class', drewAlly ? 'gwent-target-dot ally-target' : 'gwent-target-dot');
+        svg.appendChild(dot);
+      }
 
       from.battlefield.appendChild(svg);
     }
@@ -2179,7 +2220,16 @@
       document.body.appendChild(overlay);
     }
 
-    promptEnemyRowChoice({ team, oppTeam, logType, sourceName, title, subtitle, onSelect }) {
+    promptEnemyRowChoice({
+      team, oppTeam, logType, sourceName, title, subtitle, onSelect,
+      skipLog = null,
+      accentColor = '#4ade80',
+      bgColor = '#0f1f14',
+      titleColor = '#86efac',
+      textColor = '#bbf7d0',
+      btnBgColor = 'rgba(20,36,24,0.95)',
+      rowMetaFn = null
+    }) {
       const oppRows = this.state?.players?.[oppTeam]?.rows;
       if (!this.state || !oppRows) return;
 
@@ -2194,18 +2244,21 @@
       const rowSummary = (rk, label) => {
         const list = oppRows[rk] || [];
         const armorSum = list.reduce((s, c) => s + (c.armor || 0), 0);
+        const metaText = typeof rowMetaFn === 'function'
+          ? rowMetaFn(rk, list, oppRows)
+          : `${list.length} unit(s) • 🛡️ ${armorSum} total Armor`;
         return `
-          <button type="button" class="ui-btn" data-target-row="${rk}" style="flex:1; min-width:170px; padding:12px 14px; background:rgba(20,36,24,0.95); border:1.5px solid #4ade80; border-radius:10px; color:#dcfce7; display:flex; flex-direction:column; align-items:center; gap:4px;">
+          <button type="button" class="ui-btn" data-target-row="${rk}" style="flex:1; min-width:170px; padding:12px 14px; background:${btnBgColor}; border:1.5px solid ${accentColor}; border-radius:10px; color:${textColor}; display:flex; flex-direction:column; align-items:center; gap:4px;">
             <span style="font-size:14px; font-weight:800;">${label}</span>
-            <span style="font-size:12px; color:#bbf7d0;">${list.length} unit(s) • 🛡️ ${armorSum} total Armor</span>
+            <span style="font-size:12px; color:${textColor}; opacity:0.92;">${metaText}</span>
           </button>
         `;
       };
 
       overlay.innerHTML = `
-        <div style="max-width:460px; width:100%; background:#0f1f14; border:2px solid #4ade80; border-radius:14px; padding:18px; box-shadow:0 18px 48px rgba(0,0,0,0.7); color:#dcfce7;">
-          <div style="font-size:16px; font-weight:800; color:#86efac; margin-bottom:6px;">${title}</div>
-          <div style="font-size:13px; color:#bbf7d0; margin-bottom:14px;">${subtitle}</div>
+        <div style="max-width:460px; width:100%; background:${bgColor}; border:2px solid ${accentColor}; border-radius:14px; padding:18px; box-shadow:0 18px 48px rgba(0,0,0,0.7); color:${textColor};">
+          <div style="font-size:16px; font-weight:800; color:${titleColor}; margin-bottom:6px;">${title}</div>
+          <div style="font-size:13px; color:${textColor}; margin-bottom:14px;">${subtitle}</div>
           <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px;">
             ${rowSummary('melee', '⚔️ Enemy Melee Row')}
             ${rowSummary('ranged', '🏹 Enemy Ranged Row')}
@@ -2236,7 +2289,7 @@
       overlay.querySelector('#btn-enemy-row-skip')?.addEventListener('click', () => {
         cleanup();
         window.soundFX?.playClick?.();
-        this.log(`🦎 ${sourceName} held Corrosive Gaze in reserve.`, logType);
+        this.log(skipLog || `🦎 ${sourceName} held Corrosive Gaze in reserve.`, logType);
         this.render();
         this.checkAutoEndTurn(team);
       });

@@ -1052,6 +1052,7 @@ select {
 }
 
 .ow-clock-widget {
+  display: none !important;
   top: calc(8px + var(--sat)) !important;
   left: calc(8px + var(--sal)) !important;
 }
@@ -1119,12 +1120,14 @@ select {
   padding: calc(10px + var(--sat)) calc(var(--mob-edge-x) + var(--sar)) calc(10px + var(--sab)) calc(var(--mob-edge-x) + var(--sal)) !important;
 }
 
-/* Mobile Overrides for Style 3 Near-Full-Screen 3-Section Sliding Folio */
-#binder-modal.modal-overlay {
+/* Mobile Overrides for Style 3 Near-Full-Screen 2-Section Folio & Standalone Inventory */
+#binder-modal.modal-overlay,
+#inventory-modal.modal-overlay {
   padding: max(3px, var(--sat)) max(3px, var(--sar)) max(3px, var(--sab)) max(3px, var(--sal)) !important;
 }
 
-#binder-modal .folio-stage-dialog {
+#binder-modal .folio-stage-dialog,
+#inventory-modal .folio-stage-dialog {
   width: 99vw !important;
   height: 97dvh !important;
   max-width: none !important;
@@ -1135,22 +1138,23 @@ select {
   flex-direction: column !important;
 }
 
-#binder-modal .folio-stage-dialog > .menu-swipe-top-bar {
+#binder-modal .folio-stage-dialog > .menu-swipe-top-bar,
+#inventory-modal .folio-stage-dialog > .menu-swipe-top-bar {
   margin-bottom: 0 !important;
   position: relative !important;
   border-radius: 0 !important;
 }
 
 .folio-panel-deck {
-  padding: 8px 34px 50px 8px !important;
+  padding: 8px 34px 8px 8px !important;
 }
 
 .folio-panel-binder {
-  padding: 8px 8px 50px 34px !important;
+  padding: 8px 8px 8px 34px !important;
 }
 
 .folio-panel-inv {
-  padding: 40px 8px 8px 8px !important;
+  padding: 8px !important;
 }
 
 .folio-header {
@@ -1215,7 +1219,8 @@ select {
   padding: 2px !important;
 }
 
-#binder-modal .folio-paged-grid .binder-trad-slot {
+#binder-modal .folio-paged-grid .binder-trad-slot,
+#inventory-modal .folio-paged-grid .binder-trad-slot {
   padding: 4px !important;
   gap: 2px !important;
   min-height: 0 !important;
@@ -1223,7 +1228,8 @@ select {
   overflow: hidden !important;
 }
 
-#binder-modal .binder-trad-art-wrap .class-pack-visual {
+#binder-modal .binder-trad-art-wrap .class-pack-visual,
+#inventory-modal .binder-trad-art-wrap .class-pack-visual {
   max-width: none !important;
   min-height: 0 !important;
   height: 100% !important;
@@ -1246,20 +1252,24 @@ select {
   min-width: 56px !important;
 }
 
-#binder-modal .binder-trad-slot {
+#binder-modal .binder-trad-slot,
+#inventory-modal .binder-trad-slot {
   padding: 4px !important;
   gap: 3px !important;
 }
 
-#binder-modal .binder-trad-art-img {
+#binder-modal .binder-trad-art-img,
+#inventory-modal .binder-trad-art-img {
   height: 100% !important;
 }
 
-#binder-modal .binder-trad-name {
+#binder-modal .binder-trad-name,
+#inventory-modal .binder-trad-name {
   font-size: 10.5px !important;
 }
 
-#binder-modal .binder-xfer-btn {
+#binder-modal .binder-xfer-btn,
+#inventory-modal .binder-xfer-btn {
   font-size: 9.5px !important;
   padding: 3px 2px !important;
 }

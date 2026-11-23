@@ -608,6 +608,204 @@
       }
     },
 
+    mer_soldier: {
+      id: 'mer_soldier',
+      name: 'MerSoldier',
+      role: 'Water Tribe',
+      element: 'water',
+      stars: 3,
+      rarity: 'gold',
+      border: 'gold',
+      row: 'melee',
+      basePower: 2,
+      armor: 3,
+      cardImg: 'Cards/MerSoldier_Card.jpg',
+      traditionalCardImg: 'Cards/MerSoldier_Traditional.jpg',
+      frameImg: 'Cards/MerSoldier_Frame.png',
+      abilityTitle: 'Harpoon Drag',
+      abilityDesc: "On deploy, pulls an enemy from the opponent's Ranged row to Melee, stripping all Shields and Armor.",
+      passiveTitle: '',
+      passiveDesc: '',
+      effects: [],
+      onPlay(ctx) {
+        const { game, team, oppTeam, card, logType } = ctx;
+        const oppPlayer = game.state?.players?.[oppTeam];
+        const oppRanged = oppPlayer?.rows?.ranged || [];
+        if (oppRanged.length === 0) {
+          game.log(`🔱 ${card.name}'s Harpoon Drag found no enemies in the opponent's Ranged row.`, logType);
+          return;
+        }
+
+        const eligible = oppRanged.map(c => ({ card: c, rowKey: 'ranged' }));
+        const pullEnemy = (chosen) => {
+          if (!chosen?.card) return;
+          const list = oppPlayer.rows.ranged || [];
+          const idx = list.findIndex(c => c.uid === chosen.card.uid);
+          if (idx === -1) return;
+          const [pulled] = list.splice(idx, 1);
+          const hadArmor = Number(pulled.armor || 0);
+          const hadShield = Boolean(pulled.shield);
+          pulled.armor = 0;
+          pulled.shield = false;
+          oppPlayer.rows.melee.push(pulled);
+          if (typeof window.soundFX?.playHit === 'function') window.soundFX.playHit();
+          else if (typeof window.soundFX?.playPoison === 'function') window.soundFX.playPoison();
+
+          const stripped = [];
+          if (hadShield) stripped.push('Shield');
+          if (hadArmor > 0) stripped.push(`${hadArmor} Armor`);
+          const stripNote = stripped.length > 0 ? `, stripping ${stripped.join(' and ')}` : '';
+          game.log(`🔱 ${card.name} hooked ${pulled.name} from Ranged to Melee${stripNote}!`, logType);
+        };
+
+        const isAi = game.isAiTeam ? game.isAiTeam(team) : (game.gameMode === 'ai' && team === 2);
+        if (isAi) {
+          eligible.sort((a, b) => {
+            const sa = (a.card.armor || 0) * 1.5 + (a.card.shield ? 3 : 0) + (a.card.power || 0);
+            const sb = (b.card.armor || 0) * 1.5 + (b.card.shield ? 3 : 0) + (b.card.power || 0);
+            return sb - sa;
+          });
+          pullEnemy(eligible[0]);
+        } else {
+          game.promptEnemyTargetChoice({
+            team,
+            logType,
+            sourceName: card.name,
+            title: '🔱 Harpoon Drag — Pull Ranged Enemy',
+            subtitle: `Choose an enemy in the opponent's <b>Ranged</b> row for <strong>${card.name}</strong> to drag to Melee and strip of all Shields & Armor:`,
+            skipLog: `🔱 ${card.name} kept its harpoon coiled.`,
+            accentColor: '#38bdf8',
+            candidates: eligible,
+            onSelect: pullEnemy
+          });
+        }
+      },
+      estimateAiValue(rowKey, ctx) {
+        const { game, oppTeam } = ctx;
+        const oppRanged = game.state?.players?.[oppTeam]?.rows?.ranged || [];
+        let bestTargetBonus = 0;
+        oppRanged.forEach(c => {
+          const armorVal = Number(c.armor || 0);
+          const shieldVal = c.shield ? 3 : 0;
+          bestTargetBonus = Math.max(bestTargetBonus, armorVal + shieldVal + 1.5);
+        });
+        return 2 + 1.5 + bestTargetBonus;
+      }
+    },
+
+    argo_the_merking: {
+      id: 'argo_the_merking',
+      name: 'Argo, The MerKing',
+      role: 'Water Tribe',
+      element: 'water',
+      stars: 5,
+      rarity: 'gold',
+      border: 'decorative-gold',
+      maxDeckCopies: 1,
+      row: 'ranged',
+      basePower: 3,
+      armor: 4,
+      cardImg: 'Cards/Argo_The_MerKing_Card.jpg',
+      traditionalCardImg: 'Cards/Argo_The_MerKing_Traditional.jpg',
+      frameImg: 'Cards/Argo_The_MerKing_Frame.png',
+      abilityTitle: 'Tidal Surge',
+      abilityDesc: "Push an enemy row to the opposite row, splitting that row's total Power as damage evenly across pushed units (extra left).",
+      passiveTitle: 'Deck Limit: 1',
+      passiveDesc: 'Limited to 1 copy per playing deck.',
+      effects: [],
+      onPlay(ctx) {
+        const { game, team, oppTeam, card, logType } = ctx;
+        const oppRows = game.state?.players?.[oppTeam]?.rows;
+        if (!oppRows) return;
+        const hasMelee = (oppRows.melee || []).length > 0;
+        const hasRanged = (oppRows.ranged || []).length > 0;
+        if (!hasMelee && !hasRanged) {
+          game.log(`🌊 ${card.name}'s Tidal Surge found no enemies on the opponent's board.`, logType);
+          return;
+        }
+
+        const executePush = (srcRow) => {
+          const dstRow = srcRow === 'melee' ? 'ranged' : 'melee';
+          const srcList = oppRows[srcRow] || [];
+          const srcLabel = srcRow === 'melee' ? 'Melee' : 'Ranged';
+          const dstLabel = dstRow === 'melee' ? 'Melee' : 'Ranged';
+          if (srcList.length === 0) {
+            game.log(`🌊 ${card.name}'s Tidal Surge swept an empty ${srcLabel} row.`, logType);
+            return;
+          }
+
+          const totalDamage = (oppRows[dstRow] || []).reduce((sum, u) => sum + Math.max(0, Number(u.power || 0)), 0);
+          const pushed = srcList.splice(0, srcList.length);
+          oppRows[dstRow].push(...pushed);
+
+          if (typeof window.soundFX?.playHit === 'function') window.soundFX.playHit();
+          else if (typeof window.soundFX?.playRock === 'function') window.soundFX.playRock();
+
+          if (totalDamage > 0 && pushed.length > 0) {
+            const baseDmg = Math.floor(totalDamage / pushed.length);
+            const rem = totalDamage % pushed.length;
+            pushed.forEach((unit, idx) => {
+              const dmg = baseDmg + (idx < rem ? 1 : 0);
+              if (dmg > 0) {
+                game.damageUnit(unit, dmg, oppTeam, dstRow);
+              }
+            });
+            const remNote = rem > 0 ? ` (${rem} leftmost +1)` : '';
+            game.log(`🌊 ${card.name}'s Tidal Surge pushed ${pushed.length} unit(s) from ${srcLabel} to ${dstLabel}, dealing ${totalDamage} split collision damage${remNote}!`, logType);
+          } else {
+            game.log(`🌊 ${card.name}'s Tidal Surge pushed ${pushed.length} unit(s) from ${srcLabel} to ${dstLabel}!`, logType);
+          }
+        };
+
+        const isAi = game.isAiTeam ? game.isAiTeam(team) : (game.gameMode === 'ai' && team === 2);
+        if (isAi) {
+          const scoreRow = (rk) => {
+            const dst = rk === 'melee' ? 'ranged' : 'melee';
+            const srcLen = (oppRows[rk] || []).length;
+            if (srcLen === 0) return -1;
+            const dstPow = (oppRows[dst] || []).reduce((s, u) => s + Math.max(0, Number(u.power || 0)), 0);
+            return dstPow + srcLen * 0.5;
+          };
+          const mScore = scoreRow('melee');
+          const rScore = scoreRow('ranged');
+          executePush(mScore >= rScore ? 'melee' : 'ranged');
+        } else {
+          game.promptEnemyRowChoice({
+            team,
+            oppTeam,
+            logType,
+            sourceName: card.name,
+            title: '🌊 Tidal Surge — Push an Enemy Row',
+            subtitle: `Select an enemy row for <strong>${card.name}</strong> to surge into its opposite row (dealing that row's Power sum evenly across pushed units, extra left):`,
+            skipLog: `🌊 ${card.name} held Tidal Surge in reserve.`,
+            accentColor: '#38bdf8',
+            bgColor: '#0c1829',
+            titleColor: '#7dd3fc',
+            textColor: '#bae6fd',
+            btnBgColor: 'rgba(14,34,58,0.95)',
+            rowMetaFn: (rk, list, rows) => {
+              const dst = rk === 'melee' ? 'ranged' : 'melee';
+              const dstPower = (rows[dst] || []).reduce((s, u) => s + Math.max(0, Number(u.power || 0)), 0);
+              return `${list.length} unit(s) → ${dst === 'ranged' ? 'Ranged' : 'Melee'} (${dstPower} dmg)`;
+            },
+            onSelect: executePush
+          });
+        }
+      },
+      estimateAiValue(rowKey, ctx) {
+        const { game, oppTeam } = ctx;
+        const oppRows = game.state?.players?.[oppTeam]?.rows;
+        if (!oppRows) return 5;
+        const mLen = (oppRows.melee || []).length;
+        const rLen = (oppRows.ranged || []).length;
+        const mPow = (oppRows.melee || []).reduce((s, u) => s + Math.max(0, Number(u.power || 0)), 0);
+        const rPow = (oppRows.ranged || []).reduce((s, u) => s + Math.max(0, Number(u.power || 0)), 0);
+        const pushM = mLen > 0 ? rPow : 0;
+        const pushR = rLen > 0 ? mPow : 0;
+        return 3 + 2 + Math.max(pushM, pushR) * 0.9;
+      }
+    },
+
     pyromanda: {
       id: 'pyromanda',
       name: 'PyroManda',
@@ -1297,7 +1495,9 @@
       'mothman', 'mothman',
       'jersey_devil',
       'merfolk', 'merfolk', 'merfolk',
+      'mer_soldier', 'mer_soldier',
       'sea_dragon',
+      'argo_the_merking',
       'pyromanda',
       'frost_skink', 'frost_skink',
       'krythos_the_basilisk',

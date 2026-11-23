@@ -97,15 +97,16 @@
       this.DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
       this.WEEKLY_CALENDAR = [
         {
-          id: 'leo_restock',
+          id: 'monday_none',
+          isEmpty: true,
           dayIndex: 0,
           dayName: 'Monday',
           shortDay: 'Mon',
-          title: "Leo's Booster Restock",
-          icon: '🃏',
-          highlight: 'Foil Holo Surge (+25% Holo Rate)',
-          desc: "Shopkeeper Leo restocks the card shop shelves with fresh foil inventory. Booster packs opened today have +25% increased rare foil chances!",
-          perk: "Booster packs have boosted Holo drop rates"
+          title: 'No Scheduled Event',
+          icon: '📅',
+          highlight: 'Regular Day',
+          desc: 'A quiet start to the week in town — no special town event is scheduled today.',
+          perk: 'No special event active'
         },
         {
           id: 'pluto_double_wager',
@@ -241,6 +242,44 @@
             { x: 12.6, y: 6.2, dir: 'left' },
             { x: 8.8, y: 7.4, dir: 'right' }
           ]
+        },
+        barber_shop_interior: {
+          area: 'barber_shop_interior',
+          name: 'Oakhaven Barber Shop',
+          extDoor: { x: -21.70, y: 20.45 },
+          intEntry: { x: 7.90, y: 9.75 },
+          spots: [{ x: 9.2, y: 7.6, dir: 'down' }, { x: 5.5, y: 8.2, dir: 'up' }]
+        },
+        clothing_store_interior: {
+          area: 'clothing_store_interior',
+          name: 'Oakhaven Apparel',
+          extDoor: { x: -15.80, y: 20.45 },
+          intEntry: { x: 7.90, y: 9.75 },
+          spots: [{ x: 10.6, y: 7.8, dir: 'left' }, { x: 5.7, y: 7.6, dir: 'right' }]
+        },
+        animal_hospital_interior: {
+          area: 'animal_hospital_interior',
+          name: 'Oakhaven Animal Hospital',
+          extDoor: { x: -10.45, y: 27.45 },
+          intEntry: { x: 7.90, y: 9.75 },
+          spots: [{ x: 10.55, y: 7.8, dir: 'left' }, { x: 5.8, y: 7.8, dir: 'right' }]
+        },
+        arcade_interior: {
+          area: 'arcade_interior',
+          name: 'Oakhaven Arcade',
+          extDoor: { x: -9.70, y: 20.45 },
+          intEntry: { x: 10.0, y: 11.55 },
+          spots: [{ x: 10.0, y: 8.0, dir: 'down' }, { x: 3.6, y: 8.0, dir: 'right' }]
+        },
+        fishing_pier: {
+          area: 'exterior',
+          name: 'Meadowbrook Fishing Pier',
+          extDoor: { x: 35.10, y: 5.36 },
+          spots: [
+            { x: 35.40, y: 5.10, dir: 'right' },
+            { x: 36.15, y: 5.60, dir: 'right' },
+            { x: 36.45, y: 5.15, dir: 'down' }
+          ]
         }
       };
       this.TRIP_HOUSES = {
@@ -315,27 +354,6 @@
           intEntry: { x: 7.90, y: 9.75 },
           spots: [{ x: 10.6, y: 6.4, dir: 'down' }, { x: 6.0, y: 8.2, dir: 'up' }]
         },
-        barber_shop_interior: {
-          area: 'barber_shop_interior',
-          name: 'Oakhaven Barber Shop',
-          extDoor: { x: -21.70, y: 20.45 },
-          intEntry: { x: 7.90, y: 9.75 },
-          spots: [{ x: 9.2, y: 7.6, dir: 'down' }, { x: 5.5, y: 8.2, dir: 'up' }]
-        },
-        clothing_store_interior: {
-          area: 'clothing_store_interior',
-          name: 'Oakhaven Apparel',
-          extDoor: { x: -15.80, y: 20.45 },
-          intEntry: { x: 7.90, y: 9.75 },
-          spots: [{ x: 10.6, y: 7.8, dir: 'left' }, { x: 5.7, y: 7.6, dir: 'right' }]
-        },
-        animal_hospital_interior: {
-          area: 'animal_hospital_interior',
-          name: 'Oakhaven Animal Hospital',
-          extDoor: { x: -10.45, y: 27.45 },
-          intEntry: { x: 7.90, y: 9.75 },
-          spots: [{ x: 10.55, y: 7.8, dir: 'left' }, { x: 5.8, y: 7.8, dir: 'right' }]
-        },
         west_house_1_interior: {
           area: 'west_house_1_interior',
           name: "Otis's Woodcarver Cottage",
@@ -356,13 +374,6 @@
           extDoor: { x: -10.85, y: 14.45 },
           intEntry: { x: 7.90, y: 9.75 },
           spots: [{ x: 9.8, y: 7.4, dir: 'down' }, { x: 6.0, y: 7.4, dir: 'right' }]
-        },
-        arcade_interior: {
-          area: 'arcade_interior',
-          name: 'Oakhaven Arcade',
-          extDoor: { x: -9.70, y: 20.45 },
-          intEntry: { x: 10.0, y: 11.55 },
-          spots: [{ x: 10.0, y: 8.0, dir: 'down' }, { x: 3.6, y: 8.0, dir: 'right' }]
         },
         west_oak_1_interior: {
           area: 'west_oak_1_interior',
@@ -520,6 +531,7 @@
       this.chloeNpc = this.createChloeNpc();
       this.rowanNpc = this.createRowanNpc();
       this.jasperNpc = this.createJasperNpc();
+      this.pierFinnNpc = this.createPierFinnNpc();
       this.bertoNpc = this.createBertoNpc();
       this.shaunNpc = this.createShaunNpc();
       this.evelynNpc = this.createEvelynNpc();
@@ -553,6 +565,7 @@
         this.chloeNpc,
         this.rowanNpc,
         this.jasperNpc,
+        this.pierFinnNpc,
         this.bertoNpc
       ];
       this.oakhavenLeague = this.worldSave?.oakhavenLeague
@@ -1606,6 +1619,31 @@
       };
     }
 
+    createPierFinnNpc() {
+      const CS = window.MythosCharacterSprites;
+      return {
+        id: 'pier_finn',
+        name: 'Old Finn',
+        x: 37.15,
+        y: 5.36,
+        dir: 'right',
+        walkTick: 0,
+        bubble: '🎣',
+        hangoutSpot: { area: 'exterior', x: 37.15, y: 5.36, dir: 'right', radius: 4, label: 'Meadowbrook Fishing Pier' },
+        sprite: new CS.CharacterSpriteSheet({
+          name: 'Old Finn',
+          skin: 'tan',
+          hairStyle: 'short',
+          hairColor: 'silver',
+          eyeColor: 'blue',
+          outfitStyle: 'jacket',
+          outfitColor: 'navy',
+          pantsColor: 'khaki',
+          hatStyle: 'cap'
+        })
+      };
+    }
+
     // -------------------------------------------------------------------------
     // Weekly Calendar & Sleep Methods
     // -------------------------------------------------------------------------
@@ -1668,7 +1706,7 @@
             <div class="cal-card-icon">${dayEv.icon}</div>
             <div class="cal-card-event-name">${dayEv.title}</div>
             <div class="cal-card-perk-pill">${dayEv.highlight}</div>
-            <button type="button" class="cal-pin-btn${isPinned ? ' pinned' : ''}" data-cal-note-id="${noteId}">${isPinned ? '✅ Pinned' : '📌 Pin'}</button>
+            ${dayEv.isEmpty ? '' : `<button type="button" class="cal-pin-btn${isPinned ? ' pinned' : ''}" data-cal-note-id="${noteId}">${isPinned ? '✅ Pinned' : '📌 Pin'}</button>`}
           `;
           const pinBtn = card.querySelector('.cal-pin-btn');
           if (pinBtn) {
@@ -2196,10 +2234,16 @@
       const qs = this.questState || this.normalizeQuestState(null);
       let readyCount = 0;
       let activeCount = 0;
+      let readyNpcId = null;
       list.forEach(q => {
         if (!qs.accepted[q.id] || qs.claimed[q.id]) return;
         activeCount++;
-        if (q.progress() >= q.target || qs.completed[q.id]) readyCount++;
+        if (q.progress() >= q.target || qs.completed[q.id]) {
+          readyCount++;
+          if (!readyNpcId && (q.turnInNpc || q.giverNpc)) {
+            readyNpcId = q.turnInNpc || q.giverNpc;
+          }
+        }
       });
       const badgeEl = document.getElementById('quest-badge-count');
       if (badgeEl) {
@@ -2207,6 +2251,7 @@
         badgeEl.style.background = readyCount > 0 ? '#16a34a' : '';
       }
       this._readyQuestCount = readyCount;
+      this._readyQuestNpcId = readyNpcId;
       const questsDot = document.getElementById('dot-quests');
       if (questsDot) {
         questsDot.classList.toggle('hidden', readyCount <= 0);
@@ -2688,31 +2733,29 @@
       if (!force && key === this._clockHudKey) return;
       this._clockHudKey = key;
       const phase = this.getTimePhase();
-      const widget = document.getElementById('ow-clock-widget');
-      if (!widget) return;
-      widget.dataset.phase = phase.id;
-      const iconEl = document.getElementById('ow-clock-icon');
-      const timeEl = document.getElementById('ow-clock-time');
-      const phaseEl = document.getElementById('ow-clock-phase');
-      const barEl = document.getElementById('ow-clock-progress');
-      if (iconEl) iconEl.textContent = phase.icon;
       const formattedTime = this.formatClockTime(minuteNow);
-      if (timeEl) timeEl.textContent = formattedTime;
+      const shortDay = (this.getCurrentDayName() || 'Mon').slice(0, 3);
+
       const phoneDockTimeEl = document.getElementById('phone-dock-time');
       if (phoneDockTimeEl) phoneDockTimeEl.textContent = formattedTime;
       const phoneDockDayEl = document.getElementById('phone-dock-day');
-      if (phoneDockDayEl) {
-        const shortDay = (this.getCurrentDayName() || 'Mon').slice(0, 3);
-        phoneDockDayEl.textContent = `${shortDay} • D${this.dayNumber || 1}`;
-      }
+      if (phoneDockDayEl) phoneDockDayEl.textContent = `${shortDay} • D${this.dayNumber || 1}`;
       const phoneStatusTimeEl = document.getElementById('phone-status-time');
       if (phoneStatusTimeEl) phoneStatusTimeEl.textContent = formattedTime;
-      if (phaseEl) {
-        const shortDay = (this.getCurrentDayName() || 'Mon').slice(0, 3);
-        phaseEl.textContent = `${phase.label} • ${shortDay} D${this.dayNumber || 1}`;
+
+      const widget = document.getElementById('ow-clock-widget');
+      if (widget) {
+        widget.dataset.phase = phase.id;
+        const iconEl = document.getElementById('ow-clock-icon');
+        const timeEl = document.getElementById('ow-clock-time');
+        const phaseEl = document.getElementById('ow-clock-phase');
+        const barEl = document.getElementById('ow-clock-progress');
+        if (iconEl) iconEl.textContent = phase.icon;
+        if (timeEl) timeEl.textContent = formattedTime;
+        if (phaseEl) phaseEl.textContent = `${phase.label} • ${shortDay} D${this.dayNumber || 1}`;
+        if (barEl) barEl.style.width = `${((minuteNow / 1440) * 100).toFixed(2)}%`;
+        widget.title = `${phase.label} — ${formattedTime} (1 in-game hour = 2 real minutes)`;
       }
-      if (barEl) barEl.style.width = `${((minuteNow / 1440) * 100).toFixed(2)}%`;
-      widget.title = `${phase.label} — ${this.formatClockTime(minuteNow)} (1 in-game hour = 2 real minutes)`;
       this.syncPhoneAlertBadges?.();
     }
 
@@ -2802,14 +2845,36 @@
       this.syncPhoneAlertBadges();
     }
 
+    drawPhoneDockFacePortrait(npcId) {
+      const cvs = document.getElementById('phone-dock-alert-canvas');
+      if (!cvs || !npcId) return false;
+      const sprite = (npcId === 'leo' || npcId === 'shopkeeper')
+        ? (this.shopkeeperNpc?.sprite || this.getNpcSpriteForMeetup?.(npcId))
+        : this.getNpcSpriteForMeetup?.(npcId);
+      if (!sprite || typeof sprite.draw !== 'function') return false;
+      const ctx = cvs.getContext('2d');
+      if (!ctx) return false;
+      ctx.clearRect(0, 0, cvs.width, cvs.height);
+      const grad = ctx.createRadialGradient(32, 28, 4, 32, 32, 36);
+      grad.addColorStop(0, '#4c1d95');
+      grad.addColorStop(0.65, '#1e1b4b');
+      grad.addColorStop(1, '#09061a');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, cvs.width, cvs.height);
+      ctx.imageSmoothingEnabled = false;
+      sprite.draw(ctx, 32, 98, 'down', 0, 3.0);
+      return true;
+    }
+
     syncPhoneAlertBadges() {
-      const hasRespondedListing = (this.playerSellListings || []).some(l => l.status === 'responded');
-      const marketAlert = Boolean(this.phoneUnreadMarket || hasRespondedListing);
+      const respondedListing = (this.playerSellListings || []).find(l => l.status === 'responded');
+      const marketAlert = Boolean(this.phoneUnreadMarket || respondedListing);
       const curDay = this.dayNumber || 1;
       const curWin = typeof this.getCurrentMeetupWindowId === 'function' ? this.getCurrentMeetupWindowId() : null;
-      const activeMeetupNow = (this.scheduledMeetups || []).some(
+      const activeMeetup = (this.scheduledMeetups || []).find(
         m => m && m.status === 'scheduled' && typeof this.isMeetupActiveNow === 'function' && this.isMeetupActiveNow(m, curDay, curWin)
       );
+      const activeMeetupNow = Boolean(activeMeetup);
       const parkActive = typeof this.isMondayToday === 'function'
         && this.isMondayToday()
         && typeof this.isParkMondayTourneyCompletedToday === 'function'
@@ -2829,45 +2894,85 @@
       if (tourneyDot) tourneyDot.classList.toggle('hidden', !tourneyAlert);
       const contactsDot = document.getElementById('dot-contacts');
       if (contactsDot) contactsDot.classList.toggle('hidden', !this.activeIncomingDuelCall);
+      const hasBoosterPacks = (this.inventory || []).some(i => i && i.type === 'booster_pack' && (i.qty || 0) > 0);
+      const invDot = document.getElementById('dot-inventory');
+      if (invDot) invDot.classList.toggle('hidden', !hasBoosterPacks);
 
+      let dockNpcId = null;
       let dockIconSrc = 'Sprites/Overworld/phone_icon_binder.png?v=3.08';
-      let dockBadgeColor = '#ef4444';
-      let dockBadgeText = '!';
+      let purposeEmoji = '';
+      let purposeColor = '#16a34a';
+      let isRinging = false;
       let dockTitle = 'Open Mythos Phone & All Menus (Key: P)';
-      let showDockBadge = false;
+      let hasAnyAlert = false;
 
       if (this.activeIncomingDuelCall) {
+        dockNpcId = this.activeIncomingDuelCall.npcId;
         dockIconSrc = 'Sprites/Overworld/phone_icon_contacts.jpg?v=2.57';
-        dockBadgeColor = '#ef4444';
-        dockTitle = `Incoming Duel Call from ${this.activeIncomingDuelCall.npcName || 'Challenger'}!`;
-        showDockBadge = true;
-      } else if ((this._readyQuestCount || 0) > 0) {
-        dockIconSrc = 'Sprites/Overworld/phone_icon_quests.png?v=3.07';
-        dockBadgeColor = '#16a34a';
-        dockTitle = 'Quest Ready to Claim!';
-        showDockBadge = true;
-      } else if (activeMeetupNow || marketAlert) {
+        purposeEmoji = '⚔️';
+        purposeColor = '#16a34a';
+        isRinging = true;
+        dockTitle = `Incoming Duel Call from ${this.activeIncomingDuelCall.npcName || 'Challenger'}! Click to answer`;
+        hasAnyAlert = true;
+      } else if (activeMeetup) {
+        dockNpcId = activeMeetup.npcId;
         dockIconSrc = 'Sprites/Overworld/phone_icon_market.jpg?v=2.57';
-        dockBadgeColor = '#ef4444';
-        dockTitle = activeMeetupNow ? 'Scheduled Meetup Active Now!' : 'Card Exchange Alert!';
-        showDockBadge = true;
+        purposeEmoji = activeMeetup.type === 'duel_challenge' ? '⚔️' : '🤝';
+        purposeColor = activeMeetup.type === 'duel_challenge' ? '#16a34a' : '#059669';
+        dockTitle = `${activeMeetup.npcName || 'Meetup'} waiting at ${activeMeetup.shortVenueLabel || 'town'}!`;
+        hasAnyAlert = true;
+      } else if (marketAlert) {
+        dockNpcId = respondedListing?.npcId || null;
+        dockIconSrc = 'Sprites/Overworld/phone_icon_market.jpg?v=2.57';
+        purposeEmoji = '🤝';
+        purposeColor = '#059669';
+        dockTitle = respondedListing ? `Card Trade Offer from ${respondedListing.npcName || 'Buyer'}!` : 'Card Exchange Alert!';
+        hasAnyAlert = true;
+      } else if ((this._readyQuestCount || 0) > 0) {
+        dockNpcId = this._readyQuestNpcId || null;
+        dockIconSrc = 'Sprites/Overworld/phone_icon_quests.png?v=3.07';
+        purposeEmoji = '📜';
+        purposeColor = '#d97706';
+        dockTitle = 'Quest Ready to Claim!';
+        hasAnyAlert = true;
       } else if (this.phoneUnreadShop) {
+        dockNpcId = 'leo';
         dockIconSrc = 'Sprites/Overworld/phone_icon_shop.jpg?v=2.57';
-        dockBadgeColor = '#ef4444';
+        purposeEmoji = '🃏';
+        purposeColor = '#ca8a04';
         dockTitle = "Leo's Card Shop Alert!";
-        showDockBadge = true;
+        hasAnyAlert = true;
       } else if (tourneyAlert) {
         dockIconSrc = 'Sprites/Overworld/phone_icon_tournaments.jpg?v=2.57';
-        dockBadgeColor = '#9333ea';
+        purposeEmoji = '🏆';
+        purposeColor = '#9333ea';
         dockTitle = 'Town Tournament Active!';
-        showDockBadge = true;
+        hasAnyAlert = true;
       }
 
       const dockEl = document.getElementById('ow-phone-dock');
-      if (dockEl) dockEl.title = dockTitle;
+      if (dockEl) {
+        dockEl.title = dockTitle;
+        dockEl.classList.toggle('is-ringing', isRinging);
+      }
       const dockImg = document.getElementById('phone-dock-alert-img');
-      if (dockImg && !dockImg.getAttribute('src')?.endsWith(dockIconSrc)) {
-        dockImg.src = dockIconSrc;
+      const dockCanvas = document.getElementById('phone-dock-alert-canvas');
+      const drewFace = dockNpcId ? this.drawPhoneDockFacePortrait(dockNpcId) : false;
+      if (dockCanvas) dockCanvas.classList.toggle('hidden', !drewFace);
+      if (dockImg) {
+        dockImg.classList.toggle('hidden', drewFace);
+        if (!drewFace && !dockImg.getAttribute('src')?.endsWith(dockIconSrc)) {
+          dockImg.src = dockIconSrc;
+        }
+      }
+
+      const purposeBadge = document.getElementById('phone-dock-purpose-badge');
+      if (purposeBadge) {
+        purposeBadge.classList.toggle('hidden', !purposeEmoji);
+        if (purposeEmoji) {
+          purposeBadge.textContent = purposeEmoji;
+          purposeBadge.style.background = purposeColor;
+        }
       }
 
       const badge = document.getElementById('phone-alert-badge');
@@ -2875,15 +2980,10 @@
       const hdrMobPhoneBadge = document.getElementById('hdr-mob-phone-badge');
       const dockBadge = document.getElementById('phone-dock-badge');
       const menuAlert = document.getElementById('header-menu-alert');
-      const hasAnyAlert = Boolean(showDockBadge);
       if (badge) badge.classList.toggle('hidden', !hasAnyAlert);
       if (mobBadge) mobBadge.classList.toggle('hidden', !hasAnyAlert);
       if (hdrMobPhoneBadge) hdrMobPhoneBadge.classList.toggle('hidden', !hasAnyAlert);
-      if (dockBadge) {
-        dockBadge.classList.toggle('hidden', !showDockBadge);
-        dockBadge.style.background = dockBadgeColor;
-        dockBadge.textContent = dockBadgeText;
-      }
+      if (dockBadge) dockBadge.classList.add('hidden');
       if (menuAlert) menuAlert.classList.toggle('hidden', !hasAnyAlert);
     }
 
@@ -5840,22 +5940,20 @@
     // Player Backpack & Inventory Modal (Unified into Option B Binder Modal)
     // -------------------------------------------------------------------------
     toggleInventoryModal(forceOpen) {
+      const invModal = document.getElementById('inventory-modal');
       const binderModal = document.getElementById('binder-modal');
-      const legacyInvModal = document.getElementById('inventory-modal');
-      legacyInvModal?.classList.add('hidden');
-      if (forceOpen === false) {
+      if (!invModal) return;
+      const isOpen = !invModal.classList.contains('hidden');
+      const shouldOpen = forceOpen !== undefined ? forceOpen : !isOpen;
+      if (shouldOpen) {
         binderModal?.classList.add('hidden');
-        return;
+        if (window.sounds?.playClick) window.sounds.playClick();
+        this.renderBinderModal();
+        invModal.classList.remove('hidden');
+      } else {
+        if (isOpen && window.sounds?.playClick) window.sounds.playClick();
+        invModal.classList.add('hidden');
       }
-      if (forceOpen === undefined && binderModal && !binderModal.classList.contains('hidden')) {
-        if (this.folioSection === 'inventory') {
-          binderModal.classList.add('hidden');
-          return;
-        }
-        this.toggleBinderModal(true, 'inventory');
-        return;
-      }
-      this.toggleBinderModal(forceOpen, 'inventory');
     }
 
     /** Draw hand-crafted Craftsman & Corner Market style tabletop + satchel canvas background. */
@@ -7787,7 +7885,8 @@
           rewardEl.textContent = `⚔️ Friendly Duel Challenge`;
         }
       }
-      toast.classList.remove('hidden');
+      // Replace popup toast with direct caller face + purpose badge on the bottom-right phone dock
+      toast.classList.add('hidden');
       this.syncPhoneAlertBadges?.();
       if (this._duelCallToastTimer) clearTimeout(this._duelCallToastTimer);
       this._duelCallToastTimer = setTimeout(() => {
@@ -11604,22 +11703,15 @@
     }
 
     setFolioSection(section) {
-      const target = (section === 'deck' || section === 'binder' || section === 'inventory') ? section : 'binder';
-      if (target === 'deck' || target === 'binder') {
-        this.folioLastUpper = target;
-      }
+      const target = section === 'deck' ? 'deck' : 'binder';
+      this.folioLastUpper = target;
       this.folioSection = target;
-      this.binderDrawerTab = target === 'inventory' ? 'bag' : 'sleeves';
+      this.binderDrawerTab = 'sleeves';
 
       const world = document.getElementById('folio-stage-world');
-      const invCol = document.getElementById('folio-inv-column');
-      if (invCol) {
-        invCol.style.marginLeft = this.folioLastUpper === 'binder' ? '50%' : '0%';
-      }
       if (world) {
-        const tx = (target === 'binder' || (target === 'inventory' && this.folioLastUpper === 'binder')) ? '-50%' : '0%';
-        const ty = target === 'inventory' ? '-50%' : '0%';
-        world.style.transform = `translate3d(${tx}, ${ty}, 0)`;
+        const tx = target === 'binder' ? '-50%' : '0%';
+        world.style.transform = `translate3d(${tx}, 0, 0)`;
       }
     }
 
@@ -11635,6 +11727,9 @@
     }
 
     toggleBinderModal(forceOpen, preferredTab = null) {
+      if (preferredTab === 'bag' || preferredTab === 'inventory') {
+        return this.toggleInventoryModal(forceOpen);
+      }
       this.hasOldCardBinder = true;
       const modal = document.getElementById('binder-modal');
       if (!modal) return;
@@ -11643,7 +11738,6 @@
       let targetSection = null;
       if (preferredTab === 'deck') targetSection = 'deck';
       else if (preferredTab === 'sleeves' || preferredTab === 'binder') targetSection = 'binder';
-      else if (preferredTab === 'bag' || preferredTab === 'inventory') targetSection = 'inventory';
 
       if (forceOpen === undefined && isCurrentlyOpen) {
         if (!targetSection) {
@@ -11667,9 +11761,9 @@
       const shouldOpen = forceOpen !== undefined ? forceOpen : (!isCurrentlyOpen || Boolean(targetSection));
       if (window.sounds?.playClick) window.sounds.playClick();
       if (shouldOpen) {
+        document.getElementById('inventory-modal')?.classList.add('hidden');
         if (!targetSection) {
-          const hasPack = (this.inventory || []).some(i => i.type === 'booster_pack' && (i.qty || 0) > 0);
-          targetSection = (hasPack && this.getSlottedBinderCount() === 0) ? 'inventory' : (this.folioSection || 'binder');
+          targetSection = this.folioSection === 'deck' ? 'deck' : 'binder';
         }
         this.setFolioSection(targetSection);
         this.renderBinderModal();
@@ -11702,6 +11796,27 @@
           }
           seenByKey.set(key, slot);
         }
+      }
+
+      const compacted = [];
+      for (let i = 0; i < this.binderSlots.length; i++) {
+        if (this.binderSlots[i]) compacted.push(this.binderSlots[i]);
+      }
+      const targetLen = Math.max(36, compacted.length);
+      while (compacted.length < targetLen) compacted.push(null);
+
+      if (this.binderSlots.length !== compacted.length) {
+        changed = true;
+      } else {
+        for (let i = 0; i < targetLen; i++) {
+          if (this.binderSlots[i] !== compacted[i]) {
+            changed = true;
+            break;
+          }
+        }
+      }
+      if (changed) {
+        this.binderSlots = compacted;
       }
 
       return changed;
@@ -12266,6 +12381,7 @@
               `;
               slotEl.querySelector('.to-deck')?.addEventListener('click', (ev) => {
                 ev.stopPropagation();
+                this.toggleInventoryModal(false);
                 this.toggleBinderModal(false);
                 this.startBoosterPackOpening(item.id);
               });
@@ -13109,15 +13225,6 @@
         drawn.push(picked);
       }
 
-      const activeEvent = this.getCurrentDayEvent();
-      if (activeEvent?.id === 'leo_restock') {
-        // Monday: Leo's Booster Restock - Holo Foil Surge!
-        drawn.forEach((c, idx) => {
-          if (idx === 0 || Math.random() < 0.5) {
-            c.isHolo = true;
-          }
-        });
-      }
       return drawn;
     }
 
@@ -13544,12 +13651,18 @@
           : (st.isPremiumPack ? '💎 1ST ED. PREMIUM PACK COMPLETE 💎' : '✨ BOOSTER PACK COMPLETE ✨');
       }
       if (titleEl) titleEl.textContent = `✨ ALL ${st.pulledCards.length} CARDS PULLED! ✨`;
-      if (subEl) subEl.innerHTML = `All ${st.pulledCards.length} Mythos Cards unsealed! Collect them to place them directly into your <b>Card Binder</b> sleeves:`;
+      if (subEl) {
+        subEl.innerHTML = st.isStarterPack
+          ? `All ${st.pulledCards.length} Starter Pack Cards unsealed! Collect them to load directly into your <b>Playing Deck</b>:`
+          : `All ${st.pulledCards.length} Mythos Cards unsealed! Collect them to place them directly into your <b>Card Binder</b> sleeves:`;
+      }
 
       nextBtn?.classList.add('hidden');
       viewAllBtn?.classList.add('hidden');
       if (collectBtn) {
-        collectBtn.textContent = `📖 Collect All ${st.pulledCards.length} Cards into Binder`;
+        collectBtn.textContent = st.isStarterPack
+          ? `🃏 Load All ${st.pulledCards.length} Cards into Playing Deck`
+          : `📖 Collect All ${st.pulledCards.length} Cards into Binder`;
         collectBtn.classList.remove('hidden');
       }
 
@@ -13597,26 +13710,83 @@
         window.sounds.playVictory();
       }
 
-      // Place all pulled Mythos Cards (Starter or Booster Pack) into the Card Binder, never directly into Playing Deck
-      st.pulledCards.forEach(card => {
-        this.addCardToBinder({
-          id: card.id,
-          beastId: card.beastId,
-          name: card.name,
-          shortName: card.shortName,
-          element: card.element,
-          stars: card.stars,
-          qty: 1,
-          icon: '🃏',
-          cardImg: card.cardImg,
-          traditionalCardImg: card.traditionalCardImg || null,
-          isAnimatedSpecial: Boolean(card.isAnimatedSpecial),
-          animatedCardVideo: card.animatedCardVideo || null,
-          animatedTraditionalVideo: card.animatedTraditionalVideo || null,
-          type: 'mythos_card',
-          desc: card.desc
+      let placedInDeck = 0;
+      let overflowToBinder = 0;
+
+      if (st.isStarterPack) {
+        if (!Array.isArray(this.playingDeck)) this.playingDeck = [];
+        const reg = window.MythosGwentCards?.CARDS || {};
+        const getCanon = (id) => window.MythosGwentCards?.getCanonicalCardId?.(id) || id;
+        const deckCounts = {};
+        let currentStars = 0;
+        this.playingDeck.forEach(existingId => {
+          const canon = getCanon(existingId);
+          deckCounts[canon] = (deckCounts[canon] || 0) + 1;
+          currentStars += Number(reg[existingId]?.stars) || 1;
         });
-      });
+
+        st.pulledCards.forEach(card => {
+          const cid = card.beastId || String(card.id || '').replace(/^card_/, '');
+          const def = reg[cid];
+          const cStars = Number(def?.stars ?? card.stars) || 1;
+          const maxPerDeck = window.MythosGwentCards?.getMaxDeckCopies
+            ? window.MythosGwentCards.getMaxDeckCopies(def || { stars: cStars })
+            : (cStars >= 4 ? 1 : (def?.maxDeckCopies ?? 3));
+          const canonId = getCanon(cid);
+
+          if (
+            cid &&
+            this.playingDeck.length < 24 &&
+            (currentStars + cStars) <= 40 &&
+            (deckCounts[canonId] || 0) < maxPerDeck
+          ) {
+            this.playingDeck.push(cid);
+            deckCounts[canonId] = (deckCounts[canonId] || 0) + 1;
+            currentStars += cStars;
+            placedInDeck++;
+          } else {
+            this.addCardToBinder({
+              id: card.id,
+              beastId: card.beastId,
+              name: card.name,
+              shortName: card.shortName,
+              element: card.element,
+              stars: card.stars,
+              qty: 1,
+              icon: '🃏',
+              cardImg: card.cardImg,
+              traditionalCardImg: card.traditionalCardImg || null,
+              isAnimatedSpecial: Boolean(card.isAnimatedSpecial),
+              animatedCardVideo: card.animatedCardVideo || null,
+              animatedTraditionalVideo: card.animatedTraditionalVideo || null,
+              type: 'mythos_card',
+              desc: card.desc
+            });
+            overflowToBinder++;
+          }
+        });
+      } else {
+        // Place Booster Pack pulls into the Card Binder, never directly into Playing Deck
+        st.pulledCards.forEach(card => {
+          this.addCardToBinder({
+            id: card.id,
+            beastId: card.beastId,
+            name: card.name,
+            shortName: card.shortName,
+            element: card.element,
+            stars: card.stars,
+            qty: 1,
+            icon: '🃏',
+            cardImg: card.cardImg,
+            traditionalCardImg: card.traditionalCardImg || null,
+            isAnimatedSpecial: Boolean(card.isAnimatedSpecial),
+            animatedCardVideo: card.animatedCardVideo || null,
+            animatedTraditionalVideo: card.animatedTraditionalVideo || null,
+            type: 'mythos_card',
+            desc: card.desc
+          });
+        });
+      }
       this.lastPulledPackCardNames = st.pulledCards
         .slice(0, 3)
         .map(c => c.shortName || String(c.name || '').replace(/\s*\(Mythos Card\)$/i, ''))
@@ -13638,10 +13808,15 @@
       }
       this.saveWorldData(this.draftAppearance);
       this.updateHUDSaveInfo();
+      this.renderPlayingDeckModal?.();
       this.renderBinderModal?.();
       this.renderInventoryModal();
       this.renderShopModal();
-      this.showAutosaveIndicator?.(`📖 Placed ${st.pulledCards.length} ${st.isStarterPack ? 'Starter Pack ' : ''}Cards into your Binder!`);
+      this.showAutosaveIndicator?.(
+        st.isStarterPack
+          ? `🃏 Loaded ${placedInDeck} Starter Pack Cards into your Playing Deck!${overflowToBinder > 0 ? ` (${overflowToBinder} placed in Binder)` : ''}`
+          : `📖 Placed ${st.pulledCards.length} Cards into your Binder!`
+      );
 
       const modal = document.getElementById('pack-opening-modal');
       modal?.classList.add('hidden');
@@ -14077,7 +14252,7 @@
         bar.classList.remove('tv-broadcast');
         speakerEl.textContent = `🃏 ${friendName.toUpperCase()} & SHOPKEEPER LEO`;
         speakerEl.className = 'ow-speaker-tag tv';
-        textEl.innerHTML = `<b>${friendName}:</b> "Whoa, hold up ${playerName}! Don't leave <b>Leo's Card Shop</b> without opening the <b>18-Card Mythos Starter Pack</b> you just got from Leo!"<br><b>Shopkeeper Leo:</b> "That's the best part! Break <b>The Seal of Mythos</b> and unseal your 18-card Starter Pack into your Binder before you head out!"`;
+        textEl.innerHTML = `<b>${friendName}:</b> "Whoa, hold up ${playerName}! Don't leave <b>Leo's Card Shop</b> without opening the <b>18-Card Mythos Starter Pack</b> you just got from Leo!"<br><b>Shopkeeper Leo:</b> "That's the best part! Break <b>The Seal of Mythos</b> and unseal your 18-card Starter Pack into your Playing Deck before you head out!"`;
 
         choicesEl.innerHTML = '';
         const openBtn = document.createElement('button');
@@ -14099,13 +14274,19 @@
         bar.classList.remove('tv-broadcast');
         speakerEl.textContent = `⚔️ ${friendName.toUpperCase()} (CHALLENGES YOU TO A BATTLE!!)`;
         speakerEl.className = 'ow-speaker-tag friend';
+        const regCards = window.MythosGwentCards?.CARDS || {};
+        const deckFallbackNames = (this.playingDeck || [])
+          .slice(0, 3)
+          .map(cid => regCards[cid]?.name || cid)
+          .filter(Boolean);
+        const binderFallbackNames = (this.binderSlots || [])
+          .filter(Boolean)
+          .slice(0, 3)
+          .map(i => (i.shortName || i.name || '').replace(' (Mythos Card)', ''))
+          .filter(Boolean);
         const recentNames = (Array.isArray(this.lastPulledPackCardNames) && this.lastPulledPackCardNames.length > 0)
           ? this.lastPulledPackCardNames
-          : (this.binderSlots || [])
-            .filter(Boolean)
-            .slice(0, 3)
-            .map(i => (i.shortName || i.name || '').replace(' (Mythos Card)', ''))
-            .filter(Boolean);
+          : (deckFallbackNames.length > 0 ? deckFallbackNames : binderFallbackNames);
         const pulledList = recentNames.map(n => `<b>${n}</b>`).join(', ');
         textEl.innerHTML = `<b>${friendName}:</b> "NO WAY!! You pulled ${pulledList || 'awesome cards'}?! I just opened my pack from Leo too! I'm heading back to <b>my house</b> right now to set up the tabletop board — come meet me there for a <b>MYTHOS Battle</b> whenever you're ready!"`;
 
@@ -14121,10 +14302,10 @@
         const viewCardsBtn = document.createElement('button');
         viewCardsBtn.type = 'button';
         viewCardsBtn.className = 'ow-choice-btn';
-        viewCardsBtn.innerHTML = `📖 Inspect Pulled Cards & Build Playing Deck in Binder (B)`;
+        viewCardsBtn.innerHTML = `🃏 Inspect Your 18-Card Playing Deck (B)`;
         viewCardsBtn.addEventListener('click', (ev) => {
           ev.stopPropagation();
-          this.toggleBinderModal(true);
+          this.toggleBinderModal(true, 'deck');
         });
         choicesEl.appendChild(acceptBtn);
         choicesEl.appendChild(viewCardsBtn);
@@ -16831,6 +17012,7 @@
         const distChloe = this.chloeNpc ? Math.hypot(this.player.x - this.chloeNpc.x, this.player.y - this.chloeNpc.y) : 999;
         const distRowan = this.rowanNpc ? Math.hypot(this.player.x - this.rowanNpc.x, this.player.y - this.rowanNpc.y) : 999;
         const distJasper = this.jasperNpc ? Math.hypot(this.player.x - this.jasperNpc.x, this.player.y - this.jasperNpc.y) : 999;
+        const distPierFinn = this.pierFinnNpc ? Math.hypot(this.player.x - this.pierFinnNpc.x, this.player.y - this.pierFinnNpc.y) : 999;
         const distParkFountain = Math.hypot(this.player.x - 21.1, this.player.y - 9.0);
         const distParkSign = Math.hypot(this.player.x - 16.6, this.player.y - 9.25);
         const distNorthParkSign = (Math.abs(this.player.x - 21.1) < 2.2 && Math.abs(this.player.y - 4.9) < 0.95)
@@ -17181,6 +17363,41 @@
               }
             ]
           });
+        } else if (this.pierFinnNpc && distPierFinn < 1.15) {
+          this.nearInteractable = this.pierFinnNpc;
+          this.renderNpcChoicePrompt({
+            npcId: 'pier_finn',
+            promptKey: `ext_pier_finn_${pName}`,
+            speakerText: '🎣 OLD FINN — MEADOWBROOK ANGLER',
+            speakerClass: 'ow-speaker-tag friend',
+            talkPromptHtml: `Press <b>Talk</b> to chat with <b>Old Finn</b> out on the fishing pier.`,
+            greetingHtml: `<b>Old Finn:</b> "Well now, look who wandered out onto the oak planks! The lake is calm as glass today — best spot in Oakhaven to cast a line or talk Mythos cards."`,
+            choices: [
+              {
+                label: `1. 🎣 "Catching anything out here on Meadowbrook Lake?"`,
+                primary: true,
+                onSelect: (tEl) => {
+                  tEl.innerHTML = `<b>Old Finn:</b> "Saw a flash of golden carp near the cattail reeds earlier, plus a ripple big enough to be a wild Water Spirit! Out here by the water, patience always pays off."`;
+                }
+              },
+              {
+                label: `2. 🌊 "Any tips for playing Water Tribe cards?"`,
+                onSelect: (tEl) => {
+                  tEl.innerHTML = `<b>Old Finn:</b> "Anchor your backline with sturdy Merfolk and Frost Skinks, then let a Sea Dragon sweep across the center lanes once your opponent commits!"`;
+                }
+              },
+              {
+                label: `3. ⚔️ "Up for a friendly Mythos duel on the pier?"`,
+                onSelect: () => {
+                  this.triggerDuel(this.pierFinnNpc);
+                }
+              },
+              {
+                label: `4. 👋 "Tight lines, Finn! (Leave)"`,
+                onSelect: () => this.closeDialogue()
+              }
+            ]
+          });
         } else if (distParkFountain < 1.45) {
           showStaticPrompt(
             'park_fountain',
@@ -17355,7 +17572,7 @@
           }
           return true;
         }
-        if (active === 'chloe' || active === 'rowan' || active === 'jasper') {
+        if (active === 'chloe' || active === 'rowan' || active === 'jasper' || active === 'pier_finn') {
           if (window.sounds?.playClick) window.sounds.playClick();
           this.closeDialogue();
           return true;
@@ -18379,7 +18596,14 @@
       }
       const owPhoneDockBtn = document.getElementById('ow-phone-dock');
       if (owPhoneDockBtn) {
-        owPhoneDockBtn.addEventListener('click', () => this.togglePhoneModal(true));
+        owPhoneDockBtn.addEventListener('click', () => {
+          if (this.activeIncomingDuelCall) {
+            if (window.sounds?.playClick) window.sounds.playClick();
+            this.openDuelCallModal();
+          } else {
+            this.togglePhoneModal(true);
+          }
+        });
       }
       const closePhoneBtn = document.getElementById('btn-close-phone');
       if (closePhoneBtn) {
@@ -18401,6 +18625,11 @@
       }
 
       // Swipe-down top bar & menu-body swipe-down gesture to exit phone and all menu screens
+      const closeSectionToPhoneHome = (closeFn) => {
+        if (typeof closeFn === 'function') closeFn();
+        this.togglePhoneModal(true);
+      };
+
       const attachMenuSwipeDownToExit = ({ frameEl, barParentEl, headerEl, onClose }) => {
         if (!frameEl || typeof onClose !== 'function') return;
         const hostEl = barParentEl || frameEl;
@@ -18529,18 +18758,26 @@
         frameEl: document.querySelector('#phone-modal .phone-device-frame'),
         barParentEl: document.querySelector('#phone-modal .phone-screen-container'),
         headerEl: document.querySelector('#phone-modal .phone-status-bar'),
-        onClose: () => this.togglePhoneModal(false)
+        onClose: () => {
+          if (this.currentPhoneApp && this.currentPhoneApp !== 'home') {
+            if (window.sounds?.playClick) window.sounds.playClick();
+            this.activeChatContactId = null;
+            this.openPhoneApp('home');
+          } else {
+            this.togglePhoneModal(false);
+          }
+        }
       });
       attachMenuSwipeDownToExit({
-        frameEl: document.querySelector('#inventory-modal .inventory-modal-dialog'),
-        headerEl: document.querySelector('#inventory-modal .inventory-header'),
-        onClose: () => this.toggleInventoryModal(false)
+        frameEl: document.querySelector('#inventory-modal .folio-stage-dialog'),
+        headerEl: document.querySelector('#inventory-modal .folio-header'),
+        onClose: () => closeSectionToPhoneHome(() => this.toggleInventoryModal(false))
       });
       attachMenuSwipeDownToExit({
         frameEl: document.querySelector('#binder-modal .binder-modal-dialog'),
         barParentEl: document.querySelector('#binder-modal .binder-content-sheet'),
         headerEl: document.querySelector('#binder-modal .binder-header'),
-        onClose: () => this.toggleBinderModal(false)
+        onClose: () => closeSectionToPhoneHome(() => this.toggleBinderModal(false))
       });
       attachMenuSwipeDownToExit({
         frameEl: document.querySelector('#binder-picker-modal .binder-picker-dialog'),
@@ -18570,7 +18807,7 @@
       attachMenuSwipeDownToExit({
         frameEl: document.querySelector('#calendar-modal .calendar-modal-card'),
         headerEl: document.querySelector('#calendar-modal .calendar-modal-header'),
-        onClose: () => this.toggleCalendarModal(false)
+        onClose: () => closeSectionToPhoneHome(() => this.toggleCalendarModal(false))
       });
       attachMenuSwipeDownToExit({
         frameEl: document.querySelector('#park-tournament-modal .tourney-modal-card'),
@@ -18580,7 +18817,12 @@
       attachMenuSwipeDownToExit({
         frameEl: document.querySelector('#notebook-modal .notebook-modal-card'),
         headerEl: document.querySelector('#notebook-modal .notebook-modal-header'),
-        onClose: () => this.toggleNotebookModal(false)
+        onClose: () => closeSectionToPhoneHome(() => this.toggleNotebookModal(false))
+      });
+      attachMenuSwipeDownToExit({
+        frameEl: document.querySelector('#quest-log-modal .notebook-modal-card'),
+        headerEl: document.querySelector('#quest-log-modal .notebook-modal-header'),
+        onClose: () => closeSectionToPhoneHome(() => this.toggleQuestModal(false))
       });
 
       // App Icon Triggers on Phone Home
@@ -18624,6 +18866,11 @@
       document.getElementById('app-btn-system')?.addEventListener('click', () => {
         if (window.sounds?.playClick) window.sounds.playClick();
         this.openPhoneApp('system');
+      });
+      document.getElementById('app-btn-inventory')?.addEventListener('click', () => {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        this.togglePhoneModal(false);
+        this.toggleInventoryModal(true);
       });
 
       // App Back Buttons
@@ -18739,11 +18986,11 @@
       }
       const closeCalBtn = document.getElementById('btn-close-calendar');
       if (closeCalBtn) {
-        closeCalBtn.addEventListener('click', () => this.toggleCalendarModal(false));
+        closeCalBtn.addEventListener('click', () => closeSectionToPhoneHome(() => this.toggleCalendarModal(false)));
       }
       const doneCalBtn = document.getElementById('btn-done-calendar');
       if (doneCalBtn) {
-        doneCalBtn.addEventListener('click', () => this.toggleCalendarModal(false));
+        doneCalBtn.addEventListener('click', () => closeSectionToPhoneHome(() => this.toggleCalendarModal(false)));
       }
 
       // Adventurer's Notebook Handlers
@@ -18754,12 +19001,12 @@
 
       // Quest Log Handlers
       document.getElementById('btn-open-quests')?.addEventListener('click', () => this.toggleQuestModal(true));
-      document.getElementById('btn-close-quests')?.addEventListener('click', () => this.toggleQuestModal(false));
-      document.getElementById('btn-done-quests')?.addEventListener('click', () => this.toggleQuestModal(false));
+      document.getElementById('btn-close-quests')?.addEventListener('click', () => closeSectionToPhoneHome(() => this.toggleQuestModal(false)));
+      document.getElementById('btn-done-quests')?.addEventListener('click', () => closeSectionToPhoneHome(() => this.toggleQuestModal(false)));
       const questModal = document.getElementById('quest-log-modal');
       if (questModal) {
         questModal.addEventListener('click', (e) => {
-          if (e.target === questModal) this.toggleQuestModal(false);
+          if (e.target === questModal) closeSectionToPhoneHome(() => this.toggleQuestModal(false));
         });
       }
       document.querySelectorAll('#quest-log-tabs .notebook-tab-btn').forEach(btn => {
@@ -18770,16 +19017,16 @@
       });
       const closeNotebookBtn = document.getElementById('btn-close-notebook');
       if (closeNotebookBtn) {
-        closeNotebookBtn.addEventListener('click', () => this.toggleNotebookModal(false));
+        closeNotebookBtn.addEventListener('click', () => closeSectionToPhoneHome(() => this.toggleNotebookModal(false)));
       }
       const doneNotebookBtn = document.getElementById('btn-done-notebook');
       if (doneNotebookBtn) {
-        doneNotebookBtn.addEventListener('click', () => this.toggleNotebookModal(false));
+        doneNotebookBtn.addEventListener('click', () => closeSectionToPhoneHome(() => this.toggleNotebookModal(false)));
       }
       const notebookModal = document.getElementById('notebook-modal');
       if (notebookModal) {
         notebookModal.addEventListener('click', (e) => {
-          if (e.target === notebookModal) this.toggleNotebookModal(false);
+          if (e.target === notebookModal) closeSectionToPhoneHome(() => this.toggleNotebookModal(false));
         });
       }
       document.querySelectorAll('#notebook-tabs .notebook-tab-btn').forEach(btn => {
@@ -18885,7 +19132,7 @@
 
       const closeInvBtn = document.getElementById('btn-close-inventory');
       if (closeInvBtn) {
-        closeInvBtn.addEventListener('click', () => this.toggleInventoryModal(false));
+        closeInvBtn.addEventListener('click', () => closeSectionToPhoneHome(() => this.toggleInventoryModal(false)));
       }
       const invFilterTabs = document.getElementById('inv-filter-tabs');
       if (invFilterTabs) {
@@ -18898,15 +19145,16 @@
         });
       }
 
-      // Card Binder & 3-Section Sliding Folio Button Handlers
+      // Card Binder & 2-Section Sliding Folio Button Handlers
       const openBinderBtn = document.getElementById('btn-open-binder');
       if (openBinderBtn) {
         openBinderBtn.addEventListener('click', () => this.toggleBinderModal(true, 'binder'));
       }
 
-      ['btn-close-binder', 'btn-binder-done', 'btn-close-binder-deck', 'btn-close-binder-sleeves', 'btn-close-binder-inv'].forEach(btnId => {
-        document.getElementById(btnId)?.addEventListener('click', () => this.toggleBinderModal(false));
+      ['btn-close-binder', 'btn-binder-done', 'btn-close-binder-deck', 'btn-close-binder-sleeves'].forEach(btnId => {
+        document.getElementById(btnId)?.addEventListener('click', () => closeSectionToPhoneHome(() => this.toggleBinderModal(false)));
       });
+      document.getElementById('btn-close-binder-inv')?.addEventListener('click', () => closeSectionToPhoneHome(() => this.toggleInventoryModal(false)));
 
       const bindFolioNav = (btnId, section) => {
         document.getElementById(btnId)?.addEventListener('click', () => {
@@ -18915,11 +19163,7 @@
         });
       };
       bindFolioNav('btn-folio-deck-to-binder', 'binder');
-      bindFolioNav('btn-folio-deck-to-inv', 'inventory');
       bindFolioNav('btn-folio-binder-to-deck', 'deck');
-      bindFolioNav('btn-folio-binder-to-inv', 'inventory');
-      bindFolioNav('btn-folio-inv-to-deck', 'deck');
-      bindFolioNav('btn-folio-inv-to-binder', 'binder');
 
       document.getElementById('btn-binder-autofill')?.addEventListener('click', () => {
         this.autoFillPlayingDeck();
@@ -20252,6 +20496,14 @@
             active: this.currentArea === 'exterior',
             npc: this.jasperNpc,
             talkId: 'jasper',
+            tapRadius: 1.25,
+            reachRadius: 1.05,
+            yOffset: 0
+          },
+          {
+            active: this.currentArea === 'exterior',
+            npc: this.pierFinnNpc,
+            talkId: 'pier_finn',
             tapRadius: 1.25,
             reachRadius: 1.05,
             yOffset: 0
@@ -22042,7 +22294,7 @@
       if (inBox(31.80, -33.80, 33.00, -13.20)) return true;  // Center Farm N-S Lane
       if (inBox(53.80, -33.80, 55.05, -8.20)) return true;   // East Ranch N-S Lane
       if (inBox(27.50, -13.00, 28.70, 5.95)) return true;    // Lake & Park Trail N-S Road
-      if (inBox(25.00, 4.80, 35.00, 5.95)) return true;      // Lake Pier & Central Park Connector
+      if (inBox(25.00, 4.80, 37.70, 5.95)) return true;      // Lake Pier & Central Park Connector
 
       // Urban Paved Avenue (Oakhaven Blvd), Willow Way, West Roundabout Ave & Roundabout
       if (inBox(-0.35, 0.00, 0.70, 33.50)) return true;   // N-S Oakhaven Blvd
@@ -22519,7 +22771,7 @@
         this.shopkeeperNpc, this.plutoNpc, this.novaNpc, this.silasNpc,
         this.mayaNpc, this.claraNpc, this.bramNpc, this.mayorNpc,
         this.chefNpc, this.shaunNpc, this.evelynNpc, this.chloeNpc,
-        this.rowanNpc, this.jasperNpc, this.bertoNpc,
+        this.rowanNpc, this.jasperNpc, this.pierFinnNpc, this.bertoNpc,
         this.fireChiefNpc, this.policeChiefNpc,
         this.aptTessaNpc, this.aptDanteNpc, this.aptNinaNpc, this.aptMilesNpc,
         this.barberNpc, this.tailorNpc, this.vetNpc, this.westOtisNpc, this.westMarenNpc, this.westCalebNpc, this.westJuniperNpc, this.westGideonNpc, this.fh1MarthaNpc, this.fh1HarlanNpc, this.fh2EleanorNpc, this.fh2ArthurNpc, this.arcadeZekeNpc, this.leagueRegistrarNpc
@@ -22539,6 +22791,7 @@
       if (npc.following || npc.leavingForHouse) return true;
       if (npc.targetX !== undefined && npc.targetX !== null && npc.targetY !== undefined && npc.targetY !== null) return true;
       if (npc.id === 'berto') return true;
+      if (npc.id === 'pier_finn') return true;
       if (npc.id === 'best_friend' && (!this.hasOpenedStarterPack || !this.friendWaitingAtHouse)) return true;
       if (npc.id === 'mom' && !this.hasMomBoosterMoney) return true;
 
@@ -22602,11 +22855,14 @@
       for (const npc of candidates) {
         if (slotsLeft <= 0) break;
         const roll = Math.random();
+        const ownArea = npc.hangoutSpot?.area;
         let destKey = null;
         if (roll < bChance && buildingKeys.length > 0) {
-          destKey = buildingKeys[Math.floor(Math.random() * buildingKeys.length)];
+          const otherBuildings = buildingKeys.filter(k => k !== ownArea);
+          if (otherBuildings.length > 0) {
+            destKey = otherBuildings[Math.floor(Math.random() * otherBuildings.length)];
+          }
         } else if (roll < bChance + hChance && houseKeys.length > 0) {
-          const ownArea = npc.hangoutSpot?.area;
           const otherHouses = houseKeys.filter(k => k !== ownArea);
           if (otherHouses.length > 0) {
             destKey = otherHouses[Math.floor(Math.random() * otherHouses.length)];
@@ -22729,8 +22985,8 @@
       const curArea = this.getNpcArea(npc);
       const portal = (this.AREA_PORTALS || {})[homeArea];
 
-      let phase = 'to_dest_door';
-      let goal = dest.extDoor;
+      let phase = dest.area === 'exterior' ? 'to_dest_spot' : 'to_dest_door';
+      let goal = dest.area === 'exterior' ? destSpot : dest.extDoor;
       if (curArea !== 'exterior') {
         if (!portal) return false;
         phase = 'to_home_exit';
@@ -33436,6 +33692,60 @@
               ctx.fillStyle = '#b07c4e'; ctx.fillRect(bxPost + 2, byPost + 2, 6, 7);
             }
           }
+
+          // Wooden tackle box beside Old Finn & cast bamboo fishing rod + animated bobber
+          const tBoxX = Math.round(36.68 * S);
+          const tBoxY = Math.round(4.92 * S);
+          ctx.fillStyle = '#24160c';
+          ctx.fillRect(tBoxX - 1, tBoxY - 1, 14, 10);
+          ctx.fillStyle = '#6d4121';
+          ctx.fillRect(tBoxX, tBoxY, 12, 8);
+          ctx.fillStyle = '#a46b3b';
+          ctx.fillRect(tBoxX + 1, tBoxY + 1, 10, 3);
+          ctx.fillStyle = '#facc15';
+          ctx.fillRect(tBoxX + 5, tBoxY + 3, 2, 2);
+
+          const rodStartX = Math.round(37.26 * S);
+          const rodStartY = Math.round(5.18 * S);
+          const rodTipX = Math.round(38.18 * S);
+          const rodTipY = Math.round(4.90 * S);
+          const bobX = rodTipX;
+          const bobY = Math.round(5.42 * S + Math.sin(this.tick * 0.08) * 2);
+
+          ctx.strokeStyle = '#3e2310';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.moveTo(rodStartX, rodStartY);
+          ctx.lineTo(rodTipX, rodTipY);
+          ctx.stroke();
+
+          ctx.strokeStyle = '#c89b54';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(rodStartX, rodStartY);
+          ctx.lineTo(rodTipX, rodTipY);
+          ctx.stroke();
+
+          ctx.strokeStyle = 'rgba(226, 244, 255, 0.72)';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(rodTipX, rodTipY);
+          ctx.lineTo(bobX, bobY);
+          ctx.stroke();
+
+          const ripplePhase = (Math.sin(this.tick * 0.06) + 1) * 0.5;
+          ctx.strokeStyle = `rgba(218, 248, 255, ${(0.55 - ripplePhase * 0.35).toFixed(2)})`;
+          ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          ctx.ellipse(bobX, bobY + 2, 5 + ripplePhase * 4, 2.2 + ripplePhase * 1.6, 0, 0, Math.PI * 2);
+          ctx.stroke();
+
+          ctx.fillStyle = '#18181b';
+          ctx.fillRect(bobX - 3, bobY - 3, 6, 6);
+          ctx.fillStyle = '#ef4444';
+          ctx.fillRect(bobX - 2, bobY - 2, 4, 2);
+          ctx.fillStyle = '#f8fafc';
+          ctx.fillRect(bobX - 2, bobY, 4, 2);
         }
       }
 
@@ -38813,8 +39123,9 @@
         if (!this.chloeNpc) this.chloeNpc = this.createChloeNpc();
         if (!this.rowanNpc) this.rowanNpc = this.createRowanNpc();
         if (!this.jasperNpc) this.jasperNpc = this.createJasperNpc();
+        if (!this.pierFinnNpc) this.pierFinnNpc = this.createPierFinnNpc();
         this.syncParkNpcBubbles();
-        active.push(this.chloeNpc, this.rowanNpc, this.jasperNpc);
+        active.push(this.chloeNpc, this.rowanNpc, this.jasperNpc, this.pierFinnNpc);
       }
 
       // Include NPCs currently traveling through or visiting this area on a building trip,
