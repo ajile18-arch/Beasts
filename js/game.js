@@ -397,6 +397,8 @@
       this._parkTourneyMatchRecorded = false;
       this._phoneDuelRecorded = false;
       this._leagueMatchRecorded = false;
+      this._firstBattleRewardChecked = false;
+      this._barnClubRewardChecked = false;
       if (this.overworld) this.overworld.active = false;
 
       document.getElementById('btn-rematch')?.classList.remove('hidden');
@@ -541,7 +543,13 @@
         mom:          { signature: 'zavela_the_witch',      role: 'Water Tribe', targetSize: 18, filler: ['minerva_wolf_mother', 'werewolf_pup', 'goblin_soldier', 'goblin_archer', 'rust_bucket'] },
         shopkeeper:   { signature: 'gooba_goblin_king',     role: 'Monster',     targetSize: 19, filler: ['goblin_soldier', 'goblin_archer', 'merfolk', 'werewolf_pup', 'vampire_bat'] },
         chef_marco:   { signature: 'krythos_the_basilisk',  role: 'Lizard',      targetSize: 18, filler: ['orc_infantry', 'merfolk', 'goblin_soldier', 'goblin_archer', 'rust_bucket'] },
-        shaun:        { signature: 'lothar_vampire_prince', role: 'Vampire',     targetSize: 18, filler: ['scrap_heap', 'rust_bucket', 'goblin_soldier', 'goblin_archer', 'werewolf_pup'] }
+        shaun:        { signature: 'lothar_vampire_prince', role: 'Vampire',     targetSize: 18, filler: ['scrap_heap', 'rust_bucket', 'goblin_soldier', 'goblin_archer', 'werewolf_pup'] },
+        barn_kid_toby:  { signature: 'gooba_goblin_king',   role: 'Goblin Army', targetSize: 18, filler: ['goblin_soldier', 'goblin_archer', 'werewolf_pup', 'rust_bucket', 'merfolk'] },
+        barn_kid_daisy: { signature: 'sea_dragon',          role: 'Water Tribe', targetSize: 18, filler: ['merfolk', 'frost_skink', 'goblin_soldier', 'goblin_archer', 'werewolf_pup'] },
+        barn_kid_owen:  { signature: 'krythos_the_basilisk',role: 'Lizard',      targetSize: 18, filler: ['pyromanda', 'frost_skink', 'goblin_soldier', 'goblin_archer', 'rust_bucket'] },
+        barn_kid_poppy: { signature: 'manson_wolf_father',  role: 'Wolf Pack',   targetSize: 18, filler: ['werewolf_pup', 'goblin_soldier', 'goblin_archer', 'merfolk', 'vampire_bat'] },
+        farmstand_hazel:{ signature: 'manson_wolf_father',  role: 'Wolf Pack',   targetSize: 18, filler: ['werewolf_pup', 'goblin_soldier', 'goblin_archer', 'rust_bucket', 'merfolk'] },
+        fishmonger_marina:{ signature: 'sea_dragon',        role: 'Water Tribe', targetSize: 18, filler: ['merfolk', 'frost_skink', 'mersoldier', 'goblin_soldier', 'rust_bucket'] }
       };
     }
 
@@ -777,6 +785,9 @@
       const p2Deck = isTutorial
         ? ['goblin_soldier', 'werewolf_pup', 'merfolk', 'rust_bucket', 'vampire_thrall', 'orc_slinger'].map((id, idx) => this.createCardInstance(id, `tut_p2d_${idx}`))
         : this.buildDeck(p2Guaranteed, p2CustomDeck, 40, this.gameMode === 'ai' ? 1 : Infinity);
+      this._lastOpponentDeckIds = p2Deck.map(c => c.id);
+      this._firstBattleRewardChecked = false;
+      this._barnClubRewardChecked = false;
 
       const p1Hand = isTutorial
         ? ['goblin_soldier', 'goblin_archer', 'orc_infantry', 'rust_bucket', 'werewolf_pup', 'merfolk', 'vampire_bat'].map((id, idx) => this.createCardInstance(id, `tut_p1h_${idx}`))
@@ -1268,6 +1279,29 @@
       return rows[rowKey].some(c => c.uid !== card.uid && c.role === role);
     }
 
+    isDoubleHitActive(card, team) {
+      const role = card?.doubleHitIfRowRole || GWENT_CARDS[card?.id]?.doubleHitIfRowRole;
+      return Boolean(role && this.hasRowRoleAlly(card, team, role));
+    }
+
+    canAttackKillTarget(attacker, attackerTeam, targetCard) {
+      if (!attacker || !targetCard) return false;
+      const dmg = Math.max(1, attacker.power);
+      const hits = this.isDoubleHitActive(attacker, attackerTeam) ? 2 : 1;
+      let deflect = Boolean(targetCard.deflectOnce);
+      let shield = Boolean(targetCard.shield);
+      let armor = targetCard.armor || 0;
+      let power = targetCard.power || 0;
+      for (let i = 0; i < hits; i++) {
+        if (power <= 0) break;
+        if (deflect) { deflect = false; continue; }
+        if (shield) { shield = false; continue; }
+        if (armor > 0) { armor = Math.max(0, armor - dmg); continue; }
+        power = Math.max(0, power - dmg);
+      }
+      return power <= 0;
+    }
+
     getCardRowKey(team, cardUid) {
       const rows = this.state?.players?.[team]?.rows;
       if (!rows) return null;
@@ -1663,14 +1697,16 @@
       attacker.attackedThisTurn = true;
       this.state.selectedAttackerUid = null;
 
+      // Capture positions before damageUnit/render in case Twin Tide triggers a second visual strike
+      const srcMetrics = this.getBattlefieldCardMetrics(attacker.uid);
+      const tgtMetrics = this.getBattlefieldCardMetrics(targetCard.uid);
+
       // Trigger line animation & class/element-matched attack sound before re-rendering
       this.playAttackLineAnimation(attacker.uid, targetCard.uid, dmg, attacker.element);
       window.soundFX?.playElementAttack?.(attacker.element);
 
       const logType = attackerTeam === 1 ? 'team1' : 'team2';
-      const hitTwice = Boolean(
-        attacker.doubleHitIfRowRole && this.hasRowRoleAlly(attacker, attackerTeam, attacker.doubleHitIfRowRole)
-      );
+      const hitTwice = this.isDoubleHitActive(attacker, attackerTeam);
       this.log(`⚔️ ${attacker.name} attacked ${targetCard.name} for ${dmg} damage!`, logType);
       this.damageUnit(targetCard, dmg, targetTeam, targetRow);
 
@@ -1679,6 +1715,22 @@
         this.log(`🔱 ${attacker.name}'s Twin Tide strikes ${targetCard.name} a second time for ${dmg} damage!`, logType);
         this.damageUnit(targetCard, dmg, targetTeam, targetRow);
         targetDestroyed = !this.state.players[targetTeam]?.rows?.[targetRow]?.some(c => c.uid === targetCard.uid);
+
+        if (srcMetrics && tgtMetrics) {
+          setTimeout(() => {
+            if (!srcMetrics.battlefield.isConnected) return;
+            this.spawnAttackBeam(srcMetrics.battlefield, srcMetrics.x, srcMetrics.y, tgtMetrics.x, tgtMetrics.y, 'water', 950, '#38bdf8');
+            this.spawnAttackRing(srcMetrics.battlefield, tgtMetrics, 'gwent-attack-target-ring', '#38bdf8', 950);
+            const pop = document.createElement('div');
+            pop.className = 'gwent-dmg-pop twin-tide-pop';
+            pop.textContent = `🔱 -${dmg}`;
+            pop.style.left = `${tgtMetrics.x}px`;
+            pop.style.top = `${tgtMetrics.y - 26}px`;
+            srcMetrics.battlefield.appendChild(pop);
+            setTimeout(() => pop.remove(), 950);
+            window.soundFX?.playElementAttack?.(attacker.element);
+          }, 260);
+        }
       }
       if (targetDestroyed && attacker.onKillPowerGain > 0 && (attacker.killBonusPower || 0) < (attacker.onKillMaxBonus || 0)) {
         const remainingCap = (attacker.onKillMaxBonus || 0) - (attacker.killBonusPower || 0);
@@ -3039,11 +3091,13 @@
         bestChoice = { card: fallback, row: fallback.row === 'agile' ? 'melee' : fallback.row };
       }
 
+      this._pendingDeployAnimUntil = 0;
       this.playCardToRow(2, bestChoice.card.uid, bestChoice.row);
+      const aiDelay = Math.max(950, (this._pendingDeployAnimUntil || 0) - Date.now() + 220);
       this.aiTimeout = setTimeout(() => {
         if (this.isMatchOver || !this.state || this.state.turnTeam !== 2) return;
         this.runAiAttacksAndEnd();
-      }, 950);
+      }, aiDelay);
     }
 
     runAiAttacksAndEnd() {
@@ -3075,11 +3129,10 @@
 
       const attacker = readyAttackers[0];
       const oppTargets = this.getValidAttackTargets(2, attacker.uid);
-      const dmg = Math.max(1, attacker.power);
-      // Prefer a target that will be destroyed, otherwise the highest-power target
+      // Prefer a target that will be destroyed (accounting for Twin Tide double-hit), otherwise highest-power target
       oppTargets.sort((a, b) => {
-        const aKills = (a.card.armor <= 0 && a.card.power <= dmg) ? 1 : 0;
-        const bKills = (b.card.armor <= 0 && b.card.power <= dmg) ? 1 : 0;
+        const aKills = this.canAttackKillTarget(attacker, 2, a.card) ? 1 : 0;
+        const bKills = this.canAttackKillTarget(attacker, 2, b.card) ? 1 : 0;
         if (bKills !== aKills) return bKills - aKills;
         return b.card.power - a.card.power;
       });
@@ -3258,10 +3311,9 @@
 
         const attacker = readyAttackers[0];
         const oppTargets = this.getValidAttackTargets(team, attacker.uid);
-        const dmg = Math.max(1, attacker.power);
         oppTargets.sort((a, b) => {
-          const aKills = (a.card.armor <= 0 && a.card.power <= dmg) ? 1 : 0;
-          const bKills = (b.card.armor <= 0 && b.card.power <= dmg) ? 1 : 0;
+          const aKills = this.canAttackKillTarget(attacker, team, a.card) ? 1 : 0;
+          const bKills = this.canAttackKillTarget(attacker, team, b.card) ? 1 : 0;
           if (bKills !== aKills) return bKills - aKills;
           return b.card.power - a.card.power;
         });
@@ -3518,6 +3570,75 @@
         this.overworld.gold = Math.round(((this.overworld.gold || 0) + 1.50) * 100) / 100;
         this.overworld.updateHUDSaveInfo?.();
         msgEl.innerHTML += `<div style="margin-top: 10px; color: #93c5fd;">🏆 Friday Night Mythos League Bounty: +$1.50!</div>`;
+      }
+
+      if (
+        !this._firstBattleRewardChecked &&
+        !this.currentChallenger?.isTutorial &&
+        isPlayerVictory &&
+        this.gameMode === 'ai' &&
+        this.currentChallenger?.id &&
+        this.overworld?.grantFirstBattleReward
+      ) {
+        this._firstBattleRewardChecked = true;
+        const firstReward = this.overworld.grantFirstBattleReward(this.currentChallenger, this._lastOpponentDeckIds || []);
+        if (firstReward && msgEl) {
+          let rewardLine = '';
+          if (firstReward.type === 'money') {
+            rewardLine = `💵 <b>+$${firstReward.amount.toFixed(2)}</b> cash bonus!`;
+          } else if (firstReward.type === 'base_pack') {
+            rewardLine = `🃏 <b>1× Unopened Mythos Base Card Pack</b> added to your bag!`;
+          } else if (firstReward.type === 'premium_pack') {
+            rewardLine = `💎 <b>1× 1st-Edition Mythos Premium Pack</b> added to your bag!`;
+          } else if (firstReward.type === 'card_pick') {
+            rewardLine = `⭐ <b>Rare 5% Drop!</b> Pick a <b>3★–5★</b> card from ${firstReward.npcName}'s deck upon returning to Overworld!`;
+          }
+          if (rewardLine) {
+            msgEl.innerHTML += `<div style="margin-top: 12px; padding: 10px 14px; background: rgba(245, 158, 11, 0.16); border: 1px solid #f59e0b; border-radius: 10px; color: #fef3c7;">🎁 <b>First Battle Reward:</b> ${rewardLine}</div>`;
+          }
+        }
+      }
+
+      if (
+        !this._barnClubRewardChecked &&
+        !this.currentChallenger?.isTutorial &&
+        this.gameMode === 'ai' &&
+        this.overworld?.currentArea === 'haystack_barn_club_interior' &&
+        this.overworld?.grantBarnClubhouseReward
+      ) {
+        this._barnClubRewardChecked = true;
+        const barnReward = this.overworld.grantBarnClubhouseReward(this.currentChallenger, isPlayerVictory);
+        if (barnReward && msgEl) {
+          if (barnReward.outcome === 'win') {
+            msgEl.innerHTML += `<div style="margin-top: 12px; padding: 10px 14px; background: rgba(234, 179, 8, 0.16); border: 1px solid #eab308; border-radius: 10px; color: #fef9c3;">${barnReward.icon} <b>Barn Clubhouse Prize (${barnReward.streak}-Win Streak):</b> <b>${barnReward.label}</b> added to your bag!</div>`;
+          } else {
+            msgEl.innerHTML += `<div style="margin-top: 12px; padding: 10px 14px; background: rgba(99, 102, 241, 0.16); border: 1px solid #818cf8; border-radius: 10px; color: #e0e7ff;">🫐 <b>Barn Clubhouse Consolation Prize:</b> <b>1× Basket of Berries</b> added to your bag!</div>`;
+          }
+        }
+      }
+
+      if (
+        !this.currentChallenger?.isTutorial &&
+        isPlayerVictory &&
+        this.gameMode === 'ai' &&
+        this.currentChallenger?.id === 'pier_finn' &&
+        this.overworld?.grantOldFinnFishingPole?.()
+      ) {
+        if (msgEl) {
+          msgEl.innerHTML += `<div style="margin-top: 12px; padding: 10px 14px; background: rgba(14, 165, 233, 0.18); border: 1px solid #38bdf8; border-radius: 10px; color: #e0f2fe;">🎣 <b>Old Finn's Gift:</b> You received <b>Old Finn's Oak Fishing Pole</b>! Equip it from your Inventory to cast into Meadowbrook Lake!</div>`;
+        }
+      }
+
+      if (
+        !this.currentChallenger?.isTutorial &&
+        isPlayerVictory &&
+        this.gameMode === 'ai' &&
+        this.currentChallenger?.id === 'arcade_zeke' &&
+        this.overworld?.onArcadeZekeQuestVictory?.()
+      ) {
+        if (msgEl) {
+          msgEl.innerHTML += `<div style="margin-top: 12px; padding: 10px 14px; background: rgba(245, 158, 11, 0.18); border: 1px solid #f59e0b; border-radius: 10px; color: #fef3c7;">📦 <b>Missing Booster Shipment:</b> Zeke handed over <b>Leo's 1st-Edition Booster Crate</b>! Check in with <b>Chief Miller</b> at the Police Station before returning it to Leo.</div>`;
+        }
       }
 
       if (!this.currentChallenger?.isTutorial && this.gameMode === 'ai' && this.overworld) {
@@ -4005,10 +4126,14 @@
       el.dataset.uid = card.uid;
 
       const powerClass = card.power > card.basePower ? 'boosted' : (card.power < card.basePower ? 'damaged' : '');
+      const twinTideActive = onBoard && ownerTeam != null && this.isDoubleHitActive(card, ownerTeam);
+      const twinTideHtml = twinTideActive
+        ? `<div class="gwent-card-double-hit" title="Twin Tide Active: Hits twice when attacking!">🔱×2</div>`
+        : '';
       const armorHtml = card.armor > 0 ? `<div class="gwent-card-armor">🛡️${card.armor}</div>` : '';
       const shieldHtml = card.shield ? `<div class="gwent-card-shield-badge" title="Shield: Ignores next instance of damage">🔰</div>` : '';
-      const defensesHtml = (card.armor > 0 || card.shield)
-        ? `<div class="gwent-card-defenses">${shieldHtml}${armorHtml}</div>`
+      const defensesHtml = (card.armor > 0 || card.shield || twinTideActive)
+        ? `<div class="gwent-card-defenses">${twinTideHtml}${shieldHtml}${armorHtml}</div>`
         : '';
       const iceBorderHtml = isFrozen ? `<div class="gwent-card-ice-overlay" title="Frozen: Cannot attack on its next turn"></div>` : '';
 

@@ -12323,6 +12323,17 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.85);
 }
 
+.gwent-card-double-hit {
+  padding: 2px 5px;
+  border-radius: 6px;
+  background: linear-gradient(180deg, #0e7490, #082f49);
+  border: 1px solid #38bdf8;
+  color: #e0f2fe;
+  font-size: 10px;
+  font-weight: 800;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.85);
+}
+
 .gwent-card-row-badge {
   position: absolute;
   bottom: 20px;
@@ -13193,6 +13204,11 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
 .gwent-dmg-pop.shield-pop {
   color: #38bdf8 !important;
   text-shadow: 0 2px 8px rgba(14, 165, 233, 0.85) !important;
+}
+
+.gwent-dmg-pop.twin-tide-pop {
+  color: #38bdf8 !important;
+  text-shadow: 0 2px 8px rgba(8, 47, 73, 0.95), 0 0 12px rgba(56, 189, 248, 0.9) !important;
 }
 
 .gwent-attack-svg {

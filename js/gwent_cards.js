@@ -1174,9 +1174,50 @@
           [pool[i], pool[j]] = [pool[j], pool[i]];
         }
         const picks = pool.slice(0, 3);
-        playSound('magic');
-        picks.forEach(p => game.damageUnit(p.unit, dmg, oppTeam, p.rowKey));
-        game.log(`✨ ${card.name}'s Triple Mischief dealt ${dmg} damage to ${picks.length} enemy unit(s)!`, logType);
+        const hasLiveBoard = !game.headless
+          && typeof document !== 'undefined'
+          && Boolean(document.getElementById('gwent-battlefield'))
+          && typeof game.render === 'function';
+
+        if (!hasLiveBoard) {
+          playSound('magic');
+          picks.forEach(p => game.damageUnit(p.unit, dmg, oppTeam, p.rowKey));
+          game.log(`✨ ${card.name}'s Triple Mischief dealt ${dmg} damage to ${picks.length} enemy unit(s)!`, logType);
+          return;
+        }
+
+        const firstDelayMs = 420;
+        const stepDelayMs = 620;
+        game._pendingDeployAnimUntil = Date.now() + firstDelayMs + picks.length * stepDelayMs;
+
+        picks.forEach((p, idx) => {
+          setTimeout(() => {
+            if (game.isMatchOver || !game.state) return;
+            const rowArr = game.state.players?.[oppTeam]?.rows?.[p.rowKey];
+            if (!Array.isArray(rowArr) || !rowArr.some(u => u && u.uid === p.unit.uid)) return;
+
+            const srcM = game.getBattlefieldCardMetrics?.(card.uid);
+            const tgtM = game.getBattlefieldCardMetrics?.(p.unit.uid);
+
+            playSound('magic');
+            game.damageUnit(p.unit, dmg, oppTeam, p.rowKey);
+            game.log(`✨ ${card.name}'s Triple Mischief (${idx + 1}/${picks.length}) hit ${p.unit.name} for ${dmg} damage!`, logType);
+            game.render();
+
+            const bf = document.getElementById('gwent-battlefield');
+            if (bf && srcM && tgtM) {
+              game.spawnAttackBeam?.(bf, srcM.x, srcM.y, tgtM.x, tgtM.y, 'magic', 680, '#c084fc');
+              game.spawnAttackRing?.(bf, tgtM, 'gwent-attack-target-ring', '#c084fc', 680);
+              const pop = document.createElement('div');
+              pop.className = 'gwent-dmg-pop';
+              pop.textContent = `✨ -${dmg}`;
+              pop.style.left = `${tgtM.x}px`;
+              pop.style.top = `${tgtM.y - 20}px`;
+              bf.appendChild(pop);
+              setTimeout(() => pop.remove(), 680);
+            }
+          }, firstDelayMs + idx * stepDelayMs);
+        });
       },
       aiScore(ctx) {
         const { game, team, oppTeam } = ctx || {};

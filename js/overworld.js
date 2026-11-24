@@ -87,6 +87,25 @@
       this.lastDuelCallTotalMinute = this.worldSave?.lastDuelCallTotalMinute ?? -999;
       this.activeIncomingDuelCall = null;
       this.pendingPhoneDuelCardReward = null;
+      this.pendingFirstBattleCardReward = null;
+      this.firstBattleRewardNpcs = (this.worldSave?.firstBattleRewardNpcs && typeof this.worldSave.firstBattleRewardNpcs === 'object')
+        ? { ...this.worldSave.firstBattleRewardNpcs }
+        : {};
+      this.barnClubWinStreak = (typeof this.worldSave?.barnClubWinStreak === 'number' && Number.isFinite(this.worldSave.barnClubWinStreak))
+        ? Math.max(0, Math.floor(this.worldSave.barnClubWinStreak))
+        : (this.worldSave?.barnClubWinStreaks && typeof this.worldSave.barnClubWinStreaks === 'object')
+          ? Math.max(0, ...Object.values(this.worldSave.barnClubWinStreaks).map(v => Math.max(0, Math.floor(Number(v) || 0))))
+          : 0;
+      this.farmstandMarket = (this.worldSave?.farmstandMarket && typeof this.worldSave.farmstandMarket === 'object')
+        ? { ...this.worldSave.farmstandMarket }
+        : null;
+      this.hasFishingPole = Boolean(
+        this.worldSave?.hasFishingPole ||
+        (Array.isArray(this.worldSave?.inventory) && this.worldSave.inventory.some(i => i?.id === 'fishing_pole'))
+      );
+      this.fishingPoleEquipped = Boolean(this.worldSave?.fishingPoleEquipped && this.hasFishingPole);
+      this.fishingState = null;
+      this._hoverWorldTile = null;
       this._duelCallToastTimer = null;
       this.duoSelectedBeasts = [];
       this.migratedMom25 = this.worldSave?.migratedMom25 ?? false;
@@ -250,6 +269,14 @@
           intEntry: { x: 7.90, y: 9.75 },
           spots: [{ x: 9.2, y: 7.6, dir: 'down' }, { x: 5.5, y: 8.2, dir: 'up' }]
         },
+        fishmonger_shop_interior: {
+          area: 'fishmonger_shop_interior',
+          name: 'Oakhaven Fishmonger',
+          extDoor: { x: -20.70, y: 31.95 },
+          intEntry: { x: 11.0, y: 11.35 },
+          intExit: { x: 11.0, y: 11.95 },
+          spots: [{ x: 11.0, y: 8.3, dir: 'up' }, { x: 8.6, y: 9.2, dir: 'up' }]
+        },
         clothing_store_interior: {
           area: 'clothing_store_interior',
           name: 'Oakhaven Apparel',
@@ -279,6 +306,18 @@
             { x: 35.40, y: 5.10, dir: 'right' },
             { x: 36.15, y: 5.60, dir: 'right' },
             { x: 36.45, y: 5.15, dir: 'down' }
+          ]
+        },
+        haystack_barn_club_interior: {
+          area: 'haystack_barn_club_interior',
+          name: 'Barn Card Clubhouse',
+          extDoor: { x: 47.25, y: -24.85 },
+          intEntry: { x: 11.0, y: 11.3 },
+          intExit: { x: 11.0, y: 12.1 },
+          spots: [
+            { x: 7.4, y: 9.0, dir: 'right' },
+            { x: 14.8, y: 9.0, dir: 'left' },
+            { x: 11.0, y: 10.6, dir: 'up' }
           ]
         }
       };
@@ -402,6 +441,13 @@
           extDoor: { x: 42.60, y: -16.25 },
           intEntry: { x: 11.0, y: 11.6 },
           spots: [{ x: 17.8, y: 8.8, dir: 'left' }, { x: 4.5, y: 8.8, dir: 'right' }]
+        },
+        haystack_barn_1f_interior: {
+          area: 'haystack_barn_1f_interior',
+          name: 'Haystack Yard & Barn',
+          extDoor: { x: 47.25, y: -24.85 },
+          intEntry: { x: 11.0, y: 11.6 },
+          spots: [{ x: 13.8, y: 8.6, dir: 'left' }, { x: 8.8, y: 8.8, dir: 'right' }]
         }
       };
       this.AREA_PORTALS = {
@@ -419,6 +465,7 @@
         fire_station_interior: { extDoor: { x: 6.10, y: 27.45 }, intEntry: { x: 13.30, y: 9.75 } },
         police_station_interior: { extDoor: { x: 9.90, y: 27.45 }, intEntry: { x: 7.90, y: 9.75 } },
         barber_shop_interior: { extDoor: { x: -21.70, y: 20.45 }, intEntry: { x: 7.90, y: 9.75 } },
+        fishmonger_shop_interior: { extDoor: { x: -20.70, y: 31.95 }, intEntry: { x: 11.0, y: 11.35 }, intExit: { x: 11.0, y: 11.95 } },
         clothing_store_interior: { extDoor: { x: -15.80, y: 20.45 }, intEntry: { x: 7.90, y: 9.75 } },
         animal_hospital_interior: { extDoor: { x: -10.45, y: 27.45 }, intEntry: { x: 7.90, y: 9.75 } },
         west_house_1_interior: { extDoor: { x: -2.60, y: 14.45 }, intEntry: { x: 7.90, y: 9.75 } },
@@ -429,9 +476,11 @@
         west_oak_1_interior: { extDoor: { x: -2.90, y: 3.60 }, intEntry: { x: 7.90, y: 9.75 } },
         west_oak_2_interior: { extDoor: { x: -7.10, y: 3.60 }, intEntry: { x: 7.90, y: 9.75 } },
         farmhouse_1_1f_interior: { extDoor: { x: 23.70, y: -16.25 }, intEntry: { x: 11.0, y: 11.6 } },
-        farmhouse_1_2f_interior: { extDoor: { x: 23.70, y: -16.25 }, intEntry: { x: 11.0, y: 11.6 } },
+        farmhouse_1_2f_interior: { extDoor: { x: 23.70, y: -16.25 }, intEntry: { x: 10.6, y: 8.9 }, intExit: { x: 11.25, y: 6.75 } },
         farmhouse_2_1f_interior: { extDoor: { x: 42.60, y: -16.25 }, intEntry: { x: 11.0, y: 11.6 } },
-        farmhouse_2_2f_interior: { extDoor: { x: 42.60, y: -16.25 }, intEntry: { x: 11.0, y: 11.6 } },
+        farmhouse_2_2f_interior: { extDoor: { x: 42.60, y: -16.25 }, intEntry: { x: 10.8, y: 10.7 }, intExit: { x: 11.10, y: 12.0 } },
+        haystack_barn_1f_interior: { extDoor: { x: 47.25, y: -24.85 }, intEntry: { x: 11.0, y: 11.6 } },
+        haystack_barn_club_interior: { extDoor: { x: 47.25, y: -24.85 }, intEntry: { x: 11.0, y: 11.3 }, intExit: { x: 11.0, y: 12.1 } },
         apartment_hall_interior: { extDoor: { x: -9.20, y: 32.00 }, intEntry: { x: 8.0, y: 8.95 } },
         apt_1_interior: { extDoor: { x: -9.20, y: 32.00 }, intEntry: { x: 8.0, y: 8.6 } },
         apt_2_interior: { extDoor: { x: -9.20, y: 32.00 }, intEntry: { x: 8.0, y: 8.6 } },
@@ -532,6 +581,7 @@
       this.rowanNpc = this.createRowanNpc();
       this.jasperNpc = this.createJasperNpc();
       this.pierFinnNpc = this.createPierFinnNpc();
+      this.farmstandHazelNpc = this.createFarmstandHazelNpc();
       this.bertoNpc = this.createBertoNpc();
       this.shaunNpc = this.createShaunNpc();
       this.evelynNpc = this.createEvelynNpc();
@@ -542,6 +592,7 @@
       this.aptNinaNpc = this.createAptNinaNpc();
       this.aptMilesNpc = this.createAptMilesNpc();
       this.barberNpc = this.createBarberNpc();
+      this.fishmongerMarinaNpc = this.createFishmongerMarinaNpc();
       this.tailorNpc = this.createTailorNpc();
       this.vetNpc = this.createVetNpc();
       this.westOtisNpc = this.createWestOtisNpc();
@@ -553,6 +604,11 @@
       this.fh1HarlanNpc = this.createFh1HarlanNpc();
       this.fh2EleanorNpc = this.createFh2EleanorNpc();
       this.fh2ArthurNpc = this.createFh2ArthurNpc();
+      this.barnKidTobyNpc = this.createBarnKidTobyNpc();
+      this.barnKidDaisyNpc = this.createBarnKidDaisyNpc();
+      this.barnKidOwenNpc = this.createBarnKidOwenNpc();
+      this.barnKidPoppyNpc = this.createBarnKidPoppyNpc();
+      this.syncBarnKidsSchedule(true);
       this.arcadeZekeNpc = this.createArcadeZekeNpc();
       this.leagueRegistrarNpc = this.createLeagueRegistrarNpc();
       this.syncParkNpcBubbles();
@@ -566,6 +622,7 @@
         this.rowanNpc,
         this.jasperNpc,
         this.pierFinnNpc,
+        this.farmstandHazelNpc,
         this.bertoNpc
       ];
       this.oakhavenLeague = this.worldSave?.oakhavenLeague
@@ -990,6 +1047,32 @@
       };
     }
 
+    createFishmongerMarinaNpc() {
+      const CS = window.MythosCharacterSprites;
+      return {
+        id: 'fishmonger_marina',
+        name: 'Marina',
+        x: 11.0,
+        y: 4.95,
+        dir: 'down',
+        walkTick: 0,
+        bubble: '🐟',
+        hangoutSpot: { area: 'fishmonger_shop_interior', x: 11.0, y: 4.95, dir: 'down', radius: 0, label: 'Oakhaven Fishmonger' },
+        sprite: new CS.CharacterSpriteSheet({
+          name: 'Marina',
+          skin: 'fair',
+          hairStyle: 'braid',
+          hairColor: 'auburn',
+          eyeColor: 'brown',
+          outfitStyle: 'apron',
+          outfitColor: 'navy',
+          pantsColor: 'indigo',
+          hatStyle: 'beanie',
+          customSprite: 'fishmonger_marina_d'
+        })
+      };
+    }
+
     createTailorNpc() {
       const CS = window.MythosCharacterSprites;
       return {
@@ -1274,6 +1357,77 @@
           customSprite: 'fh2_arthur_d'
         })
       };
+    }
+
+    _buildBarnKidNpc({ id, name, bubble, dayHangoutSpot, nightHangoutSpot, appearance, customSprite }) {
+      const CS = window.MythosCharacterSprites;
+      const startSpot = this.isBarnKidsNightTime() ? nightHangoutSpot : dayHangoutSpot;
+      return {
+        id,
+        name,
+        isBarnKid: true,
+        x: startSpot.x,
+        y: startSpot.y,
+        dir: startSpot.dir || 'down',
+        walkTick: 0,
+        bubble,
+        dayHangoutSpot,
+        nightHangoutSpot,
+        hangoutSpot: startSpot,
+        sprite: new CS.CharacterSpriteSheet({
+          name,
+          ...appearance,
+          customSprite
+        })
+      };
+    }
+
+    createBarnKidTobyNpc() {
+      return this._buildBarnKidNpc({
+        id: 'barn_kid_toby',
+        name: 'Toby',
+        bubble: '🃏',
+        dayHangoutSpot: { area: 'haystack_barn_club_interior', x: 6.8, y: 7.6, dir: 'right', radius: 1.4, label: 'Barn Card Clubhouse' },
+        nightHangoutSpot: { area: 'farmhouse_1_2f_interior', x: 13.8, y: 8.2, dir: 'down', radius: 1.1, label: "Harlan & Martha's Kids' Room" },
+        appearance: { skin: 'tan', hairStyle: 'spiky', hairColor: 'blonde', eyeColor: 'brown', outfitStyle: 'jacket', outfitColor: 'cobalt', pantsColor: 'denim', hatStyle: 'cap' },
+        customSprite: 'barn_kid_toby_d'
+      });
+    }
+
+    createBarnKidDaisyNpc() {
+      return this._buildBarnKidNpc({
+        id: 'barn_kid_daisy',
+        name: 'Daisy',
+        bubble: '🌊',
+        dayHangoutSpot: { area: 'haystack_barn_club_interior', x: 15.4, y: 7.5, dir: 'left', radius: 1.4, label: 'Barn Card Clubhouse' },
+        nightHangoutSpot: { area: 'farmhouse_1_2f_interior', x: 15.2, y: 8.2, dir: 'down', radius: 1.1, label: "Harlan & Martha's Kids' Room" },
+        appearance: { skin: 'light', hairStyle: 'long', hairColor: 'auburn', eyeColor: 'brown', outfitStyle: 'jacket', outfitColor: 'crimson', pantsColor: 'denim', hatStyle: 'none' },
+        customSprite: 'barn_kid_daisy_d'
+      });
+    }
+
+    createBarnKidOwenNpc() {
+      return this._buildBarnKidNpc({
+        id: 'barn_kid_owen',
+        name: 'Owen',
+        bubble: '🦎',
+        dayHangoutSpot: { area: 'haystack_barn_club_interior', x: 6.8, y: 10.2, dir: 'right', radius: 1.4, label: 'Barn Card Clubhouse' },
+        nightHangoutSpot: { area: 'farmhouse_2_2f_interior', x: 16.4, y: 6.2, dir: 'right', radius: 1.1, label: "Eleanor & Arthur's Kids' Room" },
+        appearance: { skin: 'olive', hairStyle: 'swept', hairColor: 'brown', eyeColor: 'brown', outfitStyle: 'vest', outfitColor: 'navy', pantsColor: 'khaki', hatStyle: 'none' },
+        customSprite: 'barn_kid_owen_d'
+      });
+    }
+
+    createBarnKidPoppyNpc() {
+      return this._buildBarnKidNpc({
+        id: 'barn_kid_poppy',
+        name: 'Poppy',
+        bubble: '🌻',
+        dayHangoutSpot: { area: 'haystack_barn_club_interior', x: 11.8, y: 10.85, dir: 'up', radius: 1.4, label: 'Barn Card Clubhouse' },
+        nightHangoutSpot: { area: 'farmhouse_2_2f_interior', x: 17.3, y: 7.2, dir: 'up', radius: 1.1, label: "Eleanor & Arthur's Kids' Room" },
+        appearance: { skin: 'light', hairStyle: 'long', hairColor: 'chestnut', eyeColor: 'amber', outfitStyle: 'hoodie', outfitColor: 'royal', pantsColor: 'denim', hatStyle: 'none' },
+        customSprite: 'barn_kid_poppy_d'
+      });
     }
 
     createArcadeZekeNpc() {
@@ -1639,7 +1793,34 @@
           outfitStyle: 'jacket',
           outfitColor: 'navy',
           pantsColor: 'khaki',
-          hatStyle: 'cap'
+          hatStyle: 'cap',
+          customSprite: 'pier_finn_d'
+        })
+      };
+    }
+
+    createFarmstandHazelNpc() {
+      const CS = window.MythosCharacterSprites;
+      return {
+        id: 'farmstand_hazel',
+        name: 'Hazel',
+        x: 19.80,
+        y: -4.78,
+        dir: 'down',
+        walkTick: 0,
+        bubble: '🍎',
+        hangoutSpot: { area: 'exterior', x: 19.80, y: -4.78, dir: 'down', radius: 0, label: 'Roadside Farmstand' },
+        sprite: new CS.CharacterSpriteSheet({
+          name: 'Hazel',
+          skin: 'fair',
+          hairStyle: 'braid',
+          hairColor: 'brown',
+          eyeColor: 'brown',
+          outfitStyle: 'apron',
+          outfitColor: 'terracotta',
+          pantsColor: 'indigo',
+          hatStyle: 'sunhat',
+          customSprite: 'farmstand_hazel_d'
         })
       };
     }
@@ -1889,7 +2070,8 @@
         completed: { ...(src.completed || {}) },
         claimed: { ...(src.claimed || {}) },
         visitedAreas: { ...(src.visitedAreas || {}) },
-        patrolNpcs: { ...(src.patrolNpcs || {}) }
+        patrolNpcs: { ...(src.patrolNpcs || {}) },
+        steps: { ...(src.steps || {}) }
       };
     }
 
@@ -1907,6 +2089,82 @@
       this.updateHUDSaveInfo?.();
     }
 
+    getInventoryItemQty(itemId) {
+      if (!Array.isArray(this.inventory)) return 0;
+      let total = 0;
+      for (const item of this.inventory) {
+        if (item && item.id === itemId && (item.qty || 0) > 0) {
+          total += Number(item.qty) || 0;
+        }
+      }
+      return total;
+    }
+
+    consumeInventoryItemQty(itemId, count = 1) {
+      if (!Array.isArray(this.inventory) || count <= 0) return count <= 0;
+      if (this.getInventoryItemQty(itemId) < count) return false;
+      let remaining = count;
+      for (let i = 0; i < this.inventory.length && remaining > 0; i++) {
+        const item = this.inventory[i];
+        if (!item || item.id !== itemId || (item.qty || 0) <= 0) continue;
+        const avail = Number(item.qty) || 0;
+        const take = Math.min(avail, remaining);
+        item.qty = avail - take;
+        remaining -= take;
+        if (item.qty <= 0) {
+          this.inventory.splice(i, 1);
+          i--;
+        }
+      }
+      this.updateHUDSaveInfo?.();
+      return remaining === 0;
+    }
+
+    findHarvestFishInventoryIndex() {
+      if (!Array.isArray(this.inventory)) return -1;
+      let bestIdx = -1;
+      let bestPrice = Infinity;
+      for (let i = 0; i < this.inventory.length; i++) {
+        const item = this.inventory[i];
+        if (!item || (item.qty || 0) <= 0) continue;
+        const id = String(item.id || '');
+        const isHarvestFish =
+          id.startsWith('fish_yellow_perch') ||
+          id.startsWith('fish_largemouth_bass') ||
+          item.speciesId === 'yellow_perch' ||
+          item.speciesId === 'largemouth_bass';
+        if (!isHarvestFish) continue;
+        const val = Number(item.value) || 0;
+        if (val < bestPrice) {
+          bestPrice = val;
+          bestIdx = i;
+        }
+      }
+      return bestIdx;
+    }
+
+    findBigFishInventoryIndex() {
+      if (!Array.isArray(this.inventory)) return -1;
+      let bestIdx = -1;
+      let bestPrice = Infinity;
+      for (let i = 0; i < this.inventory.length; i++) {
+        const item = this.inventory[i];
+        if (!item || (item.qty || 0) <= 0) continue;
+        const id = String(item.id || '');
+        const isBigFish =
+          id.startsWith('fish_largemouth_bass') ||
+          id.startsWith('fish_northern_pike') ||
+          id.startsWith('fish_golden_koi');
+        if (!isBigFish) continue;
+        const val = Number(item.value) || 0;
+        if (val < bestPrice) {
+          bestPrice = val;
+          bestIdx = i;
+        }
+      }
+      return bestIdx;
+    }
+
     getQuestDefinitions() {
       const qs = this.questState || this.normalizeQuestState(null);
       const buildingAreas = [
@@ -1915,18 +2173,27 @@
         'bram_interior', 'mayor_interior', 'mayor_2f_interior', 'restaurant_interior',
         'corner_store_interior', 'fire_station_interior', 'police_station_interior',
         'barber_shop_interior', 'clothing_store_interior', 'animal_hospital_interior', 'school_interior',
+        'fishmonger_shop_interior',
         'west_house_1_interior', 'west_house_2_interior', 'west_house_3_interior',
         'west_oak_1_interior', 'west_oak_2_interior',
         'farmhouse_1_1f_interior', 'farmhouse_1_2f_interior',
         'farmhouse_2_1f_interior', 'farmhouse_2_2f_interior',
+        'haystack_barn_1f_interior', 'haystack_barn_club_interior',
         'arcade_interior', 'arcade_back_interior'
       ];
       const visitedBuildingsCount = buildingAreas.filter(a => qs.visitedAreas?.[a]).length;
       const patrolCount = Object.keys(qs.patrolNpcs || {}).length;
       const hasHandcuffs = Array.isArray(this.inventory) && this.inventory.some(i => i && i.id === 'quest_handcuffs' && (i.qty || 0) > 0);
       const hasTreats = Array.isArray(this.inventory) && this.inventory.some(i => i && i.id === 'quest_clara_treats' && (i.qty || 0) > 0);
+      const hasBigFish = this.findBigFishInventoryIndex() >= 0;
+      const eggsQty = this.getInventoryItemQty('farm_dozen_eggs');
+      const milkQty = this.getInventoryItemQty('farm_milk_gallon');
+      const hasHarvestFish = this.findHarvestFishInventoryIndex() >= 0;
+      const hasOrchardCider = this.getInventoryItemQty('quest_orchard_cider') > 0;
+      const hasBoosterCrate = this.getInventoryItemQty('quest_booster_crate') > 0;
+      const steps = qs.steps || {};
 
-      return [
+      const list = [
         {
           id: 'q_lost_handcuffs',
           icon: '⛓️',
@@ -1983,8 +2250,61 @@
           rewardGold: 10,
           rewardRel: 4,
           progress: () => Math.min(10, visitedBuildingsCount)
+        },
+        {
+          id: 'q_harvest_feast',
+          icon: '🍳',
+          giverNpc: 'chef_marco',
+          giverLabel: 'Chef Marco (Oakhaven Bistro)',
+          turnInNpc: 'chef_marco',
+          turnInLabel: 'Chef Marco (Oakhaven Bistro)',
+          title: 'Meadowland Harvest Feast',
+          desc: `Chef Marco is hosting a countryside feast at Oakhaven Bistro! Gather: ${eggsQty >= 2 ? '✅' : '⬜'} 2× Dozen Eggs (${Math.min(2, eggsQty)}/2, Barn Clubhouse), ${milkQty >= 1 ? '✅' : '⬜'} 1× Gallon of Milk (Barn Clubhouse 3-Win Streak), ${hasHarvestFish ? '✅' : '⬜'} 1× Yellow Perch or Largemouth Bass (Meadowbrook Lake), and ${hasOrchardCider ? '✅' : '⬜'} Jug of Orchard Cider (Hazel at Roadside Farmstand). Then deliver everything to Chef Marco!`,
+          target: 4,
+          rewardGold: 20,
+          rewardPremiumVoucher: 1,
+          rewardRel: 6,
+          progress: () => (qs.claimed?.q_harvest_feast ? 4 : (eggsQty >= 2 ? 1 : 0) + (milkQty >= 1 ? 1 : 0) + (hasHarvestFish ? 1 : 0) + (hasOrchardCider ? 1 : 0))
         }
       ];
+
+      if (this.hasBoughtCardShopPacks || qs.accepted?.q_missing_shipment || qs.claimed?.q_missing_shipment) {
+        list.push({
+          id: 'q_missing_shipment',
+          icon: '📦',
+          giverNpc: 'leo',
+          giverLabel: "Shopkeeper Leo (Leo's Card Shop)",
+          turnInNpc: 'leo',
+          turnInLabel: "Shopkeeper Leo (Leo's Card Shop)",
+          title: 'The Missing Booster Shipment',
+          desc: `Leo's 1st-Edition booster crate went missing on Main North Country Lane! ${steps.shipment_asked_hazel ? '✅' : '⬜'} Ask Hazel at the Roadside Farmstand, ${steps.shipment_beat_zeke && hasBoosterCrate ? '✅' : '⬜'} beat Arcade Zeke in a Mythos duel for the crate, ${steps.shipment_checked_chief ? '✅' : '⬜'} log the recovery with Chief Miller at the Police Station, then return the crate to Leo!`,
+          target: 3,
+          rewardGold: 0,
+          rewardBoosterPacks: 2,
+          rewardRel: 6,
+          progress: () => (qs.claimed?.q_missing_shipment ? 3 : (steps.shipment_asked_hazel ? 1 : 0) + (steps.shipment_beat_zeke && hasBoosterCrate ? 1 : 0) + (steps.shipment_checked_chief && hasBoosterCrate ? 1 : 0))
+        });
+      }
+
+      if (this.hasFishingPole || qs.accepted?.q_big_fish || qs.claimed?.q_big_fish) {
+        list.push({
+          id: 'q_big_fish',
+          icon: '🎣',
+          giverNpc: 'pier_finn',
+          giverLabel: 'Old Finn (Meadowbrook Pier)',
+          turnInNpc: 'pier_finn',
+          turnInLabel: 'Old Finn (Meadowbrook Pier)',
+          title: 'Big Fish',
+          desc: 'Old Finn wants to see you reel in a real Big Fish from Meadowbrook Lake — catch a Largemouth Bass, Northern Pike, or Golden Mythos Koi and bring it to him on the pier.',
+          target: 1,
+          rewardGold: 0,
+          rewardPremiumVoucher: 1,
+          rewardRel: 5,
+          progress: () => ((qs.claimed?.q_big_fish || hasBigFish) ? 1 : 0)
+        });
+      }
+
+      return list;
     }
 
     acceptNpcQuest(questId) {
@@ -2033,6 +2353,43 @@
       } else if (questId === 'q_cottage_delivery') {
         this.removeQuestInventoryItem('quest_clara_treats');
         this.gainDialogueRelationship?.('clara', 2, 'completed delivery');
+      } else if (questId === 'q_big_fish') {
+        const fishIdx = this.findBigFishInventoryIndex();
+        if (fishIdx < 0) return false;
+        const fishItem = this.inventory[fishIdx];
+        if ((fishItem.qty || 1) <= 1) {
+          this.inventory.splice(fishIdx, 1);
+        } else {
+          fishItem.qty -= 1;
+        }
+        this.renderInventoryModal?.();
+      } else if (questId === 'q_harvest_feast') {
+        const fishIdx = this.findHarvestFishInventoryIndex();
+        if (
+          this.getInventoryItemQty('farm_dozen_eggs') < 2 ||
+          this.getInventoryItemQty('farm_milk_gallon') < 1 ||
+          fishIdx < 0 ||
+          this.getInventoryItemQty('quest_orchard_cider') < 1
+        ) {
+          return false;
+        }
+        this.consumeInventoryItemQty('farm_dozen_eggs', 2);
+        this.consumeInventoryItemQty('farm_milk_gallon', 1);
+        const fishItem = this.inventory[this.findHarvestFishInventoryIndex()];
+        if (fishItem) {
+          if ((fishItem.qty || 1) <= 1) {
+            this.inventory.splice(this.inventory.indexOf(fishItem), 1);
+          } else {
+            fishItem.qty -= 1;
+          }
+        }
+        this.removeQuestInventoryItem('quest_orchard_cider');
+        this.renderInventoryModal?.();
+        this.gainDialogueRelationship?.('farmstand_hazel', 4, 'completed Meadowland Harvest Feast');
+      } else if (questId === 'q_missing_shipment') {
+        if (this.getInventoryItemQty('quest_booster_crate') < 1) return false;
+        this.removeQuestInventoryItem('quest_booster_crate');
+        this.renderInventoryModal?.();
       }
 
       this.questState.completed[questId] = true;
@@ -2051,6 +2408,19 @@
           desc: `<b>Unopened Mythos Base Set Booster Pack (1st Edition)</b> — Reward from completing "${q.title}"!`
         });
       }
+      if (q.rewardPremiumVoucher > 0) {
+        this.addInventoryItem?.({
+          id: 'premium_pack_voucher',
+          name: 'Premium Pack Voucher',
+          shortName: 'Premium Pack Voucher',
+          qty: q.rewardPremiumVoucher,
+          icon: '🎟️',
+          type: 'voucher',
+          desc: questId === 'q_big_fish'
+            ? "<b>Premium Pack Voucher</b> — Gifted by Old Finn for catching a Big Fish! Click <b>🎟️ Redeem for Premium Pack</b> in your Inventory to claim <b>1× free 1st-Edition Mythos Premium Pack</b>."
+            : `<b>Premium Pack Voucher</b> — Reward from completing "${q.title}"! Click <b>🎟️ Redeem for Premium Pack</b> in your Inventory to claim <b>1× free 1st-Edition Mythos Premium Pack</b>.`
+        });
+      }
       if (q.turnInNpc && q.rewardRel) {
         this.gainDialogueRelationship?.(q.turnInNpc, q.rewardRel, `completed "${q.title}"`);
       }
@@ -2061,7 +2431,8 @@
       this.saveWorldData?.(this.draftAppearance);
       const rewardParts = [];
       if (q.rewardGold > 0) rewardParts.push(`+$${q.rewardGold}`);
-      if (q.rewardBoosterPacks > 0) rewardParts.push(`+${q.rewardBoosterPacks} Booster Pack`);
+      if (q.rewardBoosterPacks > 0) rewardParts.push(`+${q.rewardBoosterPacks} Booster Pack${q.rewardBoosterPacks > 1 ? 's' : ''}`);
+      if (q.rewardPremiumVoucher > 0) rewardParts.push(`+${q.rewardPremiumVoucher} Premium Pack Voucher`);
       this.showAutosaveIndicator?.(`🎁 Quest Complete: ${q.title}! (${rewardParts.join(', ')})`);
       return true;
     }
@@ -2078,6 +2449,7 @@
     getNpcQuestChoices(npcId) {
       if (!this.questState) this.questState = this.normalizeQuestState(null);
       const qs = this.questState;
+      const steps = qs.steps || (qs.steps = {});
       const normNpcId = this.normalizeRelationshipNpcId ? this.normalizeRelationshipNpcId(npcId) : npcId;
       const defs = this.getQuestDefinitions();
       const out = [];
@@ -2133,8 +2505,113 @@
                 el.innerHTML = `<b>Mayor Donald:</b> "Splendid work! Knowing every corner of Oakhaven makes you a true ambassador. Please accept this <b>$${q.rewardGold}</b> civic stipend!"`;
               }
             });
+          } else if (q.id === 'q_big_fish') {
+            out.push({
+              label: `📜 [Turn In] "Look at this Big Fish I caught, Finn!" (🎟️ Premium Pack Voucher)`,
+              primary: true,
+              isQuestAction: true,
+              questDoneLabel: '✅ Big Fish Shown (+1 Premium Pack Voucher)',
+              onSelect: (el) => {
+                if (this.turnInNpcQuest(q.id)) {
+                  el.innerHTML = `<b>Old Finn:</b> "By the roaring rapids — NOW that's a proper Meadowbrook lunker! You handled that oak pole like a born angler. Take this <b>Premium Pack Voucher</b> — redeem it in your Inventory whenever you want a free Premium Pack!"`;
+                }
+              }
+            });
+          } else if (q.id === 'q_harvest_feast') {
+            out.push({
+              label: `📜 [Turn In] "I brought all the Meadowland Harvest Feast ingredients, Chef!" (+$20 & 🎟️ Premium Voucher)`,
+              primary: true,
+              isQuestAction: true,
+              questDoneLabel: '✅ Harvest Feast Delivered (+$20 & Premium Voucher)',
+              onSelect: (el) => {
+                if (this.turnInNpcQuest(q.id)) {
+                  el.innerHTML = `<b>Chef Marco:</b> "Magnifico!! Fresh farm eggs, cold dairy milk, a Meadowbrook catch, and Hazel's Orchard Cider — this feast will be the talk of Oakhaven! Take <b>$20</b> and this <b>Premium Pack Voucher</b> with my gratitude!"`;
+                }
+              }
+            });
+          } else if (q.id === 'q_missing_shipment') {
+            out.push({
+              label: `📜 [Turn In] "Here's your missing 1st-Edition Booster Crate, Leo!" (🎁 2× Base Packs)`,
+              primary: true,
+              isQuestAction: true,
+              questDoneLabel: '✅ Booster Crate Returned (+2 Base Packs)',
+              onSelect: (el) => {
+                if (this.turnInNpcQuest(q.id)) {
+                  el.innerHTML = `<b>Shopkeeper Leo:</b> "My missing 1st-Edition shipment!! Not a single foil pack dented, and Chief Miller logged the whole mix-up too! You're a lifesaver — take <b>2× Mythos Base Packs</b> on the house!"`;
+                }
+              }
+            });
           }
           return;
+        }
+
+        // Intermediate step choices while active
+        if (isAccepted && !isClaimed) {
+          if (q.id === 'q_harvest_feast' && normNpcId === 'farmstand_hazel' && this.getInventoryItemQty('quest_orchard_cider') <= 0) {
+            out.push({
+              label: `📜 [Quest] "Chef Marco sent me to pick up Orchard Cider for the Harvest Feast!"`,
+              primary: true,
+              isQuestAction: true,
+              questDoneLabel: '✅ Picked up Orchard Cider',
+              onSelect: (el) => {
+                this.addQuestInventoryItem({
+                  id: 'quest_orchard_cider',
+                  name: 'Jug of Orchard Cider',
+                  shortName: 'Orchard Cider',
+                  qty: 1,
+                  icon: '🍎',
+                  type: 'quest_item',
+                  desc: "<b>Jug of Orchard Cider</b> — Fresh-pressed honeycrisp cider from Hazel's Roadside Farmstand for Chef Marco's Harvest Feast."
+                });
+                steps.harvest_cider_got = true;
+                this.gainDialogueRelationship?.('farmstand_hazel', 2, 'Harvest Feast cider');
+                this.evaluateQuests(false);
+                this.saveWorldData?.(this.draftAppearance);
+                el.innerHTML = `<b>Hazel:</b> "Marco's feast! I set aside our best oak-pressed cider jug just for him — tell him Hazel sends her regards! <i>(Added Jug of Orchard Cider to your Inventory!)</i>"`;
+              }
+            });
+          } else if (q.id === 'q_missing_shipment') {
+            const hasBoosterCrate = this.getInventoryItemQty('quest_booster_crate') > 0;
+            if (normNpcId === 'farmstand_hazel' && !steps.shipment_asked_hazel) {
+              out.push({
+                label: `📜 [Quest] "Did you see Leo's missing Booster Pack delivery pass by?"`,
+                primary: true,
+                isQuestAction: true,
+                questDoneLabel: '✅ Clue: Check Oakhaven Arcade',
+                onSelect: (el) => {
+                  steps.shipment_asked_hazel = true;
+                  this.evaluateQuests(false);
+                  this.saveWorldData?.(this.draftAppearance);
+                  el.innerHTML = `<b>Hazel:</b> "A crate of Leo's cards? Wait — yeah! Earlier a courier stopped by asking directions and carried a heavy cardboard box straight toward <b>Oakhaven Arcade</b>! Try asking <b>Arcade Zeke</b>!"`;
+                }
+              });
+            } else if (normNpcId === 'arcade_zeke' && steps.shipment_asked_hazel && !steps.shipment_beat_zeke) {
+              out.push({
+                label: `📜 [Quest] "Hazel said Leo's missing booster crate is here — duel me for it, Zeke!"`,
+                primary: true,
+                silentClick: true,
+                onSelect: () => {
+                  steps.shipment_challenged_zeke = true;
+                  this.saveWorldData?.(this.draftAppearance);
+                  this.triggerDuel(this.arcadeZekeNpc);
+                }
+              });
+            } else if (normNpcId === 'police_chief' && steps.shipment_beat_zeke && hasBoosterCrate && !steps.shipment_checked_chief) {
+              out.push({
+                label: `📜 [Quest] "Chief Miller, I recovered Leo's misplaced booster crate from the Arcade!"`,
+                primary: true,
+                isQuestAction: true,
+                questDoneLabel: '✅ Report Logged — Return to Leo',
+                onSelect: (el) => {
+                  steps.shipment_checked_chief = true;
+                  this.gainDialogueRelationship?.('police_chief', 2, 'shipment report');
+                  this.evaluateQuests(false);
+                  this.saveWorldData?.(this.draftAppearance);
+                  el.innerHTML = `<b>Chief Miller:</b> "Good looking out, partner! Sounds like the courier dropped it by Zeke's counter by mistake. I'll log the recovery here — head on back to <b>Leo's Card Shop</b> and return that crate!"`;
+                }
+              });
+            }
+          }
         }
 
         // Accept choice if this NPC gives the quest and it isn't accepted yet
@@ -2183,6 +2660,39 @@
                 el.innerHTML = `<b>Mayor Donald:</b> "Indeed! Visit <b>10 different Oakhaven buildings</b> to meet our shopkeepers and neighbors, then report back to me here!"`;
               }
             });
+          } else if (q.id === 'q_big_fish' && this.hasFishingPole) {
+            out.push({
+              label: `📜 [Quest] "Any fishing challenge for me now that I have your pole?"`,
+              primary: true,
+              isQuestAction: true,
+              questDoneLabel: '✅ Accepted: Big Fish',
+              onSelect: (el) => {
+                this.acceptNpcQuest(q.id);
+                el.innerHTML = `<b>Old Finn:</b> "Aye! Equip that oak pole from your Inventory and hook yourself a real <b>Big Fish</b> — a <b>Largemouth Bass</b>, <b>Northern Pike</b>, or <b>Golden Mythos Koi</b>! Bring one back to me here and I'll trade you a <b>Premium Pack Voucher</b>!"`;
+              }
+            });
+          } else if (q.id === 'q_harvest_feast') {
+            out.push({
+              label: `📜 [Quest] "Need help gathering ingredients for a feast, Chef Marco?"`,
+              primary: true,
+              isQuestAction: true,
+              questDoneLabel: '✅ Accepted: Meadowland Harvest Feast',
+              onSelect: (el) => {
+                this.acceptNpcQuest(q.id);
+                el.innerHTML = `<b>Chef Marco:</b> "Ah, perfect timing! I'm planning a <b>Meadowland Harvest Feast</b> — bring me <b>2× Dozen Eggs</b> &amp; <b>1× Gallon of Milk</b> (won in Barn Clubhouse duels), <b>1× Yellow Perch or Largemouth Bass</b> from Meadowbrook Lake, and a jug of <b>Orchard Cider</b> from Hazel at the Roadside Farmstand!"`;
+              }
+            });
+          } else if (q.id === 'q_missing_shipment' && this.hasBoughtCardShopPacks) {
+            out.push({
+              label: `📜 [Quest] "You look worried, Leo — everything okay with your deliveries?"`,
+              primary: true,
+              isQuestAction: true,
+              questDoneLabel: '✅ Accepted: The Missing Booster Shipment',
+              onSelect: (el) => {
+                this.acceptNpcQuest(q.id);
+                el.innerHTML = `<b>Shopkeeper Leo:</b> "My <b>1st-Edition Booster Crate</b> never arrived! The courier was last seen coming down Main North Country Lane. Could you ask <b>Hazel at the Roadside Farmstand</b> if she spotted where it went?"`;
+              }
+            });
           }
         }
       });
@@ -2203,6 +2713,8 @@
         if (cur >= q.target && !this.questState.completed[q.id]) {
           this.questState.completed[q.id] = true;
           newlyReady = q;
+        } else if (cur < q.target && this.questState.completed[q.id]) {
+          this.questState.completed[q.id] = false;
         }
       });
       this.updateQuestBadgeCount(defs);
@@ -2213,6 +2725,32 @@
       if (modal && !modal.classList.contains('hidden')) {
         this.renderQuestModal();
       }
+    }
+
+    onArcadeZekeQuestVictory() {
+      if (!this.questState) this.questState = this.normalizeQuestState(null);
+      if (!this.questState.steps) this.questState.steps = {};
+      if (
+        this.questState.accepted?.q_missing_shipment &&
+        !this.questState.claimed?.q_missing_shipment &&
+        this.questState.steps.shipment_asked_hazel &&
+        !this.questState.steps.shipment_beat_zeke
+      ) {
+        this.questState.steps.shipment_beat_zeke = true;
+        this.addQuestInventoryItem({
+          id: 'quest_booster_crate',
+          name: "Leo's 1st-Edition Booster Crate",
+          shortName: 'Booster Crate',
+          qty: 1,
+          icon: '📦',
+          type: 'quest_item',
+          desc: "<b>Leo's 1st-Edition Booster Crate</b> — Recovered from Oakhaven Arcade after beating Zeke! Check in with Chief Miller at the Police Station, then return it to Leo."
+        });
+        this.evaluateQuests(false);
+        this.saveWorldData?.(this.draftAppearance);
+        return true;
+      }
+      return false;
     }
 
     recordQuestNpcTalked(npcId) {
@@ -2238,7 +2776,7 @@
       list.forEach(q => {
         if (!qs.accepted[q.id] || qs.claimed[q.id]) return;
         activeCount++;
-        if (q.progress() >= q.target || qs.completed[q.id]) {
+        if (q.progress() >= q.target) {
           readyCount++;
           if (!readyNpcId && (q.turnInNpc || q.giverNpc)) {
             readyNpcId = q.turnInNpc || q.giverNpc;
@@ -2287,7 +2825,7 @@
         const isAccepted = !!qs.accepted[q.id];
         const isClaimed = !!qs.claimed[q.id];
         const cur = q.progress();
-        const isReady = isAccepted && !isClaimed && (cur >= q.target || !!qs.completed[q.id]);
+        const isReady = isAccepted && !isClaimed && cur >= q.target;
         return { ...q, cur: Math.min(q.target, cur), isAccepted, isReady, isClaimed };
       });
 
@@ -2327,7 +2865,8 @@
         const pct = Math.max(0, Math.min(100, Math.round((q.cur / q.target) * 100)));
         const rewardText = [
           q.rewardGold > 0 ? `+$${q.rewardGold}` : '',
-          q.rewardBoosterPacks > 0 ? 'Booster Pack' : ''
+          q.rewardBoosterPacks > 0 ? (q.rewardBoosterPacks > 1 ? `${q.rewardBoosterPacks}× Booster Packs` : 'Booster Pack') : '',
+          q.rewardPremiumVoucher > 0 ? 'Premium Pack Voucher' : ''
         ].filter(Boolean).join(' &amp; ');
         const card = document.createElement('div');
         card.style.cssText = `background: rgba(15, 23, 42, 0.78); border: 1px solid ${q.isReady ? 'rgba(52, 211, 153, 0.7)' : 'rgba(148, 163, 184, 0.25)'}; border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px;`;
@@ -2509,6 +3048,7 @@
         }
         this.timeOfDayMinutes = this.WAKE_UP_MINUTE ?? 360;
         this.syncTimeOfDayPhase(false);
+        this.syncBarnKidsSchedule(true);
         this.updateClockHUD(true);
         if (this.activeParkTourney && this.activeParkTourney.dayNumber !== this.dayNumber) {
           this.activeParkTourney = null;
@@ -2721,6 +3261,7 @@
       const m = (Number(hour) || 0) * 60 + (Number(minute) || 0);
       this.timeOfDayMinutes = ((m % 1440) + 1440) % 1440;
       this.syncTimeOfDayPhase(false);
+      this.syncBarnKidsSchedule(true);
       this.checkPinnedReminders();
       this.updateClockHUD(true);
       this.saveWorldData(this.draftAppearance);
@@ -3247,6 +3788,21 @@
         m.area === area &&
         this.isMeetupActiveNow(m, day, win)
       );
+    }
+
+    getActiveMeetupForRealNpc(npc, area = this.currentArea) {
+      if (this.storyState !== 'free_roam' || !npc || !npc.trip?.meetupId) return null;
+      if (this.getNpcArea(npc) !== area) return null;
+      if (['to_dest_exit', 'to_home_door', 'to_home_spot'].includes(npc.trip.phase)) return null;
+      const m = (this.scheduledMeetups || []).find(item =>
+        item &&
+        item.id === npc.trip.meetupId &&
+        item.status === 'scheduled' &&
+        item.venueType !== 'npc_house' &&
+        item.area === area
+      );
+      if (!m || this.isMeetupMissed(m)) return null;
+      return m;
     }
 
     getActiveMeetupVisitorsForArea(area = this.currentArea) {
@@ -4905,6 +5461,16 @@
           : Math.max(2, this.roundQuarterDollar(marketPrice * 2 - minCash));
         const clampedCash = Math.max(minCash, Math.min(maxCash, Number(neg.playerDraftOffer) || 0));
         const totalOfferVal = Math.round(((isBuy ? offeredCardsValue : 0) + clampedCash) * 100) / 100;
+        const venueMult = isBuy
+          ? (neg.venueType === 'npc_house' ? 0.85 : (neg.venueType === 'player_house' ? 1.20 : 1.0))
+          : (neg.venueType === 'npc_house' ? 1.15 : (neg.venueType === 'player_house' ? 0.85 : 1.0));
+        const adjCurrentOffer = this.roundQuarterDollar(neg.npcCurrentOffer * venueMult);
+        const acceptCash = isBuy
+          ? (adjCurrentOffer <= offeredCardsValue ? 0 : this.roundQuarterDollar(adjCurrentOffer - offeredCardsValue))
+          : adjCurrentOffer;
+        const acceptBtnLabel = isBuy && offeredCards.some(Boolean)
+          ? (acceptCash > 0 ? `${this.formatMoney(acceptCash)} + Cards` : 'Swap Cards')
+          : this.formatMoney(acceptCash);
         const lowFundsNote = isBuy && (this.gold || 0) < clampedCash
           ? `<div style="font-size:10px; color:#fbbf24;">Wallet: ${this.formatMoney(this.gold || 0)} — you can still schedule ahead and earn cash before meetup!</div>`
           : '';
@@ -4947,7 +5513,7 @@
           ${dialogueBoxHtml}
           <div class="phone-neg-actions-row">
             <button class="phone-neg-btn-send" id="btn-neg-send">📨 Send Offer</button>
-            <button class="phone-neg-btn-accept" id="btn-neg-accept" style="flex:0.75;">🤝 ${this.formatMoney(neg.npcCurrentOffer)}</button>
+            <button class="phone-neg-btn-accept" id="btn-neg-accept" style="flex:0.75;">🤝 ${acceptBtnLabel}</button>
           </div>
         `;
       } else if (neg.status === 'agreed') {
@@ -5123,7 +5689,7 @@
         return;
       }
 
-      const cashOffer = this.roundQuarterDollar(parsed);
+      const cashOffer = parsed === 0 ? 0 : this.roundQuarterDollar(parsed);
       neg.playerDraftOffer = cashOffer;
       const offer = Math.round((cashOffer + cardsValue) * 100) / 100;
       const rapportLeeway = isBuy ? ((this.getRelationship(neg.npcId) - 50) * 0.03) : 0;
@@ -5173,8 +5739,8 @@
           });
           if (window.sounds?.playCollect) window.sounds.playCollect();
         } else {
-          const neededCash = Math.max(0, this.roundQuarterDollar(counter - cardsValue));
-          neg.npcCurrentOffer = counter;
+          const neededCash = counter <= cardsValue ? 0 : this.roundQuarterDollar(counter - cardsValue);
+          neg.npcCurrentOffer = this.roundQuarterDollar(counter / venueMult);
           neg.playerDraftOffer = isBuy ? neededCash : counter;
           neg.messages.push({
             sender: 'npc',
@@ -5191,14 +5757,17 @@
           this.changeRelationship(neg.npcId, -3, 'lowball offer');
           neg.messages.push({
             sender: 'npc',
-            text: `No can do — ${this.formatMoney(offer)} is too far from my ${this.formatMoney(neg.npcWalkAwayLimit)} limit. Try switching places or reopen talks!`
+            text: `No can do — ${this.formatMoney(offer)} is too far from my ${this.formatMoney(adjWalk)} limit. Try switching places or reopen talks!`
           });
         } else {
           const nudge = isBuy
-            ? Math.max(neg.npcWalkAwayLimit, this.roundQuarterDollar(neg.npcCurrentOffer - 0.25))
-            : Math.min(neg.npcWalkAwayLimit, this.roundQuarterDollar(neg.npcCurrentOffer + 0.25));
-          neg.npcCurrentOffer = nudge;
-          neg.playerDraftOffer = nudge;
+            ? Math.max(adjWalk, this.roundQuarterDollar(adjCurrent - 0.25))
+            : Math.min(adjWalk, this.roundQuarterDollar(adjCurrent + 0.25));
+          neg.npcCurrentOffer = this.roundQuarterDollar(nudge / venueMult);
+          const nudgeCash = isBuy
+            ? (nudge <= cardsValue ? 0 : this.roundQuarterDollar(nudge - cardsValue))
+            : nudge;
+          neg.playerDraftOffer = nudgeCash;
           neg.messages.push({
             sender: 'npc',
             text: `Whoa, ${this.formatMoney(offer)} won't cover it! Best I can move to is ${this.formatMoney(nudge)} (${neg.patience}/${neg.maxPatience} patience left).`
@@ -5212,12 +5781,24 @@
     acceptCurrentNegotiationPrice() {
       const neg = this.activeNegotiation;
       if (!neg || neg.status !== 'negotiating') return;
-      neg.agreedPrice = neg.npcCurrentOffer;
+      const isBuy = neg.type === 'buy';
+      const venueMult = isBuy
+        ? (neg.venueType === 'npc_house' ? 0.85 : (neg.venueType === 'player_house' ? 1.20 : 1.0))
+        : (neg.venueType === 'npc_house' ? 1.15 : (neg.venueType === 'player_house' ? 0.85 : 1.0));
+      const adjCurrent = this.roundQuarterDollar(neg.npcCurrentOffer * venueMult);
+      const offeredCards = isBuy ? (neg.offeredCards || []).filter(Boolean) : [];
+      const cardsValue = offeredCards.reduce((sum, c) => sum + (Number(c.fairValue) || 0), 0);
+      neg.agreedPrice = isBuy
+        ? (adjCurrent <= cardsValue ? 0 : this.roundQuarterDollar(adjCurrent - cardsValue))
+        : adjCurrent;
       neg.status = 'agreed';
       this.changeRelationship(neg.npcId, 2, 'accepted offer');
+      const dealDesc = isBuy && offeredCards.length > 0
+        ? `${offeredCards.map(c => c.cardName).join(' + ')}${neg.agreedPrice > 0 ? ` + ${this.formatMoney(neg.agreedPrice)}` : ''}`
+        : this.formatMoney(neg.agreedPrice);
       neg.messages.push({
         sender: 'player',
-        text: `Agreed — ${this.formatMoney(neg.agreedPrice)} works for me!`
+        text: `Agreed — ${dealDesc} works for me!`
       });
       const winLabel = this.formatMeetupWindowLabel({
         scheduledDay: neg.scheduledDay,
@@ -5344,9 +5925,7 @@
           this.phoneListingsBought.push(m.listingId);
         }
         const cardDef = this.getBaseSetCardCatalog().find(c => c.beastId === m.beastId);
-        if (cardDef) {
-          this.addCardToBinder(cardDef);
-        }
+        this.addCardToBinder(cardDef || m.beastId);
         this.renderBinderModal?.();
         m.status = 'completed';
         const nbNote = this.getNotebookNotes().find(n => n.id === `meetup_${m.id}`);
@@ -5368,8 +5947,11 @@
         this.updateHUDSaveInfo();
         this.renderInventoryModal?.();
         this.updateMeetupBadgeCount();
-        this.showAutosaveIndicator(`🤝 Bought ${m.cardName} from ${m.npcName} for ${this.formatMoney(m.agreedPrice)}! Placed in 📖 Binder.`);
-        const buySuccessMsg = `Awesome meeting up at ${m.shortVenueLabel}! Here's your <b>${m.cardName}</b> card for <b>${this.formatMoney(m.agreedPrice)}</b>!`;
+        const termsText = offeredCards.length > 0
+          ? `${m.agreedPrice > 0 ? `${this.formatMoney(m.agreedPrice)} + ` : ''}${offeredCards.length} trade card${offeredCards.length > 1 ? 's' : ''}`
+          : this.formatMoney(m.agreedPrice);
+        this.showAutosaveIndicator(`🤝 Bought ${m.cardName} from ${m.npcName} for ${termsText}! Placed in 📖 Binder.`);
+        const buySuccessMsg = `Awesome meeting up at ${m.shortVenueLabel}! Here's your <b>${m.cardName}</b> card for <b>${termsText}</b>!`;
         this._justCompletedMeetup = { meetup: m, message: buySuccessMsg };
         return {
           ok: true,
@@ -5600,6 +6182,8 @@
           traditionalCardImg: itemDef.traditionalCardImg || null,
           rarity: itemDef.rarity || null,
           type: itemDef.type || 'pack',
+          sizeTier: itemDef.sizeTier || null,
+          value: itemDef.value ?? null,
           desc: itemDef.desc || ''
         });
       }
@@ -6557,6 +7141,42 @@
           detailTags: []
         };
       }
+      if (item.type === 'farm_produce') {
+        return {
+          category: 'gear',
+          kindAttr: 'gear',
+          tagLabel: 'Farm Produce',
+          elemAttr: '',
+          detailTags: ['🌾 Meadowland Produce']
+        };
+      }
+      if (item.type === 'fishing_pole') {
+        return {
+          category: 'gear',
+          kindAttr: 'gear',
+          tagLabel: this.fishingPoleEquipped ? 'Equipped' : 'Fishing Gear',
+          elemAttr: '',
+          detailTags: ['🎣 Meadowbrook Lake', this.fishingPoleEquipped ? '✅ Equipped' : '🎒 Unequipped']
+        };
+      }
+      if (item.type === 'caught_fish') {
+        return {
+          category: 'gear',
+          kindAttr: 'gear',
+          tagLabel: 'Fresh Fish',
+          elemAttr: '',
+          detailTags: ['🐟 Meadowbrook Lake', item.sizeTier || 'Standard', item.value ? this.formatMoney(item.value) : '']
+        };
+      }
+      if (item.type === 'voucher') {
+        return {
+          category: 'gear',
+          kindAttr: 'gear',
+          tagLabel: 'Voucher',
+          elemAttr: '',
+          detailTags: ['🎟️ Redeemable', '💎 1× Premium Pack']
+        };
+      }
       return {
         category: 'gear',
         kindAttr: 'gear',
@@ -6607,6 +7227,9 @@
 
       for (let s = 0; s < totalSlots; s++) {
         const item = visibleItems[s];
+        if (item && item.type === 'fishing_pole' && !item.cardImg) {
+          item.cardImg = 'Sprites/Overworld/fishing_pole_icon.png';
+        }
         const slot = document.createElement('div');
         if (item) {
           const meta = this.getInventoryItemMeta(item);
@@ -6648,6 +7271,21 @@
               <div class="inv-slot-name">${displayName}</div>
               ${kindPillHtml}
             `;
+          } else if (item.type === 'fishing_pole') {
+            const poleImg = item.cardImg || 'Sprites/Overworld/fishing_pole_icon.png';
+            const isEq = Boolean(this.fishingPoleEquipped);
+            slot.innerHTML = `
+              <div class="inv-pack-art-thumb" style="background:rgba(14,165,233,0.14); border-radius:8px; padding:3px;">
+                <img src="${poleImg}" alt="${displayName}" style="width:100%; height:100%; object-fit:contain;">
+              </div>
+              <div class="inv-slot-name">${displayName}</div>
+              <button type="button" class="inv-pole-equip-btn" style="margin-top:2px; padding:2px 9px; border-radius:6px; border:1px solid ${isEq ? '#fbbf24' : '#38bdf8'}; background:${isEq ? 'rgba(180,83,9,0.9)' : 'rgba(2,132,199,0.9)'}; color:#fff; font-size:10.5px; font-weight:700; cursor:pointer;">${isEq ? 'Unequip' : 'Equip'}</button>
+            `;
+            slot.querySelector('.inv-pole-equip-btn')?.addEventListener('click', (e) => {
+              e.stopPropagation();
+              if (window.sounds?.playClick) window.sounds.playClick();
+              this.setFishingPoleEquipped(!isEq);
+            });
           } else {
             slot.innerHTML = `
               <span class="inv-slot-qty">x${item.qty}</span>
@@ -6715,6 +7353,10 @@
                 const themeId = item.themeId || 'tavern_feast';
                 const isEquipped = (this.equippedBoardTheme || 'classic') === themeId;
                 this.setEquippedBoardTheme(isEquipped ? 'classic' : themeId, true);
+                return;
+              }
+              if (item.type === 'fishing_pole') {
+                this.setFishingPoleEquipped(!this.fishingPoleEquipped);
                 return;
               }
             }
@@ -6849,6 +7491,36 @@
             inspectBtn.onclick = () => {
               if (window.sounds?.playClick) window.sounds.playClick();
               this.setEquippedBoardTheme(isEquipped ? 'classic' : themeId, true);
+            };
+          }
+        } else if (selectedItem.type === 'fishing_pole') {
+          const isEquipped = Boolean(this.fishingPoleEquipped);
+          const poleImg = selectedItem.cardImg || 'Sprites/Overworld/fishing_pole_icon.png';
+          artEl.innerHTML = `<img src="${poleImg}" alt="${cleanSelectedName}" style="width:58px; height:58px; object-fit:contain; filter:drop-shadow(0 3px 6px rgba(0,0,0,0.45));">`;
+          if (actionsEl) actionsEl.classList.remove('hidden');
+          openPackBtn?.classList.add('hidden');
+          putBinderBtn?.classList.add('hidden');
+          if (inspectBtn) {
+            inspectBtn.classList.remove('hidden');
+            inspectBtn.textContent = isEquipped
+              ? '🎒 Unequip'
+              : '🎣 Equip';
+            inspectBtn.onclick = () => {
+              if (window.sounds?.playClick) window.sounds.playClick();
+              this.setFishingPoleEquipped(!isEquipped);
+            };
+          }
+        } else if (selectedItem.id === 'premium_pack_voucher') {
+          artEl.innerHTML = `<span style="font-size: 38px;">🎟️</span>`;
+          if (actionsEl) actionsEl.classList.remove('hidden');
+          openPackBtn?.classList.add('hidden');
+          putBinderBtn?.classList.add('hidden');
+          if (inspectBtn) {
+            inspectBtn.classList.remove('hidden');
+            inspectBtn.textContent = '🎟️ Redeem for Premium Pack';
+            inspectBtn.onclick = () => {
+              if (window.sounds?.playClick) window.sounds.playClick();
+              this.redeemPremiumPackVoucher();
             };
           }
         } else if (selectedItem.id === 'old_card_binder') {
@@ -8241,6 +8913,7 @@
           }
           modal.classList.add('hidden');
           this.showAutosaveIndicator?.(`📖 Added ${c.shortName || c.name} (${starsStr}) to your Card Binder!`);
+          this.maybeOpenPendingFirstBattleCardReward();
         });
         grid.appendChild(btn);
       });
@@ -8251,7 +8924,1072 @@
     closePhoneDuelCardRewardModal() {
       if (window.sounds?.playClick) window.sounds.playClick();
       document.getElementById('duel-card-reward-modal')?.classList.add('hidden');
+      const hadPhoneReward = Boolean(this.pendingPhoneDuelCardReward);
       this.pendingPhoneDuelCardReward = null;
+      if (hadPhoneReward && this.pendingFirstBattleCardReward) {
+        this.maybeOpenPendingFirstBattleCardReward();
+      } else {
+        this.pendingFirstBattleCardReward = null;
+      }
+    }
+
+    normalizeFirstBattleNpcId(challenger) {
+      if (!challenger?.id || challenger.isTutorial) return null;
+      const raw = String(challenger.id).toLowerCase();
+      if (raw === 'friend' || raw === 'friend_duel') return 'best_friend';
+      return raw;
+    }
+
+    grantFirstBattleReward(challenger, opponentDeckIds = []) {
+      const npcId = this.normalizeFirstBattleNpcId(challenger);
+      if (!npcId) return null;
+      if (!this.firstBattleRewardNpcs || typeof this.firstBattleRewardNpcs !== 'object') {
+        this.firstBattleRewardNpcs = {};
+      }
+      if (this.firstBattleRewardNpcs[npcId]) return null;
+
+      this.firstBattleRewardNpcs[npcId] = true;
+      const npcName = challenger?.name || npcId;
+      const roll = Math.random();
+
+      // 5%: Pick a copy of a 3★–5★ card from the NPC's deck
+      if (roll < 0.05) {
+        const gwentCards = window.MythosGwentCards?.GWENT_CARDS || {};
+        const getCard = window.MythosGwentCards?.getCard;
+        const seen = new Set();
+        const eligibleCards = [];
+        (Array.isArray(opponentDeckIds) ? opponentDeckIds : []).forEach((id) => {
+          if (!id || seen.has(id)) return;
+          seen.add(id);
+          const def = (typeof getCard === 'function' ? getCard(id) : null) || gwentCards[id];
+          const stars = Math.round(Number(def?.stars) || 0);
+          if (def && !def.isToken && stars >= 3 && stars <= 5) {
+            eligibleCards.push({
+              id: def.id || id,
+              name: def.name || id,
+              shortName: def.shortName || def.name || id,
+              stars,
+              element: def.element || 'Unit',
+              cardImg: def.cardImg || '',
+              traditionalCardImg: def.traditionalCardImg || ''
+            });
+          }
+        });
+        eligibleCards.sort((a, b) => (b.stars - a.stars) || a.name.localeCompare(b.name));
+        if (eligibleCards.length > 0) {
+          this.pendingFirstBattleCardReward = {
+            npcId,
+            npcName,
+            cards: eligibleCards
+          };
+          this.saveWorldData(this.draftAppearance);
+          this.updateHUDSaveInfo();
+          return { type: 'card_pick', npcName, cards: eligibleCards };
+        }
+      }
+
+      // 10%: Premium Pack (0.05 <= roll < 0.15)
+      if (roll >= 0.05 && roll < 0.15) {
+        this.addInventoryItem({
+          id: 'unopened_premium_pack',
+          name: '1st-Edition Mythos Premium Pack',
+          qty: 1,
+          icon: '💎',
+          cardImg: 'Cards/Mythos_Premium_Pack.jpg',
+          type: 'booster_pack',
+          isPremiumPack: true,
+          desc: `<b>1st-Edition Mythos Premium Pack</b> — A collector-grade Astral Ivory foil booster featuring <b>5 Mythos Game Cards</b> with heavily boosted <b>3★–5★ rarity weights</b>, at least 1 guaranteed <b>3★+</b> pull, and <b>2× Animated Special odds</b>! Click <b>✨ Open Booster Pack</b> to break the seal! <i>(First Battle Reward for defeating ${npcName})</i>`
+        });
+        this.saveWorldData(this.draftAppearance);
+        this.updateHUDSaveInfo();
+        return { type: 'premium_pack', npcName };
+      }
+
+      // 20%: Base Pack (0.15 <= roll < 0.35)
+      if (roll >= 0.15 && roll < 0.35) {
+        this.addInventoryItem({
+          id: 'unopened_base_pack',
+          name: 'Unopened Mythos Base Card Pack',
+          qty: 1,
+          icon: '🃏',
+          cardImg: 'Cards/Mythos_Base_Pack.jpg',
+          type: 'booster_pack',
+          desc: `<b>Unopened Mythos Base Set Booster Pack (1st Edition)</b> — A factory-sealed foil booster pack featuring <b>The Seal of Mythos</b> and <b>5 Mythos Game Cards</b> inside. Click <b>✨ Open Booster Pack</b> to break the seal! <i>(First Battle Reward for defeating ${npcName})</i>`
+        });
+        this.saveWorldData(this.draftAppearance);
+        this.updateHUDSaveInfo();
+        return { type: 'base_pack', npcName };
+      }
+
+      // Remaining 65%: $2–$5 cash
+      const amount = 2 + Math.floor(Math.random() * 4);
+      this.gold = Math.round(((this.gold || 0) + amount) * 100) / 100;
+      this.saveWorldData(this.draftAppearance);
+      this.updateHUDSaveInfo();
+      return { type: 'money', amount, npcName };
+    }
+
+    grantBarnClubhouseReward(challenger, isPlayerVictory) {
+      if (this.currentArea !== 'haystack_barn_club_interior' || challenger?.isTutorial) return null;
+
+      if (!isPlayerVictory) {
+        this.barnClubWinStreak = 0;
+        this.addInventoryItem({
+          id: 'farm_berry_basket',
+          name: 'Basket of Berries',
+          shortName: 'Basket of Berries',
+          qty: 1,
+          icon: '🫐',
+          type: 'farm_produce',
+          desc: '<b>Basket of Berries</b> — Freshly picked Meadowland blackberries and wild strawberries from the Barn Clubhouse snack table.'
+        });
+        this.saveWorldData(this.draftAppearance);
+        return { outcome: 'loss', itemId: 'farm_berry_basket', label: '1× Basket of Berries', icon: '🫐', streak: 0 };
+      }
+
+      const nextStreak = Math.max(0, Math.floor(Number(this.barnClubWinStreak) || 0)) + 1;
+      if (nextStreak >= 3) {
+        this.barnClubWinStreak = 0;
+        this.addInventoryItem({
+          id: 'farm_milk_gallon',
+          name: 'Gallon of Milk',
+          shortName: 'Gallon of Milk',
+          qty: 1,
+          icon: '🥛',
+          type: 'farm_produce',
+          desc: '<b>Gallon of Milk</b> — Cold, farm-fresh Meadowland whole milk awarded for winning <b>3 battles in a row</b> at the Barn Clubhouse.'
+        });
+        this.evaluateQuests?.(false);
+        this.saveWorldData(this.draftAppearance);
+        return { outcome: 'win', itemId: 'farm_milk_gallon', label: '1× Gallon of Milk', icon: '🥛', streak: 3 };
+      }
+
+      this.barnClubWinStreak = nextStreak;
+      const qty = nextStreak === 2 ? 2 : 1;
+      this.addInventoryItem({
+        id: 'farm_dozen_eggs',
+        name: 'Dozen Eggs',
+        shortName: 'Dozen Eggs',
+        qty,
+        icon: '🥚',
+        type: 'farm_produce',
+        desc: '<b>Dozen Eggs</b> — Speckled brown farm eggs from the Meadowland coops, awarded for winning a Mythos duel at the Barn Clubhouse.'
+      });
+      this.evaluateQuests?.(false);
+      this.saveWorldData(this.draftAppearance);
+      return { outcome: 'win', itemId: 'farm_dozen_eggs', label: `${qty}× Dozen Eggs`, icon: '🥚', streak: nextStreak };
+    }
+
+    getFarmstandProduceDefs() {
+      return [
+        { id: 'farm_berry_basket', name: 'Basket of Berries', icon: '🫐', min: 0.25, max: 3.00 },
+        { id: 'farm_dozen_eggs',   name: 'Dozen Eggs',        icon: '🥚', min: 1.00, max: 6.00 },
+        { id: 'farm_milk_gallon',  name: 'Gallon of Milk',    icon: '🥛', min: 3.00, max: 12.00 }
+      ];
+    }
+
+    rollFarmstandMarketForDay(dayNum = (this.dayNumber || 1)) {
+      const roundQ = (v) => Math.round(v * 4) / 4;
+      const rollRange = (lo, hi) => {
+        const t = (Math.random() + Math.random()) / 2;
+        return Math.max(lo, Math.min(hi, roundQ(lo + t * (hi - lo))));
+      };
+      const defs = this.getFarmstandProduceDefs();
+      const berries = rollRange(defs[0].min, defs[0].max);
+      const eggs = rollRange(Math.max(defs[1].min, berries + 0.25), defs[1].max);
+      const milk = rollRange(Math.max(defs[2].min, eggs + 0.25), defs[2].max);
+
+      const prices = {
+        farm_berry_basket: berries,
+        farm_dozen_eggs: eggs,
+        farm_milk_gallon: milk
+      };
+      const demand = {};
+      for (const d of defs) {
+        const pct = (prices[d.id] - d.min) / Math.max(0.25, d.max - d.min);
+        demand[d.id] = pct >= 0.68 ? 'high' : (pct <= 0.32 ? 'low' : 'normal');
+      }
+      this.farmstandMarket = { day: Number(dayNum) || 1, prices, demand };
+      this.saveWorldData(this.draftAppearance);
+      return this.farmstandMarket;
+    }
+
+    getFarmstandDailyMarket() {
+      const curDay = this.dayNumber || 1;
+      if (this.farmstandMarket && this.farmstandMarket.day === curDay && this.farmstandMarket.prices) {
+        return this.farmstandMarket;
+      }
+      return this.rollFarmstandMarketForDay(curDay);
+    }
+
+    getFarmstandHazelModifier() {
+      const score = this.getRelationship('farmstand_hazel');
+      if (score >= 60) {
+        return { score, mult: 1.10, pctLabel: '+10%', status: 'likes', badge: '💛 Hazel likes you (+10% Payout)' };
+      }
+      if (score < 40) {
+        return { score, mult: 0.90, pctLabel: '-10%', status: 'dislikes', badge: '😒 Hazel dislikes you (-10% Payout)' };
+      }
+      return { score, mult: 1.00, pctLabel: '0%', status: 'neutral', badge: '🙂 Neutral Standing (Reach Friendly for +10%)' };
+    }
+
+    getFarmstandItemSellPrice(itemId) {
+      const market = this.getFarmstandDailyMarket();
+      const base = Number(market.prices?.[itemId]) || 0;
+      const mod = this.getFarmstandHazelModifier();
+      return Math.round(base * mod.mult * 100) / 100;
+    }
+
+    sellFarmstandProduce(itemId, count = 1) {
+      if (!Array.isArray(this.inventory)) return null;
+      const idx = this.inventory.findIndex(i => i && i.id === itemId && (Number(i.qty) || 0) > 0);
+      if (idx < 0) return null;
+      const item = this.inventory[idx];
+      const avail = Number(item.qty) || 1;
+      const sold = count === 'all' ? avail : Math.max(1, Math.min(avail, Number(count) || 1));
+      const unitPrice = this.getFarmstandItemSellPrice(itemId);
+      const total = Math.round(unitPrice * sold * 100) / 100;
+
+      if (avail - sold <= 0) {
+        this.inventory.splice(idx, 1);
+      } else {
+        item.qty = avail - sold;
+      }
+      this.gold = Math.round(((this.gold || 0) + total) * 100) / 100;
+      if (window.sounds?.playCoins) window.sounds.playCoins();
+      else if (window.sounds?.playClick) window.sounds.playClick();
+      this.gainDialogueRelationship?.('farmstand_hazel', 1, 'farmstand trade');
+      this.saveWorldData(this.draftAppearance);
+      this.renderInventoryModal?.();
+      this.updateHUDSaveInfo?.();
+      this.evaluateQuests?.(true);
+      return { sold, total, unitPrice, itemName: item.name || itemId, icon: item.icon || '🌾' };
+    }
+
+    openFarmstandMarketModal(statusMsg = '') {
+      let modal = document.getElementById('farmstand-market-modal');
+      if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'farmstand-market-modal';
+        modal.className = 'modal-overlay';
+        modal.style.zIndex = '2400';
+        modal.innerHTML = `<div id="farmstand-market-card" style="width:min(540px,94vw); max-height:90vh; overflow-y:auto; box-sizing:border-box; background:linear-gradient(180deg,#2c1e14,#1a110b); border:2px solid #d97706; border-radius:14px; padding:18px 20px; color:#fef3c7; box-shadow:0 20px 50px rgba(0,0,0,0.75); font-family:'Inter',sans-serif;"></div>`;
+        modal.addEventListener('click', (e) => {
+          if (e.target === modal) modal.classList.add('hidden');
+        });
+        document.body.appendChild(modal);
+      }
+
+      const market = this.getFarmstandDailyMarket();
+      const defs = this.getFarmstandProduceDefs();
+      const dayLabel = `${this.getCurrentDayName?.() || 'Day'}, Day ${this.dayNumber || 1}`;
+
+      let grandTotal = 0;
+      let totalQty = 0;
+      const rowsHtml = defs.map((d) => {
+        const invItem = (this.inventory || []).find(i => i && i.id === d.id && (Number(i.qty) || 0) > 0);
+        const qty = Number(invItem?.qty) || 0;
+        const sellPrice = this.getFarmstandItemSellPrice(d.id);
+        const demand = market.demand?.[d.id] || 'normal';
+        const demandTag = demand === 'high'
+          ? `<span style="color:#4ade80; font-weight:700;">📈 Boom!</span>`
+          : (demand === 'low'
+            ? `<span style="color:#f87171; font-weight:700;">📉 Low</span>`
+            : `<span style="color:#cbd5e1;">⚖️ Normal</span>`);
+        if (qty > 0) {
+          totalQty += qty;
+          grandTotal = Math.round((grandTotal + sellPrice * qty) * 100) / 100;
+        }
+        return `
+          <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; padding:10px 12px; background:rgba(255,248,235,0.06); border:1px solid rgba(217,119,6,0.28); border-radius:10px;">
+            <div style="display:flex; align-items:center; gap:10px; min-width:0;">
+              <span style="font-size:24px;">${d.icon}</span>
+              <div>
+                <div style="font-weight:700; color:#fef3c7; font-size:14px;">${d.name} <span style="font-weight:500; color:#d6d3d1; font-size:12px;">(In Bag: ${qty})</span></div>
+                <div style="font-size:12px; margin-top:2px;">${demandTag} &nbsp;•&nbsp; Today: <b style="color:#fde047;">${this.formatMoney(sellPrice)}</b> each</div>
+              </div>
+            </div>
+            <div style="display:flex; gap:6px; flex-shrink:0;">
+              <button type="button" data-fs-sell="${d.id}" data-fs-qty="1" ${qty < 1 ? 'disabled' : ''} style="padding:8px 12px; min-height:36px; border-radius:8px; border:1px solid #d97706; background:${qty < 1 ? 'rgba(60,50,40,0.5)' : '#92400e'}; color:${qty < 1 ? '#78716c' : '#fef3c7'}; font-weight:700; font-size:12px; cursor:${qty < 1 ? 'not-allowed' : 'pointer'};">Sell 1</button>
+              <button type="button" data-fs-sell="${d.id}" data-fs-qty="all" ${qty < 1 ? 'disabled' : ''} style="padding:8px 12px; min-height:36px; border-radius:8px; border:1px solid #16a34a; background:${qty < 1 ? 'rgba(60,50,40,0.5)' : '#15803d'}; color:${qty < 1 ? '#78716c' : '#f0fdf4'}; font-weight:700; font-size:12px; cursor:${qty < 1 ? 'not-allowed' : 'pointer'};">Sell All</button>
+            </div>
+          </div>`;
+      }).join('');
+
+      const card = document.getElementById('farmstand-market-card');
+      card.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; border-bottom:1px solid rgba(217,119,6,0.35); padding-bottom:10px; margin-bottom:10px;">
+          <div>
+            <div style="font-family:'Cinzel',Georgia,serif; font-size:18px; font-weight:700; color:#fde68a;">🍎 Roadside Farmstand Market</div>
+            <div style="font-size:12px; color:#d6d3d1; margin-top:2px;">${dayLabel} — Daily Produce Prices</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:11px; color:#cbd5e1;">Wallet</div>
+            <div style="font-size:15px; font-weight:700; color:#4ade80;">${this.formatMoney(this.gold)}</div>
+          </div>
+        </div>
+        ${statusMsg ? `<div style="padding:8px 10px; border-radius:8px; font-size:12.5px; margin-bottom:10px; background:rgba(34,197,94,0.18); border:1px solid #22c55e; color:#dcfce7;">${statusMsg}</div>` : ''}
+        <div style="display:flex; flex-direction:column; gap:8px;">${rowsHtml}</div>
+        <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:10px; margin-top:14px; padding-top:10px; border-top:1px solid rgba(217,119,6,0.35);">
+          <button type="button" id="fs-sell-all-btn" ${totalQty < 1 ? 'disabled' : ''} style="padding:8px 14px; border-radius:9px; border:1px solid #22c55e; background:${totalQty < 1 ? 'rgba(60,50,40,0.5)' : '#16a34a'}; color:${totalQty < 1 ? '#78716c' : '#fff'}; font-weight:700; font-size:13px; cursor:${totalQty < 1 ? 'not-allowed' : 'pointer'};">🧺 Sell All Produce (${this.formatMoney(grandTotal)})</button>
+          <button type="button" id="fs-close-btn" style="padding:8px 16px; border-radius:9px; border:1px solid #a8a29e; background:rgba(41,37,36,0.9); color:#f5f5f4; font-weight:700; font-size:13px; cursor:pointer;">Close</button>
+        </div>`;
+
+      card.querySelectorAll('[data-fs-sell]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const itemId = btn.getAttribute('data-fs-sell');
+          const qtyArg = btn.getAttribute('data-fs-qty') === 'all' ? 'all' : 1;
+          const res = this.sellFarmstandProduce(itemId, qtyArg);
+          if (res) {
+            this.openFarmstandMarketModal(`${res.icon} Sold <b>${res.sold}× ${res.itemName}</b> for <b>+${this.formatMoney(res.total)}</b>!`);
+          }
+        });
+      });
+      document.getElementById('fs-sell-all-btn')?.addEventListener('click', () => {
+        let soldAny = 0;
+        let cashSum = 0;
+        for (const d of defs) {
+          const res = this.sellFarmstandProduce(d.id, 'all');
+          if (res) {
+            soldAny += res.sold;
+            cashSum = Math.round((cashSum + res.total) * 100) / 100;
+          }
+        }
+        if (soldAny > 0) {
+          this.openFarmstandMarketModal(`🧺 Sold all <b>${soldAny} produce items</b> for <b>+${this.formatMoney(cashSum)}</b>!`);
+        }
+      });
+      document.getElementById('fs-close-btn')?.addEventListener('click', () => {
+        modal.classList.add('hidden');
+      });
+      modal.classList.remove('hidden');
+    }
+
+    grantOldFinnFishingPole() {
+      if (this.hasFishingPole) return false;
+      this.hasFishingPole = true;
+      this.addInventoryItem({
+        id: 'fishing_pole',
+        name: "Old Finn's Oak Fishing Pole",
+        shortName: 'Fishing Pole',
+        qty: 1,
+        icon: '🎣',
+        cardImg: 'Sprites/Overworld/fishing_pole_icon.png',
+        type: 'fishing_pole',
+        desc: "<b>Old Finn's Oak Fishing Pole</b> — Awarded for defeating Old Finn on Meadowbrook Fishing Pier. Keep it in your Inventory and click <b>Equip</b> to hold it and reveal your circular casting zone!"
+      });
+      this.saveWorldData(this.draftAppearance);
+      return true;
+    }
+
+    setFishingPoleEquipped(equipped) {
+      if (equipped && !this.hasFishingPole) return false;
+      this.fishingPoleEquipped = Boolean(equipped);
+      if (!this.fishingPoleEquipped) {
+        this.fishingState = null;
+      }
+      this.saveWorldData(this.draftAppearance);
+      this.renderInventoryModal?.();
+      this.renderBinderModal?.();
+      this.updateHUDSaveInfo?.();
+      if (this.fishingPoleEquipped) {
+        this.toggleInventoryModal?.(false);
+        this.toggleBinderModal?.(false);
+        this.showAutosaveIndicator?.('🎣 Fishing Pole equipped — click lake water inside your blue casting ring!');
+      } else {
+        this.showAutosaveIndicator?.('🎒 Fishing Pole unequipped.');
+      }
+      return this.fishingPoleEquipped;
+    }
+
+    redeemPremiumPackVoucher() {
+      if (!Array.isArray(this.inventory)) return false;
+      const idx = this.inventory.findIndex(i => i && i.id === 'premium_pack_voucher' && (Number(i.qty) || 0) > 0);
+      if (idx < 0) return false;
+      const voucher = this.inventory[idx];
+      if ((Number(voucher.qty) || 1) <= 1) {
+        this.inventory.splice(idx, 1);
+      } else {
+        voucher.qty -= 1;
+      }
+      this.addInventoryItem({
+        id: 'unopened_premium_pack',
+        name: '1st-Edition Mythos Premium Pack',
+        qty: 1,
+        icon: '💎',
+        cardImg: 'Cards/Mythos_Premium_Pack.jpg',
+        type: 'booster_pack',
+        isPremiumPack: true,
+        desc: '<b>1st-Edition Mythos Premium Pack</b> — A collector-grade Astral Ivory foil booster featuring <b>5 Mythos Game Cards</b> with heavily boosted <b>3★–5★ rarity weights</b>, at least 1 guaranteed <b>3★+</b> pull, and <b>2× Animated Special odds</b>! Click <b>✨ Open Booster Pack</b> to break the seal! <i>(Redeemed from a Quest Premium Pack Voucher)</i>'
+      });
+      if (window.sounds?.playHeal) window.sounds.playHeal();
+      else if (window.sounds?.playCoins) window.sounds.playCoins();
+      this.saveWorldData(this.draftAppearance);
+      this.renderInventoryModal?.();
+      this.updateHUDSaveInfo?.();
+      this.showAutosaveIndicator?.('💎 Redeemed Premium Pack Voucher for 1× 1st-Edition Mythos Premium Pack!');
+      return true;
+    }
+
+    sellCaughtFish(itemId, count = 1) {
+      if (!Array.isArray(this.inventory)) return null;
+      const idx = this.inventory.findIndex(i => i && i.id === itemId && i.type === 'caught_fish' && (Number(i.qty) || 0) > 0);
+      if (idx < 0) return null;
+      const item = this.inventory[idx];
+      const avail = Number(item.qty) || 1;
+      const sold = count === 'all' ? avail : Math.max(1, Math.min(avail, Number(count) || 1));
+      const unitPrice = Number(item.value) || 1.00;
+      const total = Math.round(unitPrice * sold * 100) / 100;
+
+      if (avail - sold <= 0) {
+        this.inventory.splice(idx, 1);
+      } else {
+        item.qty = avail - sold;
+      }
+      this.gold = Math.round(((this.gold || 0) + total) * 100) / 100;
+      if (window.sounds?.playCoins) window.sounds.playCoins();
+      else if (window.sounds?.playClick) window.sounds.playClick();
+      this.gainDialogueRelationship?.('fishmonger_marina', 1, 'sold fresh catch');
+      this.saveWorldData(this.draftAppearance);
+      this.renderInventoryModal?.();
+      this.renderBinderModal?.();
+      this.updateHUDSaveInfo?.();
+      this.evaluateQuests?.(true);
+      return { sold, total, unitPrice, itemName: item.name || itemId, icon: item.icon || '🐟' };
+    }
+
+    openFishmongerSellModal(statusMsg = '') {
+      let modal = document.getElementById('fishmonger-sell-modal');
+      if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'fishmonger-sell-modal';
+        modal.className = 'modal-overlay';
+        modal.style.zIndex = '2400';
+        modal.innerHTML = `<div id="fishmonger-sell-card" style="width:min(540px,94vw); max-height:90vh; overflow-y:auto; box-sizing:border-box; background:linear-gradient(180deg,#12263a,#0c1826); border:2px solid #38bdf8; border-radius:14px; padding:18px 20px; color:#f0f9ff; box-shadow:0 20px 50px rgba(0,0,0,0.75); font-family:'Inter',sans-serif;"></div>`;
+        modal.addEventListener('click', (e) => {
+          if (e.target === modal) modal.classList.add('hidden');
+        });
+        document.body.appendChild(modal);
+      }
+
+      const fishItems = (this.inventory || []).filter(i => i && i.type === 'caught_fish' && (Number(i.qty) || 0) > 0);
+      let grandTotal = 0;
+      let totalQty = 0;
+      fishItems.forEach((it) => {
+        const q = Number(it.qty) || 1;
+        const val = Number(it.value) || 1.00;
+        totalQty += q;
+        grandTotal = Math.round((grandTotal + val * q) * 100) / 100;
+      });
+
+      const listHtml = fishItems.length === 0
+        ? `<div style="padding:20px 14px; text-align:center; background:rgba(255,255,255,0.04); border:1px dashed rgba(56,189,248,0.35); border-radius:10px; color:#bae6fd; font-size:13px;">You don't have any caught fish in your bag right now.<br><span style="opacity:0.85;">Equip <b>Old Finn's Oak Fishing Pole</b> and cast into Meadowbrook Lake!</span></div>`
+        : fishItems.map((it) => {
+            const q = Number(it.qty) || 1;
+            const val = Number(it.value) || 1.00;
+            return `
+              <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; padding:9px 12px; background:rgba(255,255,255,0.06); border:1px solid rgba(56,189,248,0.28); border-radius:10px;">
+                <div style="display:flex; align-items:center; gap:10px; min-width:0;">
+                  <span style="font-size:23px;">${it.icon || '🐟'}</span>
+                  <div>
+                    <div style="font-weight:700; color:#f0f9ff; font-size:13.5px;">${it.name} <span style="font-weight:500; color:#bae6fd; font-size:12px;">(x${q})</span></div>
+                    <div style="font-size:12px; color:#7dd3fc; margin-top:2px;">Fresh Catch Price: <b style="color:#fde047;">${this.formatMoney(val)}</b> each</div>
+                  </div>
+                </div>
+                <div style="display:flex; gap:6px; flex-shrink:0;">
+                  <button type="button" data-fm-sell="${it.id}" data-fm-qty="1" style="padding:8px 12px; min-height:36px; border-radius:8px; border:1px solid #0284c7; background:#0369a1; color:#f0f9ff; font-weight:700; font-size:12px; cursor:pointer;">Sell 1</button>
+                  <button type="button" data-fm-sell="${it.id}" data-fm-qty="all" style="padding:8px 12px; min-height:36px; border-radius:8px; border:1px solid #16a34a; background:#15803d; color:#f0fdf4; font-weight:700; font-size:12px; cursor:pointer;">Sell All</button>
+                </div>
+              </div>`;
+          }).join('');
+
+      const card = document.getElementById('fishmonger-sell-card');
+      card.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; border-bottom:1px solid rgba(56,189,248,0.35); padding-bottom:10px; margin-bottom:10px;">
+          <div>
+            <div style="font-family:'Cinzel',Georgia,serif; font-size:18px; font-weight:700; color:#7dd3fc;">🐟 Oakhaven Fishmonger Counter</div>
+            <div style="font-size:12px; color:#cbd5e1; margin-top:2px;">Sell your Meadowbrook Lake catches to Marina</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:11px; color:#cbd5e1;">Wallet</div>
+            <div style="font-size:15px; font-weight:700; color:#4ade80;">${this.formatMoney(this.gold)}</div>
+          </div>
+        </div>
+        ${statusMsg ? `<div style="padding:8px 10px; border-radius:8px; font-size:12.5px; margin-bottom:10px; background:rgba(34,197,94,0.18); border:1px solid #22c55e; color:#dcfce7;">${statusMsg}</div>` : ''}
+        <div style="display:flex; flex-direction:column; gap:8px; max-height:290px; overflow-y:auto;">${listHtml}</div>
+        <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:10px; margin-top:14px; padding-top:10px; border-top:1px solid rgba(56,189,248,0.35);">
+          <button type="button" id="fm-sell-all-btn" ${totalQty < 1 ? 'disabled' : ''} style="padding:8px 14px; border-radius:9px; border:1px solid #22c55e; background:${totalQty < 1 ? 'rgba(30,41,59,0.5)' : '#16a34a'}; color:${totalQty < 1 ? '#64748b' : '#fff'}; font-weight:700; font-size:13px; cursor:${totalQty < 1 ? 'not-allowed' : 'pointer'};">💰 Sell All Fish (${this.formatMoney(grandTotal)})</button>
+          <button type="button" id="fm-close-btn" style="padding:8px 16px; border-radius:9px; border:1px solid #94a3b8; background:rgba(30,41,59,0.9); color:#f8fafc; font-weight:700; font-size:13px; cursor:pointer;">Close</button>
+        </div>`;
+
+      card.querySelectorAll('[data-fm-sell]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const itemId = btn.getAttribute('data-fm-sell');
+          const qtyArg = btn.getAttribute('data-fm-qty') === 'all' ? 'all' : 1;
+          const res = this.sellCaughtFish(itemId, qtyArg);
+          if (res) {
+            this.openFishmongerSellModal(`${res.icon} Sold <b>${res.sold}× ${res.itemName}</b> for <b>+${this.formatMoney(res.total)}</b>!`);
+          }
+        });
+      });
+      document.getElementById('fm-sell-all-btn')?.addEventListener('click', () => {
+        let soldAny = 0;
+        let cashSum = 0;
+        fishItems.forEach((it) => {
+          const res = this.sellCaughtFish(it.id, 'all');
+          if (res) {
+            soldAny += res.sold;
+            cashSum = Math.round((cashSum + res.total) * 100) / 100;
+          }
+        });
+        if (soldAny > 0) {
+          this.openFishmongerSellModal(`🐟 Sold all <b>${soldAny} caught fish</b> for <b>+${this.formatMoney(cashSum)}</b>!`);
+        }
+      });
+      document.getElementById('fm-close-btn')?.addEventListener('click', () => {
+        modal.classList.add('hidden');
+      });
+      modal.classList.remove('hidden');
+    }
+
+    getFishingSpeciesTable() {
+      return [
+        { id: 'bluegill',        name: 'Bluegill',          icon: '🐟', rarity: 'Common',   weight: 52, basePrice: 0.25, ratePerInch: 0.0375, minIn: 4,  maxIn: 12, speed: 1.00 },
+        { id: 'yellow_perch',    name: 'Yellow Perch',      icon: '🐠', rarity: 'Common',   weight: 38, basePrice: 0.45, ratePerInch: 0.05,   minIn: 6,  maxIn: 16, speed: 1.15 },
+        { id: 'largemouth_bass', name: 'Largemouth Bass',   icon: '🐡', rarity: 'Uncommon', weight: 6,  basePrice: 0.75, ratePerInch: 0.0625, minIn: 10, maxIn: 24, speed: 1.35 },
+        { id: 'northern_pike',   name: 'Northern Pike',     icon: '🦈', rarity: 'Rare',     weight: 3,  basePrice: 1.25, ratePerInch: 0.075,  minIn: 18, maxIn: 40, speed: 1.55 },
+        { id: 'golden_koi',      name: 'Golden Mythos Koi', icon: '✨', rarity: 'Epic',     weight: 1,  basePrice: 2.25, ratePerInch: 0.1125, minIn: 14, maxIn: 34, speed: 1.75 }
+      ];
+    }
+
+    rollCaughtFish() {
+      const table = this.getFishingSpeciesTable();
+      const totalWeight = table.reduce((sum, s) => sum + s.weight, 0);
+      let roll = Math.random() * totalWeight;
+      let species = table[0];
+      for (const s of table) {
+        if ((roll -= s.weight) <= 0) {
+          species = s;
+          break;
+        }
+      }
+      const sizeRoll = (Math.random() + Math.random()) / 2;
+      const inches = Math.round((species.minIn + sizeRoll * (species.maxIn - species.minIn)) * 10) / 10;
+      const t = (inches - species.minIn) / Math.max(1, species.maxIn - species.minIn);
+      const sizeTier = t >= 0.90 ? 'Trophy' : (t >= 0.70 ? 'Large' : (t >= 0.30 ? 'Standard' : 'Small'));
+      const rawPrice = species.basePrice + species.ratePerInch * (inches - species.minIn);
+      const price = Math.round(rawPrice * 20) / 20;
+      return {
+        ...species,
+        inches,
+        sizeTier,
+        price
+      };
+    }
+
+    isValidFishingWater(tx, ty) {
+      if (this.currentArea !== 'exterior') return false;
+      const onLakePier = tx >= 34.40 && tx <= 37.85 && ty >= 4.72 && ty <= 6.02;
+      if (onLakePier) return false;
+      return this.isInMeadowbrookLake(tx, ty);
+    }
+
+    canCastAtTile(tx, ty) {
+      if (!this.fishingPoleEquipped || this.currentArea !== 'exterior') return false;
+      const dist = Math.hypot(tx - this.player.x, ty - this.player.y);
+      return dist >= 0.45 && dist <= 3.80 && this.isValidFishingWater(tx, ty);
+    }
+
+    _placeFishingSweetSpot(fish) {
+      const w = Math.max(0.14, 0.27 - ((fish?.speed || 1.0) - 1.0) * 0.10);
+      return {
+        width: w,
+        start: 0.14 + Math.random() * (0.72 - w)
+      };
+    }
+
+    _spawnFishingSplash(st, x, y, count = 10, color = '#e0f2fe') {
+      if (!st) return;
+      for (let i = 0; i < count; i++) {
+        const ang = -Math.PI * Math.random();
+        const spd = 1.4 + Math.random() * 2.6;
+        st.particles.push({
+          x,
+          y,
+          vx: Math.cos(ang) * spd,
+          vy: Math.sin(ang) * spd - 0.7,
+          life: 1.0,
+          color
+        });
+      }
+    }
+
+    startFishingCast(tx, ty) {
+      if (!this.canCastAtTile(tx, ty)) return false;
+      this.clearClickMoveTarget();
+      this.keys = {};
+      const dx = tx - this.player.x;
+      const dy = ty - this.player.y;
+      if (Math.abs(dx) > Math.abs(dy)) {
+        this.player.dir = dx >= 0 ? 'right' : 'left';
+      } else {
+        this.player.dir = dy >= 0 ? 'down' : 'up';
+      }
+      this.player.moving = false;
+      this.player.walkTick = 0;
+
+      const fish = this.rollCaughtFish();
+      const zone = this._placeFishingSweetSpot(fish);
+      this.fishingState = {
+        phase: 'waiting',
+        castX: tx,
+        castY: ty,
+        biteTimer: 1.1 + Math.random() * 1.4,
+        biteWindow: 1.45,
+        fish,
+        tCursor: 0.08,
+        tDir: 1,
+        tZoneStart: zone.start,
+        tZoneWidth: zone.width,
+        tHits: 0,
+        tMisses: 0,
+        particles: [],
+        resultMsg: '',
+        resultSuccess: false,
+        resultTimer: 0
+      };
+      this._spawnFishingSplash(this.fishingState, tx * this.TILE, ty * this.TILE, 9, '#bae6fd');
+      if (window.sounds?.playClick) window.sounds.playClick();
+      return true;
+    }
+
+    cancelFishing() {
+      this.fishingState = null;
+    }
+
+    _finishFishingAttempt(win, reason = '') {
+      const st = this.fishingState;
+      if (!st) return;
+      st.phase = 'result';
+      st.resultSuccess = win;
+      st.resultTimer = 2.4;
+      if (win && st.fish) {
+        const f = st.fish;
+        st.resultMsg = `Caught ${f.icon} ${f.name} (${f.inches}" • ${f.sizeTier} • ${this.formatMoney(f.price)})!`;
+        const itemId = `fish_${f.id}_${Math.round(f.price * 100)}`;
+        this.addInventoryItem({
+          id: itemId,
+          name: `${f.name} (${f.sizeTier})`,
+          shortName: f.name,
+          qty: 1,
+          icon: f.icon,
+          type: 'caught_fish',
+          speciesId: f.id,
+          inches: f.inches,
+          sizeTier: f.sizeTier,
+          value: f.price,
+          desc: `<b>${f.name}</b> — ${f.rarity} Meadowbrook Lake catch measuring <b>${f.inches}"</b> (<i>${f.sizeTier}</i>). Estimated value: <b>${this.formatMoney(f.price)}</b>.`
+        });
+        this._spawnFishingSplash(st, this.player.x * this.TILE, this.player.y * this.TILE - 12, 16, '#fde047');
+        if (window.sounds?.playCoins) window.sounds.playCoins();
+        else if (window.sounds?.playVictory) window.sounds.playVictory();
+        this.evaluateQuests?.(true);
+        this.showAutosaveIndicator?.(`🎣 ${st.resultMsg}`);
+      } else {
+        st.resultMsg = reason || 'The fish got away!';
+        if (window.sounds?.playClick) window.sounds.playClick();
+      }
+    }
+
+    handleFishingAction() {
+      const st = this.fishingState;
+      if (!st) return false;
+      if (st.phase === 'waiting') {
+        this._finishFishingAttempt(false, 'Pulled too early — scared the fish away!');
+        return true;
+      }
+      if (st.phase === 'bite') {
+        st.phase = 'reeling';
+        const zone = this._placeFishingSweetSpot(st.fish);
+        st.tZoneStart = zone.start;
+        st.tZoneWidth = zone.width;
+        st.tCursor = 0.05;
+        st.tDir = 1;
+        this._spawnFishingSplash(st, st.castX * this.TILE, st.castY * this.TILE, 14, '#fef08a');
+        if (window.sounds?.playClick) window.sounds.playClick();
+        return true;
+      }
+      if (st.phase === 'reeling') {
+        const hit = st.tCursor >= st.tZoneStart && st.tCursor <= st.tZoneStart + st.tZoneWidth;
+        if (hit) {
+          st.tHits += 1;
+          this._spawnFishingSplash(st, st.castX * this.TILE, st.castY * this.TILE, 10, '#4ade80');
+          if (st.tHits >= 3) {
+            this._finishFishingAttempt(true);
+          } else {
+            const zone = this._placeFishingSweetSpot(st.fish);
+            st.tZoneStart = zone.start;
+            st.tZoneWidth = zone.width;
+            if (window.sounds?.playClick) window.sounds.playClick();
+          }
+        } else {
+          st.tMisses += 1;
+          this._spawnFishingSplash(st, st.castX * this.TILE, st.castY * this.TILE, 6, '#f87171');
+          if (st.tMisses >= 3) {
+            this._finishFishingAttempt(false, 'Line snapped after 3 misses!');
+          }
+        }
+        return true;
+      }
+      if (st.phase === 'result') {
+        this.fishingState = null;
+        return true;
+      }
+      return false;
+    }
+
+    updateFishing() {
+      if (this.currentArea !== 'exterior' || !this.fishingPoleEquipped) {
+        if (this.fishingState) this.fishingState = null;
+        return;
+      }
+      const st = this.fishingState;
+      if (!st) return;
+      const dt = 1 / 60;
+      for (let i = st.particles.length - 1; i >= 0; i--) {
+        const p = st.particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.14;
+        p.life -= dt * 1.9;
+        if (p.life <= 0) st.particles.splice(i, 1);
+      }
+      if (st.phase === 'waiting') {
+        st.biteTimer -= dt;
+        if (st.biteTimer <= 0) {
+          st.phase = 'bite';
+          st.biteWindow = 1.45;
+          this._spawnFishingSplash(st, st.castX * this.TILE, st.castY * this.TILE, 12, '#fde047');
+        }
+      } else if (st.phase === 'bite') {
+        st.biteWindow -= dt;
+        if (st.biteWindow <= 0) {
+          this._finishFishingAttempt(false, 'Too slow — the fish slipped off the hook!');
+        }
+      } else if (st.phase === 'reeling') {
+        const spd = 0.85 * (st.fish?.speed || 1.0) + st.tHits * 0.22;
+        st.tCursor += st.tDir * spd * dt;
+        if (st.tCursor >= 1) { st.tCursor = 1; st.tDir = -1; }
+        if (st.tCursor <= 0) { st.tCursor = 0; st.tDir = 1; }
+      } else if (st.phase === 'result') {
+        st.resultTimer -= dt;
+        if (st.resultTimer <= 0) {
+          this.fishingState = null;
+        }
+      }
+    }
+
+    renderFishingWorldLayer(ctx) {
+      if (this.currentArea !== 'exterior' || !this.fishingPoleEquipped) return;
+      const S = this.TILE;
+      const px = this.player.x * S;
+      const py = this.player.y * S;
+      const castRadiusPx = 3.80 * S;
+
+      // Circular casting zone around player
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(px, py, castRadiusPx, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(56, 189, 248, 0.08)';
+      ctx.fill();
+      ctx.setLineDash([8, 6]);
+      ctx.strokeStyle = 'rgba(125, 211, 252, 0.72)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Hover reticle when aiming at valid lake water inside ring
+      if (!this.fishingState && this._hoverWorldTile && this.canCastAtTile(this._hoverWorldTile.tx, this._hoverWorldTile.ty)) {
+        const hx = this._hoverWorldTile.tx * S;
+        const hy = this._hoverWorldTile.ty * S;
+        ctx.beginPath();
+        ctx.arc(hx, hy, 12 + Math.sin(this.tick * 0.14) * 2, 0, Math.PI * 2);
+        ctx.strokeStyle = '#fde047';
+        ctx.lineWidth = 2.2;
+        ctx.stroke();
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.82)';
+        ctx.beginPath();
+        ctx.roundRect(hx - 24, hy - 34, 48, 18, 5);
+        ctx.fill();
+        ctx.fillStyle = '#fef08a';
+        ctx.font = 'bold 10px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('🎣 Cast', hx, hy - 21.5);
+      }
+
+      const st = this.fishingState;
+
+      // Always draw Old Finn's Oak Fishing Pole in the character's hands when equipped
+      const walkBob = st ? 0 : Math.sin((this.player.walkTick || 0) * 1.4) * 1.4;
+      let handX = px + 8;
+      let handY = py - 7 + walkBob;
+      let tipX = px + 24;
+      let tipY = py - 29 + walkBob;
+      if (this.player.dir === 'left') {
+        handX = px - 8; handY = py - 7 + walkBob;
+        tipX = px - 28; tipY = py - 25 + walkBob;
+      } else if (this.player.dir === 'right') {
+        handX = px + 8; handY = py - 7 + walkBob;
+        tipX = px + 28; tipY = py - 25 + walkBob;
+      } else if (this.player.dir === 'up') {
+        handX = px + 7; handY = py - 11 + walkBob;
+        tipX = px + 14; tipY = py - 35 + walkBob;
+      }
+
+      // Dark outline + oak rod shaft + cork grip + brass reel
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = '#1f1209';
+      ctx.lineWidth = 4.6;
+      ctx.beginPath(); ctx.moveTo(handX, handY); ctx.lineTo(tipX, tipY); ctx.stroke();
+
+      ctx.strokeStyle = '#9a5b28';
+      ctx.lineWidth = 2.6;
+      ctx.beginPath(); ctx.moveTo(handX, handY); ctx.lineTo(tipX, tipY); ctx.stroke();
+
+      // Cork handle & brass reel near hand
+      const gripX = handX + (tipX - handX) * 0.22;
+      const gripY = handY + (tipY - handY) * 0.22;
+      ctx.strokeStyle = '#d4a373';
+      ctx.lineWidth = 3.6;
+      ctx.beginPath(); ctx.moveTo(handX, handY); ctx.lineTo(gripX, gripY); ctx.stroke();
+
+      ctx.fillStyle = '#f59e0b';
+      ctx.strokeStyle = '#1f1209';
+      ctx.lineWidth = 1.1;
+      ctx.beginPath(); ctx.arc(gripX, gripY + 2, 2.7, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+      // When not cast yet, draw a short idle line + miniature swaying bobber from rod tip
+      if (!st) {
+        const sway = Math.sin(this.tick * 0.08) * 2.2;
+        const bobIdleX = tipX + sway;
+        const bobIdleY = tipY + 13;
+        ctx.strokeStyle = 'rgba(241, 245, 249, 0.8)';
+        ctx.lineWidth = 1.1;
+        ctx.beginPath(); ctx.moveTo(tipX, tipY); ctx.lineTo(bobIdleX, bobIdleY); ctx.stroke();
+        ctx.fillStyle = '#ef4444';
+        ctx.beginPath(); ctx.arc(bobIdleX, bobIdleY, 2.5, Math.PI, 0); ctx.fill();
+        ctx.fillStyle = '#f8fafc';
+        ctx.beginPath(); ctx.arc(bobIdleX, bobIdleY, 2.5, 0, Math.PI); ctx.fill();
+      }
+
+      if (st) {
+        const bx = st.castX * S;
+        let by = st.castY * S + Math.sin(this.tick * 0.12) * 2.2;
+        if (st.phase === 'bite') by += Math.sin(this.tick * 0.85) * 4 + 3;
+
+        // Line & bobber
+        if (st.phase !== 'result') {
+          ctx.strokeStyle = 'rgba(241, 245, 249, 0.78)';
+          ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          ctx.moveTo(tipX, tipY);
+          ctx.quadraticCurveTo((tipX + bx) / 2, Math.max(tipY, by) - 16, bx, by);
+          ctx.stroke();
+
+          // Water ripple
+          const rip = (this.tick * 0.5) % 14;
+          ctx.strokeStyle = `rgba(224, 242, 254, ${Math.max(0, 0.75 - rip / 18)})`;
+          ctx.lineWidth = 1.3;
+          ctx.beginPath();
+          ctx.ellipse(bx, by + 2, 5 + rip, 2.5 + rip * 0.45, 0, 0, Math.PI * 2);
+          ctx.stroke();
+
+          // Bobber
+          ctx.fillStyle = '#ef4444';
+          ctx.beginPath();
+          ctx.arc(bx, by - 2, 4.8, Math.PI, 0);
+          ctx.fill();
+          ctx.fillStyle = '#f8fafc';
+          ctx.beginPath();
+          ctx.arc(bx, by - 2, 4.8, 0, Math.PI);
+          ctx.fill();
+        }
+
+        if (st.phase === 'bite') {
+          ctx.fillStyle = '#fef08a';
+          ctx.strokeStyle = '#b45309';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.roundRect(bx - 34, by - 36, 68, 22, 6);
+          ctx.fill();
+          ctx.stroke();
+          ctx.fillStyle = '#991b1b';
+          ctx.font = 'bold 12px Inter, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('❗ BITE!', bx, by - 21);
+        }
+
+        for (const p of st.particles) {
+          ctx.globalAlpha = Math.max(0, p.life);
+          ctx.fillStyle = p.color;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, 2.4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+      }
+      ctx.restore();
+    }
+
+    renderFishingScreenHud(ctx) {
+      if (this.currentArea !== 'exterior' || !this.fishingPoleEquipped) return;
+      const W = this.canvas.width;
+      const H = this.canvas.height;
+      ctx.save();
+
+      // Top status pill while pole is equipped
+      const st = this.fishingState;
+      const isMob = this.isMobileViewport();
+      const curPhase = st?.phase || null;
+      if (this._lastMobFishPhase !== curPhase) {
+        this._lastMobFishPhase = curPhase;
+        this.updateMobileActionLabel?.();
+      }
+
+      let pillText = isMob
+        ? '🎣 Tap lake water in ring to cast (Bag to unequip)'
+        : '🎣 Fishing Pole Equipped — Click lake water in ring to cast (Press I to unequip)';
+      if (st?.phase === 'waiting') {
+        pillText = isMob
+          ? '⏳ Waiting for bite... Tap on ❗ BITE! (B to cancel)'
+          : '⏳ Waiting for a bite... Click or press Space when you see ❗ BITE! (Esc to reel back)';
+      } else if (st?.phase === 'bite') {
+        pillText = isMob
+          ? '❗ BITE! Tap screen or A NOW!'
+          : '❗ BITE! Click or press Space NOW to hook the fish!';
+      } else if (st?.phase === 'reeling') {
+        pillText = isMob
+          ? '🎯 Tap screen or A in GREEN zone! (3 hits)'
+          : '🎯 Tap Space or click in the GREEN Sweet Spot! (3 hits lands the fish)';
+      }
+
+      ctx.font = 'bold 12px Inter, sans-serif';
+      const tw = Math.min(W - 24, ctx.measureText(pillText).width + 28);
+      ctx.fillStyle = st?.phase === 'bite' ? 'rgba(180, 83, 9, 0.92)' : 'rgba(15, 23, 42, 0.84)';
+      ctx.strokeStyle = st?.phase === 'bite' ? '#fde047' : 'rgba(56, 189, 248, 0.55)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.roundRect((W - tw) / 2, 14, tw, 28, 8);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#f8fafc';
+      ctx.textAlign = 'center';
+      ctx.fillText(pillText, W / 2, 32, tw - 20);
+
+      // Bottom Sweet-Spot Timing Bar or Result Banner
+      if (st?.phase === 'reeling') {
+        const bw = Math.min(340, W - 48);
+        const bh = 22;
+        const bx = (W - bw) / 2;
+        const by = isMob ? Math.max(96, H - 155) : (H - 64);
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.65)';
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.roundRect(bx - 16, by - 28, bw + 32, 64, 10);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = '#f8fafc';
+        ctx.font = 'bold 12px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${st.fish.icon} ${st.fish.name} • Hits ${st.tHits}/3 • Misses ${st.tMisses}/3`, W / 2, by - 9, bw + 16);
+
+        ctx.fillStyle = '#334155';
+        ctx.beginPath();
+        ctx.roundRect(bx, by, bw, bh, 6);
+        ctx.fill();
+
+        ctx.fillStyle = '#22c55e';
+        ctx.beginPath();
+        ctx.roundRect(bx + st.tZoneStart * bw, by, st.tZoneWidth * bw, bh, 4);
+        ctx.fill();
+
+        const cx = bx + st.tCursor * bw;
+        ctx.fillStyle = '#fef08a';
+        ctx.fillRect(cx - 3.5, by - 4, 7, bh + 8);
+      } else if (st?.phase === 'result') {
+        const bw = Math.min(420, W - 32);
+        const bx = (W - bw) / 2;
+        const by = isMob ? Math.max(96, H - 140) : (H - 68);
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+        ctx.strokeStyle = st.resultSuccess ? '#22c55e' : '#ef4444';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(bx, by, bw, 42, 10);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = st.resultSuccess ? '#bbf7d0' : '#fecaca';
+        ctx.font = 'bold 13px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(st.resultMsg, W / 2, by + 26, bw - 20);
+      }
+      ctx.restore();
+    }
+
+    maybeOpenPendingFirstBattleCardReward() {
+      if (!this.pendingFirstBattleCardReward) return false;
+      if (this.pendingPhoneDuelCardReward || this.bertoRewardPending) return false;
+      this.openFirstBattleCardRewardModal();
+      return true;
+    }
+
+    openFirstBattleCardRewardModal() {
+      const pending = this.pendingFirstBattleCardReward;
+      if (!pending || !Array.isArray(pending.cards) || pending.cards.length === 0) return;
+      this.ensureDuelCallUI();
+      const modal = document.getElementById('duel-card-reward-modal');
+      const grid = document.getElementById('duel-reward-grid');
+      const titleEl = document.getElementById('duel-reward-title');
+      const subEl = document.getElementById('duel-reward-subtitle');
+      if (!modal || !grid) return;
+
+      if (titleEl) titleEl.textContent = `⭐ FIRST BATTLE REWARD — ${pending.npcName.toUpperCase()}`;
+      if (subEl) subEl.textContent = `Rare 5% drop! Pick 1 card (3★–5★) from ${pending.npcName}'s deck to add to your Card Binder:`;
+
+      grid.innerHTML = '';
+      let claimed = false;
+      pending.cards.forEach((c) => {
+        const imgSrc = c.traditionalCardImg || c.cardImg || '';
+        const starsStr = '★'.repeat(Math.round(Number(c.stars) || 3));
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'duel-reward-card';
+        btn.innerHTML = `
+          ${imgSrc ? `<img src="${imgSrc}" alt="${c.shortName || c.name}">` : `<div class="duel-reward-fallback">🃏</div>`}
+          <div class="duel-reward-card-name">${c.shortName || c.name}</div>
+          <div class="duel-reward-card-meta">${starsStr} • ${c.element || 'Unit'}</div>
+        `;
+        btn.addEventListener('click', () => {
+          if (claimed) return;
+          claimed = true;
+          this.addCardToBinder(c.id);
+          this.pendingFirstBattleCardReward = null;
+          this.saveWorldData(this.draftAppearance);
+          this.updateHUDSaveInfo();
+          this.renderBinderModal?.();
+          if (window.sounds?.playVictory) {
+            window.sounds.playVictory();
+          } else if (window.sounds?.playHeal) {
+            window.sounds.playHeal();
+          }
+          modal.classList.add('hidden');
+          this.showAutosaveIndicator?.(`📖 Added ${c.shortName || c.name} (${starsStr}) to your Card Binder!`);
+        });
+        grid.appendChild(btn);
+      });
+
+      modal.classList.remove('hidden');
     }
 
     // -------------------------------------------------------------------------
@@ -10724,6 +12462,7 @@
           this.activeDialogueNpc = null;
           if (this.nearInteractable?.id === 'berto') this.nearInteractable = null;
           this.updateFreeRoamPrompt();
+          this.maybeOpenPendingFirstBattleCardReward();
         });
       });
 
@@ -11614,12 +13353,14 @@
         this.activeDialogueNpc = 'booster_bash_challenger';
         this.lastShopPromptKey = null;
         this.updateFreeRoamPrompt();
+        this.maybeOpenPendingFirstBattleCardReward();
         return;
       }
       if (challenger?.tournamentContext?.type === 'park_monday_rr') {
         this.syncParkNpcBubbles();
         this.updateFreeRoamPrompt();
         this.toggleParkTournamentModal(true);
+        this.maybeOpenPendingFirstBattleCardReward();
         return;
       }
       if (challenger?.tournamentContext?.type === 'phone_duel_challenge') {
@@ -11629,6 +13370,8 @@
         if (this.pendingPhoneDuelCardReward) {
           if (window.sounds?.playVictory) window.sounds.playVictory();
           this.openPhoneDuelCardRewardModal();
+        } else {
+          this.maybeOpenPendingFirstBattleCardReward();
         }
         return;
       }
@@ -11637,6 +13380,7 @@
         this.lastShopPromptKey = null;
         this.updateFreeRoamPrompt();
         this.openOakhavenLeagueModal();
+        this.maybeOpenPendingFirstBattleCardReward();
         return;
       }
       if (challenger?.id === 'pluto') {
@@ -11652,6 +13396,7 @@
         }
         this.activeDialogueNpc = 'pluto';
         this.updateFreeRoamPrompt();
+        this.maybeOpenPendingFirstBattleCardReward();
         return;
       }
       if (challenger?.id === 'berto') {
@@ -11674,6 +13419,7 @@
         }
         this.activeDialogueNpc = 'berto';
         this.updateFreeRoamPrompt();
+        this.maybeOpenPendingFirstBattleCardReward();
         return;
       }
       if (challenger?.id === 'nova' || challenger?.id === 'silas' || challenger?.id === 'maya' || challenger?.id === 'evelyn') {
@@ -11681,6 +13427,7 @@
         this.changeRelationship(challenger.id, 3, 'good duel');
         this.activeDialogueNpc = challenger.id;
         this.updateFreeRoamPrompt();
+        this.maybeOpenPendingFirstBattleCardReward();
         return;
       }
       if (this.friendDefeatedRewardPending) {
@@ -11700,6 +13447,7 @@
 
         this.renderDialogueUI();
       }
+      this.maybeOpenPendingFirstBattleCardReward();
     }
 
     setFolioSection(section) {
@@ -12298,8 +14046,8 @@
         if (invCat === 'all') return true;
         if (invCat === 'pack') return item.type === 'booster_pack' || item.type === 'refillable_pack';
         if (invCat === 'board') return item.type === 'board_theme';
-        if (invCat === 'key') return item.type === 'quest_item';
-        return item.type !== 'booster_pack' && item.type !== 'refillable_pack' && item.type !== 'board_theme' && item.type !== 'quest_item';
+        if (invCat === 'key') return item.type === 'quest_item' || item.type === 'fishing_pole' || item.type === 'voucher' || item.type === 'farm_produce' || item.type === 'caught_fish';
+        return item.type !== 'booster_pack' && item.type !== 'refillable_pack' && item.type !== 'board_theme' && item.type !== 'quest_item' && item.type !== 'fishing_pole' && item.type !== 'voucher' && item.type !== 'farm_produce' && item.type !== 'caught_fish';
       });
 
       const invPageSize = 9;
@@ -12404,6 +14152,65 @@
                 this.setEquippedBoardTheme(isEquipped ? 'classic' : themeId, true);
                 this.renderBinderModal();
               });
+            } else if (item.type === 'fishing_pole') {
+              if (!item.cardImg) item.cardImg = 'Sprites/Overworld/fishing_pole_icon.png';
+              const isEquipped = Boolean(this.fishingPoleEquipped);
+              slotEl.innerHTML = `
+                <div class="binder-trad-art-wrap" draggable="false" style="background:rgba(14,165,233,0.14);border-radius:8px;display:flex;align-items:center;justify-content:center;">
+                  <img src="${item.cardImg}" alt="${displayName}" class="binder-trad-art-img" style="object-fit:contain;padding:6px;" draggable="false">
+                </div>
+                <div class="binder-trad-name" title="${displayName}">${displayName}</div>
+                <div class="binder-trad-actions">
+                  <button type="button" class="binder-xfer-btn ${isEquipped ? 'to-bag' : 'to-deck'}" style="flex:1;">
+                    ${isEquipped ? '✅ Unequip' : '🎣 Equip'}
+                  </button>
+                </div>
+              `;
+              slotEl.querySelector('button')?.addEventListener('click', (ev) => {
+                ev.stopPropagation();
+                if (window.sounds?.playClick) window.sounds.playClick();
+                this.setFishingPoleEquipped(!isEquipped);
+                this.renderBinderModal();
+              });
+            } else if (item.type === 'voucher') {
+              slotEl.innerHTML = `
+                <div class="binder-trad-art-wrap" draggable="false">
+                  <div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-size:42px;background:rgba(15,23,42,0.85);border-radius:8px;">${item.icon || '🎟️'}</div>
+                  ${(item.qty || 1) > 1 ? `<span class="binder-trad-qty-badge">x${item.qty}</span>` : ''}
+                </div>
+                <div class="binder-trad-name" title="${displayName}">${displayName}</div>
+                <div class="binder-trad-actions">
+                  <button type="button" class="binder-xfer-btn to-deck" style="flex:1;">🎟️ Redeem Pack</button>
+                </div>
+              `;
+              slotEl.querySelector('button')?.addEventListener('click', (ev) => {
+                ev.stopPropagation();
+                if (window.sounds?.playClick) window.sounds.playClick();
+                this.redeemPremiumPackVoucher();
+                this.renderBinderModal();
+              });
+            } else if (item.type === 'farm_produce') {
+              slotEl.innerHTML = `
+                <div class="binder-trad-art-wrap" draggable="false">
+                  <div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-size:42px;background:rgba(30,20,12,0.85);border-radius:8px;">${item.icon || '🌾'}</div>
+                  ${(item.qty || 1) > 1 ? `<span class="binder-trad-qty-badge">x${item.qty}</span>` : ''}
+                </div>
+                <div class="binder-trad-name" title="${displayName}">${displayName}</div>
+                <div class="binder-trad-actions">
+                  <span style="flex:1;text-align:center;font-size:11px;font-weight:700;color:#fde68a;padding:3px 4px;">🌾 Farm Produce</span>
+                </div>
+              `;
+            } else if (item.type === 'caught_fish') {
+              slotEl.innerHTML = `
+                <div class="binder-trad-art-wrap" draggable="false">
+                  <div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-size:42px;background:rgba(12,34,56,0.88);border-radius:8px;">${item.icon || '🐟'}</div>
+                  ${(item.qty || 1) > 1 ? `<span class="binder-trad-qty-badge">x${item.qty}</span>` : ''}
+                </div>
+                <div class="binder-trad-name" title="${displayName}">${displayName}</div>
+                <div class="binder-trad-actions">
+                  <span style="flex:1;text-align:center;font-size:11px;font-weight:700;color:#7dd3fc;padding:3px 4px;">${item.sizeTier || 'Fresh'} • ${this.formatMoney(item.value || 0)}</span>
+                </div>
+              `;
             } else if (item.type === 'quest_item') {
               slotEl.innerHTML = `
                 <div class="binder-trad-art-wrap" draggable="false">
@@ -13837,6 +15644,7 @@
       this.dayNumber = 1;
       this.timeOfDayMinutes = this.NEW_GAME_START_MINUTE;
       this.syncTimeOfDayPhase(false);
+      this.syncBarnKidsSchedule(true);
       this.checkPinnedReminders();
       this.updateClockHUD(true);
       this.hasMomBoosterMoney = false;
@@ -14089,16 +15897,26 @@
       const id = interactable.id;
       if (typeof id === 'string' && id.startsWith('meetup_')) return true;
       const friend = this.getFriendNpc();
-      return id === 'friend' || id === 'best_friend' || id === 'friend_duel' || id === 'booster_bash_challenger' || id === 'mom' || id === 'shopkeeper' || id === 'pluto' || id === 'nova' || id === 'silas' || id === 'maya' || id === 'clara' || id === 'bram' || id === 'mayor_donald' || id === 'chef_marco' || id === 'berto' || id === 'shaun' || id === 'evelyn' || id === 'chloe' || id === 'rowan' || id === 'jasper' || id === 'fire_chief' || id === 'police_chief' || id === 'west_otis' || id === 'west_maren' || id === 'west_caleb' || id === 'west_juniper' || id === 'west_gideon' || id === 'fh1_martha' || id === 'fh1_harlan' || id === 'fh2_eleanor' || id === 'fh2_arthur' || id === 'arcade_zeke' || interactable === friend || interactable === this.shopkeeperNpc || interactable === this.plutoNpc || interactable === this.novaNpc || interactable === this.silasNpc || interactable === this.mayaNpc || interactable === this.claraNpc || interactable === this.bramNpc || interactable === this.mayorNpc || interactable === this.chefNpc || interactable === this.bertoNpc || interactable === this.shaunNpc || interactable === this.evelynNpc || interactable === this.chloeNpc || interactable === this.rowanNpc || interactable === this.jasperNpc || interactable === this.fireChiefNpc || interactable === this.policeChiefNpc || interactable === this.westOtisNpc || interactable === this.westMarenNpc || interactable === this.westCalebNpc || interactable === this.westJuniperNpc || interactable === this.westGideonNpc || interactable === this.fh1MarthaNpc || interactable === this.fh1HarlanNpc || interactable === this.fh2EleanorNpc || interactable === this.fh2ArthurNpc || interactable === this.arcadeZekeNpc;
+      return id === 'friend' || id === 'best_friend' || id === 'friend_duel' || id === 'booster_bash_challenger' || id === 'mom' || id === 'shopkeeper' || id === 'pluto' || id === 'nova' || id === 'silas' || id === 'maya' || id === 'clara' || id === 'bram' || id === 'mayor_donald' || id === 'chef_marco' || id === 'berto' || id === 'shaun' || id === 'evelyn' || id === 'chloe' || id === 'rowan' || id === 'jasper' || id === 'pier_finn' || id === 'farmstand_hazel' || id === 'fishmonger_marina' || id === 'fire_chief' || id === 'police_chief' || id === 'west_otis' || id === 'west_maren' || id === 'west_caleb' || id === 'west_juniper' || id === 'west_gideon' || id === 'fh1_martha' || id === 'fh1_harlan' || id === 'fh2_eleanor' || id === 'fh2_arthur' || id === 'barn_kid_toby' || id === 'barn_kid_daisy' || id === 'barn_kid_owen' || id === 'barn_kid_poppy' || id === 'arcade_zeke' || interactable === friend || interactable === this.shopkeeperNpc || interactable === this.plutoNpc || interactable === this.novaNpc || interactable === this.silasNpc || interactable === this.mayaNpc || interactable === this.claraNpc || interactable === this.bramNpc || interactable === this.mayorNpc || interactable === this.chefNpc || interactable === this.bertoNpc || interactable === this.shaunNpc || interactable === this.evelynNpc || interactable === this.chloeNpc || interactable === this.rowanNpc || interactable === this.jasperNpc || interactable === this.pierFinnNpc || interactable === this.farmstandHazelNpc || interactable === this.fishmongerMarinaNpc || interactable === this.fireChiefNpc || interactable === this.policeChiefNpc || interactable === this.westOtisNpc || interactable === this.westMarenNpc || interactable === this.westCalebNpc || interactable === this.westJuniperNpc || interactable === this.westGideonNpc || interactable === this.fh1MarthaNpc || interactable === this.fh1HarlanNpc || interactable === this.fh2EleanorNpc || interactable === this.fh2ArthurNpc || interactable === this.barnKidTobyNpc || interactable === this.barnKidDaisyNpc || interactable === this.barnKidOwenNpc || interactable === this.barnKidPoppyNpc || interactable === this.arcadeZekeNpc;
     }
 
     startTalkingToNpc(npcId) {
       if (window.sounds?.playClick) window.sounds.playClick();
       this.clearClickMoveTarget();
       const friend = this.getFriendNpc();
-      const actualId = (npcId === 'friend' || npcId === 'best_friend' || npcId === this.friendName || (friend && npcId === friend.id))
+      let actualId = (npcId === 'friend' || npcId === 'best_friend' || npcId === this.friendName || (friend && npcId === friend.id))
         ? (this.currentArea === 'friend_interior' ? 'friend_duel' : 'friend')
         : npcId;
+
+      if (this.storyState === 'free_roam' && typeof actualId === 'string' && !actualId.startsWith('meetup_')) {
+        const activeNpc = this.getActiveNpcsForArea(this.currentArea).find(n =>
+          n && (n.id === actualId || (actualId === 'friend' && n.id === 'best_friend')) && this.getActiveMeetupForRealNpc(n, this.currentArea)
+        );
+        const activeMeetup = activeNpc ? this.getActiveMeetupForRealNpc(activeNpc, this.currentArea) : null;
+        if (activeMeetup) {
+          actualId = `meetup_${activeMeetup.id}`;
+        }
+      }
 
       if (this.activeDialogueNpc && this.activeDialogueNpc !== actualId) {
         this.clearPendingBattleResults();
@@ -14584,12 +16402,13 @@
             : greetingHtml;
           textEl.innerHTML = fullGreetingHtml;
           const cleanGreeting = this.stripNoteHtml(greetingHtml);
-          if (cleanGreeting) {
+          const isTournamentInfo = (txt) => /\b(tournament|booster bash|round robin|card show|grand championship|cup bracket|league match|qualifier)\b/i.test(txt || '');
+          if (cleanGreeting && isTournamentInfo(cleanGreeting)) {
             this.setActivePinNoteContext({
               id: `dlg_${npcId}_greeting`,
-              title: `${cleanSpeaker} — Greeting`,
-              category: 'dialogue',
-              icon: '💬',
+              title: `${cleanSpeaker} — Event Info`,
+              category: 'event',
+              icon: '🏆',
               source: cleanSpeaker,
               body: cleanGreeting
             });
@@ -14635,27 +16454,29 @@
                     body: choice.note.body || replyText,
                     source: choice.note.source || cleanSpeaker
                   };
-                } else if (replyText) {
+                } else if (replyText && (choice.isQuestAction || isTournamentInfo(replyText))) {
                   const cleanLabel = this.stripNoteHtml(choice.label).replace(/^\d+\.\s*/, '').replace(/^[^\w"]+/, '').replace(/["]+/g, '').trim();
-                  const isEvent = /(tournament|booster bash|round robin|event|monday|tuesday|wednesday|thursday|friday|saturday|sunday|pm|am)/i.test(replyText);
+                  const isTournament = isTournamentInfo(replyText);
                   noteObj = {
                     id: `dlg_${npcId}_${cIdx}_${cleanLabel.toLowerCase().replace(/[^a-z0-9]+/g, '_').slice(0, 32)}`,
                     title: cleanLabel ? `${cleanSpeaker}: ${cleanLabel.slice(0, 42)}` : `${cleanSpeaker} Note`,
-                    category: isEvent ? 'event' : 'custom',
-                    icon: isEvent ? '🏆' : '📝',
+                    category: isTournament ? 'event' : 'quest',
+                    icon: isTournament ? '🏆' : '📜',
                     source: cleanSpeaker,
                     body: replyText
                   };
                 }
                 if (noteObj) {
                   this.setActivePinNoteContext(noteObj);
-                  if (choice.note || noteObj.category === 'event') {
+                  if (!choice.isQuestAction && (choice.note || noteObj.category === 'event')) {
                     btn._pinEventNote = noteObj;
                     const alreadyPinned = this.isNotebookNotePinned(noteObj.id);
                     btn.innerHTML = alreadyPinned
                       ? '✅ Pinned to Notebook! (Click to unpin)'
                       : '📌 Pin this event to Notebook';
                   }
+                } else {
+                  this.clearActivePinNoteContext();
                 }
               }
             });
@@ -14704,7 +16525,10 @@
 
       const choices = todayMeetups.map(m => {
         const isBuy = m.type === 'buy';
-        const priceTxt = `${isBuy ? '' : '+'}${this.formatMoney(m.agreedPrice)}`;
+        const tradeCardCount = Array.isArray(m.offeredCards) ? m.offeredCards.filter(Boolean).length : 0;
+        const priceTxt = isBuy && tradeCardCount > 0
+          ? `${tradeCardCount} card${tradeCardCount > 1 ? 's' : ''}${m.agreedPrice > 0 ? ` + ${this.formatMoney(m.agreedPrice)}` : ''}`
+          : `${isBuy ? '' : '+'}${this.formatMoney(m.agreedPrice)}`;
         return {
           label: `🤝 Meetup Trade: ${isBuy ? 'Buy' : 'Sell'} ${m.cardName} (${priceTxt})`,
           primary: true,
@@ -14787,14 +16611,12 @@
       }
 
       const visitors = [...this.getActiveMeetupVisitorsForArea(this.currentArea)];
-      // Also include any real NPC who physically walked here for an active scheduled meetup
-      const curDay = this.dayNumber || 1;
-      const curWin = this.getCurrentMeetupWindowId();
+      // Also include any real NPC who physically walked here for a scheduled meetup (including early arrival)
       (this.scheduledMeetups || []).forEach(m => {
         if (m.status !== 'scheduled' || m.venueType === 'npc_house' || m.area !== this.currentArea) return;
-        if (!this.isMeetupActiveNow(m, curDay, curWin)) return;
+        if (visitors.some(v => v.id === `meetup_${m.id}`)) return;
         const realNpc = this.getMeetupRealNpc(m.npcId);
-        if (realNpc && realNpc.trip?.meetupId === m.id && this.getNpcArea(realNpc) === this.currentArea) {
+        if (this.getActiveMeetupForRealNpc(realNpc, this.currentArea)?.id === m.id) {
           visitors.push({
             id: `meetup_${m.id}`,
             meetupId: m.id,
@@ -14886,7 +16708,10 @@
       }
 
       const isBuy = m.type === 'buy';
-      const priceTxt = `${isBuy ? '' : '+'}${this.formatMoney(m.agreedPrice)}`;
+      const tradeCardCount = Array.isArray(m.offeredCards) ? m.offeredCards.filter(Boolean).length : 0;
+      const priceTxt = isBuy && tradeCardCount > 0
+        ? `${tradeCardCount} card${tradeCardCount > 1 ? 's' : ''}${m.agreedPrice > 0 ? ` + ${this.formatMoney(m.agreedPrice)}` : ''}`
+        : `${isBuy ? '' : '+'}${this.formatMoney(m.agreedPrice)}`;
 
       const venueFlavor = m.venueType === 'player_house'
         ? (isBuy
@@ -14929,6 +16754,91 @@
       return true;
     }
 
+    renderBarnKidDialogue(npc) {
+      if (!npc) return;
+      const pName = this.draftAppearance?.name || 'Asher';
+      const inClub = this.currentArea === 'haystack_barn_club_interior';
+      const profiles = {
+        barn_kid_toby: {
+          tag: '🃏 TOBY — BARN CLUBHOUSE DUELIST',
+          homeName: "Harlan & Martha's Homestead",
+          clubGreeting: `<b>Toby:</b> "Hey ${pName}! Welcome to our secret upstairs Barn Card Clubhouse! We keep all our best Goblin and Mythos decks stashed right by the hay bales."`,
+          homeGreeting: `<b>Toby:</b> "Whoa, ${pName}! Daisy and I just got back from the barn—Mom and Dad like us upstairs in our room after 9 PM."`,
+          chatLabel: `1. 🃏 "How's the Barn Card Club tournament bracket looking?"`,
+          chatReply: `<b>Toby:</b> "I'm leading the board right now with my Goblin Army & Gooba combo! Come duel us here anytime between 8 AM and 9 PM."`,
+          hintLabel: `3. 🌾 "Who lives out here on the two farms?"`,
+          hintReply: `<b>Toby:</b> "Daisy and I live with Harlan & Martha over at Homestead Dairy, and Owen & Poppy walk over from Eleanor & Arthur's Harvest Manor!"`
+        },
+        barn_kid_daisy: {
+          tag: '🌊 DAISY — BARN CLUBHOUSE DUELIST',
+          homeName: "Harlan & Martha's Homestead",
+          clubGreeting: `<b>Daisy:</b> "Hi ${pName}! Pull up a hay bale! Toby and I sneak up the barn stairs right at 8 AM to test new Water Tribe combos."`,
+          homeGreeting: `<b>Daisy:</b> "Nighttime already! Harlan makes sure Toby and I head back to our twin room by 9 PM, though I still organize my cards before bed."`,
+          chatLabel: `1. 🌊 "What cards do you like playing up in the loft?"`,
+          chatReply: `<b>Daisy:</b> "Merfolk + Sea Dragon! When they share a row, Merfolk's Twin Tide hits twice and Sea Dragon lets them strike straight into Ranged!"`,
+          hintLabel: `3. 🥧 "Do you and Toby ever head into Oakhaven?"`,
+          hintReply: `<b>Daisy:</b> "Sometimes we take afternoon trips to Leo's Card Shop, Shaun's Corner Market, or the Arcade—just gotta be back home by 9!"`
+        },
+        barn_kid_owen: {
+          tag: '🦎 OWEN — HARVEST MANOR TACTICIAN',
+          homeName: "Eleanor & Arthur's Harvest Manor",
+          clubGreeting: `<b>Owen:</b> "Hey ${pName}! I mapped out the whole cup bracket on our corkboard. Think your deck can handle my Lizard lineup?"`,
+          homeGreeting: `<b>Owen:</b> "Evening, ${pName}! Poppy and I share the twin bedroom upstairs here at Harvest Manor from 9 PM until 8 AM."`,
+          chatLabel: `1. 🦎 "You've got quite a tournament setup in here!"`,
+          chatReply: `<b>Owen:</b> "My dad Arthur taught me how to track card synergies—Krythos the Basilisk plus PyroManda & Frost Skink is tough to beat!"`,
+          hintLabel: `3. 🏛️ "Do you walk all the way from Harvest Manor?"`,
+          hintReply: `<b>Owen:</b> "Yep! Right out the manor front door, east past the fields, and straight up East Ranch Lane into the Haystack Barn."`
+        },
+        barn_kid_poppy: {
+          tag: '🌻 POPPY — HARVEST MANOR DUELIST',
+          homeName: "Eleanor & Arthur's Harvest Manor",
+          clubGreeting: `<b>Poppy:</b> "Yay, a new challenger! Welcome to the Barn Clubhouse, ${pName}! Grab some apple cider from the crate if you want."`,
+          homeGreeting: `<b>Poppy:</b> "Hi ${pName}! Cozy time in our Harvest Manor room—we'll be heading back to the barn loft bright and early at 8 AM!"`,
+          chatLabel: `1. 🐺 "What's your favorite Mythos deck to play?"`,
+          chatReply: `<b>Poppy:</b> "Wolf Pack! Werewolf Pup and Manson, Wolf Father power each other up fast—just like our four-kid club up here!"`,
+          hintLabel: `3. 🌻 "I love all the fairy lights and sketches in this loft!"`,
+          hintReply: `<b>Poppy:</b> "We painted the CLUB sign downstairs ourselves! Every morning at 8 AM we meet up here to play cards all day."`
+        }
+      };
+      const prof = profiles[npc.id] || profiles.barn_kid_toby;
+      this.nearInteractable = npc;
+      this.renderNpcChoicePrompt({
+        npcId: npc.id,
+        promptKey: `${npc.id}_dialogue_${inClub ? 'club' : 'home'}_${pName}`,
+        speakerText: prof.tag,
+        speakerClass: 'ow-speaker-tag friend',
+        talkPromptHtml: `Press <b>Talk</b> to chat with <b>${npc.name}</b>.`,
+        greetingHtml: inClub ? prof.clubGreeting : prof.homeGreeting,
+        choices: [
+          {
+            label: prof.chatLabel,
+            primary: true,
+            onSelect: (el) => {
+              el.innerHTML = prof.chatReply;
+              this.gainDialogueRelationship(npc.id, 2, 'clubhouse chat');
+            }
+          },
+          {
+            label: `2. ⚔️ "Want to play a Mythos duel, ${npc.name}?"`,
+            silentClick: true,
+            onSelect: () => this.triggerDuel(npc)
+          },
+          {
+            label: prof.hintLabel,
+            onSelect: (el) => {
+              el.innerHTML = prof.hintReply;
+              this.gainDialogueRelationship(npc.id, 2, 'rural kids chat');
+            }
+          },
+          {
+            label: `4. 👋 "Catch you later, ${npc.name}! (Leave)"`,
+            onSelect: () => this.closeDialogue()
+          }
+        ],
+        challengeText: `⚔️ Battle ${npc.name}!`
+      });
+    }
+
     updateFreeRoamPrompt() {
       if (this.storyState !== 'free_roam' && this.storyState !== 'intro_waiting') return;
       const prevActiveDialogueNpc = this.activeDialogueNpc;
@@ -14961,7 +16871,7 @@
         const distToTv = Math.hypot(this.player.x - 7.3, this.player.y - 4.3);
         const distToBed = Math.hypot(this.player.x - 3.2, this.player.y - 5.3);
 
-        if (this.tryRenderMeetupVisitorPrompt({ maxDist: 1.15, topPosition: this.player.y >= 7.5 })) {
+        if (this.tryRenderMeetupVisitorPrompt({ maxDist: 1.6, topPosition: this.player.y >= 7.5 })) {
           // Handled player-house meetup visitor
         } else if (mom && distToMom < 1.15) {
           this.nearInteractable = mom;
@@ -15252,7 +17162,7 @@
               challengeText: '👋 Good Game (Space)'
             });
           }
-        } else if (this.tryRenderMeetupVisitorPrompt({ maxDist: 1.15 })) {
+        } else if (this.tryRenderMeetupVisitorPrompt({ maxDist: 1.6 })) {
           // Handled Leo's Card Shop landmark meetup visitor
         } else if (distToKeeper < 1.08) {
           this.nearInteractable = { id: 'shopkeeper', name: 'Shopkeeper Leo' };
@@ -16235,7 +18145,55 @@
           challengeBtn.classList.remove('ow-talk-btn');
           bar.classList.add('hidden');
         }
-      } else if (this.currentArea === 'barber_shop_interior') {
+        } else if (this.currentArea === 'fishmonger_shop_interior') {
+          const pName = this.draftAppearance?.name || 'Asher';
+          const marina = this.fishmongerMarinaNpc;
+          const dist = marina ? Math.hypot(this.player.x - marina.x, this.player.y - marina.y) : 999;
+          if (dist < 3.80) {
+            this.nearInteractable = marina;
+            this.renderNpcChoicePrompt({
+              npcId: 'fishmonger_marina',
+              promptKey: `fishmonger_marina_dialogue_${pName}`,
+              speakerText: '🐟 MARINA — OAKHAVEN FISHMONGER',
+              speakerClass: 'ow-speaker-tag friend',
+              talkPromptHtml: `Press <b>Talk</b> to speak with <b>Marina</b> across the iced fish counter.`,
+              greetingHtml: `<b>Marina:</b> "Ahoy, ${pName}! Welcome to the <b>Oakhaven Fishmonger</b>! Fresh crushed ice is packed and ready — caught anything good out on Meadowbrook Lake?"`,
+              choices: [
+                {
+                  label: `1. 💰 "I'd like to sell my fresh caught fish!"`,
+                  primary: true,
+                  silentClick: true,
+                  onSelect: () => {
+                    this.closeDialogue();
+                    this.openFishmongerSellModal();
+                  }
+                },
+                {
+                  label: `2. 🌊 "Any tips for landing rare fish on the lake?"`,
+                  onSelect: (el) => {
+                    this.gainDialogueRelationship('fishmonger_marina', 2, 'fishmonger chat');
+                    el.innerHTML = `<b>Marina:</b> "Most bites are snappy <b>Bluegill</b> or <b>Yellow Perch</b>, but keep your eyes sharp — a rare <b>Northern Pike</b> or gleaming <b>Golden Mythos Koi</b> fetches top dollar when you land a big one!"`;
+                  }
+                },
+                {
+                  label: `3. ⚔️ "Care for a Water Tribe Mythos duel, Marina?"`,
+                  onSelect: () => {
+                    this.triggerDuel(this.fishmongerMarinaNpc);
+                  }
+                },
+                {
+                  label: `4. 👋 "Catch you later, Marina! (Leave)"`,
+                  onSelect: () => this.closeDialogue()
+                }
+              ]
+            });
+          } else {
+            this.nearInteractable = null;
+            this.activeDialogueNpc = null;
+            challengeBtn.classList.remove('ow-talk-btn');
+            bar.classList.add('hidden');
+          }
+        } else if (this.currentArea === 'barber_shop_interior') {
         const pName = this.draftAppearance?.name || 'Asher';
         const barber = this.barberNpc;
         const dist = barber ? Math.hypot(this.player.x - barber.x, this.player.y - barber.y) : 999;
@@ -16677,10 +18635,16 @@
         }
       } else if (this.currentArea === 'farmhouse_1_2f_interior') {
         const pName = this.draftAppearance?.name || 'Asher';
-        const harlan = this.fh1HarlanNpc;
-        const dist = harlan ? Math.hypot(this.player.x - harlan.x, this.player.y - harlan.y) : 999;
-        if (dist < 1.85) {
-          this.nearInteractable = harlan;
+        const candidates = [this.fh1HarlanNpc, this.barnKidTobyNpc, this.barnKidDaisyNpc]
+          .filter(n => n && this.getNpcArea(n) === 'farmhouse_1_2f_interior')
+          .map(n => ({ npc: n, dist: Math.hypot(this.player.x - n.x, this.player.y - n.y) }))
+          .filter(x => x.dist < 1.85)
+          .sort((a, b) => a.dist - b.dist);
+        const nearest = candidates[0]?.npc;
+        if (nearest && nearest.isBarnKid) {
+          this.renderBarnKidDialogue(nearest);
+        } else if (nearest === this.fh1HarlanNpc) {
+          this.nearInteractable = nearest;
           this.renderNpcChoicePrompt({
             npcId: 'fh1_harlan',
             promptKey: `fh1_harlan_dialogue_${pName}`,
@@ -16705,7 +18669,7 @@
               {
                 label: `3. 🛏️ "This whole three-bedroom upstairs floor looks so cozy!"`,
                 onSelect: (el) => {
-                  el.innerHTML = `<b>Harlan:</b> "That twin room gets the best breeze off Northern Ridge, and the guest room overlooks Oakhaven Meadows!"`;
+                  el.innerHTML = `<b>Harlan:</b> "Toby and Daisy share the twin room when they're home after 9 PM—all day long they're over at the Barn Card Clubhouse!"`;
                   this.gainDialogueRelationship('fh1_harlan', 2, 'upstairs bedrooms chat');
                 }
               },
@@ -16773,10 +18737,16 @@
         }
       } else if (this.currentArea === 'farmhouse_2_2f_interior') {
         const pName = this.draftAppearance?.name || 'Asher';
-        const arthur = this.fh2ArthurNpc;
-        const dist = arthur ? Math.hypot(this.player.x - arthur.x, this.player.y - arthur.y) : 999;
-        if (dist < 1.85) {
-          this.nearInteractable = arthur;
+        const candidates = [this.fh2ArthurNpc, this.barnKidOwenNpc, this.barnKidPoppyNpc]
+          .filter(n => n && this.getNpcArea(n) === 'farmhouse_2_2f_interior')
+          .map(n => ({ npc: n, dist: Math.hypot(this.player.x - n.x, this.player.y - n.y) }))
+          .filter(x => x.dist < 1.85)
+          .sort((a, b) => a.dist - b.dist);
+        const nearest = candidates[0]?.npc;
+        if (nearest && nearest.isBarnKid) {
+          this.renderBarnKidDialogue(nearest);
+        } else if (nearest === this.fh2ArthurNpc) {
+          this.nearInteractable = nearest;
           this.renderNpcChoicePrompt({
             npcId: 'fh2_arthur',
             promptKey: `fh2_arthur_dialogue_${pName}`,
@@ -16801,7 +18771,7 @@
               {
                 label: `3. 🌊 "Have you walked out on the new pier at Meadowbrook Lake?"`,
                 onSelect: (el) => {
-                  el.innerHTML = `<b>Arthur:</b> "Every sunny afternoon! Follow the Lake Trail south through the Crossroads and step right out onto the oak pier over the water."`;
+                  el.innerHTML = `<b>Arthur:</b> "Every sunny afternoon! And Owen and Poppy spend their days dueling Toby and Daisy over in the Barn Card Clubhouse."`;
                   this.gainDialogueRelationship('fh2_arthur', 2, 'meadowbrook lake chat');
                 }
               },
@@ -16812,6 +18782,21 @@
             ],
             challengeText: '⚔️ Battle Arthur!'
           });
+        } else {
+          this.lastShopPromptKey = null;
+          this.nearInteractable = null;
+          this.activeDialogueNpc = null;
+          challengeBtn.classList.remove('ow-talk-btn');
+          bar.classList.add('hidden');
+        }
+      } else if (this.currentArea === 'haystack_barn_club_interior') {
+        const candidates = [this.barnKidTobyNpc, this.barnKidDaisyNpc, this.barnKidOwenNpc, this.barnKidPoppyNpc]
+          .filter(n => n && this.getNpcArea(n) === 'haystack_barn_club_interior')
+          .map(n => ({ npc: n, dist: Math.hypot(this.player.x - n.x, this.player.y - n.y) }))
+          .filter(x => x.dist < 1.85)
+          .sort((a, b) => a.dist - b.dist);
+        if (candidates.length > 0) {
+          this.renderBarnKidDialogue(candidates[0].npc);
         } else {
           this.lastShopPromptKey = null;
           this.nearInteractable = null;
@@ -17013,6 +18998,7 @@
         const distRowan = this.rowanNpc ? Math.hypot(this.player.x - this.rowanNpc.x, this.player.y - this.rowanNpc.y) : 999;
         const distJasper = this.jasperNpc ? Math.hypot(this.player.x - this.jasperNpc.x, this.player.y - this.jasperNpc.y) : 999;
         const distPierFinn = this.pierFinnNpc ? Math.hypot(this.player.x - this.pierFinnNpc.x, this.player.y - this.pierFinnNpc.y) : 999;
+        const distFarmstandHazel = this.farmstandHazelNpc ? Math.hypot(this.player.x - this.farmstandHazelNpc.x, this.player.y - this.farmstandHazelNpc.y) : 999;
         const distParkFountain = Math.hypot(this.player.x - 21.1, this.player.y - 9.0);
         const distParkSign = Math.hypot(this.player.x - 16.6, this.player.y - 9.25);
         const distNorthParkSign = (Math.abs(this.player.x - 21.1) < 2.2 && Math.abs(this.player.y - 4.9) < 0.95)
@@ -17182,7 +19168,7 @@
 
         if ((this.activeDialogueNpc === 'friend' || this.activeDialogueNpc === fName) && distFriendExt < 0.85) {
           renderExtFriend();
-        } else if (this.tryRenderMeetupVisitorPrompt({ maxDist: 1.05 })) {
+        } else if (this.tryRenderMeetupVisitorPrompt({ maxDist: 1.55 })) {
           // Handled landmark meetup visitor
         } else if (distCardShopDoor < 1.15) {
           showStaticPrompt(
@@ -17398,6 +19384,48 @@
               }
             ]
           });
+        } else if (this.farmstandHazelNpc && distFarmstandHazel < 1.65) {
+          this.nearInteractable = this.farmstandHazelNpc;
+          this.renderNpcChoicePrompt({
+            npcId: 'farmstand_hazel',
+            promptKey: `ext_farmstand_hazel_${pName}`,
+            speakerText: '🍎 HAZEL — ROADSIDE FARMSTAND',
+            speakerClass: 'ow-speaker-tag friend',
+            talkPromptHtml: `Press <b>Talk</b> to chat with <b>Hazel</b> at the Roadside Farmstand counter.`,
+            greetingHtml: `<b>Hazel:</b> "Welcome to the Roadside Farmstand, ${pName}! Just pressed fresh Orchard Cider this morning — crisp apples, wildflower honey, and cold milk jugs all picked right up the lane."`,
+            choices: [
+              {
+                label: `1. 🧺 "Check today's produce prices & sell"`,
+                primary: true,
+                onSelect: () => {
+                  this.closeDialogue();
+                  this.openFarmstandMarketModal();
+                }
+              },
+              {
+                label: `2. 🍎 "What's fresh on the counter today?"`,
+                onSelect: (tEl) => {
+                  tEl.innerHTML = `<b>Hazel:</b> "Harlan dropped off two crates of late-summer honeycrisps from Farmhouse 1, and Eleanor's bees filled these golden wildflower jars. Grab a cold cider mug anytime you're riding through District 0!"`;
+                }
+              },
+              {
+                label: `3. 🗺️ "What's up the lane past this crossroads?"`,
+                onSelect: (tEl) => {
+                  tEl.innerHTML = `<b>Hazel:</b> "Take Main North Country Lane straight up to reach the old Orchard Spur, Harlan and Eleanor's farmhouses along East Valley Road, or follow the east ridge all the way to Haystack Barn!"`;
+                }
+              },
+              {
+                label: `4. ⚔️ "Care for a friendly Mythos duel across the counter?"`,
+                onSelect: () => {
+                  this.triggerDuel(this.farmstandHazelNpc);
+                }
+              },
+              {
+                label: `5. 👋 "Thanks, Hazel! See you around. (Leave)"`,
+                onSelect: () => this.closeDialogue()
+              }
+            ]
+          });
         } else if (distParkFountain < 1.45) {
           showStaticPrompt(
             'park_fountain',
@@ -17447,7 +19475,7 @@
         let tripNpc = null;
         let bestTripDist = 1.55;
         this.getActiveNpcsForArea(this.currentArea).forEach(n => {
-          if (!n || !n.trip) return;
+          if (!n || !n.trip || this.getActiveMeetupForRealNpc(n, this.currentArea)) return;
           const d = Math.hypot(this.player.x - n.x, this.player.y - n.y);
           if (d < bestTripDist) {
             bestTripDist = d;
@@ -17463,11 +19491,15 @@
           const destName = tripNpc.trip.destName || 'town';
           const isVisiting = tripNpc.trip.phase === 'at_dest';
           const isReturning = ['to_dest_exit', 'to_home_door', 'to_home_spot'].includes(tripNpc.trip.phase);
-          const greeting = isVisiting
-            ? `<b>${tripNpc.name}:</b> "Hey ${this.playerName}! Taking a little break here at <b>${destName}</b> for a couple hours!"`
-            : (isReturning
-              ? `<b>${tripNpc.name}:</b> "Hey ${this.playerName}! Just wrapping up my visit to <b>${destName}</b> and heading back."`
-              : `<b>${tripNpc.name}:</b> "Hey ${this.playerName}! I'm heading over to <b>${destName}</b> for a bit!"`);
+          const greeting = tripNpc.trip.isScheduleCommute
+            ? (this.isBarnKidsNightTime()
+              ? `<b>${tripNpc.name}:</b> "Hey ${this.playerName}! It's past 9 PM—heading home to my bedroom for the night!"`
+              : `<b>${tripNpc.name}:</b> "Hey ${this.playerName}! Walking over to the <b>Barn Card Clubhouse</b> to meet the other kids!"`)
+            : (isVisiting
+              ? `<b>${tripNpc.name}:</b> "Hey ${this.playerName}! Taking a little break here at <b>${destName}</b> for a couple hours!"`
+              : (isReturning
+                ? `<b>${tripNpc.name}:</b> "Hey ${this.playerName}! Just wrapping up my visit to <b>${destName}</b> and heading back."`
+                : `<b>${tripNpc.name}:</b> "Hey ${this.playerName}! I'm heading over to <b>${destName}</b> for a bit!"`));
           const tripHasQuest = (this.getNpcQuestChoices ? this.getNpcQuestChoices(tripNpc.id).length : 0) > 0;
           this.renderNpcChoicePrompt({
             npcId: tripNpc.id,
@@ -17572,7 +19604,7 @@
           }
           return true;
         }
-        if (active === 'chloe' || active === 'rowan' || active === 'jasper' || active === 'pier_finn') {
+        if (active === 'chloe' || active === 'rowan' || active === 'jasper' || active === 'pier_finn' || active === 'farmstand_hazel' || active === 'fishmonger_marina') {
           if (window.sounds?.playClick) window.sounds.playClick();
           this.closeDialogue();
           return true;
@@ -17676,6 +19708,22 @@
           this.triggerDuel(this.fh2ArthurNpc);
           return true;
         }
+        if (active === 'barn_kid_toby') {
+          this.triggerDuel(this.barnKidTobyNpc);
+          return true;
+        }
+        if (active === 'barn_kid_daisy') {
+          this.triggerDuel(this.barnKidDaisyNpc);
+          return true;
+        }
+        if (active === 'barn_kid_owen') {
+          this.triggerDuel(this.barnKidOwenNpc);
+          return true;
+        }
+        if (active === 'barn_kid_poppy') {
+          this.triggerDuel(this.barnKidPoppyNpc);
+          return true;
+        }
         if (active === 'arcade_zeke') {
           this.triggerDuel(this.arcadeZekeNpc);
           return true;
@@ -17727,6 +19775,13 @@
             labelEl.textContent = 'PACK 🎒';
           }
         }
+        return;
+      }
+
+      if (this.fishingState && ['waiting', 'bite', 'reeling'].includes(this.fishingState.phase)) {
+        btnA?.classList.add('dialogue-mode');
+        const p = this.fishingState.phase;
+        labelEl.textContent = p === 'bite' ? 'HOOK ❗' : (p === 'reeling' ? 'REEL 🎯' : 'WAIT ⏳');
         return;
       }
 
@@ -17798,6 +19853,12 @@
             return;
           }
         }
+        return;
+      }
+
+      if (this.fishingState && ['waiting', 'bite', 'reeling'].includes(this.fishingState.phase)) {
+        this.handleFishingAction();
+        this.updateMobileActionLabel();
         return;
       }
 
@@ -17973,6 +20034,11 @@
         btnB.addEventListener('pointerdown', (e) => {
           e.preventDefault();
           btnB.classList.add('active');
+          if (this.fishingState && ['waiting', 'bite', 'reeling'].includes(this.fishingState.phase)) {
+            this.cancelFishing();
+            this.updateMobileActionLabel();
+            return;
+          }
           this.toggleInventoryModal();
         });
         btnB.addEventListener('pointerup', () => btnB.classList.remove('active'));
@@ -18208,6 +20274,11 @@
         activeParkTourney: this.activeParkTourney || null,
         npcRelationships: { ...(this.npcRelationships || {}) },
         npcDialogueGainLog: { ...(this.npcDialogueGainLog || {}) },
+        firstBattleRewardNpcs: { ...(this.firstBattleRewardNpcs || {}) },
+        barnClubWinStreak: Math.max(0, Math.floor(Number(this.barnClubWinStreak) || 0)),
+        farmstandMarket: this.farmstandMarket ? { ...this.farmstandMarket } : null,
+        hasFishingPole: Boolean(this.hasFishingPole),
+        fishingPoleEquipped: Boolean(this.fishingPoleEquipped && this.hasFishingPole),
         questState: this.normalizeQuestState(this.questState),
         updatedAt: new Date().toLocaleDateString()
       };
@@ -18308,6 +20379,8 @@
         areaLabel = `🚓 Oakhaven Police Department`;
       } else if (this.currentArea === 'barber_shop_interior') {
         areaLabel = `💈 Oakhaven Barber Shop`;
+      } else if (this.currentArea === 'fishmonger_shop_interior') {
+        areaLabel = `🐟 Oakhaven Fishmonger`;
       } else if (this.currentArea === 'clothing_store_interior') {
         areaLabel = `👔 Oakhaven Apparel`;
       } else if (this.currentArea === 'arcade_interior') {
@@ -18334,6 +20407,10 @@
         areaLabel = `🏛️ Harvest Manor Farmhouse (1F)`;
       } else if (this.currentArea === 'farmhouse_2_2f_interior') {
         areaLabel = `🛏️ Harvest Manor Farmhouse (2F)`;
+      } else if (this.currentArea === 'haystack_barn_1f_interior') {
+        areaLabel = `🏚️ Haystack Yard & Barn (1F)`;
+      } else if (this.currentArea === 'haystack_barn_club_interior') {
+        areaLabel = `🃏 Barn Card Clubhouse (2F Loft)`;
       } else if (this.currentArea === 'apartment_hall_interior') {
         areaLabel = `🏢 Oakhaven Apartments — Main Hall`;
       } else if (this.currentArea === 'apt_1_interior') {
@@ -18394,6 +20471,7 @@
         else if (this.currentArea === 'fire_station_interior') shortArea = `🚒 Fire Dept.`;
         else if (this.currentArea === 'police_station_interior') shortArea = `🚓 Police Dept.`;
         else if (this.currentArea === 'barber_shop_interior') shortArea = `💈 Barber Shop`;
+        else if (this.currentArea === 'fishmonger_shop_interior') shortArea = `🐟 Fishmonger`;
         else if (this.currentArea === 'clothing_store_interior') shortArea = `👔 Apparel`;
         else if (this.currentArea === 'arcade_interior') shortArea = `🕹️ Arcade`;
         else if (this.currentArea === 'arcade_back_interior') shortArea = `🕹️ Back Room`;
@@ -18407,6 +20485,8 @@
         else if (this.currentArea === 'farmhouse_1_2f_interior') shortArea = `🛏️ Homestead Dairy 2F`;
         else if (this.currentArea === 'farmhouse_2_1f_interior') shortArea = `🏛️ Harvest Manor 1F`;
         else if (this.currentArea === 'farmhouse_2_2f_interior') shortArea = `🛏️ Harvest Manor 2F`;
+        else if (this.currentArea === 'haystack_barn_1f_interior') shortArea = `🏚️ Haystack Barn 1F`;
+        else if (this.currentArea === 'haystack_barn_club_interior') shortArea = `🃏 Barn Clubhouse`;
         else if (this.currentArea === 'apartment_hall_interior') shortArea = `🏢 Apt. Hall`;
         else if (this.currentArea === 'apt_1_interior') shortArea = `🚪 Apt. 101`;
         else if (this.currentArea === 'apt_2_interior') shortArea = `🚪 Apt. 102`;
@@ -20013,6 +22093,19 @@
           return;
         }
 
+        if (this.fishingState) {
+          if (k === ' ' || k === 'enter') {
+            e.preventDefault();
+            this.handleFishingAction();
+            return;
+          }
+          if (k === 'escape') {
+            e.preventDefault();
+            this.cancelFishing();
+            return;
+          }
+        }
+
         if (k === 'i') {
           e.preventDefault();
           this.toggleInventoryModal();
@@ -20196,6 +22289,15 @@
 
         const { tx, ty } = screenToWorldTile(clientX, clientY);
 
+        if (this.fishingState) {
+          this.handleFishingAction();
+          return true;
+        }
+        if (this.currentArea === 'exterior' && this.fishingPoleEquipped && this.canCastAtTile(tx, ty)) {
+          this.startFishingCast(tx, ty);
+          return true;
+        }
+
         // Visual golden destination beacon on touch/click
         this.touchBeacon = { x: tx, y: ty, tick: 0 };
 
@@ -20363,6 +22465,14 @@
             yOffset: 0.35
           },
           {
+            active: this.currentArea === 'fishmonger_shop_interior',
+            npc: this.fishmongerMarinaNpc,
+            talkId: 'fishmonger_marina',
+            tapRadius: 1.45,
+            reachRadius: 3.9,
+            yOffset: 0.35
+          },
+          {
             active: this.currentArea === 'clothing_store_interior',
             npc: this.tailorNpc,
             talkId: 'tailor_celeste',
@@ -20451,6 +22561,70 @@
             yOffset: 0.35
           },
           {
+            active: this.currentArea === 'farmhouse_1_2f_interior',
+            npc: this.barnKidTobyNpc,
+            talkId: 'barn_kid_toby',
+            tapRadius: 1.25,
+            reachRadius: 1.85,
+            yOffset: 0.35
+          },
+          {
+            active: this.currentArea === 'farmhouse_1_2f_interior',
+            npc: this.barnKidDaisyNpc,
+            talkId: 'barn_kid_daisy',
+            tapRadius: 1.25,
+            reachRadius: 1.85,
+            yOffset: 0.35
+          },
+          {
+            active: this.currentArea === 'farmhouse_2_2f_interior',
+            npc: this.barnKidOwenNpc,
+            talkId: 'barn_kid_owen',
+            tapRadius: 1.25,
+            reachRadius: 1.85,
+            yOffset: 0.35
+          },
+          {
+            active: this.currentArea === 'farmhouse_2_2f_interior',
+            npc: this.barnKidPoppyNpc,
+            talkId: 'barn_kid_poppy',
+            tapRadius: 1.25,
+            reachRadius: 1.85,
+            yOffset: 0.35
+          },
+          {
+            active: this.currentArea === 'haystack_barn_club_interior',
+            npc: this.barnKidTobyNpc,
+            talkId: 'barn_kid_toby',
+            tapRadius: 1.25,
+            reachRadius: 1.85,
+            yOffset: 0.35
+          },
+          {
+            active: this.currentArea === 'haystack_barn_club_interior',
+            npc: this.barnKidDaisyNpc,
+            talkId: 'barn_kid_daisy',
+            tapRadius: 1.25,
+            reachRadius: 1.85,
+            yOffset: 0.35
+          },
+          {
+            active: this.currentArea === 'haystack_barn_club_interior',
+            npc: this.barnKidOwenNpc,
+            talkId: 'barn_kid_owen',
+            tapRadius: 1.25,
+            reachRadius: 1.85,
+            yOffset: 0.35
+          },
+          {
+            active: this.currentArea === 'haystack_barn_club_interior',
+            npc: this.barnKidPoppyNpc,
+            talkId: 'barn_kid_poppy',
+            tapRadius: 1.25,
+            reachRadius: 1.85,
+            yOffset: 0.35
+          },
+          {
             active: this.currentArea === 'arcade_interior',
             npc: this.arcadeZekeNpc,
             talkId: 'arcade_zeke',
@@ -20468,14 +22642,17 @@
           },
           ...this.getActiveNpcsForArea(this.currentArea)
             .filter(n => n && n.trip)
-            .map(n => ({
-              active: true,
-              npc: n,
-              talkId: n.id,
-              tapRadius: 1.25,
-              reachRadius: 1.6,
-              yOffset: 0
-            })),
+            .map(n => {
+              const activeMeetup = this.getActiveMeetupForRealNpc(n, this.currentArea);
+              return {
+                active: true,
+                npc: n,
+                talkId: activeMeetup ? `meetup_${activeMeetup.id}` : n.id,
+                tapRadius: 1.25,
+                reachRadius: this.currentArea === 'exterior' && activeMeetup ? 1.55 : 1.6,
+                yOffset: 0
+              };
+            }),
           {
             active: this.currentArea === 'exterior',
             npc: this.chloeNpc,
@@ -20509,6 +22686,14 @@
             yOffset: 0
           },
           {
+            active: this.currentArea === 'exterior',
+            npc: this.farmstandHazelNpc,
+            talkId: 'farmstand_hazel',
+            tapRadius: 1.35,
+            reachRadius: 1.75,
+            yOffset: 0
+          },
+          {
             active: !!friend && this.getActiveNpcsForArea().includes(friend),
             npc: friend,
             talkId: this.currentArea === 'friend_interior' ? 'friend_duel' : 'friend',
@@ -20521,7 +22706,7 @@
             npc: v,
             talkId: v.id,
             tapRadius: 1.25,
-            reachRadius: 1.15,
+            reachRadius: this.currentArea === 'exterior' ? 1.55 : 1.6,
             yOffset: 0
           }))
         ];
@@ -20597,6 +22782,11 @@
       });
 
       this.canvas.addEventListener('pointermove', (e) => {
+        if (this.active && this.fishingPoleEquipped && this.currentArea === 'exterior') {
+          this._hoverWorldTile = screenToWorldTile(e.clientX, e.clientY);
+        } else {
+          this._hoverWorldTile = null;
+        }
         if (holdPointerId !== e.pointerId) return;
         holdClientX = e.clientX;
         holdClientY = e.clientY;
@@ -20936,6 +23126,20 @@
         // Lower-Right Waiting Sofa, Magazine Table & Coat Rack
         if (tx >= 12.8 && ty >= 7.5 && ty <= 10.1) return true;
         return false;
+      } else if (this.currentArea === 'fishmonger_shop_interior') {
+        // Cutaway Oakhaven Fishmonger (22 x 14 room matching 1200x800 fishmonger_shop_interior.png @ dx=0.5, dw=21)
+        if (tx >= 9.6 && tx <= 12.4 && ty >= 11.0 && ty <= 12.8) return false;    // Bottom doormat exit opening
+        if (tx < 3.15 || tx > 18.85 || ty < 4.85 || ty > 11.15) return true;      // Stone back wall, side walls & south wall
+        if (tx <= 4.70) return true;                                              // Left ice crates & stacked barrels
+        if (tx <= 5.55 && ty <= 5.95) return true;                                // Upper-left protruding fish barrel
+        if (tx <= 5.65 && ty >= 9.95) return true;                                // Bottom-left coiled rope
+        if (tx >= 17.30) return true;                                             // Right bait, floats & tackle counter
+        if (tx >= 16.75 && ty >= 5.75 && ty <= 8.10) return true;                 // Right floor fishing net
+        if (tx >= 7.10 && tx <= 14.90 && ty >= 4.85 && ty <= 8.08) return true;   // Center crushed-ice fish counter & frame
+        if (this.fishmongerMarinaNpc && ignoreNpc !== this.fishmongerMarinaNpc) {
+          if (this.isNpcBlockingPoint(tx, ty, this.fishmongerMarinaNpc, fromX, fromY)) return true;
+        }
+        return false;
       } else if (this.currentArea === 'clothing_store_interior') {
         // Cutaway Oakhaven Apparel floor bounds (16 x 12 room matching clothing_store_interior.png @ dy=40.5, scale=0.8101)
         // Allow stepping onto the centered OAKHAVEN doormat to exit cleanly
@@ -21154,6 +23358,47 @@
         if (tx >= 12.0 && tx <= 14.5 && ty <= 7.0) return true;
         if (tx >= 18.0 && tx <= 20.6 && ty <= 7.4) return true;
         return false;
+      } else if (this.currentArea === 'haystack_barn_1f_interior') {
+        // Cutaway Haystack Barn 1F (22 x 14): Livestock Stalls, Tack Workbench & Stairs to Kids' Card Clubhouse
+        if (tx >= 9.6 && tx <= 12.4 && ty >= 12.1 && ty <= 12.9) return false;
+        if (tx >= 8.6 && tx <= 10.2 && ty >= 5.0 && ty <= 6.3) return false;
+        if (tx < 1.55 || tx > 20.45 || ty < 5.0 || ty > 12.6) return true;
+        // Upper-center CLUB staircase body
+        if (tx >= 10.1 && tx <= 14.7 && ty <= 6.35) return true;
+        // Left stalls, open stall doors, top-left bucket & upper wheelbarrow
+        if (tx <= 7.8 && ty <= 10.35) return true;
+        // Wheelbarrow & bottom-left hay bales
+        if (tx <= 6.9 && ty >= 10.2) return true;
+        // Bottom-left row of 3 buckets
+        if (tx <= 9.15 && ty >= 11.35) return true;
+        // Right saddle rack & upper cider barrels
+        if (tx >= 14.75 && ty <= 6.25) return true;
+        // Right workbench & lower cider barrel
+        if (tx >= 18.4) return true;
+        // Bottom-right grain sacks
+        if (tx >= 17.75 && ty >= 10.85) return true;
+        return false;
+      } else if (this.currentArea === 'haystack_barn_club_interior') {
+        // Cutaway Barn Kids' Mythos Card Clubhouse 2F (22 x 14): Dual Duel Tables & Snack Loft
+        if (tx >= 9.6 && tx <= 12.4 && ty >= 11.8 && ty <= 13.0) return false;
+        if (tx < 1.55 || tx > 20.45 || ty < 5.1 || ty > 12.6) return true;
+        // Back-wall timber support pillars
+        if (((tx >= 7.6 && tx <= 8.3) || (tx >= 13.7 && tx <= 14.4)) && ty < 5.35) return true;
+        // Central card duel table, top stools, left stool, right hay-bale bench & bottom stools
+        if (tx >= 8.75 && tx <= 13.25 && ty >= 5.7 && ty <= 9.35) return true;
+        if (tx >= 7.6 && tx <= 8.85 && ty >= 6.8 && ty <= 8.55) return true;
+        if (tx >= 13.15 && tx <= 14.65 && ty >= 6.65 && ty <= 9.15) return true;
+        if (tx >= 9.45 && tx <= 12.6 && ty >= 8.9 && ty <= 10.3) return true;
+        // Left corner hay bales, comic/card crates & side crate duel table
+        if (tx <= 5.7 && ty <= 6.2) return true;
+        if (tx <= 4.15 && ty >= 6.2 && ty <= 8.1) return true;
+        if (tx <= 5.7 && ty >= 8.0) return true;
+        // Right corner stacked hay bales, apple cider snack crate & right hay-bale seat
+        if (tx >= 17.0 && ty <= 6.35) return true;
+        if (tx >= 18.8 && ty <= 7.45) return true;
+        if (tx >= 16.45 && tx <= 18.55 && ty >= 8.35 && ty <= 11.15) return true;
+        if (tx >= 18.85 && ty >= 8.45 && ty <= 11.05) return true;
+        return false;
       } else if (this.currentArea === 'school_interior') {
         // Oakhaven Elementary Interior (22 x 14 Cutaway Hall & Main Classroom Wing)
         // Allow stepping into the West Entrance Doors threshold to exit cleanly back outside
@@ -21236,6 +23481,11 @@
         if (tx >= -5.35 && tx <= -4.15 && ty >= 26.65 && ty <= 26.90) return true;
         if (tx >= -2.65 && tx <= -1.45 && ty >= 26.65 && ty <= 26.90) return true;
 
+        // Oakhaven Fishmonger Shop (west of Oakhaven Bistro: x: -23.6..-18.8, y: 28.55..31.75)
+        if (tx >= -23.6 && tx <= -18.8 && ty >= 28.55 && ty <= 31.75) {
+          if (tx >= -21.15 && tx <= -20.25 && ty >= 31.0) return false; // Double front door
+          return true;
+        }
         // Oakhaven Bistro (3 blocks west of Roundabout: x: -17.6..-13.4, y: 28.9..31.7)
         if (tx >= -17.6 && tx <= -13.4 && ty >= 28.9 && ty <= 31.7) {
           if (tx >= -15.85 && tx <= -15.15 && ty >= 31.0) return false; // Front door
@@ -21498,9 +23748,10 @@
     /** Single-source Option D countryside border segments flanking all Meadowbrook dirt roads. */
     getRuralOptionDFenceSegments() {
       return [
-        // Gateway E-W (y = -1.35)
+        // Gateway E-W (y = -1.35) — pull-off opening at x = 18.65..20.95 for Roadside Farmstand
         { orient: 'h', x1: -6.20, x2: 12.45, y: -2.22, side: 'north' },
-        { orient: 'h', x1: 17.20, x2: 25.75, y: -2.22, side: 'north' },
+        { orient: 'h', x1: 17.20, x2: 18.65, y: -2.22, side: 'north' },
+        { orient: 'h', x1: 20.95, x2: 25.75, y: -2.22, side: 'north' },
         { orient: 'h', x1: -6.20, x2: 12.85, y: -0.42, side: 'south' },
         { orient: 'h', x1: 16.80, x2: 25.75, y: -0.42, side: 'south' },
         // Orchard & Sawmill West Spur (y = -20.625)
@@ -21532,8 +23783,9 @@
         // Center Farm N-S Lane (x = 32.40)
         { orient: 'v', y1: -30.85, y2: -15.90, x: 31.50, side: 'west' },
         { orient: 'v', y1: -30.85, y2: -15.90, x: 33.30, side: 'east' },
-        // East Ranch N-S Lane (x = 54.425)
-        { orient: 'v', y1: -29.95, y2: -15.90, x: 53.52, side: 'west' },
+        // East Ranch N-S Lane (x = 54.425) — driveway gap on west side at y = -25.45..-23.65 for Haystack Yard & Barn
+        { orient: 'v', y1: -29.95, y2: -25.45, x: 53.52, side: 'west' },
+        { orient: 'v', y1: -23.65, y2: -15.90, x: 53.52, side: 'west' },
         { orient: 'v', y1: -11.15, y2: -8.40, x: 53.52, side: 'west' },
         { orient: 'v', y1: -29.95, y2: -15.90, x: 55.32, side: 'east' },
         { orient: 'v', y1: -11.15, y2: -8.40, x: 55.32, side: 'east' },
@@ -21561,14 +23813,18 @@
           );
         }
       }
-      // Meadowland Archway twin post lanterns & Farmhouse 1 / Farmhouse 2 front porch lanterns
+      // Meadowland Archway twin post lanterns & Farmhouse 1 / Farmhouse 2 / Haystack Barn front porch lanterns
       pillars.push(
         { x: 13.58, y: -1.10 },
         { x: 16.07, y: -1.10 },
         { x: 23.15, y: -16.80 },
         { x: 24.25, y: -16.80 },
         { x: 41.80, y: -16.80 },
-        { x: 43.40, y: -16.80 }
+        { x: 43.40, y: -16.80 },
+        { x: 46.15, y: -25.40 },
+        { x: 48.35, y: -25.40 },
+        { x: 18.02, y: -4.40 },
+        { x: 21.58, y: -4.40 }
       );
       this._ruralOptionDPillarsCache = pillars;
       return pillars;
@@ -21685,7 +23941,10 @@
           { minX: 13.22, maxX: 14.10, minY: -0.35, maxY: 0.12 }, // Meadowland Archway west stone pier
           { minX: 15.55, maxX: 16.43, minY: -0.35, maxY: 0.12 }, // Meadowland Archway east stone pier
           { minX: 20.75, maxX: 27.25, minY: -20.20, maxY: -16.85 }, // Farmhouse 1 solid base
-          { minX: 39.95, maxX: 46.65, minY: -20.10, maxY: -16.85 }  // Farmhouse 2 solid base
+          { minX: 39.95, maxX: 46.65, minY: -20.10, maxY: -16.85 }, // Farmhouse 2 solid base
+          { minX: 45.40, maxX: 49.05, minY: -28.60, maxY: -25.45 }, // Haystack Barn solid base
+          { minX: 49.05, maxX: 52.75, minY: -28.60, maxY: -25.45 }, // Haystack Yard fenced enclosure
+          { minX: 17.25, maxX: 22.35, minY: -6.30, maxY: -3.72 }   // Roadside Farmstand solid base & produce crates
         ],
         // Fountains & Middle Plaza corner tree trunks
         ellipses: [
@@ -21865,6 +24124,15 @@
           doorX: -9.70, doorY: 20.15
         },
         {
+          id: 'fishmonger_shop',
+          spriteKey: 'fishmonger_shop',
+          isWideCivic: true,
+          spriteWallWFrac: 1.0,
+          spriteBaseYFrac: 1.0,
+          hx: -23.60, hy: 28.31, hw: 4.80, maxY: 31.70,
+          doorX: -20.70, doorY: 31.45
+        },
+        {
           id: 'west_oak_1',
           spriteKey: 'cottage_west_oak_1',
           hx: -4.2, hy: 0.45, hw: 3.4, maxY: 3.38,
@@ -21893,6 +24161,15 @@
           spriteBaseYFrac: 1.0,
           hx: 39.80, hy: -22.00, hw: 7.00, maxY: -16.80,
           doorX: 42.60, doorY: -16.65
+        },
+        {
+          id: 'haystack_barn',
+          spriteKey: 'haystack_barn',
+          isWideCivic: true,
+          spriteWallWFrac: 1.0,
+          spriteBaseYFrac: 1.0,
+          hx: 45.20, hy: -30.80, hw: 7.60, maxY: -25.40,
+          doorX: 47.25, doorY: -25.35
         }
       ];
     }
@@ -22008,6 +24285,12 @@
         }
         return null;
       }
+      if (this.currentArea === 'fishmonger_shop_interior') {
+        if (tx >= 8.8 && tx <= 13.2 && ty >= 10.8 && ty <= 14.0) {
+          return { id: 'interior_exit', x: 11.0, y: 12.15 };
+        }
+        return null;
+      }
       if (this.currentArea === 'farmhouse_1_1f_interior') {
         if (tx >= 9.0 && tx <= 13.0 && ty >= 11.4 && ty <= 14.0) {
           return { id: 'interior_exit', x: 11.0, y: 12.35 };
@@ -22035,6 +24318,21 @@
       if (this.currentArea === 'farmhouse_2_2f_interior') {
         if (tx >= 9.5 && tx <= 12.6 && ty >= 11.0 && ty <= 14.0) {
           return { id: 'fh2_stairs_down', x: 11.10, y: 12.20 };
+        }
+        return null;
+      }
+      if (this.currentArea === 'haystack_barn_1f_interior') {
+        if (tx >= 9.0 && tx <= 13.0 && ty >= 11.4 && ty <= 14.0) {
+          return { id: 'interior_exit', x: 11.0, y: 12.35 };
+        }
+        if (tx >= 8.2 && tx <= 11.4 && ty >= 4.2 && ty <= 6.6) {
+          return { id: 'haystack_barn_stairs_up', x: 9.45, y: 5.55 };
+        }
+        return null;
+      }
+      if (this.currentArea === 'haystack_barn_club_interior') {
+        if (tx >= 9.5 && tx <= 12.6 && ty >= 11.0 && ty <= 14.0) {
+          return { id: 'haystack_barn_stairs_down', x: 11.0, y: 12.20 };
         }
         return null;
       }
@@ -22103,7 +24401,10 @@
         'farmhouse_1_1f_interior',
         'farmhouse_1_2f_interior',
         'farmhouse_2_1f_interior',
-        'farmhouse_2_2f_interior'
+        'farmhouse_2_2f_interior',
+        'haystack_barn_1f_interior',
+        'haystack_barn_club_interior',
+        'fishmonger_shop_interior'
       ].includes(this.currentArea)) {
         const minX = 1.0;
         const minY = 3.5;
@@ -22293,6 +24594,7 @@
       if (inBox(15.00, -33.80, 54.00, -32.65)) return true;  // Northern Ridge Farm Loop
       if (inBox(31.80, -33.80, 33.00, -13.20)) return true;  // Center Farm N-S Lane
       if (inBox(53.80, -33.80, 55.05, -8.20)) return true;   // East Ranch N-S Lane
+      if (inBox(46.60, -25.45, 54.40, -23.90)) return true;  // Haystack Yard & Barn Driveway
       if (inBox(27.50, -13.00, 28.70, 5.95)) return true;    // Lake & Park Trail N-S Road
       if (inBox(25.00, 4.80, 37.70, 5.95)) return true;      // Lake Pier & Central Park Connector
 
@@ -22586,9 +24888,21 @@
     // -------------------------------------------------------------------------
     // NPC Hangout Spots & Roaming AI
     // -------------------------------------------------------------------------
+    isBarnKidsNightTime(minutes = this.timeOfDayMinutes) {
+      const m = (((Number(minutes) || 0) % 1440) + 1440) % 1440;
+      return m >= 21 * 60 || m < 8 * 60; // 9:00 PM to 8:00 AM
+    }
+
+    getBarnKids() {
+      return [this.barnKidTobyNpc, this.barnKidDaisyNpc, this.barnKidOwenNpc, this.barnKidPoppyNpc].filter(Boolean);
+    }
+
     getNpcHangoutSpot(npc) {
-      if (!npc || !npc.hangoutSpot) return null;
-      const spot = npc.hangoutSpot;
+      if (!npc) return null;
+      const spot = (npc.dayHangoutSpot && npc.nightHangoutSpot)
+        ? (this.isBarnKidsNightTime() ? npc.nightHangoutSpot : npc.dayHangoutSpot)
+        : npc.hangoutSpot;
+      if (!spot) return null;
       const defaultRadius = this.DEFAULT_NPC_ROAM_RADIUS ?? 3;
       const radius = Number.isFinite(spot.radius) ? Math.min(spot.radius, defaultRadius) : defaultRadius;
       return { ...spot, radius };
@@ -22672,10 +24986,13 @@
         if (!spot || spot.area !== this.currentArea || spot.radius <= 0) continue;
 
         // Pause roaming if the player is talking to or standing right next to this NPC
+        const meetupTalkId = npc.trip?.meetupId ? `meetup_${npc.trip.meetupId}` : null;
         const isTalkingToThis = this.activeDialogueNpc === npc.id ||
+          (meetupTalkId && this.activeDialogueNpc === meetupTalkId) ||
           (npc.id === 'best_friend' && (this.activeDialogueNpc === 'friend' || this.activeDialogueNpc === 'friend_duel'));
         const isNearThis = this.nearInteractable && (
           this.nearInteractable.id === npc.id ||
+          (meetupTalkId && this.nearInteractable.id === meetupTalkId) ||
           (npc.id === 'best_friend' && (this.nearInteractable.id === 'friend' || this.nearInteractable.id === 'friend_duel'))
         );
         if (isTalkingToThis || isNearThis) {
@@ -22771,10 +25088,10 @@
         this.shopkeeperNpc, this.plutoNpc, this.novaNpc, this.silasNpc,
         this.mayaNpc, this.claraNpc, this.bramNpc, this.mayorNpc,
         this.chefNpc, this.shaunNpc, this.evelynNpc, this.chloeNpc,
-        this.rowanNpc, this.jasperNpc, this.pierFinnNpc, this.bertoNpc,
+        this.rowanNpc, this.jasperNpc, this.pierFinnNpc, this.farmstandHazelNpc, this.bertoNpc,
         this.fireChiefNpc, this.policeChiefNpc,
         this.aptTessaNpc, this.aptDanteNpc, this.aptNinaNpc, this.aptMilesNpc,
-        this.barberNpc, this.tailorNpc, this.vetNpc, this.westOtisNpc, this.westMarenNpc, this.westCalebNpc, this.westJuniperNpc, this.westGideonNpc, this.fh1MarthaNpc, this.fh1HarlanNpc, this.fh2EleanorNpc, this.fh2ArthurNpc, this.arcadeZekeNpc, this.leagueRegistrarNpc
+        this.barberNpc, this.fishmongerMarinaNpc, this.tailorNpc, this.vetNpc, this.westOtisNpc, this.westMarenNpc, this.westCalebNpc, this.westJuniperNpc, this.westGideonNpc, this.fh1MarthaNpc, this.fh1HarlanNpc, this.fh2EleanorNpc, this.fh2ArthurNpc, this.barnKidTobyNpc, this.barnKidDaisyNpc, this.barnKidOwenNpc, this.barnKidPoppyNpc, this.arcadeZekeNpc, this.leagueRegistrarNpc
       ].forEach(add);
       return list;
     }
@@ -22782,7 +25099,8 @@
     getNpcArea(npc) {
       if (!npc) return 'exterior';
       if (npc.trip && npc.trip.currentArea) return npc.trip.currentArea;
-      return npc.hangoutSpot?.area || 'exterior';
+      const spot = this.getNpcHangoutSpot(npc);
+      return spot?.area || 'exterior';
     }
 
     isNpcInEvent(npc) {
@@ -22790,8 +25108,11 @@
       if (this.storyState !== 'free_roam') return true;
       if (npc.following || npc.leavingForHouse) return true;
       if (npc.targetX !== undefined && npc.targetX !== null && npc.targetY !== undefined && npc.targetY !== null) return true;
+      if (npc.isBarnKid && this.isBarnKidsNightTime()) return true;
       if (npc.id === 'berto') return true;
       if (npc.id === 'pier_finn') return true;
+      if (npc.id === 'farmstand_hazel') return true;
+      if (npc.id === 'fishmonger_marina') return true;
       if (npc.id === 'best_friend' && (!this.hasOpenedStarterPack || !this.friendWaitingAtHouse)) return true;
       if (npc.id === 'mom' && !this.hasMomBoosterMoney) return true;
 
@@ -22855,7 +25176,7 @@
       for (const npc of candidates) {
         if (slotsLeft <= 0) break;
         const roll = Math.random();
-        const ownArea = npc.hangoutSpot?.area;
+        const ownArea = this.getNpcHangoutSpot(npc)?.area;
         let destKey = null;
         if (roll < bChance && buildingKeys.length > 0) {
           const otherBuildings = buildingKeys.filter(k => k !== ownArea);
@@ -23010,9 +25331,85 @@
       return true;
     }
 
+    startNpcScheduleTrip(npc, targetSpot) {
+      if (!npc || !targetSpot) return false;
+      const curArea = this.getNpcArea(npc);
+      const destArea = targetSpot.area;
+      const curPortal = (this.AREA_PORTALS || {})[curArea];
+      const destPortal = destArea === 'exterior' ? null : (this.AREA_PORTALS || {})[destArea];
+      if (curArea === destArea) {
+        npc.hangoutSpot = targetSpot;
+        npc.trip = null;
+        return true;
+      }
+
+      let phase;
+      let goal;
+      if (curArea !== 'exterior') {
+        if (!curPortal) return false;
+        phase = 'to_home_exit';
+        goal = curPortal.intExit || curPortal.intEntry;
+      } else {
+        if (!destPortal) return false;
+        phase = 'to_dest_door';
+        goal = destPortal.extDoor;
+      }
+
+      const rawPath = this.findPathInArea(curArea, npc.x, npc.y, goal.x, goal.y, curArea === 'exterior');
+      npc.pendingTrip = null;
+      npc.roamTarget = null;
+      npc.trip = {
+        isScheduleCommute: true,
+        buildingKey: destArea === 'exterior' ? null : destArea,
+        destArea,
+        destName: targetSpot.label || 'Home',
+        destSpot: { x: targetSpot.x, y: targetSpot.y, dir: targetSpot.dir || 'down', radius: targetSpot.radius ?? 1.2, area: destArea, label: targetSpot.label },
+        homeArea: curArea,
+        homeSpot: { x: npc.x, y: npc.y, dir: npc.dir || 'down' },
+        currentArea: curArea,
+        phase,
+        path: this.cleanNpcTripPath(npc.x, npc.y, rawPath, goal),
+        leaveAtGameMinute: null
+      };
+      return true;
+    }
+
+    syncBarnKidsSchedule(instant = false) {
+      const isNight = this.isBarnKidsNightTime();
+      for (const npc of this.getBarnKids()) {
+        const desiredSpot = isNight ? npc.nightHangoutSpot : npc.dayHangoutSpot;
+        if (!desiredSpot) continue;
+        npc.hangoutSpot = desiredSpot;
+        if (instant) {
+          npc.trip = null;
+          npc.pendingTrip = null;
+          npc.roamTarget = null;
+          npc.x = desiredSpot.x;
+          npc.y = desiredSpot.y;
+          npc.dir = desiredSpot.dir || 'down';
+          npc.walkTick = 0;
+          continue;
+        }
+        if (this.storyState !== 'free_roam') continue;
+        if (npc.following || npc.leavingForHouse) continue;
+        const curArea = this.getNpcArea(npc);
+        if (curArea === desiredSpot.area) {
+          if (npc.trip && npc.trip.isScheduleCommute) npc.trip = null;
+          continue;
+        }
+        if (npc.trip?.isScheduleCommute && npc.trip.destArea === desiredSpot.area) continue;
+        // At 9:00 PM curfew (or if idle at wrong home), walk back to bedroom / clubhouse
+        if (isNight || !npc.trip) {
+          this.startNpcScheduleTrip(npc, desiredSpot);
+        }
+      }
+    }
+
     updateNpcTrips() {
       if (!this.active || this._isSleeping) return;
       if ((this.CLOCK_PAUSED_STORY_STATES || []).includes(this.storyState)) return;
+
+      this.syncBarnKidsSchedule(false);
 
       const speed = 0.022; // Relaxed, natural walking speed for building trips
       const nowGameMin = this.getTotalGameMinutes();
@@ -23046,10 +25443,13 @@
         if (!trip) continue;
 
         // Pause trip movement while the player is talking to or standing right beside this NPC
+        const meetupTalkId = npc.trip?.meetupId ? `meetup_${npc.trip.meetupId}` : null;
         const isTalking = this.activeDialogueNpc === npc.id ||
+          (meetupTalkId && this.activeDialogueNpc === meetupTalkId) ||
           (npc.id === 'best_friend' && (this.activeDialogueNpc === 'friend' || this.activeDialogueNpc === 'friend_duel'));
         const isNear = this.nearInteractable && (
           this.nearInteractable.id === npc.id ||
+          (meetupTalkId && this.nearInteractable.id === meetupTalkId) ||
           (npc.id === 'best_friend' && (this.nearInteractable.id === 'friend' || this.nearInteractable.id === 'friend_duel'))
         );
         if ((isTalking || (isNear && trip.phase === 'at_dest')) && trip.currentArea === this.currentArea) {
@@ -23142,6 +25542,15 @@
         trip.phase = 'to_dest_spot';
         trip.path = this.cleanNpcTripPath(npc.x, npc.y, rawPath, trip.destSpot);
       } else if (trip.phase === 'to_dest_spot') {
+        if (trip.isScheduleCommute) {
+          npc.hangoutSpot = { ...trip.destSpot };
+          npc.dir = trip.destSpot.dir || 'down';
+          npc.walkTick = 0;
+          npc.roamTarget = null;
+          npc.roamWaitUntil = performance.now() + 2000;
+          npc.trip = null;
+          return;
+        }
         trip.phase = 'at_dest';
         if (!trip.leaveAtGameMinute) {
           trip.leaveAtGameMinute = this.getTotalGameMinutes() + (this.TRIP_STAY_MINUTES ?? 120);
@@ -23185,7 +25594,7 @@
     getBgmTrackForArea(area = this.currentArea) {
       const a = area || 'exterior';
       if (a === 'exterior') return 'overworld';
-      if (a === 'card_shop_interior' || a === 'corner_store_interior' || a === 'arcade_interior' || a === 'arcade_back_interior') return 'shop';
+      if (a === 'card_shop_interior' || a === 'corner_store_interior' || a === 'arcade_interior' || a === 'arcade_back_interior' || a === 'fishmonger_shop_interior') return 'shop';
       if (a === 'restaurant_interior') return 'bistro';
       if (a === 'barber_shop_interior') return 'barber';
       if (a === 'clothing_store_interior') return 'boutique';
@@ -23199,6 +25608,7 @@
         'west_oak_1_interior', 'west_oak_2_interior',
         'farmhouse_1_1f_interior', 'farmhouse_1_2f_interior',
         'farmhouse_2_1f_interior', 'farmhouse_2_2f_interior',
+        'haystack_barn_1f_interior', 'haystack_barn_club_interior',
         'apartment_hall_interior', 'apt_1_interior', 'apt_2_interior', 'apt_3_interior', 'apt_4_interior'
       ].includes(a)) {
         return 'cozy_home';
@@ -23242,6 +25652,7 @@
       this.updateNpcTrips();
       this.updateNpcRoaming();
       this.updateBoosterBash();
+      this.updateFishing();
 
       if (this.shakeTicks > 0) this.shakeTicks--;
       if (this.tvFlashTicks > 0) this.tvFlashTicks--;
@@ -23300,6 +25711,11 @@
 
       let dx = 0;
       let dy = 0;
+      if (this.fishingState && ['waiting', 'bite', 'reeling'].includes(this.fishingState.phase)) {
+        this.player.moving = false;
+        this.player.walkTick = 0;
+        return;
+      }
       let moved = false;
       const isInterior = this.currentArea !== 'exterior';
       const moveScale = (this.isMobileViewport() ? 1.0 : 1.0125) * (isInterior ? 0.6 : 1.3);
@@ -23599,6 +26015,30 @@
           this.currentArea = 'exterior';
           this.player.x = -13.80;
           this.player.y = 9.25;
+          this.player.dir = 'down';
+          this.player.targetX = null;
+          this.player.targetY = null;
+          this.areaTransitionCooldown = 25;
+          this.updateHUDSaveInfo();
+        } else if (this.currentArea === 'exterior' && this.player.x >= -21.15 && this.player.x <= -20.25 && this.player.y <= 31.85 && this.player.y >= 31.00) {
+          // Step inside Oakhaven Fishmonger Shop (west of Bistro)
+          if (window.sounds?.playMove) window.sounds.playMove();
+          this.currentArea = 'fishmonger_shop_interior';
+          this.activeDialogueNpc = null;
+          this.nearInteractable = null;
+          this.player.x = 11.0;
+          this.player.y = 11.35;
+          this.player.dir = 'up';
+          this.player.targetX = null;
+          this.player.targetY = null;
+          this.areaTransitionCooldown = 25;
+          this.updateHUDSaveInfo();
+        } else if (this.currentArea === 'fishmonger_shop_interior' && this.player.x >= 9.3 && this.player.x <= 12.7 && this.player.y >= 11.70) {
+          // Exit Oakhaven Fishmonger back onto West Roundabout Ave
+          if (window.sounds?.playMove) window.sounds.playMove();
+          this.currentArea = 'exterior';
+          this.player.x = -20.70;
+          this.player.y = 32.00;
           this.player.dir = 'down';
           this.player.targetX = null;
           this.player.targetY = null;
@@ -24155,6 +26595,53 @@
           this.player.targetY = null;
           this.areaTransitionCooldown = 25;
           this.updateHUDSaveInfo();
+        } else if (this.currentArea === 'exterior' && this.player.x >= 46.4 && this.player.x <= 48.1 && this.player.y >= -25.7 && this.player.y <= -24.9) {
+          // Enter Haystack Yard & Barn 1F
+          if (window.sounds?.playMove) window.sounds.playMove();
+          this.currentArea = 'haystack_barn_1f_interior';
+          this.player.x = 11.0;
+          this.player.y = 11.6;
+          this.player.dir = 'up';
+          this.player.targetX = null;
+          this.player.targetY = null;
+          this.areaTransitionCooldown = 25;
+          this.cameraX = 0;
+          this.cameraY = 0;
+          this.updateHUDSaveInfo();
+        } else if (this.currentArea === 'haystack_barn_1f_interior' && this.player.x >= 9.6 && this.player.x <= 12.4 && this.player.y >= 12.15) {
+          if (window.sounds?.playMove) window.sounds.playMove();
+          this.currentArea = 'exterior';
+          this.player.x = 47.25;
+          this.player.y = -24.85;
+          this.player.dir = 'down';
+          this.player.targetX = null;
+          this.player.targetY = null;
+          this.areaTransitionCooldown = 25;
+          this.updateHUDSaveInfo();
+        } else if (this.currentArea === 'haystack_barn_1f_interior' && this.player.x >= 8.6 && this.player.x <= 10.3 && this.player.y >= 5.0 && this.player.y <= 6.2) {
+          // Haystack Barn stairs UP to Kids' Mythos Card Clubhouse (2F Loft)
+          if (window.sounds?.playMove) window.sounds.playMove();
+          this.currentArea = 'haystack_barn_club_interior';
+          this.player.x = 11.0;
+          this.player.y = 11.3;
+          this.player.dir = 'up';
+          this.player.targetX = null;
+          this.player.targetY = null;
+          this.areaTransitionCooldown = 25;
+          this.cameraX = 0;
+          this.cameraY = 0;
+          this.updateHUDSaveInfo();
+        } else if (this.currentArea === 'haystack_barn_club_interior' && this.player.x >= 9.6 && this.player.x <= 12.4 && this.player.y >= 11.9 && this.player.y <= 13.0) {
+          // Kids' Card Clubhouse stairs DOWN to Barn 1F
+          if (window.sounds?.playMove) window.sounds.playMove();
+          this.currentArea = 'haystack_barn_1f_interior';
+          this.player.x = 9.45;
+          this.player.y = 6.95;
+          this.player.dir = 'down';
+          this.player.targetX = null;
+          this.player.targetY = null;
+          this.areaTransitionCooldown = 25;
+          this.updateHUDSaveInfo();
         } else if (this.currentArea === 'mayor_interior' && this.player.x >= 11.35 && this.player.x <= 13.35 && this.player.y <= 5.45) {
           // Climb stairs from 1st Story to 2nd Story of Mayor Donald's Manor!
           if (window.sounds?.playMove) window.sounds.playMove();
@@ -24324,9 +26811,11 @@
       } else if ([
         'arcade_interior', 'arcade_back_interior',
         'farmhouse_1_1f_interior', 'farmhouse_1_2f_interior',
-        'farmhouse_2_1f_interior', 'farmhouse_2_2f_interior'
+        'farmhouse_2_1f_interior', 'farmhouse_2_2f_interior',
+        'haystack_barn_1f_interior', 'haystack_barn_club_interior',
+        'fishmonger_shop_interior'
       ].includes(this.currentArea)) {
-        const isFh = this.currentArea.startsWith('farmhouse_');
+        const isFh = this.currentArea.startsWith('farmhouse_') || this.currentArea.startsWith('haystack_barn_') || this.currentArea === 'fishmonger_shop_interior';
         const hallW = (isFh ? 22 : 20) * this.TILE;
         const hallH = 14 * this.TILE;
         const targetCenterX = hallW <= visibleW
@@ -26904,9 +29393,10 @@
         'west_oak_1_interior', 'west_oak_2_interior',
         'farmhouse_1_1f_interior', 'farmhouse_1_2f_interior',
         'farmhouse_2_1f_interior', 'farmhouse_2_2f_interior',
-        'archway_meadowland', 'farmhouse_1', 'farmhouse_2',
+        'haystack_barn_1f_interior', 'haystack_barn_club_interior',
+        'archway_meadowland', 'farmhouse_1', 'farmhouse_2', 'haystack_barn', 'roadside_farmstand',
         'card_shop', 'shop_banner', 'convention_center', 'oakhaven_apartments',
-        'school_exterior', 'school_bus', 'police_station', 'fire_station', 'fire_station_interior', 'police_station_interior', 'barber_shop', 'barber_shop_interior', 'clothing_store', 'clothing_store_interior', 'animal_hospital', 'animal_hospital_interior', 'arcade', 'arcade_interior', 'arcade_back_interior', 'npc_fire_chief', 'npc_fire_chief_back', 'npc_fire_chief_side', 'npc_police_chief', 'npc_police_chief_back', 'npc_police_chief_side',
+        'school_exterior', 'school_bus', 'police_station', 'fire_station', 'fire_station_interior', 'police_station_interior', 'barber_shop', 'barber_shop_interior', 'fishmonger_shop', 'fishmonger_shop_interior', 'clothing_store', 'clothing_store_interior', 'animal_hospital', 'animal_hospital_interior', 'arcade', 'arcade_interior', 'arcade_back_interior', 'npc_fire_chief', 'npc_fire_chief_back', 'npc_fire_chief_side', 'npc_police_chief', 'npc_police_chief_back', 'npc_police_chief_side',
         'playground_ground', 'playground_fort', 'playground_swingset',
         'playground_seesaw', 'playground_spinner', 'playground_hoop',
         'tree_green', 'tree_autumn', 'tree_autumn_small',
@@ -31662,6 +34152,10 @@
       this._renderCutawayBuildingInterior('barber_shop_interior');
     }
 
+    renderFishmongerShopInterior() {
+      this._renderCutawayBuildingInterior('fishmonger_shop_interior', 22, 14);
+    }
+
     renderClothingStoreInterior() {
       this._renderCutawayBuildingInterior('clothing_store_interior');
     }
@@ -31700,6 +34194,14 @@
 
     renderFarmhouse2Floor2() {
       this._renderCutawayBuildingInterior('farmhouse_2_2f_interior', 22, 14);
+    }
+
+    renderHaystackBarnFloor1() {
+      this._renderCutawayBuildingInterior('haystack_barn_1f_interior', 22, 14);
+    }
+
+    renderHaystackBarnClub() {
+      this._renderCutawayBuildingInterior('haystack_barn_club_interior', 22, 14);
     }
 
     renderWestHouse1Interior() {
@@ -33403,6 +35905,19 @@
         ctx.lineTo(Math.round(23.70 * S), yValley);
         ctx.moveTo(Math.round(42.60 * S), Math.round(-16.85 * S));
         ctx.lineTo(Math.round(42.60 * S), yValley);
+        // 8. Haystack Yard & Barn Packed-Dirt Driveway off East Ranch N-S Lane
+        ctx.moveTo(xRanch, Math.round(-24.55 * S));
+        ctx.lineTo(Math.round(47.25 * S), Math.round(-24.55 * S));
+        ctx.lineTo(Math.round(47.25 * S), Math.round(-25.45 * S));
+        traceCornerFlare(xRanch, Math.round(-24.55 * S), -1, -1, rFlare);
+        traceCornerFlare(xRanch, Math.round(-24.55 * S), -1, 1, rFlare);
+        // 9. Roadside Farmstand Packed-Dirt Pull-Off off South Countryside E-W Border Road (District 0)
+        ctx.moveTo(Math.round(19.80 * S), yGateway);
+        ctx.lineTo(Math.round(19.80 * S), Math.round(-3.35 * S));
+        ctx.moveTo(Math.round(18.70 * S), Math.round(-3.35 * S));
+        ctx.lineTo(Math.round(20.90 * S), Math.round(-3.35 * S));
+        traceCornerFlare(Math.round(19.80 * S), yGateway, -1, -1, rFlare);
+        traceCornerFlare(Math.round(19.80 * S), yGateway, 1, -1, rFlare);
       };
 
       // Meadowbrook Lake Option 2 Promenade (Weathered Herringbone Brick & Moss — drawn beneath dirt road so gate entries tuck cleanly)
@@ -33693,7 +36208,7 @@
             }
           }
 
-          // Wooden tackle box beside Old Finn & cast bamboo fishing rod + animated bobber
+          // Wooden tackle box beside Old Finn on the Fishing Pier
           const tBoxX = Math.round(36.68 * S);
           const tBoxY = Math.round(4.92 * S);
           ctx.fillStyle = '#24160c';
@@ -33704,48 +36219,6 @@
           ctx.fillRect(tBoxX + 1, tBoxY + 1, 10, 3);
           ctx.fillStyle = '#facc15';
           ctx.fillRect(tBoxX + 5, tBoxY + 3, 2, 2);
-
-          const rodStartX = Math.round(37.26 * S);
-          const rodStartY = Math.round(5.18 * S);
-          const rodTipX = Math.round(38.18 * S);
-          const rodTipY = Math.round(4.90 * S);
-          const bobX = rodTipX;
-          const bobY = Math.round(5.42 * S + Math.sin(this.tick * 0.08) * 2);
-
-          ctx.strokeStyle = '#3e2310';
-          ctx.lineWidth = 3;
-          ctx.beginPath();
-          ctx.moveTo(rodStartX, rodStartY);
-          ctx.lineTo(rodTipX, rodTipY);
-          ctx.stroke();
-
-          ctx.strokeStyle = '#c89b54';
-          ctx.lineWidth = 1.5;
-          ctx.beginPath();
-          ctx.moveTo(rodStartX, rodStartY);
-          ctx.lineTo(rodTipX, rodTipY);
-          ctx.stroke();
-
-          ctx.strokeStyle = 'rgba(226, 244, 255, 0.72)';
-          ctx.lineWidth = 1;
-          ctx.beginPath();
-          ctx.moveTo(rodTipX, rodTipY);
-          ctx.lineTo(bobX, bobY);
-          ctx.stroke();
-
-          const ripplePhase = (Math.sin(this.tick * 0.06) + 1) * 0.5;
-          ctx.strokeStyle = `rgba(218, 248, 255, ${(0.55 - ripplePhase * 0.35).toFixed(2)})`;
-          ctx.lineWidth = 1.2;
-          ctx.beginPath();
-          ctx.ellipse(bobX, bobY + 2, 5 + ripplePhase * 4, 2.2 + ripplePhase * 1.6, 0, 0, Math.PI * 2);
-          ctx.stroke();
-
-          ctx.fillStyle = '#18181b';
-          ctx.fillRect(bobX - 3, bobY - 3, 6, 6);
-          ctx.fillStyle = '#ef4444';
-          ctx.fillRect(bobX - 2, bobY - 2, 4, 2);
-          ctx.fillStyle = '#f8fafc';
-          ctx.fillRect(bobX - 2, bobY, 4, 2);
         }
       }
 
@@ -33981,6 +36454,35 @@
         ctx.fillStyle = '#fef08a';
         ctx.fillRect(cx + 2, ly - 31, 8, 6);
       });
+
+      // OAKHAVEN FISHMONGER SHOP (West of Oakhaven Bistro: x = -23.6..-18.8, y = 28.8..31.7)
+      const drawFishmongerShop = () => {
+        if (!this.isImgReady('fishmonger_shop')) return;
+        const img = this.owSprites.fishmonger_shop;
+        const hxTile = -23.60;
+        const hwTile = 4.80;
+        const baseYTile = 31.70;
+        const fx = Math.round(hxTile * S);
+        const fw = Math.round(hwTile * S);
+        const fh = Math.round(fw * (img.naturalHeight / img.naturalWidth));
+        const fBaseY = Math.round(baseYTile * S);
+
+        // Paved sidewalk apron & stepping-stone path out to West Roundabout Ave
+        ctx.fillStyle = this.flagstonePattern || '#988878';
+        ctx.fillRect(fx - 6, fBaseY - 12, fw + 12, Math.round(westExitY - fBaseY + 14));
+        drawDrivewayPath(-21.15 * S, 31.65 * S, 0.90 * S, westExitY - 31.65 * S + 4);
+
+        ctx.fillStyle = 'rgba(18, 12, 8, 0.30)';
+        ctx.beginPath();
+        ctx.ellipse(fx + fw / 2, fBaseY - 4, Math.round(fw * 0.48), 10, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.save();
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(img, fx, fBaseY - fh, fw, fh);
+        ctx.restore();
+      };
 
       // OAKHAVEN BISTRO (3 Blocks West of Roundabout: x = -17.6..-13.4, y = 28.9..31.7)
       // Harmonized with drawMythosCardShop() & town Craftsman architecture!
@@ -35186,6 +37688,7 @@
         });
       };
 
+      drawFishmongerShop();
       drawOakhavenBistro();
       drawOakhavenApartments();
       drawWillowWayCornerStore();
@@ -35856,6 +38359,7 @@
         }
       };
 
+      drawFishmongerShop();
       drawOakhavenBistro();
       drawOakhavenApartments();
       drawWillowWayCornerStore();
@@ -35943,7 +38447,8 @@
       drawStoneCurbV(oakhavenWestTurnX + oakhavenWestTurnW, northWestPavedY + oakhavenWestTurnW, (rbCy - rbOuterR) - (northWestPavedY + oakhavenWestTurnW) + 12, 'left');
       drawStoneCurbH(oakhavenWestTurnX + oakhavenWestTurnW, northWestPavedY - 6, Math.round(17.35 * S) - (oakhavenWestTurnX + oakhavenWestTurnW), 'bot');
       drawStoneCurbH(oakhavenWestTurnX + oakhavenWestTurnW, northWestPavedY + oakhavenWestTurnW, Math.round(17.35 * S) - (oakhavenWestTurnX + oakhavenWestTurnW), 'top');
-      drawStoneCurbH(westPavedConnX + oakhavenWestTurnW, westExitY - 6, (-15.85 * S) - (westPavedConnX + oakhavenWestTurnW), 'bot');
+      drawStoneCurbH(westPavedConnX + oakhavenWestTurnW, westExitY - 6, (-21.15 * S) - (westPavedConnX + oakhavenWestTurnW), 'bot');
+      drawStoneCurbH(-20.25 * S, westExitY - 6, (-15.85 - (-20.25)) * S, 'bot');
       drawStoneCurbH(-15.15 * S, westExitY - 6, (-9.55 - (-15.15)) * S, 'bot');
       drawStoneCurbH(-8.85 * S, westExitY - 6, (rbCx - rbOuterR) - (-8.85 * S) + 12, 'bot');
       drawStoneCurbH(westPavedConnX, westExitY + oakhavenWestTurnW, (rbCx - rbOuterR) - westPavedConnX + 12, 'top');
@@ -37764,6 +40269,58 @@
       };
       drawMeadowlandFarmhouse('farmhouse_1', 20.60, 6.80, -16.80);
       drawMeadowlandFarmhouse('farmhouse_2', 39.80, 7.00, -16.80);
+      drawMeadowlandFarmhouse('haystack_barn', 45.20, 7.60, -25.40);
+
+      // DISTRICT 0: ROADSIDE FARMSTAND (layered so Hazel stands behind the front counter)
+      const drawRoadsideFarmstand = () => {
+        if (!this.isImgReady('roadside_farmstand')) return;
+        const img = this.owSprites['roadside_farmstand'];
+        const hxTile = 17.10;
+        const hwTile = 5.40;
+        const baseYTile = -3.65;
+        const fx = Math.round(hxTile * S);
+        const fw = Math.round(hwTile * S);
+        const fh = Math.round(fw * (img.naturalHeight / img.naturalWidth));
+        const fBaseY = Math.round(baseYTile * S);
+        const fy = fBaseY - fh;
+        const counterTopFrac = 298 / 442;
+        const srcCutY = Math.round(img.naturalHeight * counterTopFrac);
+        const destCutY = Math.round(fh * counterTopFrac);
+
+        ctx.fillStyle = 'rgba(14, 24, 10, 0.24)';
+        ctx.fillRect(fx + 14, fBaseY - 14, fw - 28, 16);
+
+        // Back layer: roof, signboard, awning, and counter bay behind Hazel
+        this._extDepthProps.push({
+          sortY: Math.round(-5.15 * S),
+          zBias: 0,
+          draw: () => {
+            ctx.save();
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+            ctx.drawImage(img, fx, fy, fw, fh);
+            ctx.restore();
+          }
+        });
+
+        // Front overlay layer: lower wooden counter, chalkboard, and front crates in front of Hazel's boots
+        this._extDepthProps.push({
+          sortY: fBaseY,
+          zBias: 0,
+          draw: () => {
+            ctx.save();
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+            ctx.drawImage(
+              img,
+              0, srcCutY, img.naturalWidth, img.naturalHeight - srcCutY,
+              fx, fy + destCutY, fw, fh - destCutY
+            );
+            ctx.restore();
+          }
+        });
+      };
+      drawRoadsideFarmstand();
 
       // 6. READABLE ROADSIDE MAILBOXES ACROSS ALL 3 BLOCKS
       const drawMailbox = (mx, my, labelText, boxColor, isHighlighted) => {
@@ -38722,6 +41279,7 @@
 
       const isTargetNpcNear = this.nearInteractable && (
         this.nearInteractable.id === entity.id ||
+        (entity.trip?.meetupId && this.nearInteractable.id === `meetup_${entity.trip.meetupId}`) ||
         (entity.id === 'friend' && this.nearInteractable.id === 'friend_duel') ||
         (entity.id === 'best_friend' && (this.nearInteractable.id === 'friend_duel' || this.nearInteractable.id === 'friend')) ||
         (this.nearInteractable === entity)
@@ -39074,6 +41632,9 @@
       } else if (area === 'barber_shop_interior') {
         if (!this.barberNpc) this.barberNpc = this.createBarberNpc();
         active.push(this.barberNpc);
+      } else if (area === 'fishmonger_shop_interior') {
+        if (!this.fishmongerMarinaNpc) this.fishmongerMarinaNpc = this.createFishmongerMarinaNpc();
+        active.push(this.fishmongerMarinaNpc);
       } else if (area === 'clothing_store_interior') {
         if (!this.tailorNpc) this.tailorNpc = this.createTailorNpc();
         active.push(this.tailorNpc);
@@ -39101,12 +41662,22 @@
       } else if (area === 'farmhouse_1_2f_interior') {
         if (!this.fh1HarlanNpc) this.fh1HarlanNpc = this.createFh1HarlanNpc();
         active.push(this.fh1HarlanNpc);
+        for (const kid of [this.barnKidTobyNpc, this.barnKidDaisyNpc]) {
+          if (kid && this.getNpcHangoutSpot(kid)?.area === area) active.push(kid);
+        }
       } else if (area === 'farmhouse_2_1f_interior') {
         if (!this.fh2EleanorNpc) this.fh2EleanorNpc = this.createFh2EleanorNpc();
         active.push(this.fh2EleanorNpc);
       } else if (area === 'farmhouse_2_2f_interior') {
         if (!this.fh2ArthurNpc) this.fh2ArthurNpc = this.createFh2ArthurNpc();
         active.push(this.fh2ArthurNpc);
+        for (const kid of [this.barnKidOwenNpc, this.barnKidPoppyNpc]) {
+          if (kid && this.getNpcHangoutSpot(kid)?.area === area) active.push(kid);
+        }
+      } else if (area === 'haystack_barn_club_interior') {
+        for (const kid of this.getBarnKids()) {
+          if (kid && this.getNpcHangoutSpot(kid)?.area === area) active.push(kid);
+        }
       } else if (area === 'arcade_interior') {
         if (!this.arcadeZekeNpc) this.arcadeZekeNpc = this.createArcadeZekeNpc();
         active.push(this.arcadeZekeNpc);
@@ -39124,8 +41695,9 @@
         if (!this.rowanNpc) this.rowanNpc = this.createRowanNpc();
         if (!this.jasperNpc) this.jasperNpc = this.createJasperNpc();
         if (!this.pierFinnNpc) this.pierFinnNpc = this.createPierFinnNpc();
+        if (!this.farmstandHazelNpc) this.farmstandHazelNpc = this.createFarmstandHazelNpc();
         this.syncParkNpcBubbles();
-        active.push(this.chloeNpc, this.rowanNpc, this.jasperNpc, this.pierFinnNpc);
+        active.push(this.chloeNpc, this.rowanNpc, this.jasperNpc, this.pierFinnNpc, this.farmstandHazelNpc);
       }
 
       // Include NPCs currently traveling through or visiting this area on a building trip,
@@ -39151,10 +41723,15 @@
       const curDay = this.dayNumber || 1;
       active.forEach(npc => {
         const homeId = (npc.id === 'best_friend' || npc.id === 'friend') ? 'friend' : npc.id;
-        if (['friend', 'pluto', 'nova', 'silas', 'maya'].includes(homeId)) {
+        const activeMeetup = this.storyState === 'free_roam' ? this.getActiveMeetupForRealNpc(npc, area) : null;
+        if (activeMeetup || ['friend', 'pluto', 'nova', 'silas', 'maya'].includes(homeId)) {
           if (npc._baseBubble === undefined) npc._baseBubble = npc.bubble;
-          const hasMeetupToday = this.storyState === 'free_roam' && this.getScheduledMeetupsForNpc(homeId, area, curDay).length > 0;
-          npc.bubble = hasMeetupToday ? '🤝' : npc._baseBubble;
+          if (activeMeetup) {
+            npc.bubble = activeMeetup.type === 'duel_challenge' ? '⚔️' : '🤝';
+          } else {
+            const hasMeetupToday = this.storyState === 'free_roam' && this.getScheduledMeetupsForNpc(homeId, area, curDay).length > 0;
+            npc.bubble = hasMeetupToday ? '🤝' : npc._baseBubble;
+          }
         }
       });
       active.push(...this.getActiveMeetupVisitorsForArea(area));
@@ -39288,6 +41865,8 @@
         this.renderPoliceStationInterior();
       } else if (this.currentArea === 'barber_shop_interior') {
         this.renderBarberShopInterior();
+      } else if (this.currentArea === 'fishmonger_shop_interior') {
+        this.renderFishmongerShopInterior();
       } else if (this.currentArea === 'clothing_store_interior') {
         this.renderClothingStoreInterior();
       } else if (this.currentArea === 'animal_hospital_interior') {
@@ -39314,6 +41893,10 @@
         this.renderFarmhouse2Floor1();
       } else if (this.currentArea === 'farmhouse_2_2f_interior') {
         this.renderFarmhouse2Floor2();
+      } else if (this.currentArea === 'haystack_barn_1f_interior') {
+        this.renderHaystackBarnFloor1();
+      } else if (this.currentArea === 'haystack_barn_club_interior') {
+        this.renderHaystackBarnClub();
       } else {
         this.renderCraftsmanExterior();
       }
@@ -39423,11 +42006,14 @@
         }
       }
 
+        this.renderFishingWorldLayer(ctx);
+
         if (useCameraTransform) {
           ctx.restore();
         }
 
         this.drawShaderPass();
+        this.renderFishingScreenHud(ctx);
       } finally {
         ctx.restore();
       }

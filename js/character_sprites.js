@@ -360,7 +360,8 @@
     'silas_d', 'clara_d', 'bram_d', 'apt_tessa_d', 'apt_dante_d',
     'apt_nina_d', 'apt_miles_d', 'chloe_d', 'berto_d', 'rowan_d', 'jasper_d',
     'west_otis_d', 'west_maren_d', 'west_caleb_d', 'west_juniper_d', 'west_gideon_d',
-    'fh1_martha_d', 'fh1_harlan_d', 'fh2_eleanor_d', 'fh2_arthur_d', 'arcade_zeke_d'
+    'fh1_martha_d', 'fh1_harlan_d', 'fh2_eleanor_d', 'fh2_arthur_d', 'arcade_zeke_d',
+    'pier_finn_d', 'farmstand_hazel_d', 'fishmonger_marina_d', 'barn_kid_toby_d', 'barn_kid_daisy_d', 'barn_kid_owen_d', 'barn_kid_poppy_d'
   ];
   for (const id of CUSTOM_SPRITE_IDS) getCustomSpriteImage(id);
 
