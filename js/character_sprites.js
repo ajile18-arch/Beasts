@@ -168,6 +168,33 @@
       icon: '🔥',
       desc: 'Bold crimson anime crest with clean tapered dark sides that stands out downtown.',
       isStarter: false
+    },
+    {
+      id: 'silver_wolf',
+      name: 'Silver Wolf Shag',
+      price: 4,
+      tier: 'Styled Cut',
+      icon: '🐺',
+      desc: 'Layered silver-white anime wolf-cut hair with windswept bangs and cool ash shading.',
+      isStarter: false
+    },
+    {
+      id: 'emerald_curls',
+      name: 'Forest Curl Wave',
+      price: 5,
+      tier: 'Textured Cut',
+      icon: '🌿',
+      desc: 'Bouncy dark-emerald wavy curls with sunlit mint highlights straight out of Meadowland.',
+      isStarter: false
+    },
+    {
+      id: 'midnight_ponytail',
+      name: 'Midnight Tie-Back',
+      price: 6,
+      tier: 'Master Cut',
+      icon: '🌙',
+      desc: 'Sleek jet-black swept bangs gathered into a crisp tied-back ponytail.',
+      isStarter: false
     }
   ];
 
@@ -201,6 +228,36 @@
       desc: 'Royal dark-violet trench coat with gold trim worn over a tailored vest and buckled boots.',
       colors: { base: '#581c87' },
       isStarter: false
+    },
+    {
+      id: 'emerald_hoodie',
+      name: 'Meadowland Hoodie',
+      price: 5,
+      tier: 'Casual Wear',
+      icon: '🍃',
+      desc: 'Forest-emerald zip hoodie with cream drawstrings, dark charcoal joggers, and white-trimmed sneakers.',
+      colors: { base: '#15803d' },
+      isStarter: false
+    },
+    {
+      id: 'ranger_vest',
+      name: 'Explorer Ranger Vest',
+      price: 7,
+      tier: 'Field Gear',
+      icon: '🧭',
+      desc: 'Tan leather explorer vest with crossbody satchel strap over a navy henley, olive cargos, and laced boots.',
+      colors: { base: '#92400e' },
+      isStarter: false
+    },
+    {
+      id: 'cyber_street',
+      name: 'Arcade Neon Tech',
+      price: 9,
+      tier: 'Streetwear',
+      icon: '🕹️',
+      desc: 'Charcoal and electric-cyan techwear windbreaker jacket paired with black tech pants and neon high-tops.',
+      colors: { base: '#0ea5e9' },
+      isStarter: false
     }
   ];
 
@@ -208,17 +265,50 @@
     spiky: {
       default_jacket: 'player_hero_d',
       varsity_crimson: 'player_spiky_varsity_d',
-      sovereign_coat: 'player_spiky_sovereign_d'
+      sovereign_coat: 'player_spiky_sovereign_d',
+      emerald_hoodie: 'player_spiky_hoodie_d',
+      ranger_vest: 'player_spiky_ranger_d',
+      cyber_street: 'player_spiky_cyber_d'
     },
     swept_blonde: {
       default_jacket: 'player_swept_default_d',
       varsity_crimson: 'player_swept_varsity_d',
-      sovereign_coat: 'player_swept_sovereign_d'
+      sovereign_coat: 'player_swept_sovereign_d',
+      emerald_hoodie: 'player_swept_hoodie_d',
+      ranger_vest: 'player_swept_ranger_d',
+      cyber_street: 'player_swept_cyber_d'
     },
     crimson_mohawk: {
       default_jacket: 'player_mohawk_default_d',
       varsity_crimson: 'player_mohawk_varsity_d',
-      sovereign_coat: 'player_mohawk_sovereign_d'
+      sovereign_coat: 'player_mohawk_sovereign_d',
+      emerald_hoodie: 'player_mohawk_hoodie_d',
+      ranger_vest: 'player_mohawk_ranger_d',
+      cyber_street: 'player_mohawk_cyber_d'
+    },
+    silver_wolf: {
+      default_jacket: 'player_silver_default_d',
+      varsity_crimson: 'player_silver_varsity_d',
+      sovereign_coat: 'player_silver_sovereign_d',
+      emerald_hoodie: 'player_silver_hoodie_d',
+      ranger_vest: 'player_silver_ranger_d',
+      cyber_street: 'player_silver_cyber_d'
+    },
+    emerald_curls: {
+      default_jacket: 'player_curls_default_d',
+      varsity_crimson: 'player_curls_varsity_d',
+      sovereign_coat: 'player_curls_sovereign_d',
+      emerald_hoodie: 'player_curls_hoodie_d',
+      ranger_vest: 'player_curls_ranger_d',
+      cyber_street: 'player_curls_cyber_d'
+    },
+    midnight_ponytail: {
+      default_jacket: 'player_ponytail_default_d',
+      varsity_crimson: 'player_ponytail_varsity_d',
+      sovereign_coat: 'player_ponytail_sovereign_d',
+      emerald_hoodie: 'player_ponytail_hoodie_d',
+      ranger_vest: 'player_ponytail_ranger_d',
+      cyber_street: 'player_ponytail_cyber_d'
     }
   };
 
@@ -328,7 +418,7 @@
   }
   preloadCharacterSheets();
 
-  const CUSTOM_SPRITE_VER = '6';
+  const CUSTOM_SPRITE_VER = '7';
   const customSpriteBank = new Map();
   function getCustomSpriteImage(id) {
     if (!id) return null;
@@ -350,9 +440,12 @@
   }
   const CUSTOM_SPRITE_IDS = [
     'player_hero_d',
-    'player_spiky_varsity_d', 'player_spiky_sovereign_d',
-    'player_swept_default_d', 'player_swept_varsity_d', 'player_swept_sovereign_d',
-    'player_mohawk_default_d', 'player_mohawk_varsity_d', 'player_mohawk_sovereign_d',
+    'player_spiky_varsity_d', 'player_spiky_sovereign_d', 'player_spiky_hoodie_d', 'player_spiky_ranger_d', 'player_spiky_cyber_d',
+    'player_swept_default_d', 'player_swept_varsity_d', 'player_swept_sovereign_d', 'player_swept_hoodie_d', 'player_swept_ranger_d', 'player_swept_cyber_d',
+    'player_mohawk_default_d', 'player_mohawk_varsity_d', 'player_mohawk_sovereign_d', 'player_mohawk_hoodie_d', 'player_mohawk_ranger_d', 'player_mohawk_cyber_d',
+    'player_silver_default_d', 'player_silver_varsity_d', 'player_silver_sovereign_d', 'player_silver_hoodie_d', 'player_silver_ranger_d', 'player_silver_cyber_d',
+    'player_curls_default_d', 'player_curls_varsity_d', 'player_curls_sovereign_d', 'player_curls_hoodie_d', 'player_curls_ranger_d', 'player_curls_cyber_d',
+    'player_ponytail_default_d', 'player_ponytail_varsity_d', 'player_ponytail_sovereign_d', 'player_ponytail_hoodie_d', 'player_ponytail_ranger_d', 'player_ponytail_cyber_d',
     'maya_d',
     'rocky_d', 'mom_d', 'shopkeeper_d', 'vet_hannah_d', 'fire_chief_d',
     'police_chief_d', 'mayor_donald_d', 'chef_marco_d', 'shaun_d', 'barber_enzo_d',

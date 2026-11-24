@@ -7611,7 +7611,7 @@
               <span class="barber-pole-badge" aria-hidden="true">💈</span>
               <div>
                 <h2>ENZO'S BARBER SHOP</h2>
-                <div class="barber-subtitle">Custom Main Street Cuts • 3 Styles ($0.00 – $5.00)</div>
+                <div class="barber-subtitle">Custom Main Street Cuts • 6 Styles ($0.00 – $6.00)</div>
               </div>
             </div>
             <div class="barber-header-actions">
@@ -7639,7 +7639,7 @@
               <div id="barber-status-msg" class="barber-status-msg"></div>
             </div>
             <div class="barber-catalog-pane">
-              <div class="barber-section-label">💈 Signature Hair Styles (3 Cuts)</div>
+              <div class="barber-section-label">💈 Signature Hair Styles (6 Cuts)</div>
               <div id="barber-style-grid" class="barber-grid"></div>
             </div>
           </div>
@@ -7889,7 +7889,7 @@
               <span class="apparel-badge" aria-hidden="true">👔</span>
               <div>
                 <h2>OAKHAVEN APPAREL</h2>
-                <div class="apparel-subtitle">Full Style Outfits • $4.00 – $8.00</div>
+                <div class="apparel-subtitle">Full Style Outfits • $4.00 – $9.00</div>
               </div>
             </div>
             <div class="apparel-header-actions">
@@ -7919,7 +7919,7 @@
             </div>
             <div class="apparel-catalog-pane">
               <div class="apparel-tabs" role="tablist">
-                <button type="button" class="apparel-tab-btn active" data-tab="outfits">🧥 Outfits (3)</button>
+                <button type="button" class="apparel-tab-btn active" data-tab="outfits">🧥 Outfits (6)</button>
               </div>
               <div id="apparel-item-grid" class="apparel-grid"></div>
             </div>
@@ -9524,6 +9524,29 @@
       }
     }
 
+    _rollFishingWaitProfile(fish) {
+      const isRarePlus = fish?.rarity === 'Rare' || fish?.rarity === 'Epic';
+      const tiers = [
+        { id: 'quick',   min: 3.0,  max: 5.0,  weight: 20 },
+        { id: 'steady',  min: 5.5,  max: 9.0,  weight: 38 },
+        { id: 'patient', min: 9.5,  max: 14.0, weight: 28 + (isRarePlus ? 10 : 0) },
+        { id: 'deep',    min: 14.5, max: 20.0, weight: 14 + (isRarePlus ? 8 : 0) }
+      ];
+      const totalWeight = tiers.reduce((sum, t) => sum + t.weight, 0);
+      let roll = Math.random() * totalWeight;
+      let tier = tiers[0];
+      for (const t of tiers) {
+        if ((roll -= t.weight) <= 0) {
+          tier = t;
+          break;
+        }
+      }
+      const biteTimer = tier.min + Math.random() * (tier.max - tier.min);
+      const baseWindow = Math.max(0.85, Math.min(1.35, 1.35 - ((fish?.speed || 1.0) - 1.0) * 0.55));
+      const biteWindow = baseWindow + (this.isMobileViewport?.() ? 0.20 : 0);
+      return { waitTier: tier.id, biteTimer, biteWindow };
+    }
+
     startFishingCast(tx, ty) {
       if (!this.canCastAtTile(tx, ty)) return false;
       this.clearClickMoveTarget();
@@ -9540,12 +9563,16 @@
 
       const fish = this.rollCaughtFish();
       const zone = this._placeFishingSweetSpot(fish);
+      const waitProfile = this._rollFishingWaitProfile(fish);
       this.fishingState = {
         phase: 'waiting',
         castX: tx,
         castY: ty,
-        biteTimer: 1.1 + Math.random() * 1.4,
-        biteWindow: 1.45,
+        waitTier: waitProfile.waitTier,
+        biteTimer: waitProfile.biteTimer,
+        biteWindow: waitProfile.biteWindow,
+        biteWindowMax: waitProfile.biteWindow,
+        lastUpdateMs: performance.now(),
         fish,
         tCursor: 0.08,
         tDir: 1,
@@ -9655,7 +9682,11 @@
       }
       const st = this.fishingState;
       if (!st) return;
-      const dt = 1 / 60;
+      const now = performance.now();
+      const dt = st.lastUpdateMs
+        ? Math.min(0.05, Math.max(0.001, (now - st.lastUpdateMs) / 1000))
+        : (1 / 60);
+      st.lastUpdateMs = now;
       for (let i = st.particles.length - 1; i >= 0; i--) {
         const p = st.particles[i];
         p.x += p.vx;
@@ -9668,13 +9699,15 @@
         st.biteTimer -= dt;
         if (st.biteTimer <= 0) {
           st.phase = 'bite';
-          st.biteWindow = 1.45;
+          st.biteWindow = st.biteWindowMax || 1.25;
           this._spawnFishingSplash(st, st.castX * this.TILE, st.castY * this.TILE, 12, '#fde047');
+          if (window.sounds?.playClick) window.sounds.playClick();
         }
       } else if (st.phase === 'bite') {
         st.biteWindow -= dt;
         if (st.biteWindow <= 0) {
-          this._finishFishingAttempt(false, 'Too slow — the fish slipped off the hook!');
+          this._spawnFishingSplash(st, st.castX * this.TILE, st.castY * this.TILE, 8, '#94a3b8');
+          this._finishFishingAttempt(false, 'Missed the bite — too slow to hook the fish!');
         }
       } else if (st.phase === 'reeling') {
         const spd = 0.85 * (st.fish?.speed || 1.0) + st.tHits * 0.22;
@@ -9816,17 +9849,22 @@
         }
 
         if (st.phase === 'bite') {
+          const pct = Math.max(0, Math.min(1, st.biteWindow / Math.max(0.1, st.biteWindowMax || 1.25)));
           ctx.fillStyle = '#fef08a';
           ctx.strokeStyle = '#b45309';
           ctx.lineWidth = 2;
           ctx.beginPath();
-          ctx.roundRect(bx - 34, by - 36, 68, 22, 6);
+          ctx.roundRect(bx - 34, by - 40, 68, 27, 6);
           ctx.fill();
           ctx.stroke();
           ctx.fillStyle = '#991b1b';
           ctx.font = 'bold 12px Inter, sans-serif';
           ctx.textAlign = 'center';
-          ctx.fillText('❗ BITE!', bx, by - 21);
+          ctx.fillText('❗ BITE!', bx, by - 23);
+          ctx.fillStyle = '#78350f';
+          ctx.fillRect(bx - 28, by - 17, 56, 4);
+          ctx.fillStyle = pct > 0.4 ? '#22c55e' : '#dc2626';
+          ctx.fillRect(bx - 28, by - 17, 56 * pct, 4);
         }
 
         for (const p of st.particles) {
@@ -9885,6 +9923,20 @@
       ctx.fillStyle = '#f8fafc';
       ctx.textAlign = 'center';
       ctx.fillText(pillText, W / 2, 32, tw - 20);
+
+      if (st?.phase === 'bite') {
+        const pct = Math.max(0, Math.min(1, st.biteWindow / Math.max(0.1, st.biteWindowMax || 1.25)));
+        const barW = Math.min(220, tw - 24);
+        const barX = (W - barW) / 2;
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+        ctx.beginPath();
+        ctx.roundRect(barX, 46, barW, 5, 2.5);
+        ctx.fill();
+        ctx.fillStyle = pct > 0.4 ? '#fde047' : '#ef4444';
+        ctx.beginPath();
+        ctx.roundRect(barX, 46, Math.max(0, barW * pct), 5, 2.5);
+        ctx.fill();
+      }
 
       // Bottom Sweet-Spot Timing Bar or Result Banner
       if (st?.phase === 'reeling') {
