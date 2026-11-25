@@ -909,12 +909,11 @@
       stageEl.style.setProperty('--glare-y', '30%');
       stageEl.style.setProperty('--glare-op', '0');
     };
-    reset();
-    stageEl.addEventListener('pointermove', (e) => {
+    const applyPoint = (clientX, clientY) => {
       const rect = stageEl.getBoundingClientRect();
       if (!rect.width || !rect.height) return;
-      const nx = clamp((e.clientX - rect.left) / rect.width, 0, 1);
-      const ny = clamp((e.clientY - rect.top) / rect.height, 0, 1);
+      const nx = clamp((clientX - rect.left) / rect.width, 0, 1);
+      const ny = clamp((clientY - rect.top) / rect.height, 0, 1);
       const tiltY = ((nx - 0.5) * 14).toFixed(2);
       const tiltX = ((0.5 - ny) * 14).toFixed(2);
       stageEl.style.setProperty('--tilt-x', `${tiltX}deg`);
@@ -922,7 +921,18 @@
       stageEl.style.setProperty('--glare-x', `${(nx * 100).toFixed(1)}%`);
       stageEl.style.setProperty('--glare-y', `${(ny * 100).toFixed(1)}%`);
       stageEl.style.setProperty('--glare-op', '1');
+    };
+    reset();
+    stageEl.addEventListener('pointerdown', (e) => {
+      applyPoint(e.clientX, e.clientY);
+      if (e.pointerType === 'touch') {
+        stageEl.setPointerCapture?.(e.pointerId);
+      }
     });
+    stageEl.addEventListener('pointermove', (e) => {
+      applyPoint(e.clientX, e.clientY);
+    });
+    stageEl.addEventListener('pointerup', reset);
     stageEl.addEventListener('pointerleave', reset);
     stageEl.addEventListener('pointercancel', reset);
   }

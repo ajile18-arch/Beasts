@@ -16920,7 +16920,7 @@
         ? '✨ Pro Matte Sleeve (95% block)'
         : (cond.sleeveTier === 'clear_sleeve' ? '🛡️ Pro Sleeve (75% block)' : 'Unsleeved');
       metaEl.innerHTML = `
-        <div class="grading-raw-note">🔍 <b>${focusedRaw.def.name}</b> — Tilt cursor to check glare (${defectCount === 0 ? 'appears spotless!' : 'inspect edges, corners, centering &amp; surface'}).</div>
+        <div class="grading-raw-note">🔍 <b>${focusedRaw.def.name}</b> — Tilt or drag card to check glare (${defectCount === 0 ? 'appears spotless!' : 'inspect edges, corners, centering &amp; surface'}).</div>
         <div class="grading-hint">Est. Raw Value: <b>${this.formatMoney(unitPrice)}</b> • Protection: <b>${curSleeve}</b></div>
       `;
 

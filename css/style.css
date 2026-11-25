@@ -18345,6 +18345,33 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   color: #fffbeb !important;
 }
 
+@media (max-width: 560px) {
+  .duel-call-toast.mgs-call-toast {
+    left: 12px;
+    right: 12px;
+    max-width: none;
+    bottom: calc(118px + env(safe-area-inset-bottom, 0px));
+  }
+  .duel-call-caller-row {
+    flex-direction: column;
+    text-align: center;
+    gap: 10px;
+  }
+  .duel-call-actions {
+    flex-direction: column;
+  }
+}
+
+@media (max-height: 500px) {
+  .duel-call-toast.mgs-call-toast {
+    bottom: auto;
+    top: max(12px, env(safe-area-inset-top, 12px));
+    right: 14px;
+    left: auto;
+    max-width: min(320px, calc(100vw - 28px));
+  }
+}
+
 .duel-call-caller-name {
   font-size: 15px;
   font-weight: 800;
@@ -19318,7 +19345,7 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
     url('../Sprites/Board/mythos_board_bg.jpg') center / cover no-repeat;
   border: 2px solid rgba(212, 175, 55, 0.38);
   border-radius: 0;
-  padding: 16px 24px 18px;
+  padding: max(16px, env(safe-area-inset-top, 0px)) max(24px, env(safe-area-inset-right, 0px)) max(18px, env(safe-area-inset-bottom, 0px)) max(24px, env(safe-area-inset-left, 0px));
   max-width: 100vw;
   width: 100vw;
   height: 100vh;
@@ -20216,6 +20243,7 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
 .grading-tilt-stage {
   width: 230px;
   perspective: 720px;
+  touch-action: none;
 }
 
 .grading-card-frame {
@@ -20613,9 +20641,29 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
   border: 1px solid rgba(250, 204, 21, 0.55);
 }
 
+@media (max-width: 780px), (hover: none) and (pointer: coarse) {
+  .grading-tray-slot-remove {
+    width: 30px;
+    height: 30px;
+    font-size: 13px;
+    top: 5px;
+    right: 5px;
+  }
+  .mgs-pill-btn {
+    min-height: 40px;
+    padding: 8px 6px;
+    font-size: 11px;
+  }
+  .mgs-mini-btn {
+    min-height: 32px;
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+}
+
 @media (max-width: 780px) {
   .grading-modal-dialog {
-    padding: 12px 12px 14px;
+    padding: max(12px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) max(14px, env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px));
     gap: 10px;
   }
   .grading-counter-tabs {
@@ -20638,12 +20686,35 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
     grid-template-columns: 1fr;
     flex-direction: column;
   }
+  .grading-graded-split,
+  .grading-dropoff-split {
+    flex: 0 0 auto;
+  }
+  .grading-report-pane {
+    overflow-y: visible;
+  }
+  .grading-graded-split .grading-list-col {
+    height: auto;
+    overflow-y: visible;
+  }
+  .grading-report-top {
+    align-items: center;
+  }
+  .grading-report-top .grading-tilt-stage {
+    margin: 0 auto;
+  }
+  .grading-report-summary {
+    width: 100%;
+  }
   .grading-dropoff-split {
     align-items: stretch;
     gap: 12px;
   }
+  .grading-dropoff-split .grading-list-col {
+    order: -1;
+  }
   .grading-dropoff-split .grading-tilt-stage {
-    width: 165px !important;
+    width: 148px !important;
   }
   .grading-dropoff-tray-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -20674,10 +20745,59 @@ button, .ui-btn, .grid-cell, .unit-entity, .roster-card {
     font-size: 11.5px;
     padding: 8px 6px;
   }
+  .grading-bench-top {
+    flex-wrap: wrap;
+    gap: 8px 10px;
+  }
+  .grading-bench-pct {
+    margin-left: auto;
+  }
+  .grading-bench-pill {
+    font-size: 10.5px;
+    padding: 3px 7px;
+  }
 }
 
 @media (max-width: 440px) {
-  .grading-dropoff-tray-grid {
+  .grading-dropoff-tray-grid,
+  .grading-dropoff-tray-grid[data-slots="3"] {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .grading-speed-row {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  .grading-speed-btn {
+    flex-direction: row;
+    justify-content: space-between;
+    padding: 9px 12px;
+  }
+}
+
+@media (max-height: 520px) {
+  .grading-modal-dialog {
+    padding: max(8px, env(safe-area-inset-top, 0px)) max(14px, env(safe-area-inset-right, 0px)) max(10px, env(safe-area-inset-bottom, 0px)) max(14px, env(safe-area-inset-left, 0px));
+    gap: 8px;
+  }
+  .grading-sub {
+    display: none;
+  }
+  .grading-counter-tab {
+    padding: 7px 8px;
+    font-size: 11.5px;
+  }
+  .grading-dropoff-split {
+    align-items: start;
+    gap: 14px;
+  }
+  .grading-dropoff-split .grading-tilt-stage {
+    width: 132px !important;
+  }
+  .grading-dropoff-tray-grid,
+  .grading-dropoff-tray-grid[data-slots="1"],
+  .grading-dropoff-tray-grid[data-slots="2"],
+  .grading-dropoff-tray-grid[data-slots="3"] {
+    grid-template-columns: repeat(auto-fit, minmax(110px, 150px));
+    gap: 10px;
   }
 }
