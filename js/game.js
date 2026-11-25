@@ -623,15 +623,18 @@
       const minCards = 18;
       const maxCards = 24;
       const getCanon = (id) => (CardReg.getCanonicalCardId ? CardReg.getCanonicalCardId(id) : id);
-      const fillRandomToTarget = (baseIds) => {
-        const result = [...baseIds];
+      const parseEntry = (e) => typeof e === 'string'
+        ? { id: e, condition: null, deckIndex: null }
+        : { id: e?.id || e?.beastId || '', condition: e?.condition || null, deckIndex: e?.deckIndex ?? null };
+      const fillRandomToTarget = (baseEntries) => {
+        const result = baseEntries.map(parseEntry).filter(e => e.id);
         const counts = {};
         let totalStars = 0;
         let largeCount = 0;
-        result.forEach(id => {
-          const canonId = getCanon(id);
+        result.forEach(entry => {
+          const canonId = getCanon(entry.id);
           counts[canonId] = (counts[canonId] || 0) + 1;
-          const stars = Math.max(1, Number(GWENT_CARDS[id]?.stars) || 1);
+          const stars = Math.max(1, Number(GWENT_CARDS[entry.id]?.stars) || 1);
           totalStars += stars;
           if (stars >= 4) largeCount++;
         });
@@ -647,7 +650,7 @@
           const limit = CardReg.getMaxDeckCopies ? CardReg.getMaxDeckCopies(pick) : ((stars >= 4) ? 1 : (GWENT_CARDS[pick]?.maxDeckCopies ?? 3));
           const canonPick = getCanon(pick);
           if ((counts[canonPick] || 0) < limit && (totalStars + stars + remAfter <= maxStars)) {
-            result.push(pick);
+            result.push({ id: pick, condition: null });
             counts[canonPick] = (counts[canonPick] || 0) + 1;
             totalStars += stars;
             if (isLarge) largeCount++;
@@ -661,8 +664,10 @@
         let totalStars = 0;
         let largeCount = 0;
         let pool = [];
-        customDeckIds.forEach(id => {
-          if (!GWENT_CARDS[id] || pool.length >= maxCards) return;
+        customDeckIds.forEach(rawEntry => {
+          const entry = parseEntry(rawEntry);
+          const id = entry.id;
+          if (!id || !GWENT_CARDS[id] || pool.length >= maxCards) return;
           const stars = Math.max(1, Number(GWENT_CARDS[id]?.stars) || 1);
           const isLarge = stars >= 4;
           if (isLarge && largeCount >= maxLargeCards) return;
@@ -670,7 +675,7 @@
           const remAfter = Math.max(0, minCards - (pool.length + 1));
           const canonId = getCanon(id);
           if ((customCounts[canonId] || 0) < limit && totalStars + stars + remAfter <= maxStars) {
-            pool.push(id);
+            pool.push(entry);
             customCounts[canonId] = (customCounts[canonId] || 0) + 1;
             totalStars += stars;
             if (isLarge) largeCount++;
@@ -684,7 +689,7 @@
           const j = Math.floor(Math.random() * (i + 1));
           [pool[i], pool[j]] = [pool[j], pool[i]];
         }
-        return pool.map((id, idx) => this.createCardInstance(id, `${id}_${Math.random().toString(36).slice(2, 7)}_${idx}`));
+        return pool.map((entry, idx) => this.createCardInstance(entry.id, `${entry.id}_${Math.random().toString(36).slice(2, 7)}_${idx}`, entry.condition, entry.deckIndex));
       }
 
       // When no 18-card deck is built yet, generate a fresh random 18-card deck under 40 stars
@@ -702,12 +707,12 @@
         const j = Math.floor(Math.random() * (i + 1));
         [rest[i], rest[j]] = [rest[j], rest[i]];
       }
-      const finalIds = [...uniqueGuaranteed, ...rest].slice(0, maxCards);
+      const finalEntries = [...uniqueGuaranteed.map(parseEntry), ...rest].slice(0, maxCards);
 
-      return finalIds.map((id, idx) => this.createCardInstance(id, `${id}_${Math.random().toString(36).slice(2, 7)}_${idx}`));
+      return finalEntries.map((entry, idx) => this.createCardInstance(entry.id, `${entry.id}_${Math.random().toString(36).slice(2, 7)}_${idx}`, entry.condition, entry.deckIndex));
     }
 
-    createCardInstance(cardId, uid = null) {
+    createCardInstance(cardId, uid = null, condition = null, deckIndex = null) {
       const tmpl = GWENT_CARDS[cardId] || GWENT_CARDS.goblin_soldier;
       return {
         uid: uid || `${cardId}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
@@ -725,6 +730,9 @@
         cardImg: tmpl.cardImg,
         animatedCardVideo: tmpl.animatedCardVideo || null,
         animatedTraditionalVideo: tmpl.animatedTraditionalVideo || null,
+        condition: condition ? JSON.parse(JSON.stringify(condition)) : null,
+        deckIndex: Number.isInteger(deckIndex) ? deckIndex : null,
+        _playedInMatch: false,
         abilityTitle: tmpl.abilityTitle,
         abilityDesc: tmpl.abilityDesc,
         passiveTitle: tmpl.passiveTitle,
@@ -746,18 +754,22 @@
       };
     }
 
-    getBinderCardIds() {
-      const ids = [];
+    getBinderCardEntries() {
+      const entries = [];
       (this.overworld?.binderSlots || []).forEach(slot => {
         if (!slot) return;
         const id = slot.beastId || (slot.id && slot.id.startsWith('card_') ? slot.id.replace('card_', '') : null);
         if (!id || !GWENT_CARDS[id] || GWENT_CARDS[id].isToken) return;
         const qty = Math.max(1, Number(slot.qty) || 1);
         for (let i = 0; i < qty; i++) {
-          ids.push(id);
+          entries.push({ id, condition: slot.copies?.[i] || null });
         }
       });
-      return ids;
+      return entries;
+    }
+
+    getBinderCardIds() {
+      return this.getBinderCardEntries().map(e => e.id);
     }
 
     startNewGwentMatch(p1Guaranteed = [], p2Guaranteed = [], p2CustomDeck = null) {
@@ -771,17 +783,22 @@
       document.getElementById('gwent-forced-pass-modal')?.remove();
 
       const isTutorial = !!this.currentChallenger?.isTutorial;
-      const playingDeckIds = (this.overworld?.playingDeck || []).filter(id => GWENT_CARDS[id]);
-      let effectivePlayerDeckIds = playingDeckIds;
-      if (!isTutorial && effectivePlayerDeckIds.length < 18) {
-        const binderIds = this.getBinderCardIds();
-        if (effectivePlayerDeckIds.length + binderIds.length >= 18) {
-          effectivePlayerDeckIds = [...effectivePlayerDeckIds, ...binderIds];
+      this._wearAppliedThisMatch = false;
+      const playingDeckEntries = (this.overworld?.playingDeck || [])
+        .map((e, idx) => (typeof e === 'string'
+          ? { id: e, condition: null, deckIndex: idx }
+          : { id: e?.id || e?.beastId || '', condition: e?.condition || null, deckIndex: idx }))
+        .filter(e => e.id && GWENT_CARDS[e.id]);
+      let effectivePlayerDeckEntries = playingDeckEntries;
+      if (!isTutorial && effectivePlayerDeckEntries.length < 18) {
+        const binderEntries = this.getBinderCardEntries();
+        if (effectivePlayerDeckEntries.length + binderEntries.length >= 18) {
+          effectivePlayerDeckEntries = [...effectivePlayerDeckEntries, ...binderEntries];
         }
       }
       const p1Deck = isTutorial
         ? ['goblin_soldier', 'orc_slinger', 'merfolk', 'rust_bucket', 'werewolf_pup', 'vampire_bat', 'goblin_archer'].map((id, idx) => this.createCardInstance(id, `tut_p1d_${idx}`))
-        : this.buildDeck(p1Guaranteed, effectivePlayerDeckIds);
+        : this.buildDeck(p1Guaranteed, effectivePlayerDeckEntries);
       const p2Deck = isTutorial
         ? ['goblin_soldier', 'werewolf_pup', 'merfolk', 'rust_bucket', 'vampire_thrall', 'orc_slinger'].map((id, idx) => this.createCardInstance(id, `tut_p2d_${idx}`))
         : this.buildDeck(p2Guaranteed, p2CustomDeck, 40, this.gameMode === 'ai' ? 1 : Infinity);
@@ -2102,6 +2119,7 @@
         player.rows[targetRow].push(card);
       }
       card._playBoardAnim = true;
+      card._playedInMatch = true;
       this.state.playedCardThisTurn = true;
       this.state.selectedHandUid = null;
       this.state.selectedAttackerUid = null;
@@ -3647,6 +3665,41 @@
         } else {
           this.overworld.losses = (this.overworld.losses || 0) + 1;
         }
+        if (!this._wearAppliedThisMatch && window.MythosCardGrading?.applyWear && Array.isArray(this.overworld.playingDeck)) {
+          this._wearAppliedThisMatch = true;
+          const sleeveTier = this.overworld.deckSleeveTier || 'none';
+          const allP1Cards = [
+            ...(p1.deck || []),
+            ...(p1.hand || []),
+            ...(p1.graveyard || []),
+            ...(p1.rows?.melee || []),
+            ...(p1.rows?.ranged || []),
+            ...(p1.rows?.siege || [])
+          ];
+          const wornNames = [];
+          for (const bc of allP1Cards) {
+            if (!Number.isInteger(bc?.deckIndex)) continue;
+            const deckEntry = this.overworld.playingDeck[bc.deckIndex];
+            if (!deckEntry || !deckEntry.condition) continue;
+            const cardSleeveTier = deckEntry.condition.sleeveTier || sleeveTier || 'none';
+            const res = window.MythosCardGrading.applyWear(
+              deckEntry.condition,
+              bc._playedInMatch ? 'duel_played' : 'duel_deck',
+              cardSleeveTier
+            );
+            if (res?.damaged) {
+              wornNames.push(`${bc.name} (${res.summary})`);
+            }
+          }
+          if (wornNames.length > 0 && msgEl) {
+            const hasAnyUnsleeved = allP1Cards.some(bc => {
+              const entry = Number.isInteger(bc?.deckIndex) ? this.overworld.playingDeck[bc.deckIndex] : null;
+              return entry?.condition && !entry.condition.isGraded && (!entry.condition.sleeveTier || entry.condition.sleeveTier === 'none') && sleeveTier === 'none';
+            });
+            const sleeveHint = hasAnyUnsleeved ? ' • Tip: sleeve cards with Pro Sleeves ($0.50) or Pro Matte ($1.00)!' : '';
+            msgEl.innerHTML += `<div style="margin-top: 10px; padding: 8px 12px; background: rgba(239, 68, 68, 0.14); border: 1px solid rgba(248, 113, 113, 0.45); border-radius: 9px; font-size: 12px; color: #fecaca;">⚠️ <b>Play Wear:</b> ${wornNames.slice(0, 3).join(', ')}${wornNames.length > 3 ? ` +${wornNames.length - 3} more` : ''}${sleeveHint}</div>`;
+          }
+        }
         this.overworld.saveWorldData?.(this.overworld.draftAppearance);
         this.overworld.refreshIntroScreen?.();
       }
@@ -4137,8 +4190,13 @@
         : '';
       const iceBorderHtml = isFrozen ? `<div class="gwent-card-ice-overlay" title="Frozen: Cannot attack on its next turn"></div>` : '';
 
+      const CG = window.MythosCardGrading;
+      const artStyle = CG?.getCardImgStyle ? CG.getCardImgStyle(card.condition) : '';
+      const defectOverlay = CG?.renderConditionOverlayHtml ? CG.renderConditionOverlayHtml(card.condition, { compact: true }) : '';
+
       el.innerHTML = `
-        <img class="gwent-card-art" src="${card.cardImg}" alt="${card.name}">
+        <img class="gwent-card-art" src="${card.cardImg}" alt="${card.name}" style="${artStyle}">
+        ${defectOverlay}
         <div class="gwent-card-power ${powerClass}" title="Power: ${card.power}">${card.power}</div>
         <div class="gwent-card-row-badge" title="${ROW_LABELS[card.row]}">${ROW_ICONS[card.row]}</div>
         ${defensesHtml}
@@ -4223,11 +4281,119 @@
       return el;
     }
 
-    openCardModal(card) {
+    ensureCardModalStackStage() {
+      const modal = document.getElementById('gwent-card-modal');
+      const dialog = document.getElementById('gwent-card-modal-dialog');
+      if (!modal || !dialog) return null;
+
+      let stage = document.getElementById('gwent-inspect-stack-stage');
+      if (!stage) {
+        stage = document.createElement('div');
+        stage.id = 'gwent-inspect-stack-stage';
+        stage.className = 'gwent-inspect-stack-stage';
+        stage.innerHTML = `
+          <button type="button" class="gwent-stack-arrow prev hidden" id="btn-gwent-stack-prev" aria-label="Previous card in stack">◀</button>
+          <div class="gwent-stack-cards-host" id="gwent-stack-cards-host">
+            <div class="gwent-stack-backdrop" id="gwent-stack-backdrop"></div>
+          </div>
+          <button type="button" class="gwent-stack-arrow next hidden" id="btn-gwent-stack-next" aria-label="Next card in stack">▶</button>
+          <div class="gwent-stack-counter hidden" id="gwent-stack-counter"></div>
+        `;
+        modal.appendChild(stage);
+        const host = stage.querySelector('#gwent-stack-cards-host');
+        if (host && dialog.parentElement !== host) {
+          host.appendChild(dialog);
+        }
+        stage.querySelector('#btn-gwent-stack-prev')?.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.cycleCardModalStack(-1);
+        });
+        stage.querySelector('#btn-gwent-stack-next')?.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.cycleCardModalStack(1);
+        });
+      }
+      if (!modal._stackWheelBound) {
+        modal._stackWheelBound = true;
+        modal.addEventListener('wheel', (e) => {
+          if (modal.classList.contains('hidden')) return;
+          if (!this._activeCardStackCtx || !Array.isArray(this._activeCardStackCtx.copies) || this._activeCardStackCtx.copies.length <= 1) return;
+          e.preventDefault();
+          const now = performance.now();
+          if (now - (this._lastStackWheelAt || 0) < 220) return;
+          this._lastStackWheelAt = now;
+          const delta = (Math.abs(e.deltaY) >= Math.abs(e.deltaX) ? e.deltaY : e.deltaX) >= 0 ? 1 : -1;
+          this.cycleCardModalStack(delta);
+        }, { passive: false });
+      }
+      return stage;
+    }
+
+    cycleCardModalStack(delta) {
+      const ctx = this._activeCardStackCtx;
+      const card = this._activeCardStackCard;
+      if (!ctx || !Array.isArray(ctx.copies) || ctx.copies.length <= 1 || !card) return;
+
+      const outgoingCond = ctx.copies[0];
+      const len = ctx.copies.length;
+      if (delta > 0) {
+        const first = ctx.copies.shift();
+        ctx.copies.push(first);
+        ctx.displayPos = ((ctx.displayPos || 0) + 1) % len;
+      } else {
+        const last = ctx.copies.pop();
+        ctx.copies.unshift(last);
+        ctx.displayPos = ((ctx.displayPos || 0) - 1 + len) % len;
+      }
+
+      if (typeof ctx.onStackChanged === 'function') {
+        ctx.onStackChanged(ctx.copies, delta);
+      }
+      this.openCardModal({ ...card, condition: ctx.copies[0] }, ctx);
+
+      const host = document.getElementById('gwent-stack-cards-host');
+      const dialog = document.getElementById('gwent-card-modal-dialog');
+      if (host && dialog) {
+        clearTimeout(this._stackShuffleTimer);
+        host.querySelectorAll('.gwent-stack-ghost-out').forEach(el => el.remove());
+
+        const CG = window.MythosCardGrading;
+        const def = window.MythosGwentCards?.CARDS?.[card.id];
+        const tradImg = card.traditionalCardImg || def?.traditionalCardImg || null;
+        const ghost = document.createElement('div');
+        ghost.className = `gwent-stack-ghost-out ${delta > 0 ? 'to-prev' : 'to-next'}${outgoingCond?.isGraded ? ' is-slabbed' : ''}`;
+        const outStyle = CG?.getCardImgStyle ? CG.getCardImgStyle(outgoingCond) : '';
+        const outOverlay = CG?.renderConditionOverlayHtml ? CG.renderConditionOverlayHtml(outgoingCond, { compact: true }) : '';
+        ghost.innerHTML = `
+          <img src="${tradImg || card.cardImg}" alt="${card.name}" style="${outStyle}" draggable="false">
+          ${outOverlay}
+        `;
+        host.appendChild(ghost);
+
+        dialog.classList.remove('shuffle-in-next', 'shuffle-in-prev');
+        void dialog.offsetWidth;
+        dialog.classList.add(delta > 0 ? 'shuffle-in-next' : 'shuffle-in-prev');
+
+        const cleanup = () => {
+          ghost.remove();
+          dialog.classList.remove('shuffle-in-next', 'shuffle-in-prev');
+        };
+        ghost.addEventListener('animationend', cleanup, { once: true });
+        this._stackShuffleTimer = setTimeout(cleanup, 380);
+      }
+    }
+
+    openCardModal(card, stackCtx = null) {
       if (!card) return;
+      this.ensureCardModalStackStage();
       const modal = document.getElementById('gwent-card-modal');
       const dialog = document.getElementById('gwent-card-modal-dialog');
       if (!modal || !dialog) return;
+
+      const hasStack = Boolean(stackCtx && Array.isArray(stackCtx.copies) && stackCtx.copies.length > 1);
+      if (stackCtx && stackCtx.displayPos === undefined) stackCtx.displayPos = 0;
+      this._activeCardStackCtx = hasStack ? stackCtx : null;
+      this._activeCardStackCard = card;
 
       const stars = Math.max(1, Number(card.stars) || 1);
       const tierClass = stars >= 4
@@ -4245,7 +4411,102 @@
       const tradImg = card.traditionalCardImg || def?.traditionalCardImg || null;
 
       const img = document.getElementById('gwent-modal-img');
-      if (img) img.src = tradImg || card.cardImg;
+      const CG = window.MythosCardGrading;
+      if (img) {
+        img.src = tradImg || card.cardImg;
+        img.style.cssText = CG?.getCardImgStyle ? CG.getCardImgStyle(card.condition) : '';
+      }
+
+      document.getElementById('gwent-modal-defect-overlay')?.remove();
+      document.getElementById('gwent-modal-grade-strip')?.remove();
+      let frontStatus = 'Raw';
+      if (card.condition && CG?.renderConditionOverlayHtml) {
+        const defectWrap = document.createElement('div');
+        defectWrap.id = 'gwent-modal-defect-overlay';
+        defectWrap.className = 'gwent-modal-defect-overlay';
+        defectWrap.innerHTML = CG.renderConditionOverlayHtml(card.condition, { includeTiltGlare: true });
+        dialog.appendChild(defectWrap);
+        CG.attachInspectTilt?.(dialog);
+
+        const cond = CG.ensureHydratedCondition(card.condition);
+        const strip = document.createElement('div');
+        strip.id = 'gwent-modal-grade-strip';
+        if (cond.isGraded) {
+          const gMeta = CG.getGradeMeta(cond.grade, cond.isPristine);
+          const sg = cond.subgrades || {};
+          strip.className = 'gwent-modal-grade-strip is-graded';
+          strip.style.background = gMeta.bg;
+          strip.style.color = gMeta.color;
+          strip.innerHTML = `<span>🏆 ${gMeta.label}</span><span>C ${sg.centering} • Co ${sg.corners} • E ${sg.edges} • S ${sg.surface}</span>`;
+          frontStatus = gMeta.label;
+        } else {
+          const sleevePrefix = cond.sleeveTier === 'pro_sleeve'
+            ? '✨ Pro Matte • '
+            : (cond.sleeveTier === 'clear_sleeve' ? '🛡️ Pro Sleeve • ' : '');
+          strip.className = 'gwent-modal-grade-strip is-raw';
+          strip.textContent = `🔍 ${sleevePrefix}Raw Card • Tilt cursor to inspect centering, corners, edges & surface`;
+          frontStatus = cond.sleeveTier === 'pro_sleeve'
+            ? 'Raw • Pro Matte'
+            : (cond.sleeveTier === 'clear_sleeve' ? 'Raw • Pro Sleeve' : 'Raw');
+        }
+        dialog.appendChild(strip);
+      }
+
+      const backdrop = document.getElementById('gwent-stack-backdrop');
+      const prevBtn = document.getElementById('btn-gwent-stack-prev');
+      const nextBtn = document.getElementById('btn-gwent-stack-next');
+      const counterEl = document.getElementById('gwent-stack-counter');
+      if (backdrop) {
+        backdrop.innerHTML = '';
+        if (hasStack) {
+          const copies = stackCtx.copies;
+          const len = copies.length;
+          let slots = [];
+          if (len === 2) {
+            slots = [{ idx: 1, cls: 'pos-next-1', dir: 1 }];
+          } else if (len === 3) {
+            slots = [
+              { idx: 2, cls: 'pos-prev-1', dir: -1 },
+              { idx: 1, cls: 'pos-next-1', dir: 1 }
+            ];
+          } else {
+            slots = [
+              { idx: len - 2, cls: 'pos-prev-2', dir: -1 },
+              { idx: 2, cls: 'pos-next-2', dir: 1 },
+              { idx: len - 1, cls: 'pos-prev-1', dir: -1 },
+              { idx: 1, cls: 'pos-next-1', dir: 1 }
+            ];
+          }
+          slots.forEach(({ idx, cls, dir }) => {
+            const bgCond = copies[idx];
+            if (!bgCond) return;
+            const peek = document.createElement('div');
+            peek.className = `gwent-stack-peek-card ${cls}${bgCond.isGraded ? ' is-slabbed' : ''}`;
+            const bgStyle = CG?.getCardImgStyle ? CG.getCardImgStyle(bgCond) : '';
+            const bgOverlay = CG?.renderConditionOverlayHtml ? CG.renderConditionOverlayHtml(bgCond, { compact: true }) : '';
+            peek.innerHTML = `
+              <img src="${tradImg || card.cardImg}" alt="${card.name}" style="${bgStyle}" draggable="false">
+              ${bgOverlay}
+            `;
+            peek.addEventListener('click', (e) => {
+              e.stopPropagation();
+              this.cycleCardModalStack(dir);
+            });
+            backdrop.appendChild(peek);
+          });
+          prevBtn?.classList.remove('hidden');
+          nextBtn?.classList.remove('hidden');
+          if (counterEl) {
+            counterEl.classList.remove('hidden');
+            const labelPrefix = stackCtx.label ? `${stackCtx.label} • ` : '';
+            counterEl.innerHTML = `<span>${labelPrefix}<b>Card ${(stackCtx.displayPos || 0) + 1} / ${len}</b> • Top of Stack: <b>${frontStatus}</b></span>`;
+          }
+        } else {
+          prevBtn?.classList.add('hidden');
+          nextBtn?.classList.add('hidden');
+          counterEl?.classList.add('hidden');
+        }
+      }
 
       let modalVideo = document.getElementById('gwent-modal-video');
       if (!modalVideo && img) {
@@ -4345,6 +4606,11 @@
         modalVideo.removeAttribute('src');
         modalVideo.classList.add('hidden');
       }
+      clearTimeout(this._stackShuffleTimer);
+      document.querySelectorAll('.gwent-stack-ghost-out').forEach(el => el.remove());
+      document.getElementById('gwent-card-modal-dialog')?.classList.remove('shuffle-in-next', 'shuffle-in-prev');
+      this._activeCardStackCtx = null;
+      this._activeCardStackCard = null;
       document.getElementById('gwent-card-modal')?.classList.add('hidden');
     }
 
@@ -4446,10 +4712,26 @@
       });
       document.getElementById('btn-close-gwent-card-modal')?.addEventListener('click', () => this.closeCardModal());
       document.getElementById('gwent-card-modal')?.addEventListener('click', (e) => {
-        if (e.target.id === 'gwent-card-modal') this.closeCardModal();
+        if (e.target.id === 'gwent-card-modal' || e.target.id === 'gwent-inspect-stack-stage') this.closeCardModal();
       });
       window.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') this.closeCardModal();
+        const modal = document.getElementById('gwent-card-modal');
+        if (modal && !modal.classList.contains('hidden')) {
+          if (e.key === 'Escape') {
+            this.closeCardModal();
+            return;
+          }
+          if (this._activeCardStackCtx && e.key === 'ArrowLeft') {
+            e.preventDefault();
+            this.cycleCardModalStack(-1);
+            return;
+          }
+          if (this._activeCardStackCtx && e.key === 'ArrowRight') {
+            e.preventDefault();
+            this.cycleCardModalStack(1);
+            return;
+          }
+        }
       });
       window.addEventListener('resize', () => this.renderAttackTargetPreviewLine());
 

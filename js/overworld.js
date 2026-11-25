@@ -23,7 +23,7 @@
       this.COLS = 16;
       this.ROWS = 12;
       this.EXT_MIN_ROW = -38.0; // North & Northeast Countryside (Meadowbrook Farmlands)
-      this.EXT_ROWS = 36.5; // Expanded South Block + 3-block Southern Paved Avenue & Roundabout
+      this.EXT_ROWS = 42.0; // Expanded South Block + 4-block Southern Paved Avenue, Roundabout & South Blvd Block
       this.EXT_MIN_COL = -26.5; // West extension of South Connector Ave, Willow Way & Convention Center
       this.EXT_COLS = 68.0; // Expanded East Countryside (Town east ends at 33.5; Rural East reaches 68.0)
       this.EXT_ZOOM = 1.28; // Cozy RPG closer framing (~12.5x9.4 tiles) matching illustrated pixel style
@@ -86,6 +86,8 @@
       this.duelCallsTodayCount = this.worldSave?.duelCallsTodayCount || 0;
       this.lastDuelCallTotalMinute = this.worldSave?.lastDuelCallTotalMinute ?? -999;
       this.activeIncomingDuelCall = null;
+      this.activeIncomingMgsCall = null;
+      this._mgsCallToastTimer = null;
       this.pendingPhoneDuelCardReward = null;
       this.pendingFirstBattleCardReward = null;
       this.firstBattleRewardNpcs = (this.worldSave?.firstBattleRewardNpcs && typeof this.worldSave.firstBattleRewardNpcs === 'object')
@@ -291,6 +293,13 @@
           intEntry: { x: 7.90, y: 9.75 },
           spots: [{ x: 10.55, y: 7.8, dir: 'left' }, { x: 5.8, y: 7.8, dir: 'right' }]
         },
+        card_grading_shop_interior: {
+          area: 'card_grading_shop_interior',
+          name: 'Oakhaven Card Grading',
+          extDoor: { x: -21.20, y: 37.95 },
+          intEntry: { x: 7.90, y: 9.75 },
+          spots: [{ x: 8.0, y: 7.55, dir: 'up' }, { x: 5.5, y: 8.0, dir: 'right' }]
+        },
         arcade_interior: {
           area: 'arcade_interior',
           name: 'Oakhaven Arcade',
@@ -468,6 +477,7 @@
         fishmonger_shop_interior: { extDoor: { x: -20.70, y: 31.95 }, intEntry: { x: 11.0, y: 11.35 }, intExit: { x: 11.0, y: 11.95 } },
         clothing_store_interior: { extDoor: { x: -15.80, y: 20.45 }, intEntry: { x: 7.90, y: 9.75 } },
         animal_hospital_interior: { extDoor: { x: -10.45, y: 27.45 }, intEntry: { x: 7.90, y: 9.75 } },
+        card_grading_shop_interior: { extDoor: { x: -21.20, y: 37.95 }, intEntry: { x: 7.90, y: 9.75 } },
         west_house_1_interior: { extDoor: { x: -2.60, y: 14.45 }, intEntry: { x: 7.90, y: 9.75 } },
         west_house_2_interior: { extDoor: { x: -6.35, y: 14.45 }, intEntry: { x: 7.90, y: 9.75 } },
         west_house_3_interior: { extDoor: { x: -10.85, y: 14.45 }, intEntry: { x: 7.90, y: 9.75 } },
@@ -532,14 +542,13 @@
       this.folioLastUpper = 'binder';
       this.binderStarFilter = 'all';
       this.invCategoryFilter = 'all';
+      this.ensureCollectionCardCopies();
       this.consolidateBinderStacks();
       this.inspectingCard = null;
       this.inspectingSlotIndex = null;
       this.inspectingPose = 'idle';
       this.binderPickerTargetIndex = null;
-      this.playingDeck = Array.isArray(this.worldSave?.playingDeck)
-        ? [...this.worldSave.playingDeck]
-        : [];
+      this.playingDeck = this.normalizePlayingDeckArray(this.worldSave?.playingDeck);
       this.deckStorageMigrated = Boolean(this.worldSave?.deckStorageMigrated);
       let needsSaveAfterLoad = this.purgeLegacyCardsFromState();
       if (!this.deckStorageMigrated) {
@@ -552,6 +561,17 @@
       }
 
       this.playerSprite = new CS.CharacterSpriteSheet(this.draftAppearance);
+      this.deckSleeveTier = this.worldSave?.deckSleeveTier || 'none';
+      this.mgsOrders = Array.isArray(this.worldSave?.mgsOrders)
+        ? this.worldSave.mgsOrders.map(o => ({ ...o }))
+        : [];
+      this.mgsAppointments = Array.isArray(this.worldSave?.mgsAppointments)
+        ? this.worldSave.mgsAppointments.map(a => ({ ...a }))
+        : [];
+      this.mgsActiveTab = 'status';
+      this.mgsDraftSchedDayOffset = 0;
+      this.mgsDraftSchedWindow = 'afternoon';
+      this.mgsDraftSchedCards = '1';
       this.lastParkTourneyCompletedDay = this.worldSave?.lastParkTourneyCompletedDay ?? 0;
       this.boosterBashCompletedDay = this.worldSave?.boosterBashCompletedDay ?? 0;
       this.boosterBash = null;
@@ -595,6 +615,7 @@
       this.fishmongerMarinaNpc = this.createFishmongerMarinaNpc();
       this.tailorNpc = this.createTailorNpc();
       this.vetNpc = this.createVetNpc();
+      this.cardGraderNpc = this.createCardGraderNpc();
       this.westOtisNpc = this.createWestOtisNpc();
       this.westMarenNpc = this.createWestMarenNpc();
       this.westCalebNpc = this.createWestCalebNpc();
@@ -1121,6 +1142,32 @@
           pantsColor: 'teal',
           hatStyle: 'none',
           customSprite: 'vet_hannah_d'
+        })
+      };
+    }
+
+    createCardGraderNpc() {
+      const CS = window.MythosCharacterSprites;
+      return {
+        id: 'grader_mike',
+        name: 'Mike',
+        x: 10.90,
+        y: 6.70,
+        dir: 'down',
+        walkTick: 0,
+        bubble: '🏆',
+        hangoutSpot: { area: 'card_grading_shop_interior', x: 10.90, y: 6.70, dir: 'down', radius: 0, label: 'Oakhaven Card Grading' },
+        sprite: new CS.CharacterSpriteSheet({
+          name: 'Mike',
+          skin: 'fair',
+          hairStyle: 'short',
+          hairColor: 'blonde',
+          eyeColor: 'blue',
+          outfitStyle: 'shirt',
+          outfitColor: 'navy',
+          pantsColor: 'dark',
+          hatStyle: 'none',
+          customSprite: 'grader_mike_d'
         })
       };
     }
@@ -2173,7 +2220,7 @@
         'bram_interior', 'mayor_interior', 'mayor_2f_interior', 'restaurant_interior',
         'corner_store_interior', 'fire_station_interior', 'police_station_interior',
         'barber_shop_interior', 'clothing_store_interior', 'animal_hospital_interior', 'school_interior',
-        'fishmonger_shop_interior',
+        'fishmonger_shop_interior', 'card_grading_shop_interior',
         'west_house_1_interior', 'west_house_2_interior', 'west_house_3_interior',
         'west_oak_1_interior', 'west_oak_2_interior',
         'farmhouse_1_1f_interior', 'farmhouse_1_2f_interior',
@@ -3059,6 +3106,7 @@
         });
         this.checkPlayerSellListingResponses(true);
         this.checkOakhavenLeagueAutoAdvance?.();
+        const overnightWearNotes = this.applyOvernightInventoryWear?.() || [];
         this.syncParkNpcBubbles();
         this.saveWorldData(this.draftAppearance);
         this.updateHUDSaveInfo();
@@ -3093,7 +3141,10 @@
           const parkNote = this.isMondayToday()
             ? ` | 🏆 Oakhaven Central Park Monday Casual Round Robin is open! Talk to Chloe, Rowan, or Jasper (1st: $10.00, 2nd: $5.00).`
             : '';
-          eventDesc.textContent = `${ev.desc} (${ev.highlight})${parkNote}${meetupNote}`;
+          const wearNote = overnightWearNotes.length > 0
+            ? ` | ⚠️ Loose cards in Backpack picked up minor wear overnight (${overnightWearNotes.slice(0, 2).join(', ')}) — store cards in your Binder!`
+            : '';
+          eventDesc.textContent = `${ev.desc} (${ev.highlight})${parkNote}${meetupNote}${wearNote}`;
         }
         this.updateMeetupBadgeCount?.();
 
@@ -3109,6 +3160,7 @@
       this._isSleeping = false;
       this.updateFreeRoamPrompt();
       this.showAutosaveIndicator(`☀️ Good Morning! It's ${this.getCurrentDayName()}!`);
+      this.syncMgsStatuses?.(true);
     }
 
     // -------------------------------------------------------------------------
@@ -3204,6 +3256,7 @@
     advanceClock(gameMinutes) {
       if (!(gameMinutes > 0)) return;
       const prevHour = Math.floor(this.timeOfDayMinutes / 60);
+      const prevTick5 = Math.floor(this.timeOfDayMinutes / 5);
       let t = this.timeOfDayMinutes + gameMinutes;
       while (t >= this.MINUTES_PER_DAY) {
         t -= this.MINUTES_PER_DAY;
@@ -3213,6 +3266,9 @@
       this.timeOfDayMinutes = t;
       this.syncTimeOfDayPhase(true);
       this.checkPinnedReminders();
+      if (Math.floor(t / 5) !== prevTick5 && this.storyState === 'free_roam' && !this._isSleeping) {
+        this.syncMgsStatuses?.(true);
+      }
       // Persist the clock once per in-game hour (every 2 real minutes) and roll hourly NPC trips
       if (Math.floor(t / 60) !== prevHour) {
         this.onInGameHourPassed();
@@ -3439,6 +3495,19 @@
       const invDot = document.getElementById('dot-inventory');
       if (invDot) invDot.classList.toggle('hidden', !hasBoosterPacks);
 
+      this.syncMgsStatuses?.(false);
+      const nowMgsMin = this.getTotalGameMinutes?.() || 0;
+      const hasMgsPickup = (this.mgsOrders || []).some(o => o && o.status === 'ready_pickup');
+      const hasMgsOpenAppt = (this.mgsAppointments || []).some(a => {
+        if (!a || a.status !== 'scheduled') return false;
+        const win = this.getMgsWindowDef?.(a.windowId);
+        if (!win) return false;
+        const base = ((a.dayNumber || 1) - 1) * 1440;
+        return nowMgsMin >= (base + win.startMin) && nowMgsMin <= (base + win.endMin);
+      });
+      const mgsDot = document.getElementById('dot-mgs');
+      if (mgsDot) mgsDot.classList.toggle('hidden', !(hasMgsPickup || hasMgsOpenAppt || this.activeIncomingMgsCall));
+
       let dockNpcId = null;
       let dockIconSrc = 'Sprites/Overworld/phone_icon_binder.png?v=3.08';
       let purposeEmoji = '';
@@ -3447,7 +3516,15 @@
       let dockTitle = 'Open Mythos Phone & All Menus (Key: P)';
       let hasAnyAlert = false;
 
-      if (this.activeIncomingDuelCall) {
+      if (this.activeIncomingMgsCall) {
+        dockNpcId = 'grader_mike';
+        dockIconSrc = 'Sprites/Overworld/phone_icon_mgs.png?v=1.0';
+        purposeEmoji = '📞';
+        purposeColor = '#d97706';
+        isRinging = true;
+        dockTitle = 'Incoming Call from Mike (MGS)! Click to answer';
+        hasAnyAlert = true;
+      } else if (this.activeIncomingDuelCall) {
         dockNpcId = this.activeIncomingDuelCall.npcId;
         dockIconSrc = 'Sprites/Overworld/phone_icon_contacts.jpg?v=2.57';
         purposeEmoji = '⚔️';
@@ -4286,6 +4363,11 @@
       if (!modal) return;
       const shouldOpen = force !== undefined ? !!force : modal.classList.contains('hidden');
       if (shouldOpen) {
+        if (this.activeIncomingMgsCall) {
+          if (window.sounds?.playClick) window.sounds.playClick();
+          this.openMgsCallModal();
+          return;
+        }
         if (window.sounds?.playClick) window.sounds.playClick();
         this.openPhoneApp('home');
         modal.classList.remove('hidden');
@@ -4298,7 +4380,7 @@
 
     openPhoneApp(appName) {
       this.currentPhoneApp = appName;
-      const views = ['home', 'contacts', 'market', 'shopfeed', 'tournaments', 'system'];
+      const views = ['home', 'contacts', 'market', 'shopfeed', 'tournaments', 'system', 'mgs'];
       views.forEach(v => {
         const el = document.getElementById(`phone-view-${v}`);
         if (el) {
@@ -4360,6 +4442,8 @@
         this.renderShopFeedApp();
       } else if (appName === 'tournaments') {
         this.renderTournamentsApp();
+      } else if (appName === 'mgs') {
+        this.renderMgsApp();
       } else if (appName === 'system') {
         this.syncPhoneSystemSoundButton?.();
       }
@@ -6083,6 +6167,1124 @@
       });
     }
 
+    getMgsWindowsList() {
+      return [
+        { id: 'morning',   label: 'Morning',   short: '9–12 AM', range: '9:00 AM – 12:00 PM', startMin: 540, endMin: 720,  icon: '🌅' },
+        { id: 'afternoon', label: 'Afternoon', short: '12–4 PM', range: '12:00 PM – 4:00 PM', startMin: 720, endMin: 960,  icon: '☀️' },
+        { id: 'evening',   label: 'Evening',   short: '4–8 PM',  range: '4:00 PM – 8:00 PM',  startMin: 960, endMin: 1200, icon: '🌆' }
+      ];
+    }
+
+    getMgsWindowDef(windowId) {
+      return this.getMgsWindowsList().find(w => w.id === windowId) || this.getMgsWindowsList()[1];
+    }
+
+    getMgsDayLabel(dayNum) {
+      const idx = (((Number(dayNum) || 1) - 1) % 7 + 7) % 7;
+      const dayName = (this.DAYS_OF_WEEK && this.DAYS_OF_WEEK[idx]) || `Day ${dayNum}`;
+      return `${dayName}, Day ${dayNum}`;
+    }
+
+    getMgsOrderBatchKey(order) {
+      return String(order?.batchId || order?.appointmentId || order?.id || '');
+    }
+
+    syncMgsStatuses(notify = false) {
+      if (!Array.isArray(this.mgsOrders)) this.mgsOrders = [];
+      if (!Array.isArray(this.mgsAppointments)) this.mgsAppointments = [];
+      const nowTotal = this.getTotalGameMinutes ? this.getTotalGameMinutes() : 0;
+      let changed = false;
+
+      this.mgsOrders.forEach(order => {
+        if (!order || order.status !== 'grading') return;
+        if (nowTotal >= (Number(order.readyAtMin) || 0)) {
+          order.status = 'ready_pickup';
+          order.completedAtMin = nowTotal;
+          if (order.callNotified === undefined) order.callNotified = false;
+          changed = true;
+        }
+      });
+
+      this.mgsAppointments.forEach(appt => {
+        if (!appt || appt.status !== 'scheduled') return;
+        const win = this.getMgsWindowDef(appt.windowId);
+        const endTotal = ((Number(appt.dayNumber) || 1) - 1) * 1440 + win.endMin;
+        if (nowTotal > endTotal) {
+          appt.status = (Number(appt.submittedCount) || 0) > 0 ? 'completed' : 'missed';
+          changed = true;
+        }
+      });
+
+      let completedBatchOrders = [];
+      if (notify && this.storyState === 'free_roam' && !this._isSleeping && !this.activeIncomingMgsCall) {
+        const stillGradingBatches = new Set(
+          this.mgsOrders
+            .filter(o => o && o.status === 'grading')
+            .map(o => this.getMgsOrderBatchKey(o))
+        );
+        const readyPendingBatches = new Map();
+        this.mgsOrders.forEach(order => {
+          if (!order || order.status !== 'ready_pickup' || order.callNotified !== false) return;
+          const bKey = this.getMgsOrderBatchKey(order);
+          if (stillGradingBatches.has(bKey)) return;
+          if (!readyPendingBatches.has(bKey)) readyPendingBatches.set(bKey, []);
+          readyPendingBatches.get(bKey).push(order);
+        });
+        readyPendingBatches.forEach(list => {
+          list.forEach(o => completedBatchOrders.push(o));
+        });
+      }
+
+      if (changed) {
+        this.saveWorldData?.(this.draftAppearance);
+        if (this.currentPhoneApp === 'mgs') {
+          this.renderMgsApp?.();
+        }
+      }
+      if (completedBatchOrders.length > 0) {
+        this.triggerMgsCompletionCall(completedBatchOrders);
+      }
+      return changed;
+    }
+
+    getActiveMgsAppointmentNow() {
+      this.syncMgsStatuses(false);
+      const nowTotal = this.getTotalGameMinutes ? this.getTotalGameMinutes() : 0;
+      for (const appt of (this.mgsAppointments || [])) {
+        if (!appt || appt.status !== 'scheduled') continue;
+        const win = this.getMgsWindowDef(appt.windowId);
+        const dayBase = ((Number(appt.dayNumber) || 1) - 1) * 1440;
+        const startTotal = dayBase + win.startMin;
+        const endTotal = dayBase + win.endMin;
+        if (nowTotal >= startTotal && nowTotal <= endTotal) {
+          return { appt, win, startTotal, endTotal };
+        }
+      }
+      return null;
+    }
+
+    getNextUpcomingMgsAppointment() {
+      this.syncMgsStatuses(false);
+      const nowTotal = this.getTotalGameMinutes ? this.getTotalGameMinutes() : 0;
+      let best = null;
+      for (const appt of (this.mgsAppointments || [])) {
+        if (!appt || appt.status !== 'scheduled') continue;
+        const win = this.getMgsWindowDef(appt.windowId);
+        const dayBase = ((Number(appt.dayNumber) || 1) - 1) * 1440;
+        const startTotal = dayBase + win.startMin;
+        const endTotal = dayBase + win.endMin;
+        if (startTotal > nowTotal && (!best || startTotal < best.startTotal)) {
+          best = { appt, win, startTotal, endTotal };
+        }
+      }
+      return best;
+    }
+
+    getMgsDropoffSlotCount(activeWin = null) {
+      const winObj = activeWin || this.getActiveMgsAppointmentNow?.() || null;
+      const appt = winObj?.appt || this.getNextUpcomingMgsAppointment?.()?.appt || null;
+      if (appt) {
+        const planned = Number(appt.cardCount) || parseInt(String(appt.cardCountLabel || '1'), 10) || 1;
+        const submitted = Number(appt.submittedCount) || 0;
+        return Math.max(1, Math.min(3, planned - submitted));
+      }
+      return 3;
+    }
+
+    ensureGradingDropoffSlots(targetCount = null) {
+      const count = Math.max(1, Math.min(3, Number(targetCount) || this.getMgsDropoffSlotCount()));
+      const prev = Array.isArray(this._gradingDropoffSlots) ? this._gradingDropoffSlots : [];
+      const prevConds = Array.isArray(this._gradingDropoffSlotConds) ? this._gradingDropoffSlotConds : [];
+      const next = Array.from({ length: count }, (_, idx) => (idx < prev.length ? (prev[idx] || null) : null));
+      const nextConds = Array.from({ length: count }, (_, idx) => (idx < prevConds.length ? (prevConds[idx] || null) : null));
+      this._gradingDropoffSlots = next;
+      this._gradingDropoffSlotConds = nextConds;
+      return next;
+    }
+
+    syncGradingDropoffSlotKeys() {
+      if (!Array.isArray(this._gradingDropoffSlots)) return;
+      if (!Array.isArray(this._gradingDropoffSlotConds)) {
+        this._gradingDropoffSlotConds = Array(this._gradingDropoffSlots.length).fill(null);
+      }
+      const rawCopies = this._collectGradableCardCopies().filter(x => x.cond && !x.cond.isGraded);
+      const focusedPrevKey = this._gradingSelectedRawKey;
+      let focusedMovedKey = null;
+      for (let i = 0; i < this._gradingDropoffSlots.length; i++) {
+        const condRef = this._gradingDropoffSlotConds[i] || null;
+        if (condRef) {
+          const match = rawCopies.find(x => x.cond === condRef);
+          if (match) {
+            if (this._gradingDropoffSlots[i] === focusedPrevKey) focusedMovedKey = match.key;
+            this._gradingDropoffSlots[i] = match.key;
+          } else {
+            this._gradingDropoffSlots[i] = null;
+            this._gradingDropoffSlotConds[i] = null;
+          }
+        } else if (this._gradingDropoffSlots[i]) {
+          const match = rawCopies.find(x => x.key === this._gradingDropoffSlots[i]);
+          if (match) {
+            this._gradingDropoffSlotConds[i] = match.cond;
+          } else {
+            this._gradingDropoffSlots[i] = null;
+          }
+        }
+      }
+      if (focusedMovedKey) this._gradingSelectedRawKey = focusedMovedKey;
+    }
+
+    getMgsServiceTiers() {
+      return [
+        { id: 'rush',     label: 'Rush',     icon: '⚡', price: 6.00, minHours: 30, baseHours: 36, maxHours: 48, durationMin: 2160, etaLabel: '~36 hrs' },
+        { id: 'standard', label: 'Standard', icon: '⚖️', price: 3.00, minHours: 36, baseHours: 48, maxHours: 72, durationMin: 2880, etaLabel: '~48 hrs' },
+        { id: 'economic', label: 'Economic', icon: '🐢', price: 2.00, minHours: 48, baseHours: 72, maxHours: 96, durationMin: 4320, etaLabel: '~72 hrs' }
+      ];
+    }
+
+    getMgsServiceTierDef(tierId) {
+      return this.getMgsServiceTiers().find(t => t.id === tierId) || this.getMgsServiceTiers()[1];
+    }
+
+    rollMgsServiceDurationMin(tier) {
+      const t = tier || this.getMgsServiceTierDef('standard');
+      const min = Number.isFinite(t.minHours) ? t.minHours : (t.durationMin / 60);
+      const mode = Number.isFinite(t.baseHours) ? t.baseHours : (t.durationMin / 60);
+      const max = Number.isFinite(t.maxHours) ? t.maxHours : (t.durationMin / 60);
+      if (!(max > min)) return Math.round(mode * 60);
+      const u = Math.random();
+      const split = (mode - min) / (max - min);
+      const hours = u < split
+        ? min + Math.sqrt(u * (max - min) * (mode - min))
+        : max - Math.sqrt((1 - u) * (max - min) * (max - mode));
+      return Math.max(60, Math.round(hours * 60));
+    }
+
+    getMgsGradeTrendHint(order, approxPct = 0) {
+      if (approxPct < 25) {
+        return { label: 'Trending: Initial Intake (Pending Loupe)', tone: 'neutral', icon: '📋' };
+      }
+      const CG = window.MythosCardGrading;
+      if (!order?.cond || !CG?.ensureHydratedCondition || !CG?.computeRawGrade) {
+        return { label: 'Trending: Initial Assessment', tone: 'neutral', icon: '📋' };
+      }
+      const cond = CG.ensureHydratedCondition(this.cloneCardCondition(order.cond));
+      const raw = Number(CG.computeRawGrade(cond.subgrades)) || 7;
+      if (raw >= 9.5) return { label: 'Trending: Gem / Pristine Contender', tone: 'gold', icon: '💎' };
+      if (raw >= 9) return { label: 'Trending: High Mint Territory', tone: 'emerald', icon: '📈' };
+      if (raw >= 8) return { label: 'Trending: Solid Near Mint', tone: 'sky', icon: '📈' };
+      if (raw >= 7) return { label: 'Trending: Clean / Above-Average', tone: 'sky', icon: '🔎' };
+      if (raw >= 6) return { label: 'Trending: Mid-Grade (Noticeable Flaws)', tone: 'amber', icon: '🔎' };
+      return { label: 'Trending: Played / Heavy Wear', tone: 'rose', icon: '⚠️' };
+    }
+
+    submitSelectedCardsToMgs(selectedKeys, tierId = null) {
+      const activeWin = this.getActiveMgsAppointmentNow();
+      if (!activeWin) {
+        this.showAutosaveIndicator?.('⏰ You must be inside a scheduled MGS drop-off window to place & pay for cards.');
+        return false;
+      }
+      this.syncGradingDropoffSlotKeys();
+      const keySet = new Set(Array.isArray(selectedKeys) ? selectedKeys : Array.from(selectedKeys || []));
+      const allCopies = this._collectGradableCardCopies();
+      let chosen = allCopies.filter(entry => keySet.has(entry.key) && entry.cond && !entry.cond.isGraded);
+      const remainingQuota = this.getMgsDropoffSlotCount(activeWin);
+      if (chosen.length > remainingQuota) chosen = chosen.slice(0, remainingQuota);
+      if (chosen.length === 0) return false;
+
+      const tier = this.getMgsServiceTierDef(tierId || this._gradingServiceTier || 'standard');
+      const totalCost = Math.round(chosen.length * tier.price * 100) / 100;
+      if ((this.gold || 0) < totalCost) {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        this.showAutosaveIndicator?.(`💰 Need ${this.formatMoney(totalCost)} for ${tier.label} grading (${chosen.length} card${chosen.length > 1 ? 's' : ''}).`);
+        return false;
+      }
+
+      this.gold = Math.round(((this.gold || 0) - totalCost) * 100) / 100;
+
+      // Remove each chosen copy safely in descending copyIdx order per holder
+      const groups = new Map();
+      chosen.forEach(entry => {
+        const gKey = `${entry.source}:${entry.holderIdx}`;
+        if (!groups.has(gKey)) groups.set(gKey, { source: entry.source, holderIdx: entry.holderIdx, copyIndices: [] });
+        groups.get(gKey).copyIndices.push(entry.copyIdx);
+      });
+
+      const emptyInvIndices = [];
+      groups.forEach(group => {
+        const arr = group.source === 'binder' ? this.binderSlots : this.inventory;
+        const holder = arr?.[group.holderIdx];
+        if (!holder) return;
+        const copies = this.ensureSlotCopies(holder) || [];
+        group.copyIndices.sort((a, b) => b - a).forEach(ci => {
+          if (ci >= 0 && ci < copies.length) copies.splice(ci, 1);
+        });
+        holder.qty = copies.length;
+        if (holder.qty <= 0) {
+          if (group.source === 'binder') {
+            this.binderSlots[group.holderIdx] = null;
+          } else {
+            emptyInvIndices.push(group.holderIdx);
+          }
+        }
+      });
+      emptyInvIndices.sort((a, b) => b - a).forEach(idx => {
+        if (idx >= 0 && idx < (this.inventory || []).length) this.inventory.splice(idx, 1);
+      });
+
+      if (!Array.isArray(this.mgsOrders)) this.mgsOrders = [];
+      const nowTotal = this.getTotalGameMinutes ? this.getTotalGameMinutes() : 0;
+      const clockSuffix = this.getClockText ? ` • ${this.getClockText()}` : '';
+      const submittedDayLabel = `${this.getMgsDayLabel(this.dayNumber || 1)}${clockSuffix}`;
+      const batchId = `mgs_batch_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+
+      chosen.forEach((entry, idx) => {
+        const durationMin = this.rollMgsServiceDurationMin(tier);
+        this.mgsOrders.unshift({
+          id: `mgs_ord_${Date.now()}_${idx}_${Math.floor(Math.random() * 1000)}`,
+          cardId: entry.cleanId,
+          cardName: entry.def.name,
+          status: 'grading',
+          submittedAtMin: nowTotal,
+          readyAtMin: nowTotal + durationMin,
+          serviceTier: tier.id,
+          serviceTierLabel: `${tier.icon} ${tier.label}`,
+          submittedDayLabel,
+          appointmentId: activeWin.appt.id,
+          batchId,
+          callNotified: false,
+          cond: this.cloneCardCondition(entry.cond)
+        });
+      });
+
+      activeWin.appt.submittedCount = (Number(activeWin.appt.submittedCount) || 0) + chosen.length;
+      const plannedCount = Math.max(1, Math.min(3, Number(activeWin.appt.cardCount) || parseInt(String(activeWin.appt.cardCountLabel || '1'), 10) || 1));
+      if (activeWin.appt.submittedCount >= plannedCount) {
+        activeWin.appt.status = 'completed';
+        activeWin.appt.completedAtMin = nowTotal;
+      }
+
+      this._gradingDropoffSelection = new Set();
+      const nextCount = this.getMgsDropoffSlotCount();
+      this._gradingDropoffSlots = Array(nextCount).fill(null);
+      this._gradingDropoffSlotConds = Array(nextCount).fill(null);
+      this._gradingActiveTab = 'grading';
+      if (window.sounds?.playVictory) window.sounds.playVictory();
+      else if (window.sounds?.playClick) window.sounds.playClick();
+
+      this.saveWorldData?.(this.draftAppearance);
+      this.updateHUDSaveInfo?.();
+      this.syncPhoneAlertBadges?.();
+      this.renderBinderModal?.();
+      this.renderInventoryModal?.();
+      this.renderShopModal?.();
+      if (this.currentPhoneApp === 'mgs') this.renderMgsApp?.();
+      this.renderGradingModal();
+      this.showAutosaveIndicator?.(`🏆 Placed ${chosen.length} card${chosen.length > 1 ? 's' : ''} via ${tier.icon} ${tier.label} (${this.formatMoney(totalCost)}) — now on the grading bench!`);
+      return true;
+    }
+
+    openBinderForGradingDropoff(slotIdx) {
+      this.ensureGradingDropoffSlots();
+      this._mgsBinderPickTargetSlot = Number(slotIdx);
+      document.getElementById('grading-modal')?.classList.add('hidden');
+      this.toggleBinderModal(true, 'binder');
+    }
+
+    selectBinderCardForGradingDropoff(cardKey) {
+      this.syncGradingDropoffSlotKeys();
+      const slots = this.ensureGradingDropoffSlots();
+      const slotIdx = this._mgsBinderPickTargetSlot;
+      const entry = this._collectGradableCardCopies().find(x => x.key === cardKey && x.cond && !x.cond.isGraded);
+      if (slotIdx !== null && slotIdx !== undefined && slotIdx >= 0 && slotIdx < slots.length && entry) {
+        const dupIdx = slots.findIndex((k, idx) => idx !== slotIdx && (k === entry.key || this._gradingDropoffSlotConds[idx] === entry.cond));
+        if (dupIdx !== -1) {
+          this.showFolioToast?.(`That exact copy is already staged in Slot #${dupIdx + 1}!`);
+          return;
+        }
+        slots[slotIdx] = entry.key;
+        this._gradingDropoffSlotConds[slotIdx] = entry.cond;
+        this._gradingSelectedRawKey = entry.key;
+      }
+      this._mgsBinderPickTargetSlot = null;
+      if (window.sounds?.playCardFlipReveal) window.sounds.playCardFlipReveal(false);
+      else if (window.sounds?.playClick) window.sounds.playClick();
+      document.getElementById('binder-modal')?.classList.add('hidden');
+      this.openGradingModal('dropoff');
+    }
+
+    cancelBinderForGradingDropoff() {
+      this._mgsBinderPickTargetSlot = null;
+      if (window.sounds?.playClick) window.sounds.playClick();
+      document.getElementById('binder-modal')?.classList.add('hidden');
+      this.openGradingModal('dropoff');
+    }
+
+    prepareMgsPickupOrder(orderId, finish) {
+      const order = (this.mgsOrders || []).find(o => o && o.id === orderId && o.status === 'ready_pickup');
+      if (!order) return false;
+      const CG = window.MythosCardGrading;
+      const curFinish = order.preparedFinish || (order.cond?.isGraded ? 'slab' : (order.cond?.sleeveTier || 'none'));
+      if (curFinish === finish) return false;
+      if (curFinish === 'slab') {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        this.showAutosaveIndicator?.('🔒 Already sealed in an MGS Slab! Pull it out to Binder or crack slabs in Graded Card Reports.');
+        return false;
+      }
+
+      if (!order.cond) order.cond = this.createDefaultCardCondition();
+      let msg = '';
+
+      if (finish === 'clear_sleeve' || finish === 'pro_sleeve') {
+        if (curFinish === 'pro_sleeve' && finish === 'clear_sleeve') {
+          if (window.sounds?.playClick) window.sounds.playClick();
+          this.showAutosaveIndicator?.('Already protected in superior Pro Matte Sleeves!');
+          return false;
+        }
+        const spec = this.getSleeveSpec(finish);
+        const unitCost = finish === 'pro_sleeve' ? 1.00 : 0.50;
+        const owned = this.getInventorySleeveCount(finish);
+        if (owned > 0) {
+          const idx = (this.inventory || []).findIndex(i => i && (i.id === spec.id || (i.type === 'card_sleeve' && i.sleeveTier === spec.sleeveTier)));
+          if (idx !== -1) {
+            this.inventory[idx].qty = (Number(this.inventory[idx].qty) || 1) - 1;
+            if (this.inventory[idx].qty <= 0) this.inventory.splice(idx, 1);
+          }
+        } else if ((this.gold || 0) >= unitCost) {
+          this.gold = Math.round(((this.gold || 0) - unitCost) * 100) / 100;
+        } else {
+          if (window.sounds?.playClick) window.sounds.playClick();
+          this.showAutosaveIndicator?.(`Need a ${spec.name} in Bag or ${this.formatMoney(unitCost)}!`);
+          return false;
+        }
+
+        if (curFinish === 'clear_sleeve' && finish === 'pro_sleeve') {
+          this.addSleeveItemToInventory('clear_sleeve', 1);
+        }
+
+        order.cond.isGraded = false;
+        order.cond.grade = null;
+        order.cond.isPristine = false;
+        order.cond.sleeveTier = finish;
+        order.preparedFinish = finish;
+        msg = `${spec.icon} Added ${spec.name} to ${order.cardName} in Pick-up Tray${owned > 0 ? ' (from Bag)' : ` (${this.formatMoney(unitCost)})`}!`;
+      } else if (finish === 'slab') {
+        if (curFinish === 'clear_sleeve' || curFinish === 'pro_sleeve') {
+          this.addSleeveItemToInventory(curFinish, 1);
+        }
+        const res = CG?.gradeCard ? CG.gradeCard(order.cond) : { condition: order.cond, meta: { label: 'MGS Slab' } };
+        order.cond = res.condition || order.cond;
+        order.preparedFinish = 'slab';
+        order.grade = order.cond.grade;
+        order.isPristine = Boolean(order.cond.isPristine);
+        msg = `🏆 Sealed ${order.cardName} in an official ${res.meta?.label || 'MGS Slab'}! Ready to pull out.`;
+      } else {
+        return false;
+      }
+
+      if (window.sounds?.playVictory) window.sounds.playVictory();
+      else if (window.sounds?.playClick) window.sounds.playClick();
+      this.saveWorldData?.(this.draftAppearance);
+      this.updateHUDSaveInfo?.();
+      this.renderInventoryModal?.();
+      this.renderGradingModal();
+      this.showAutosaveIndicator?.(msg);
+      return true;
+    }
+
+    claimMgsReadyOrder(orderId, silentRefresh = false) {
+      const order = (this.mgsOrders || []).find(o => o && o.id === orderId && o.status === 'ready_pickup');
+      if (!order) return null;
+      const CG = window.MythosCardGrading;
+      const cond = order.cond ? this.cloneCardCondition(order.cond) : this.createDefaultCardCondition();
+      const curFinish = order.preparedFinish || (cond.isGraded ? 'slab' : (cond.sleeveTier || 'none'));
+      const nowTotal = this.getTotalGameMinutes ? this.getTotalGameMinutes() : 0;
+
+      let toastMsg = '';
+      let returnObj = null;
+
+      if (curFinish === 'slab') {
+        const result = (!cond.isGraded && CG?.gradeCard)
+          ? CG.gradeCard(cond)
+          : {
+              condition: cond,
+              meta: CG?.getGradeMeta ? CG.getGradeMeta(cond.grade, cond.isPristine) : { label: 'Graded Slab' }
+            };
+        order.cond = result.condition || cond;
+        order.status = 'picked_up';
+        order.pickupFinish = 'slab';
+        order.grade = order.cond.grade;
+        order.isPristine = Boolean(order.cond.isPristine);
+        order.pickedUpAtMin = nowTotal;
+
+        const dest = this.returnCardFromPlayingDeckToCollection(order.cardId, 'binder', order.cond);
+        const destLabel = dest === 'inventory' ? 'Backpack (Binder Full)' : 'Binder';
+        const match = this._collectGradableCardCopies().find(
+          e => e.cleanId === order.cardId && e.cond?.isGraded && e.cond.gradedAt === order.cond.gradedAt
+        );
+        if (match) this._gradingSelectedGradedKey = match.key;
+        toastMsg = `🏆 Pulled ${order.cardName} (${result.meta?.label || `MGS ${order.grade}`} Slab) into your ${destLabel}!`;
+        returnObj = { condition: order.cond, meta: result.meta, finish: 'slab', dest };
+      } else {
+        const previewRes = CG?.gradeCard ? CG.gradeCard(this.cloneCardCondition(cond)) : { condition: cond, meta: { label: 'Graded' } };
+        const sleeveTier = (curFinish === 'clear_sleeve' || curFinish === 'pro_sleeve') ? curFinish : 'none';
+        cond.isGraded = false;
+        cond.grade = null;
+        cond.isPristine = false;
+        cond.sleeveTier = sleeveTier;
+
+        order.cond = cond;
+        order.status = 'picked_up';
+        order.pickupFinish = sleeveTier;
+        order.grade = previewRes.condition?.grade ?? null;
+        order.isPristine = Boolean(previewRes.condition?.isPristine);
+        order.pickedUpAtMin = nowTotal;
+
+        const dest = this.returnCardFromPlayingDeckToCollection(order.cardId, 'binder', cond);
+        const destLabel = dest === 'inventory' ? 'Backpack (Binder Full)' : 'Binder';
+        const spec = sleeveTier !== 'none' ? this.getSleeveSpec(sleeveTier) : null;
+        toastMsg = spec
+          ? `${spec.icon} Pulled ${order.cardName} (${spec.name}) into your ${destLabel}!`
+          : `📥 Pulled ${order.cardName} (Raw) into your ${destLabel}!`;
+        returnObj = { condition: cond, meta: previewRes.meta, finish: sleeveTier, dest };
+      }
+
+      order.callNotified = true;
+      this.mgsOrders = (this.mgsOrders || []).filter(o => o && o.id !== order.id);
+      this.clearResolvedMgsIncomingCall();
+      if (!silentRefresh) {
+        if (window.sounds?.playVictory) window.sounds.playVictory();
+        else if (window.sounds?.playClick) window.sounds.playClick();
+        this.saveWorldData?.(this.draftAppearance);
+        this.updateHUDSaveInfo?.();
+        this.syncPhoneAlertBadges?.();
+        this.renderBinderModal?.();
+        this.renderInventoryModal?.();
+        this.renderShopModal?.();
+        if (this.currentPhoneApp === 'mgs') this.renderMgsApp?.();
+        this.renderGradingModal();
+        this.showAutosaveIndicator?.(toastMsg);
+      }
+      return returnObj;
+    }
+
+    claimAllMgsReadyOrders() {
+      const ready = (this.mgsOrders || []).filter(o => o && o.status === 'ready_pickup');
+      if (ready.length === 0) return 0;
+      const dests = new Set();
+      ready.forEach(o => {
+        const res = this.claimMgsReadyOrder(o.id, true);
+        if (res?.dest) dests.add(res.dest);
+      });
+      this.clearResolvedMgsIncomingCall();
+      if (window.sounds?.playVictory) window.sounds.playVictory();
+      else if (window.sounds?.playClick) window.sounds.playClick();
+      this.saveWorldData?.(this.draftAppearance);
+      this.updateHUDSaveInfo?.();
+      this.syncPhoneAlertBadges?.();
+      this.renderBinderModal?.();
+      this.renderInventoryModal?.();
+      this.renderShopModal?.();
+      if (this.currentPhoneApp === 'mgs') this.renderMgsApp?.();
+      this.renderGradingModal();
+      const destText = dests.has('inventory')
+        ? (dests.has('binder') ? 'Binder & Backpack' : 'Backpack (Binder Full)')
+        : 'Binder';
+      this.showAutosaveIndicator?.(`📦 Pulled ${ready.length} card${ready.length > 1 ? 's' : ''} from Pick-up Tray into your ${destText}!`);
+      return ready.length;
+    }
+
+    markMgsCallOrdersNotified(orderIds = []) {
+      const idSet = new Set(Array.isArray(orderIds) ? orderIds : []);
+      if (idSet.size === 0 || !Array.isArray(this.mgsOrders)) return;
+      let changed = false;
+      this.mgsOrders.forEach(o => {
+        if (o && idSet.has(o.id) && !o.callNotified) {
+          o.callNotified = true;
+          changed = true;
+        }
+      });
+      if (changed) this.saveWorldData?.(this.draftAppearance);
+    }
+
+    clearResolvedMgsIncomingCall() {
+      if (!this.activeIncomingMgsCall) return;
+      const pendingReadyIds = new Set(
+        (this.mgsOrders || []).filter(o => o && o.status === 'ready_pickup').map(o => o.id)
+      );
+      const anyCallOrderStillReady = (this.activeIncomingMgsCall.orderIds || []).some(id => pendingReadyIds.has(id));
+      if (!anyCallOrderStillReady) {
+        this.activeIncomingMgsCall = null;
+        this.hideMgsCallToast(false);
+        document.getElementById('mgs-call-modal')?.classList.add('hidden');
+      }
+    }
+
+    evaluateMgsOrderFinalGrade(order) {
+      if (!order) return 7;
+      if (Number.isFinite(Number(order.grade)) && Number(order.grade) > 0) return Number(order.grade);
+      const CG = window.MythosCardGrading;
+      if (order.cond && CG?.gradeCard) {
+        const res = CG.gradeCard(this.cloneCardCondition(order.cond));
+        return Number(res?.condition?.grade ?? order.cond.grade ?? order.cond.rawGrade ?? 7);
+      }
+      return Number(order?.cond?.grade ?? order?.cond?.rawGrade ?? 7);
+    }
+
+    buildMgsCompletionCallMessage(orders = []) {
+      const list = Array.isArray(orders) ? orders.filter(Boolean) : [];
+      const count = list.length;
+      const isBatch = count > 1;
+      const playerName = this.draftAppearance?.name || 'there';
+      const firstName = list[0]?.cardName || 'your card';
+      const peakGrade = list.reduce((best, o) => Math.max(best, this.evaluateMgsOrderFinalGrade(o)), 1);
+      const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+      if (peakGrade >= 9.5) {
+        return isBatch
+          ? pick([
+              `"Whoa, ${playerName}—it's Mike! I just finished the last card in your batch, and honestly my hands are still steady from holding the loupe. You have something seriously special waiting in the Pick-up Tray—get over here!"`,
+              `"${playerName}! Mike from MGS here. That whole stack is officially wrapped up, and without giving the game away... let's just say one of these left the whole bench speechless. Come see for yourself!"`
+            ])
+          : pick([
+              `"${playerName}, it's Mike! I literally just set down the loupe on ${firstName} and had to call right away—wow. I won't spoil it over the phone, so hurry down to the Pick-up Tray!"`,
+              `"Hey ${playerName}—Mike over at MGS! Let's just say ${firstName} gave me one of the best sessions I've had all week under the lamp. Come check out the slab report in person!"`
+            ]);
+      }
+
+      if (peakGrade >= 9) {
+        return isBatch
+          ? pick([
+              `"Hey ${playerName}, Mike calling from MGS! Your whole batch just cleared the bench, and I think you're going to be grinning from ear to ear when you crack open the Pick-up Tray."`,
+              `"${playerName}, good news—your ${count} cards just finished grading! There's at least one real head-turner in this batch that's going to look incredible once you inspect it."`
+            ])
+          : pick([
+              `"Hey ${playerName}, Mike here! ${firstName} just finished up on the bench, and I've gotta say—you're going to have a big smile when you see how clean it checked out. Swing by the Pick-up Tray!"`,
+              `"${playerName}, Mike from MGS! Just wrapped up ${firstName}—real standout copy under the light. Come take a look at the Pick-up Tray when you're nearby!"`
+            ]);
+      }
+
+      if (peakGrade >= 7) {
+        return isBatch
+          ? pick([
+              `"Hey ${playerName}, it's Mike at MGS. All ${count} cards from your batch are done grading and waiting in the Pick-up Tray—solid, respectable stack overall!"`,
+              `"Hi ${playerName}, Mike calling! I finished up your batch of ${count} cards. Everything held up nicely under the lamp—stop by the Pick-up Tray whenever you want to review them."`
+            ])
+          : pick([
+              `"Hey ${playerName}, Mike at MGS! ${firstName} just finished on the bench and held up nicely under the lamp. It's waiting in the Pick-up Tray whenever you're ready."`,
+              `"Hi ${playerName}, it's Mike—just letting you know ${firstName} came off the grading table looking solid. Come check the Pick-up Tray whenever you have a minute!"`
+            ]);
+      }
+
+      if (peakGrade >= 5) {
+        return isBatch
+          ? pick([
+              `"Hi ${playerName}, Mike from MGS. Your ${count} cards are finished on the bench and moved to the Pick-up Tray. Stop by when you have time and we can walk through the sub-grade notes together."`,
+              `"Hey ${playerName}, it's Mike. Just wrapped up your batch of ${count} cards—mixed bag of table wear here and there, all documented in the Pick-up Tray for you."`
+            ])
+          : pick([
+              `"Hi ${playerName}, Mike from MGS. Just letting you know ${firstName} is finished on the bench. Come check the Pick-up Tray when you can—I noted a few things for you to inspect."`,
+              `"Hey ${playerName}, it's Mike calling. ${firstName} is all wrapped up and ready in the Pick-up Tray whenever you want to swing by and look over my report."`
+            ]);
+      }
+
+      return isBatch
+        ? pick([
+            `"Hey ${playerName}, it's Mike over at MGS. Your ${count} cards just finished up on the bench—this batch has definitely seen some heavy play, so I wrote up careful reports on each one in the Pick-up Tray."`,
+            `"Hi ${playerName}, Mike here. Everything in your ${count}-card order is ready in the Pick-up Tray. They've seen some honest battles, so stop by when you're ready to grab them."`
+          ])
+        : pick([
+            `"Hey ${playerName}, it's Mike from MGS. ${firstName} is all done on the bench… it's clearly seen plenty of honest table time, so I wrote up a careful breakdown for you in the Pick-up Tray."`,
+            `"Hi ${playerName}, Mike calling. ${firstName} is waiting in the Pick-up Tray—it took some noticeable wear over the years, so swing by whenever you're ready to review the notes."`
+          ]);
+    }
+
+    triggerMgsCompletionCall(orders = []) {
+      const list = Array.isArray(orders) ? orders.filter(Boolean) : [];
+      if (list.length === 0) return null;
+      const callObj = {
+        id: `mgs_call_${Date.now()}_${Math.floor(Math.random() * 999)}`,
+        npcId: 'grader_mike',
+        npcName: 'Mike',
+        count: list.length,
+        cardNames: list.map(o => o.cardName || 'Mythos Card'),
+        orderIds: list.map(o => o.id),
+        peakGrade: list.reduce((best, o) => Math.max(best, this.evaluateMgsOrderFinalGrade(o)), 1),
+        message: this.buildMgsCompletionCallMessage(list),
+        createdAtMin: this.getTotalGameMinutes ? this.getTotalGameMinutes() : 0
+      };
+      this.activeIncomingMgsCall = callObj;
+      if (window.sounds?.playPhoneRingtone) {
+        window.sounds.playPhoneRingtone();
+      } else if (window.sounds?.playCollect) {
+        window.sounds.playCollect();
+      }
+      this.showMgsCallToast(callObj);
+      this.syncPhoneAlertBadges?.();
+      return callObj;
+    }
+
+    ensureMgsCallUI() {
+      if (!document.getElementById('mgs-call-toast')) {
+        const toast = document.createElement('div');
+        toast.id = 'mgs-call-toast';
+        toast.className = 'duel-call-toast mgs-call-toast hidden';
+        toast.setAttribute('role', 'button');
+        toast.setAttribute('tabindex', '0');
+        toast.innerHTML = `
+          <div class="duel-call-toast-ring" aria-hidden="true">📞</div>
+          <div class="duel-call-toast-body">
+            <div class="duel-call-toast-title" id="mgs-toast-caller">Mike (MGS) is calling!</div>
+            <div class="duel-call-toast-sub" id="mgs-toast-sub">Your grading order is finished</div>
+            <div class="duel-call-toast-hint">Click to answer Mike's call</div>
+          </div>
+          <button type="button" id="mgs-toast-dismiss" class="duel-call-toast-close" aria-label="Dismiss call notification">✕</button>
+        `;
+        document.body.appendChild(toast);
+
+        toast.addEventListener('click', (e) => {
+          if (e.target.closest('#mgs-toast-dismiss')) return;
+          if (window.sounds?.playClick) window.sounds.playClick();
+          this.openMgsCallModal();
+        });
+        toast.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            this.openMgsCallModal();
+          }
+        });
+        document.getElementById('mgs-toast-dismiss')?.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (window.sounds?.playClick) window.sounds.playClick();
+          this.hideMgsCallToast(false);
+        });
+      }
+
+      if (!document.getElementById('mgs-call-modal')) {
+        const modal = document.createElement('div');
+        modal.id = 'mgs-call-modal';
+        modal.className = 'duel-call-modal-backdrop hidden';
+        modal.setAttribute('role', 'dialog');
+        modal.setAttribute('aria-modal', 'true');
+        modal.setAttribute('aria-label', 'Incoming Call from Mike (MGS)');
+        modal.innerHTML = `
+          <div class="duel-call-dialog mgs-call-dialog">
+            <div class="duel-call-header">
+              <div class="duel-call-header-left">
+                <span class="duel-call-badge" aria-hidden="true">📞</span>
+                <div>
+                  <h2 id="mgs-modal-title">CALL FROM MIKE — MGS</h2>
+                  <div class="duel-call-subtitle">Oakhaven Card Grading • Pick-up Ready</div>
+                </div>
+              </div>
+              <button type="button" id="mgs-call-close-btn" class="duel-call-close-btn" aria-label="Close">✕</button>
+            </div>
+            <div id="mgs-call-body" class="duel-call-body"></div>
+          </div>
+        `;
+        document.body.appendChild(modal);
+        modal.addEventListener('click', (e) => {
+          if (e.target === modal) this.closeMgsCallModal(true);
+        });
+        document.getElementById('mgs-call-close-btn')?.addEventListener('click', () => {
+          this.closeMgsCallModal(true);
+        });
+      }
+    }
+
+    showMgsCallToast(callObj) {
+      if (!callObj) return;
+      this.ensureMgsCallUI();
+      const toast = document.getElementById('mgs-call-toast');
+      if (!toast) return;
+      const callerEl = document.getElementById('mgs-toast-caller');
+      const subEl = document.getElementById('mgs-toast-sub');
+      if (callerEl) callerEl.textContent = '📞 Mike (MGS) is calling!';
+      if (subEl) {
+        subEl.textContent = callObj.count > 1
+          ? `🏆 ${callObj.count} cards finished grading!`
+          : `🏆 ${callObj.cardNames[0] || 'Your card'} finished grading!`;
+      }
+      toast.classList.remove('hidden');
+      if (this._mgsCallToastTimer) clearTimeout(this._mgsCallToastTimer);
+      this._mgsCallToastTimer = setTimeout(() => {
+        this.hideMgsCallToast(false);
+      }, 18000);
+    }
+
+    hideMgsCallToast(clearActiveCall = false) {
+      document.getElementById('mgs-call-toast')?.classList.add('hidden');
+      if (this._mgsCallToastTimer) {
+        clearTimeout(this._mgsCallToastTimer);
+        this._mgsCallToastTimer = null;
+      }
+      if (clearActiveCall) {
+        this.activeIncomingMgsCall = null;
+      }
+      this.syncPhoneAlertBadges?.();
+    }
+
+    openMgsCallModal() {
+      const call = this.activeIncomingMgsCall;
+      if (!call) return;
+      this.ensureMgsCallUI();
+      this.hideMgsCallToast(false);
+      const body = document.getElementById('mgs-call-body');
+      if (!body) return;
+
+      const cardChips = (call.cardNames || [])
+        .map(n => `<span class="duel-call-card-chip">🃏 ${n}</span>`)
+        .join('');
+
+      body.innerHTML = `
+        <div class="duel-call-caller-row">
+          <div class="duel-call-avatar-wrap">
+            <canvas id="mgs-caller-canvas" width="96" height="96"></canvas>
+          </div>
+          <div class="duel-call-quote-wrap">
+            <div class="duel-call-caller-name">🏆 Mike — Oakhaven Card Grading</div>
+            <div class="duel-call-quote">${call.message}</div>
+          </div>
+        </div>
+        <div class="mgs-call-cards-box">
+          <div class="duel-call-reward-label">📦 Ready in Pick-up Tray (${call.count} Card${call.count === 1 ? '' : 's'})</div>
+          <div class="duel-call-card-chips">${cardChips}</div>
+        </div>
+        <div class="duel-call-actions">
+          <button type="button" id="mgs-call-open-app" class="duel-btn-accept mgs-btn-open-app">📱 Open MGS App</button>
+          <button type="button" id="mgs-call-hangup" class="duel-btn-decline">👍 Got It — Hang Up</button>
+        </div>
+      `;
+
+      const cvs = document.getElementById('mgs-caller-canvas');
+      const sprite = this.getNpcSpriteForMeetup('grader_mike');
+      if (cvs && sprite?.draw) {
+        const ctx = cvs.getContext('2d');
+        ctx.clearRect(0, 0, cvs.width, cvs.height);
+        ctx.imageSmoothingEnabled = false;
+        sprite.draw(ctx, 48, 86, 'down', 0, 2.3);
+      }
+
+      document.getElementById('mgs-call-open-app')?.addEventListener('click', () => {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        this.closeMgsCallModal(true);
+        this.mgsActiveTab = 'pickup';
+        this.togglePhoneModal(true);
+        this.openPhoneApp('mgs');
+      });
+      document.getElementById('mgs-call-hangup')?.addEventListener('click', () => {
+        this.closeMgsCallModal(true);
+      });
+
+      document.getElementById('mgs-call-modal')?.classList.remove('hidden');
+    }
+
+    closeMgsCallModal(clearCall = true) {
+      if (window.sounds?.playClick) window.sounds.playClick();
+      document.getElementById('mgs-call-modal')?.classList.add('hidden');
+      if (clearCall) {
+        if (this.activeIncomingMgsCall?.orderIds) {
+          this.markMgsCallOrdersNotified(this.activeIncomingMgsCall.orderIds);
+        }
+        this.activeIncomingMgsCall = null;
+      }
+      this.syncPhoneAlertBadges?.();
+    }
+
+    scheduleMgsDropOff() {
+      const curDay = this.dayNumber || 1;
+      const targetDay = curDay + Math.max(0, Math.min(2, Number(this.mgsDraftSchedDayOffset) || 0));
+      const win = this.getMgsWindowDef(this.mgsDraftSchedWindow);
+      const nowDayMin = Number(this.timeOfDayMinutes) || 0;
+      if (targetDay === curDay && nowDayMin >= win.endMin) {
+        this.showAutosaveIndicator?.('⏰ That drop-off window already closed today — pick another slot.');
+        return false;
+      }
+
+      const duplicate = (this.mgsAppointments || []).some(
+        a => a && a.status === 'scheduled' && a.dayNumber === targetDay && a.windowId === win.id
+      );
+      if (duplicate) {
+        this.showAutosaveIndicator?.('📅 You already booked that MGS drop-off window!');
+        return false;
+      }
+
+      const cardCount = Math.max(1, Math.min(3, parseInt(String(this.mgsDraftSchedCards || '1'), 10) || 1));
+      const appt = {
+        id: `mgs_appt_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+        dayNumber: targetDay,
+        windowId: win.id,
+        cardCount,
+        cardCountLabel: `${cardCount} Card${cardCount > 1 ? 's' : ''}`,
+        status: 'scheduled',
+        createdAtMin: this.getTotalGameMinutes ? this.getTotalGameMinutes() : 0
+      };
+      this.mgsAppointments.unshift(appt);
+      if (window.sounds?.playVictory) window.sounds.playVictory();
+      else if (window.sounds?.playClick) window.sounds.playClick();
+      this.saveWorldData?.(this.draftAppearance);
+      this.syncPhoneAlertBadges?.();
+      this.renderMgsApp();
+      this.showAutosaveIndicator?.(`📅 MGS Drop-Off scheduled: ${this.getMgsDayLabel(targetDay)} (${win.label})`);
+      return true;
+    }
+
+    renderMgsApp() {
+      const body = document.getElementById('phone-mgs-body');
+      if (!body) return;
+      this.syncMgsStatuses(false);
+
+      const tab = this.mgsActiveTab || 'status';
+      document.getElementById('tab-mgs-status')?.classList.toggle('active', tab === 'status');
+      document.getElementById('tab-mgs-pickup')?.classList.toggle('active', tab === 'pickup');
+      document.getElementById('tab-mgs-schedule')?.classList.toggle('active', tab === 'schedule');
+
+      const gradingOrders = (this.mgsOrders || []).filter(o => o && o.status === 'grading');
+      const pickupOrders = (this.mgsOrders || []).filter(o => o && o.status === 'ready_pickup');
+      const activeAppts = (this.mgsAppointments || []).filter(a => a && a.status === 'scheduled');
+
+      const gCnt = document.getElementById('mgs-grading-count');
+      const pCnt = document.getElementById('mgs-pickup-count');
+      const sCnt = document.getElementById('mgs-sched-count');
+      if (gCnt) gCnt.textContent = gradingOrders.length ? `(${gradingOrders.length})` : '';
+      if (pCnt) pCnt.textContent = pickupOrders.length ? `(${pickupOrders.length})` : '';
+      if (sCnt) sCnt.textContent = activeAppts.length ? `(${activeAppts.length})` : '';
+
+      const nowTotal = this.getTotalGameMinutes ? this.getTotalGameMinutes() : 0;
+      const catalog = this.getMythosPackCatalog ? this.getMythosPackCatalog() : [];
+      const findImg = (cardId) => {
+        const clean = String(cardId || '').replace(/^card_/, '');
+        const cardDef = window.MythosGwentCards?.CARDS?.[clean] || catalog.find(c => c.beastId === clean);
+        return cardDef && this.getCardTraditionalImg ? this.getCardTraditionalImg(cardDef) : 'Cards/Argo_The_MerKing_Traditional.jpg';
+      };
+
+      body.innerHTML = '';
+
+      if (tab === 'status') {
+        const banner = document.createElement('div');
+        banner.className = 'mgs-banner';
+        banner.innerHTML = `<strong>MGS (Mike's Grading Scale)</strong> tracks every card submitted at Oakhaven Card Grading. Progress bars reflect Mike's approximate bench stage until grading completes.`;
+        body.appendChild(banner);
+
+        if (gradingOrders.length === 0) {
+          const empty = document.createElement('div');
+          empty.className = 'mgs-empty-state';
+          empty.innerHTML = `
+            <div style="font-size:22px;">🔍</div>
+            <div><b>No cards are currently in grading.</b><br>Schedule a drop-off time below or bring raw cards to <b>Mike</b> south of the Fishmonger!</div>
+            <button type="button" class="mgs-submit-btn" id="mgs-empty-go-schedule" style="max-width:210px;">📅 Schedule Drop-Off</button>
+          `;
+          body.appendChild(empty);
+          empty.querySelector('#mgs-empty-go-schedule')?.addEventListener('click', () => {
+            if (window.sounds?.playClick) window.sounds.playClick();
+            this.mgsActiveTab = 'schedule';
+            this.renderMgsApp();
+          });
+          return;
+        }
+
+        gradingOrders.forEach(order => {
+          const start = Number(order.submittedAtMin) || 0;
+          const end = Math.max(start + 60, Number(order.readyAtMin) || (start + 2880));
+          const rawPct = ((nowTotal - start) / (end - start)) * 100;
+          // Snap to 5% increments clamped 10%..95% so bar is explicitly approximate
+          const approxPct = Math.max(10, Math.min(95, Math.round(rawPct / 5) * 5));
+          const remHours = Math.max(1, Math.ceil((end - nowTotal) / 60));
+          let stageLabel = '📥 Logged & Queued';
+          if (approxPct >= 75) stageLabel = '🔒 Ready for Finish';
+          else if (approxPct >= 50) stageLabel = '⚖️ Sub-Grade Review';
+          else if (approxPct >= 25) stageLabel = '🔍 Under Magnification';
+
+          const card = document.createElement('div');
+          const trend = this.getMgsGradeTrendHint(order, approxPct);
+          card.className = 'mgs-order-card';
+          card.innerHTML = `
+            <div class="mgs-card-top">
+              <img src="${findImg(order.cardId)}" alt="${order.cardName}" class="mgs-card-thumb">
+              <div class="mgs-card-meta">
+                <div class="mgs-card-title">${order.cardName || 'Mythos Card'}</div>
+                <div class="mgs-card-sub">${order.serviceTierLabel ? `${order.serviceTierLabel} • ` : ''}Drop-Off: ${order.submittedDayLabel || 'MGS Counter'}</div>
+                <div class="mgs-card-sub" style="color:#fde68a;margin-top:2px;">${trend.icon} ${trend.label}</div>
+              </div>
+              <span style="font-size:11px;font-weight:900;color:#fde047;">~${approxPct}%</span>
+            </div>
+            <div class="mgs-progress-track">
+              <div class="mgs-progress-fill" style="width:${approxPct}%;"></div>
+            </div>
+            <div class="mgs-stage-row">
+              <span>${stageLabel}</span>
+              <span style="color:#94a3b8;">~${remHours} hr${remHours > 1 ? 's' : ''} left</span>
+            </div>
+          `;
+          body.appendChild(card);
+        });
+        return;
+      }
+
+      if (tab === 'pickup') {
+        const banner = document.createElement('div');
+        banner.className = 'mgs-banner';
+        banner.innerHTML = `<strong>Items Waiting for Pickup</strong> — Visit <b>Mike</b> inside <b>Oakhaven Card Grading</b> (south of the Fishmonger) to sleeve or slab your finished cards.`;
+        body.appendChild(banner);
+
+        if (pickupOrders.length === 0) {
+          const empty = document.createElement('div');
+          empty.className = 'mgs-empty-state';
+          empty.innerHTML = `
+            <div style="font-size:22px;">📦</div>
+            <div><b>No finished cards waiting for pickup.</b><br>Finished MGS submissions will appear here once Mike finishes grading them!</div>
+          `;
+          body.appendChild(empty);
+          return;
+        }
+
+        pickupOrders.forEach(order => {
+          const card = document.createElement('div');
+          card.className = 'mgs-pickup-card';
+          card.innerHTML = `
+            <div class="mgs-card-top">
+              <img src="${findImg(order.cardId)}" alt="${order.cardName}" class="mgs-card-thumb">
+              <div class="mgs-card-meta">
+                <div class="mgs-card-title">${order.cardName || 'Mythos Card'}</div>
+                <div class="mgs-card-sub">✅ Grading Complete • Choose Sleeve or Slab at MGS</div>
+              </div>
+              <span style="font-size:10.5px;font-weight:900;color:#6ee7b7;background:rgba(16,185,129,0.18);border:1px solid rgba(52,211,153,0.45);padding:3px 7px;border-radius:6px;">READY</span>
+            </div>
+          `;
+          body.appendChild(card);
+        });
+        return;
+      }
+
+      // Tab 3: Schedule Drop-Off
+      const curDay = this.dayNumber || 1;
+      const nowDayMin = Number(this.timeOfDayMinutes) || 0;
+      const windows = this.getMgsWindowsList();
+      const dayOffset = Math.max(0, Math.min(2, Number(this.mgsDraftSchedDayOffset) || 0));
+
+      // Auto-advance selected window if Today and already expired
+      if (dayOffset === 0) {
+        const curSelWin = this.getMgsWindowDef(this.mgsDraftSchedWindow);
+        if (nowDayMin >= curSelWin.endMin) {
+          const nextAvail = windows.find(w => nowDayMin < w.endMin);
+          if (nextAvail) {
+            this.mgsDraftSchedWindow = nextAvail.id;
+          } else {
+            this.mgsDraftSchedDayOffset = 1;
+            this.mgsDraftSchedWindow = 'morning';
+          }
+        }
+      }
+
+      const activeDayOffset = Math.max(0, Math.min(2, Number(this.mgsDraftSchedDayOffset) || 0));
+      const form = document.createElement('div');
+      form.className = 'mgs-sched-form';
+
+      const dayPillsHtml = [0, 1, 2].map(off => {
+        const dNum = curDay + off;
+        const dName = this.getMgsDayLabel(dNum).split(',')[0].slice(0, 3);
+        const tag = off === 0 ? 'Today' : (off === 1 ? 'Tomorrow' : dName);
+        const allPast = off === 0 && windows.every(w => nowDayMin >= w.endMin);
+        return `<button type="button" class="mgs-pill-btn${activeDayOffset === off ? ' active' : ''}" data-mgs-day="${off}" ${allPast ? 'disabled' : ''}><b>${tag}</b><br><span style="opacity:0.8;">${dName} D${dNum}</span></button>`;
+      }).join('');
+
+      const winPillsHtml = windows.map(w => {
+        const past = activeDayOffset === 0 && nowDayMin >= w.endMin;
+        return `<button type="button" class="mgs-pill-btn${this.mgsDraftSchedWindow === w.id ? ' active' : ''}" data-mgs-win="${w.id}" ${past ? 'disabled' : ''}>${w.icon} <b>${w.label}</b><br><span style="opacity:0.8;">${w.short}</span></button>`;
+      }).join('');
+
+      const curQty = ['1', '2', '3'].includes(String(this.mgsDraftSchedCards)) ? String(this.mgsDraftSchedCards) : '1';
+      this.mgsDraftSchedCards = curQty;
+      const countPillsHtml = [
+        { val: '1', lbl: '1 Card' },
+        { val: '2', lbl: '2 Cards' },
+        { val: '3', lbl: '3 Cards' }
+      ].map(({ val, lbl }) => {
+        return `<button type="button" class="mgs-pill-btn${curQty === val ? ' active' : ''}" data-mgs-qty="${val}">🃏 <b>${lbl}</b></button>`;
+      }).join('');
+
+      form.innerHTML = `
+        <div class="mgs-banner" style="padding:7px 9px;">Reserve an MGS counter window with <b>Mike</b> at Oakhaven Card Grading so your submission is logged on arrival.</div>
+        <div class="mgs-form-label">1. Select Day</div>
+        <div class="mgs-pill-row">${dayPillsHtml}</div>
+        <div class="mgs-form-label">2. Drop-Off Time Window</div>
+        <div class="mgs-pill-row">${winPillsHtml}</div>
+        <div class="mgs-form-label">3. Cards to Submit</div>
+        <div class="mgs-pill-row">${countPillsHtml}</div>
+        <button type="button" class="mgs-submit-btn" id="btn-mgs-book-dropoff">📅 Schedule Drop-Off with Mike</button>
+      `;
+
+      form.querySelectorAll('[data-mgs-day]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          if (window.sounds?.playClick) window.sounds.playClick();
+          this.mgsDraftSchedDayOffset = Number(btn.dataset.mgsDay) || 0;
+          this.renderMgsApp();
+        });
+      });
+      form.querySelectorAll('[data-mgs-win]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          if (window.sounds?.playClick) window.sounds.playClick();
+          this.mgsDraftSchedWindow = btn.dataset.mgsWin || 'afternoon';
+          this.renderMgsApp();
+        });
+      });
+      form.querySelectorAll('[data-mgs-qty]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          if (window.sounds?.playClick) window.sounds.playClick();
+          this.mgsDraftSchedCards = btn.dataset.mgsQty || '1';
+          this.renderMgsApp();
+        });
+      });
+      form.querySelector('#btn-mgs-book-dropoff')?.addEventListener('click', () => {
+        this.scheduleMgsDropOff();
+      });
+      body.appendChild(form);
+
+      // Scheduled / Missed Appointments List
+      const appts = (this.mgsAppointments || []).filter(a => a && (a.status === 'scheduled' || a.status === 'missed'));
+      if (appts.length > 0) {
+        const hdr = document.createElement('div');
+        hdr.className = 'mgs-form-label';
+        hdr.style.marginTop = '4px';
+        hdr.textContent = `Scheduled Drop-Offs (${appts.length})`;
+        body.appendChild(hdr);
+
+        appts.forEach(appt => {
+          const win = this.getMgsWindowDef(appt.windowId);
+          const base = ((Number(appt.dayNumber) || 1) - 1) * 1440;
+          const isOpenNow = appt.status === 'scheduled' && nowTotal >= (base + win.startMin) && nowTotal <= (base + win.endMin);
+          const isMissed = appt.status === 'missed';
+
+          const card = document.createElement('div');
+          card.className = `mgs-appt-card${isOpenNow ? ' is-open' : (isMissed ? ' is-missed' : '')}`;
+          const statusLine = isMissed
+            ? '⚠️ Window Missed'
+            : (isOpenNow ? '🟢 Window Open Now — Visit Mike!' : '🗓️ Confirmed Drop-Off');
+
+          card.innerHTML = `
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+              <div>
+                <div class="mgs-card-title">${win.icon} ${this.getMgsDayLabel(appt.dayNumber)} • ${win.label}</div>
+                <div class="mgs-card-sub">${win.range} • ${appt.cardCount ? `${appt.cardCount} Card${appt.cardCount > 1 ? 's' : ''}` : (appt.cardCountLabel || '1 Card')}</div>
+              </div>
+              <button type="button" class="mgs-mini-btn" data-mgs-cancel="${appt.id}">${isMissed ? 'Dismiss' : 'Cancel'}</button>
+            </div>
+            <div class="mgs-stage-row">
+              <span style="color:${isMissed ? '#fca5a5' : (isOpenNow ? '#6ee7b7' : '#fde68a')};">${statusLine}</span>
+              <span style="color:#94a3b8;">Oakhaven Card Grading</span>
+            </div>
+          `;
+          card.querySelector(`[data-mgs-cancel="${appt.id}"]`)?.addEventListener('click', () => {
+            if (window.sounds?.playClick) window.sounds.playClick();
+            this.mgsAppointments = (this.mgsAppointments || []).filter(x => x && x.id !== appt.id);
+            this.saveWorldData?.(this.draftAppearance);
+            this.syncPhoneAlertBadges?.();
+            this.renderMgsApp();
+          });
+          body.appendChild(card);
+        });
+      }
+    }
+
     // -------------------------------------------------------------------------
     // Player Inventory, Base Set Card Catalog & Theatrical Pack Opening System
     // -------------------------------------------------------------------------
@@ -6151,7 +7353,7 @@
         }
       }
       if (Array.isArray(this.playingDeck)) {
-        const filteredDeck = this.playingDeck.filter(id => !this.isLegacyCard(id));
+        const filteredDeck = this.playingDeck.filter(entry => !this.isLegacyCard(this.getDeckCardId(entry)));
         if (filteredDeck.length !== this.playingDeck.length) {
           this.playingDeck = filteredDeck;
           changed = true;
@@ -6166,17 +7368,35 @@
 
     addInventoryItem(itemDef) {
       const existing = this.inventory.find(i => i.id === itemDef.id);
+      const isCard = this.isMythosCardRecord(itemDef);
+      const qtyToAdd = Math.max(1, Math.round(Number(itemDef.qty) || 1));
+      let incomingCopies = null;
+      if (isCard) {
+        incomingCopies = Array.isArray(itemDef.copies)
+          ? itemDef.copies.map(c => this.cloneCardCondition(c) || this.createDefaultCardCondition())
+          : (itemDef.condition ? [this.cloneCardCondition(itemDef.condition)] : []);
+        while (incomingCopies.length < qtyToAdd) incomingCopies.push(this.createDefaultCardCondition());
+        if (incomingCopies.length > qtyToAdd) incomingCopies = incomingCopies.slice(0, qtyToAdd);
+      }
+
       if (existing) {
-        existing.qty = (existing.qty || 1) + (itemDef.qty || 1);
+        if (isCard || this.isMythosCardRecord(existing)) {
+          const existingCopies = this.ensureSlotCopies(existing);
+          const toPush = incomingCopies || Array.from({ length: qtyToAdd }, () => this.createDefaultCardCondition());
+          existingCopies.push(...toPush);
+          existing.qty = existingCopies.length;
+        } else {
+          existing.qty = (existing.qty || 1) + (itemDef.qty || 1);
+        }
       } else {
-        this.inventory.push({
+        const newItem = {
           id: itemDef.id,
           beastId: itemDef.beastId || itemDef.id.replace('card_', ''),
           name: itemDef.name,
           shortName: itemDef.shortName || itemDef.name,
           element: itemDef.element || 'Fire',
           stars: itemDef.stars || 4,
-          qty: itemDef.qty || 1,
+          qty: qtyToAdd,
           icon: itemDef.icon || '🃏',
           cardImg: itemDef.cardImg || null,
           traditionalCardImg: itemDef.traditionalCardImg || null,
@@ -6185,7 +7405,11 @@
           sizeTier: itemDef.sizeTier || null,
           value: itemDef.value ?? null,
           desc: itemDef.desc || ''
-        });
+        };
+        if (isCard) {
+          newItem.copies = incomingCopies;
+        }
+        this.inventory.push(newItem);
       }
       this.selectedInventoryItemId = itemDef.id;
       this.autoSave('item_added');
@@ -6214,6 +7438,13 @@
         : (baseDef?.id || (cleanBeastId ? `card_${cleanBeastId}` : rawId));
       const cleanName = String(rawObj.name || baseDef?.name || cleanBeastId || 'Mythos Card').replace(/\s*\(Mythos Card\)$/i, '');
 
+      const qty = Math.max(1, Math.round(Number(rawObj.qty) || 1));
+      const incomingCopies = Array.isArray(rawObj.copies)
+        ? rawObj.copies.map(c => this.cloneCardCondition(c) || this.createDefaultCardCondition())
+        : (rawObj.condition ? [this.cloneCardCondition(rawObj.condition)] : []);
+      while (incomingCopies.length < qty) incomingCopies.push(this.createDefaultCardCondition());
+      if (incomingCopies.length > qty) incomingCopies.length = qty;
+
       const cleanRecord = {
         ...(baseDef || {}),
         ...rawObj,
@@ -6223,8 +7454,10 @@
         shortName: rawObj.shortName || baseDef?.shortName || cleanName,
         icon: rawObj.icon || '🃏',
         type: 'mythos_card',
-        qty: Math.max(1, Math.round(Number(rawObj.qty) || 1))
+        qty,
+        copies: incomingCopies
       };
+      delete cleanRecord.condition;
 
       if (!Array.isArray(this.binderSlots)) {
         this.binderSlots = this.wrapReactiveArray
@@ -6240,7 +7473,9 @@
         if (cleanRecord.traditionalCardImg && !existing.traditionalCardImg) {
           existing.traditionalCardImg = cleanRecord.traditionalCardImg;
         }
-        existing.qty = (existing.qty || 1) + cleanRecord.qty;
+        const existingCopies = this.ensureSlotCopies(existing);
+        existingCopies.push(...incomingCopies);
+        existing.qty = existingCopies.length;
         return true;
       }
 
@@ -7177,6 +8412,16 @@
           detailTags: ['🎟️ Redeemable', '💎 1× Premium Pack']
         };
       }
+      if (item.type === 'card_sleeve') {
+        const isMatte = item.sleeveTier === 'pro_sleeve';
+        return {
+          category: 'gear',
+          kindAttr: 'gear',
+          tagLabel: isMatte ? 'Pro Matte' : 'Pro Sleeve',
+          elemAttr: '',
+          detailTags: [isMatte ? '✨ 95% Wear Block' : '🛡️ 75% Wear Block', '🃏 Card Protection']
+        };
+      }
       return {
         category: 'gear',
         kindAttr: 'gear',
@@ -7359,6 +8604,10 @@
                 this.setFishingPoleEquipped(!this.fishingPoleEquipped);
                 return;
               }
+              if (item.type === 'card_sleeve') {
+                this.openSleevePickerModal(item.sleeveTier);
+                return;
+              }
             }
             this.selectedInventoryItemId = item.id;
             this.renderInventoryModal();
@@ -7510,6 +8759,19 @@
               this.setFishingPoleEquipped(!isEquipped);
             };
           }
+        } else if (selectedItem.type === 'card_sleeve') {
+          artEl.innerHTML = `<span style="font-size: 38px;">${selectedItem.icon || '🛡️'}</span>`;
+          if (actionsEl) actionsEl.classList.remove('hidden');
+          openPackBtn?.classList.add('hidden');
+          putBinderBtn?.classList.add('hidden');
+          if (inspectBtn) {
+            inspectBtn.classList.remove('hidden');
+            inspectBtn.textContent = `🛡️ Put ${selectedItem.shortName || 'Sleeve'} on a Card`;
+            inspectBtn.onclick = () => {
+              if (window.sounds?.playClick) window.sounds.playClick();
+              this.openSleevePickerModal(selectedItem.sleeveTier);
+            };
+          }
         } else if (selectedItem.id === 'premium_pack_voucher') {
           artEl.innerHTML = `<span style="font-size: 38px;">🎟️</span>`;
           if (actionsEl) actionsEl.classList.remove('hidden');
@@ -7568,12 +8830,17 @@
       return `$${num.toFixed(2)}`;
     }
 
-    getCardSellPrice(card) {
+    getCardSellPrice(card, condition = null) {
       const stars = Number(card?.stars) || 1;
-      if (stars <= 1) return 0.10;
-      if (stars === 2) return 0.20;
-      if (stars === 3) return 0.35;
-      return 0.50; // 4 stars and above
+      let base = 0.50;
+      if (stars <= 1) base = 0.10;
+      else if (stars === 2) base = 0.20;
+      else if (stars === 3) base = 0.35;
+      const cond = condition || card?.condition || card?.copies?.[0] || null;
+      const mult = window.MythosCardGrading?.getValueMultiplier
+        ? window.MythosCardGrading.getValueMultiplier(cond)
+        : 1.0;
+      return Math.round(base * mult * 100) / 100;
     }
 
     toggleShopModal(forceOpen, initialTab) {
@@ -11112,18 +12379,20 @@
         return;
       }
 
-      const unitPrice = this.getCardSellPrice(item);
       const requestedQty = sellAll ? item.qty : 1;
       const qtyToSell = Math.min(requestedQty, maxSellable);
       if (qtyToSell <= 0) return;
 
       let soldCount = 0;
+      let totalEarned = 0;
       for (let i = 0; i < qtyToSell; i++) {
-        if (!this.consumeCardForPlayingDeck(cleanId, 'any')) break;
+        const consumed = this.consumeCardForPlayingDeck(cleanId, 'any', null, null, { allowGraded: true });
+        if (!consumed) break;
+        totalEarned += this.getCardSellPrice(item, consumed.condition);
         soldCount += 1;
       }
       if (soldCount <= 0) return;
-      const totalEarned = Math.round(unitPrice * soldCount * 100) / 100;
+      totalEarned = Math.round(totalEarned * 100) / 100;
 
       this.gold = Math.round(((this.gold || 0) + totalEarned) * 100) / 100;
 
@@ -11962,6 +13231,17 @@
           refillGridEl.appendChild(tileEl);
         });
       }
+
+      // Protection Sleeves Shelf (buyable inventory items: Pro Sleeves & Pro Matte)
+      const goldNow = this.gold || 0;
+      const sPro1 = document.getElementById('btn-shop-buy-pro-1');
+      const sPro5 = document.getElementById('btn-shop-buy-pro-5');
+      const sMat1 = document.getElementById('btn-shop-buy-matte-1');
+      const sMat5 = document.getElementById('btn-shop-buy-matte-5');
+      if (sPro1) sPro1.disabled = goldNow < 0.50;
+      if (sPro5) sPro5.disabled = goldNow < 2.00;
+      if (sMat1) sMat1.disabled = goldNow < 1.00;
+      if (sMat5) sMat5.disabled = goldNow < 4.00;
 
       // Sell Ledger Filter Tabs
       const sellFilter = this.currentShopSellFilter || 'all';
@@ -13584,9 +14864,16 @@
         const key = slot.beastId || slot.id;
         if (!key) continue;
 
+        const srcCopies = this.ensureSlotCopies(slot);
         if (seenByKey.has(key)) {
           const targetSlot = seenByKey.get(key);
-          targetSlot.qty = (targetSlot.qty || 1) + (slot.qty || 1);
+          if (srcCopies) {
+            const targetCopies = this.ensureSlotCopies(targetSlot);
+            targetCopies.push(...srcCopies);
+            targetSlot.qty = targetCopies.length;
+          } else {
+            targetSlot.qty = (targetSlot.qty || 1) + (slot.qty || 1);
+          }
           this.binderSlots[i] = null;
           changed = true;
         } else {
@@ -13635,7 +14922,8 @@
       const reg = window.MythosGwentCards?.CARDS || {};
       const deck = Array.isArray(this.playingDeck) ? this.playingDeck : [];
       const cardCount = deck.length;
-      const totalStars = deck.reduce((sum, cid) => {
+      const totalStars = deck.reduce((sum, entry) => {
+        const cid = this.getDeckCardId(entry);
         const def = reg[cid];
         return sum + (Number(def?.stars) || 1);
       }, 0);
@@ -13648,9 +14936,11 @@
       };
     }
 
-    attachTradCardLongPress(el, cardDef, fallbackCard = null) {
+    attachTradCardLongPress(el, cardDef, fallbackCard = null, stackCtx = null) {
       if (!el) return;
-      el.title = 'Hold click (or right-click) to inspect card closer';
+      el.title = (stackCtx && Array.isArray(stackCtx.copies) && stackCtx.copies.length > 1)
+        ? 'Hold click (or right-click) to inspect stack & cycle front card'
+        : 'Hold click (or right-click) to inspect card closer';
       el.setAttribute('draggable', 'false');
       el.querySelectorAll('img').forEach(img => img.setAttribute('draggable', 'false'));
       let holdTimer = null;
@@ -13658,10 +14948,15 @@
       let startY = 0;
       const openCloser = () => {
         if (window.sounds?.playClick) window.sounds.playClick();
+        const topCond = (stackCtx && Array.isArray(stackCtx.copies) && stackCtx.copies.length > 0)
+          ? stackCtx.copies[0]
+          : null;
         if (cardDef && window.game?.openCardModal) {
-          window.game.openCardModal(cardDef);
+          const payload = topCond ? { ...cardDef, condition: topCond } : cardDef;
+          window.game.openCardModal(payload, stackCtx);
         } else if (fallbackCard) {
-          this.openCreatureInspect(fallbackCard, null);
+          const fbPayload = topCond ? { ...fallbackCard, condition: topCond } : fallbackCard;
+          this.openCreatureInspect(fbPayload, null);
         }
       };
       const cancelHold = () => {
@@ -13891,14 +15186,16 @@
         } else {
           const grouped = [];
           const groupMap = {};
-          this.playingDeck.forEach((cid, idx) => {
-            if (!reg[cid]) return;
+          this.playingDeck.forEach((entry, idx) => {
+            const cid = this.getDeckCardId(entry);
+            if (!cid || !reg[cid]) return;
             if (!groupMap[cid]) {
-              groupMap[cid] = { cid, count: 0, lastIndex: idx };
+              groupMap[cid] = { cid, count: 0, indices: [], conditions: [] };
               grouped.push(groupMap[cid]);
             }
             groupMap[cid].count += 1;
-            groupMap[cid].lastIndex = idx;
+            groupMap[cid].indices.push(idx);
+            groupMap[cid].conditions.push(entry?.condition || null);
           });
 
           const deckPageSize = 9;
@@ -13917,31 +15214,56 @@
             onSelectPage: (p) => { this.deckPage = p; }
           });
 
+          const CG = window.MythosCardGrading;
           const pagedDeck = grouped.slice(deckCurrentPage * deckPageSize, (deckCurrentPage + 1) * deckPageSize);
           pagedDeck.forEach(entry => {
             const c = reg[entry.cid];
             if (!c) return;
+            const topCondition = entry.conditions[0] || null;
             const tradImg = this.getCardTraditionalImg(c);
             const stars = Number(c.stars) || 1;
+            const imgStyle = '';
+            const defectHtml = CG?.renderConditionOverlayHtml ? CG.renderConditionOverlayHtml(topCondition, { compact: true, showDefects: false }) : '';
             const slot = document.createElement('div');
             slot.className = `binder-trad-slot${c.isAnimatedSpecial ? ' is-animated-special' : ''}`;
             slot.setAttribute('draggable', 'false');
             slot.innerHTML = `
-              <div class="binder-trad-art-wrap" draggable="false">
-                <img src="${tradImg}" alt="${c.name}" class="binder-trad-art-img" draggable="false">
+              <div class="binder-trad-art-wrap${entry.count > 1 ? ' is-stacked' : ''}" draggable="false">
+                <img src="${tradImg}" alt="${c.name}" class="binder-trad-art-img" style="${imgStyle}" draggable="false">
+                ${defectHtml}
                 <span class="binder-trad-star-badge">${stars}★</span>
                 ${entry.count > 1 ? `<span class="binder-trad-qty-badge">x${entry.count}</span>` : ''}
               </div>
               <div class="binder-trad-name" title="${c.name}">${c.name}</div>
               <div class="binder-trad-actions">
-                <button type="button" class="binder-xfer-btn to-binder" style="flex:1;" title="Return 1 copy to Binder Sleeves">📖 Return to Binder</button>
+                <button type="button" class="binder-xfer-btn to-binder" style="flex:1;" title="Return top card to Binder">📖 Return to Binder</button>
               </div>
             `;
-            this.attachTradCardLongPress(slot.querySelector('.binder-trad-art-wrap'), c);
+            const stackCtx = entry.count > 1 ? {
+              copies: entry.conditions,
+              label: 'Playing Deck',
+              onStackChanged: (_copies, delta) => {
+                const idxList = entry.indices;
+                if (idxList.length > 1) {
+                  if (delta > 0) {
+                    const saved = this.playingDeck[idxList[0]];
+                    for (let k = 0; k < idxList.length - 1; k++) this.playingDeck[idxList[k]] = this.playingDeck[idxList[k + 1]];
+                    this.playingDeck[idxList[idxList.length - 1]] = saved;
+                  } else {
+                    const saved = this.playingDeck[idxList[idxList.length - 1]];
+                    for (let k = idxList.length - 1; k > 0; k--) this.playingDeck[idxList[k]] = this.playingDeck[idxList[k - 1]];
+                    this.playingDeck[idxList[0]] = saved;
+                  }
+                }
+                this.saveWorldData(this.draftAppearance);
+                this.renderBinderModal();
+              }
+            } : null;
+            this.attachTradCardLongPress(slot.querySelector('.binder-trad-art-wrap'), { ...c, condition: topCondition }, null, stackCtx);
             slot.querySelector('.to-binder')?.addEventListener('click', (ev) => {
               ev.stopPropagation();
-              this.removeCardFromPlayingDeck(entry.lastIndex, 'binder');
-              this.showFolioToast(`📖 Returned <b>${c.name}</b> to your Card Binder.`);
+              this.removeCardFromPlayingDeck(entry.indices[0], 'binder');
+              this.showFolioToast(`📖 Returned top <b>${c.name}</b> to your Card Binder.`);
             });
             deckTrayEl.appendChild(slot);
           });
@@ -14023,6 +15345,39 @@
       });
 
       if (gridEl) {
+        const mgsPickSlot = (this._mgsBinderPickTargetSlot !== null && this._mgsBinderPickTargetSlot !== undefined)
+          ? this._mgsBinderPickTargetSlot
+          : null;
+        let pickBanner = document.getElementById('binder-mgs-pick-banner');
+        if (mgsPickSlot !== null) {
+          if (!pickBanner && gridEl.parentElement) {
+            pickBanner = document.createElement('div');
+            pickBanner.id = 'binder-mgs-pick-banner';
+            pickBanner.className = 'binder-mgs-pick-banner';
+            gridEl.parentElement.insertBefore(pickBanner, gridEl);
+          }
+          if (pickBanner) {
+            pickBanner.innerHTML = `
+              <div>
+                <strong>📥 Mike's Drop-off Tray — Select Card for Slot #${mgsPickSlot + 1}</strong>
+                <div style="font-size:11.5px;color:#d1fae5;margin-top:2px;">Click <b>Insert Card</b> on any raw card in your Binder. Hold-click a stack &amp; use ◀ ▶ to choose a specific copy.</div>
+              </div>
+              <button type="button" class="ui-btn shop-shelf-btn" id="btn-binder-cancel-mgs-pick">← Back to Drop-off Tray</button>
+            `;
+            pickBanner.querySelector('#btn-binder-cancel-mgs-pick')?.addEventListener('click', (ev) => {
+              ev.stopPropagation();
+              this.cancelBinderForGradingDropoff();
+            });
+          }
+        } else if (pickBanner) {
+          pickBanner.remove();
+        }
+
+        if (mgsPickSlot !== null) this.syncGradingDropoffSlotKeys?.();
+        const usedDropoffKeys = mgsPickSlot !== null
+          ? new Set((this._gradingDropoffSlots || []).filter(Boolean))
+          : null;
+
         const pageStart = currentPage * pageSize;
         const pageEntries = entries.slice(pageStart, pageStart + pageSize);
         gridEl.innerHTML = '';
@@ -14045,27 +15400,88 @@
             const isAnim = Boolean(card.isAnimatedSpecial || gwentDef?.isAnimatedSpecial);
             const binderCardImg = this.getCardTraditionalImg(card);
             const displayName = (card.shortName || card.name || '').replace(/\s*\(Mythos Card\)$/i, '');
+            const CG = window.MythosCardGrading;
+            const slotCopies = this.ensureSlotCopies(card) || [];
+            const topCopy = slotCopies[0] || null;
+            const imgStyle = '';
+            const defectHtml = CG?.renderConditionOverlayHtml ? CG.renderConditionOverlayHtml(topCopy, { compact: true, showDefects: false }) : '';
+            const topIsSlab = Boolean(topCopy?.isGraded);
+
+            let actionBtnHtml = `<button type="button" class="binder-xfer-btn to-deck" style="flex:1;" title="${topIsSlab ? 'Top card is slabbed — hold-click & cycle to a raw card or crack at Mike\'s' : `Move top copy to Playing Deck (+${stars}★)`}">${topIsSlab ? '🔒 Slab Top' : '+🃏 Deck'}</button>`;
+            let pickCopyIdx = null;
+            let pickState = 'deck';
+
+            if (mgsPickSlot !== null && usedDropoffKeys) {
+              const topKey = `binder:${i}:0`;
+              if (!usedDropoffKeys.has(topKey)) {
+                if (topIsSlab) {
+                  pickState = 'slab_top';
+                  actionBtnHtml = `<button type="button" class="binder-xfer-btn to-deck" style="flex:1;" title="Top card is already graded — hold-click to cycle stack">🔒 Slab Top</button>`;
+                } else {
+                  pickState = 'insert';
+                  pickCopyIdx = 0;
+                  actionBtnHtml = `<button type="button" class="binder-xfer-btn to-mgs-tray" style="flex:1;">📥 Insert Card</button>`;
+                }
+              } else {
+                const nextIdx = slotCopies.findIndex((c, ci) => ci > 0 && !c?.isGraded && !usedDropoffKeys.has(`binder:${i}:${ci}`));
+                if (nextIdx !== -1) {
+                  pickState = 'insert';
+                  pickCopyIdx = nextIdx;
+                  actionBtnHtml = `<button type="button" class="binder-xfer-btn to-mgs-tray" style="flex:1;">📥 Insert Copy #${nextIdx + 1}</button>`;
+                } else {
+                  pickState = 'used';
+                  actionBtnHtml = `<button type="button" class="binder-xfer-btn" style="flex:1;opacity:0.55;cursor:not-allowed;" disabled>✓ In Tray</button>`;
+                }
+              }
+            }
 
             slotEl.className = `binder-trad-slot${isAnim ? ' is-animated-special' : ''}`;
             slotEl.setAttribute('draggable', 'false');
             slotEl.innerHTML = `
-              <div class="binder-trad-art-wrap" draggable="false">
-                <img src="${binderCardImg}" alt="${displayName}" class="binder-trad-art-img" draggable="false">
+              <div class="binder-trad-art-wrap${slotCopies.length > 1 ? ' is-stacked' : ''}" draggable="false">
+                <img src="${binderCardImg}" alt="${displayName}" class="binder-trad-art-img" style="${imgStyle}" draggable="false">
+                ${defectHtml}
                 <span class="binder-trad-star-badge">${stars}★</span>
                 ${qty > 1 ? `<span class="binder-trad-qty-badge">x${qty}</span>` : ''}
               </div>
               <div class="binder-trad-name" title="${displayName}">${displayName}</div>
               <div class="binder-trad-actions">
-                <button type="button" class="binder-xfer-btn to-deck" style="flex:1;" title="Move 1 copy to Playing Deck (+${stars}★)">+🃏 Deck</button>
+                ${actionBtnHtml}
               </div>
             `;
 
-            this.attachTradCardLongPress(slotEl.querySelector('.binder-trad-art-wrap'), gwentDef, card);
+            const binderStackCtx = slotCopies.length > 1 ? {
+              copies: slotCopies,
+              label: 'Binder Pocket',
+              onStackChanged: () => {
+                this.saveWorldData(this.draftAppearance);
+                this.renderBinderModal();
+                this.renderInventoryModal?.();
+              }
+            } : null;
 
-            slotEl.querySelector('.to-deck')?.addEventListener('click', (ev) => {
+            this.attachTradCardLongPress(
+              slotEl.querySelector('.binder-trad-art-wrap'),
+              gwentDef ? { ...gwentDef, condition: topCopy } : null,
+              { ...card, condition: topCopy },
+              binderStackCtx
+            );
+
+            slotEl.querySelector('.binder-xfer-btn')?.addEventListener('click', (ev) => {
               ev.stopPropagation();
-              if (cleanId) {
-                const res = this.addCardToPlayingDeck(cleanId, 'binder', i);
+              if (pickState === 'insert' && pickCopyIdx !== null) {
+                this.selectBinderCardForGradingDropoff(`binder:${i}:${pickCopyIdx}`);
+                return;
+              }
+              if (pickState === 'slab_top') {
+                const hasRawBehind = slotCopies.some(c => !c?.isGraded);
+                this.showFolioToast(hasRawBehind
+                  ? `🔒 Top card is a Graded Slab! Hold-click the stack &amp; use ◀ ▶ to bring a raw copy to the front first.`
+                  : `🔒 All copies in this pocket are already Graded Slabs.`);
+                return;
+              }
+              if (pickState === 'deck' && cleanId) {
+                const res = this.addCardToPlayingDeck(cleanId, 'binder', i, 0, { strictTopCopy: true });
                 if (res?.message) this.showFolioToast(res.message);
               }
             });
@@ -14281,24 +15697,45 @@
               const stars = Number(gwentDef?.stars ?? item.stars) || 1;
               const isAnim = Boolean(item.isAnimatedSpecial || gwentDef?.isAnimatedSpecial);
               const tradImg = this.getCardTraditionalImg(item);
+              const CG = window.MythosCardGrading;
+              const itemCopies = this.ensureSlotCopies(item) || [];
+              const topCopy = itemCopies[0] || null;
+              const imgStyle = '';
+              const defectHtml = CG?.renderConditionOverlayHtml ? CG.renderConditionOverlayHtml(topCopy, { compact: true, showDefects: false }) : '';
+              const topIsSlab = Boolean(topCopy?.isGraded);
               if (isAnim) slotEl.classList.add('is-animated-special');
               slotEl.innerHTML = `
-                <div class="binder-trad-art-wrap" draggable="false">
-                  <img src="${tradImg}" alt="${displayName}" class="binder-trad-art-img" draggable="false">
+                <div class="binder-trad-art-wrap${itemCopies.length > 1 ? ' is-stacked' : ''}" draggable="false">
+                  <img src="${tradImg}" alt="${displayName}" class="binder-trad-art-img" style="${imgStyle}" draggable="false">
+                  ${defectHtml}
                   <span class="binder-trad-star-badge">${stars}★</span>
                   ${(item.qty || 1) > 1 ? `<span class="binder-trad-qty-badge">x${item.qty}</span>` : ''}
                 </div>
                 <div class="binder-trad-name" title="${displayName}">${displayName}</div>
                 <div class="binder-trad-actions">
-                  <button type="button" class="binder-xfer-btn to-deck" title="Move 1 copy to Playing Deck (+${stars}★)">+🃏 Deck</button>
-                  <button type="button" class="binder-xfer-btn to-binder" title="Put 1 copy into Binder Sleeves">📖 Binder</button>
+                  <button type="button" class="binder-xfer-btn to-deck" title="${topIsSlab ? 'Top card is slabbed — hold-click & cycle to a raw card or crack at Mike\'s' : `Move top copy to Playing Deck (+${stars}★)`}">${topIsSlab ? '🔒 Slab Top' : '+🃏 Deck'}</button>
+                  <button type="button" class="binder-xfer-btn to-binder" title="Put top copy into Binder Sleeves">📖 Binder</button>
                 </div>
               `;
-              this.attachTradCardLongPress(slotEl.querySelector('.binder-trad-art-wrap'), gwentDef, item);
+              const bagStackCtx = itemCopies.length > 1 ? {
+                copies: itemCopies,
+                label: 'Backpack Stack',
+                onStackChanged: () => {
+                  this.saveWorldData(this.draftAppearance);
+                  this.renderBinderModal();
+                  this.renderInventoryModal?.();
+                }
+              } : null;
+              this.attachTradCardLongPress(
+                slotEl.querySelector('.binder-trad-art-wrap'),
+                gwentDef ? { ...gwentDef, condition: topCopy } : null,
+                { ...item, condition: topCopy },
+                bagStackCtx
+              );
               slotEl.querySelector('.to-deck')?.addEventListener('click', (ev) => {
                 ev.stopPropagation();
                 if (cleanId) {
-                  const res = this.addCardToPlayingDeck(cleanId, 'inventory');
+                  const res = this.addCardToPlayingDeck(cleanId, 'inventory', null, 0, { strictTopCopy: true });
                   if (res?.message) this.showFolioToast(res.message);
                 }
               });
@@ -14386,16 +15823,28 @@
         return false;
       }
 
-      // Remove 1 quantity from inventory
+      // Remove top-most copy (copies[0]) from inventory
+      let movedCondition = this.isMythosCardRecord(item)
+        ? (this.ensureSlotCopies(item).shift() || this.createDefaultCardCondition())
+        : null;
+      if (movedCondition) {
+        this.applyCardHandlingWear(movedCondition, item.shortName || item.name, 'transfer', 'none');
+      }
       item.qty -= 1;
       if (item.qty <= 0) {
         this.inventory.splice(invIndex, 1);
       }
 
-      // Stack into existing matching sleeve or slip into empty binder sleeve
+      // Stack into existing matching sleeve (placing on top of stack) or slip into empty binder sleeve
       if (existingSlotIndex !== -1) {
         const existing = this.binderSlots[existingSlotIndex];
-        existing.qty = (existing.qty || 1) + 1;
+        if (movedCondition) {
+          const copies = this.ensureSlotCopies(existing);
+          copies.unshift(movedCondition);
+          existing.qty = copies.length;
+        } else {
+          existing.qty = (existing.qty || 1) + 1;
+        }
         if (!existing.traditionalCardImg) {
           existing.traditionalCardImg = this.getCardTraditionalImg(item) || null;
         }
@@ -14411,7 +15860,8 @@
           qty: 1,
           cardImg: item.cardImg,
           traditionalCardImg: item.traditionalCardImg || window.MythosGwentCards?.CARDS?.[beastId]?.traditionalCardImg || null,
-          desc: item.desc || ''
+          desc: item.desc || '',
+          ...(movedCondition ? { copies: [movedCondition] } : {})
         };
       }
 
@@ -14454,9 +15904,1102 @@
       return counts;
     }
 
-    buildMythosCardRecord(cardId) {
+    cloneCardCondition(cond) {
+      if (!cond || typeof cond !== 'object') return null;
+      return JSON.parse(JSON.stringify(cond));
+    }
+
+    createDefaultCardCondition(seed = null) {
+      if (window.MythosCardGrading?.rollCondition) {
+        return window.MythosCardGrading.rollCondition(seed);
+      }
+      return {
+        seed: Number.isFinite(seed) ? (seed >>> 0) : (Math.floor(Math.random() * 0x7fffffff) + 1),
+        isGraded: false,
+        grade: null,
+        subgrades: null,
+        defects: null
+      };
+    }
+
+    applyCardHandlingWear(condition, cardName = 'Card', context = 'transfer', protectionOverride = null) {
+      const CG = window.MythosCardGrading;
+      if (!CG?.applyWear || !condition) return { damaged: false, condition };
+      const prot = protectionOverride !== null
+        ? protectionOverride
+        : (condition.sleeveTier && condition.sleeveTier !== 'none' ? condition.sleeveTier : (this.deckSleeveTier || 'none'));
+      const res = CG.applyWear(condition, context, prot);
+      if (res?.damaged && res.summary) {
+        const cleanName = String(cardName || 'Card').replace(/\s*\(Mythos Card\)$/i, '');
+        const msg = `⚠️ <b>${cleanName}</b> picked up <b>${res.summary}</b>!`;
+        if (document.getElementById('binder-modal') && !document.getElementById('binder-modal').classList.contains('hidden')) {
+          this.showFolioToast?.(msg);
+        } else {
+          this.showAutosaveIndicator?.(msg);
+        }
+      }
+      return res;
+    }
+
+    applyOvernightInventoryWear() {
+      const CG = window.MythosCardGrading;
+      if (!CG?.applyWear || !Array.isArray(this.inventory)) return [];
+      const noted = [];
+      for (const item of this.inventory) {
+        if (!this.isMythosCardRecord(item)) continue;
+        const copies = this.ensureSlotCopies(item);
+        if (!copies) continue;
+        for (const copy of copies) {
+          const res = CG.applyWear(copy, 'loose_overnight', copy.sleeveTier || 'none');
+          if (res?.damaged) {
+            noted.push((item.shortName || item.name || 'Card').replace(/\s*\(Mythos Card\)$/i, ''));
+          }
+        }
+      }
+      return noted;
+    }
+
+    getSleeveSpec(sleeveTier) {
+      if (sleeveTier === 'pro_sleeve') {
+        return {
+          id: 'item_pro_matte_sleeve',
+          name: 'Pro Matte Sleeves',
+          shortName: 'Pro Matte',
+          icon: '✨',
+          sleeveTier: 'pro_sleeve',
+          desc: 'Tournament-grade Pro Matte Sleeves. Slip onto any raw card to cut transfer, overnight, and duel wear by 95%.'
+        };
+      }
+      return {
+        id: 'item_pro_sleeve',
+        name: 'Pro Sleeves',
+        shortName: 'Pro Sleeves',
+        icon: '🛡️',
+        sleeveTier: 'clear_sleeve',
+        desc: 'Protective Pro Sleeves. Slip onto any raw card to cut transfer, overnight, and duel wear by 75%.'
+      };
+    }
+
+    addSleeveItemToInventory(sleeveTier, qty = 1) {
+      const spec = this.getSleeveSpec(sleeveTier);
+      const existing = (this.inventory || []).find(i => i && (i.id === spec.id || (i.type === 'card_sleeve' && i.sleeveTier === spec.sleeveTier)));
+      if (existing) {
+        existing.qty = (Number(existing.qty) || 0) + qty;
+      } else {
+        this.inventory.push(this.wrapReactiveItem({
+          id: spec.id,
+          name: spec.name,
+          shortName: spec.shortName,
+          icon: spec.icon,
+          type: 'card_sleeve',
+          sleeveTier: spec.sleeveTier,
+          qty,
+          desc: spec.desc
+        }));
+      }
+    }
+
+    getInventorySleeveCount(sleeveTier) {
+      const spec = this.getSleeveSpec(sleeveTier);
+      const found = (this.inventory || []).find(i => i && (i.id === spec.id || (i.type === 'card_sleeve' && i.sleeveTier === spec.sleeveTier)));
+      return Number(found?.qty) || 0;
+    }
+
+    buyCardSleeveItem(sleeveTier, qty, totalCost) {
+      if (!(qty > 0) || !(totalCost > 0)) return false;
+      if ((this.gold || 0) < totalCost) {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        return false;
+      }
+      const spec = this.getSleeveSpec(sleeveTier);
+      this.gold = Math.round(((this.gold || 0) - totalCost) * 100) / 100;
+      this.addSleeveItemToInventory(spec.sleeveTier, qty);
+      if (window.sounds?.playVictory) window.sounds.playVictory();
+      else if (window.sounds?.playClick) window.sounds.playClick();
+      this.saveWorldData(this.draftAppearance);
+      this.updateHUDSaveInfo();
+      this.renderInventoryModal();
+      this.renderShopModal();
+      this.renderGradingModal();
+      this.renderMikeSleeveShopModal?.();
+      const msg = `${spec.icon} Bought <b>${qty}× ${spec.name}</b> — added to Backpack!`;
+      this.showAutosaveIndicator?.(msg);
+      const footerMsg = document.getElementById('shop-footer-msg');
+      if (footerMsg) {
+        footerMsg.innerHTML = msg;
+        footerMsg.className = 'shop-footer-hint highlight';
+      }
+      return true;
+    }
+
+    applyInventorySleeveToCondition(sleeveTier, cond, cardName = 'Card') {
+      if (!cond || cond.isGraded) return false;
+      const spec = this.getSleeveSpec(sleeveTier);
+      const idx = (this.inventory || []).findIndex(i => i && (i.id === spec.id || (i.type === 'card_sleeve' && i.sleeveTier === spec.sleeveTier)));
+      if (idx === -1 || (Number(this.inventory[idx].qty) || 0) < 1) {
+        this.showAutosaveIndicator?.(`Need a ${spec.name} in your Backpack first!`);
+        return false;
+      }
+      if (cond.sleeveTier === spec.sleeveTier) return false;
+      if (cond.sleeveTier === 'pro_sleeve' && spec.sleeveTier === 'clear_sleeve') {
+        this.showAutosaveIndicator?.('That card already has superior Pro Matte Sleeves!');
+        return false;
+      }
+      // Refund 1 Pro Sleeve if upgrading a card from Pro Sleeve to Pro Matte
+      if (cond.sleeveTier === 'clear_sleeve' && spec.sleeveTier === 'pro_sleeve') {
+        this.addSleeveItemToInventory('clear_sleeve', 1);
+      }
+      this.inventory[idx].qty -= 1;
+      if (this.inventory[idx].qty <= 0) {
+        this.inventory.splice(idx, 1);
+      }
+      cond.sleeveTier = spec.sleeveTier;
+      if (window.sounds?.playVictory) window.sounds.playVictory();
+      else if (window.sounds?.playClick) window.sounds.playClick();
+      this.saveWorldData(this.draftAppearance);
+      this.renderInventoryModal();
+      this.renderBinderModal();
+      this.renderPlayingDeckModal?.();
+      this.renderGradingModal();
+      this.showAutosaveIndicator?.(`${spec.icon} Slipped <b>${spec.name}</b> onto <b>${cardName}</b>!`);
+      return true;
+    }
+
+    openSleevePickerModal(sleeveTier) {
+      const spec = this.getSleeveSpec(sleeveTier);
+      let modal = document.getElementById('sleeve-picker-modal');
+      if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'sleeve-picker-modal';
+        modal.className = 'modal-overlay hidden';
+        modal.innerHTML = `
+          <div class="sleeve-picker-dialog">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;border-bottom:1px solid rgba(212,175,55,0.28);padding-bottom:8px;">
+              <div>
+                <h3 id="sleeve-picker-title" style="margin:0;color:#fde68a;font-size:16px;font-weight:900;">🛡️ Put Sleeve on a Card</h3>
+                <div id="sleeve-picker-sub" style="font-size:11.5px;color:#cbd5e1;margin-top:2px;"></div>
+              </div>
+              <button type="button" id="btn-sleeve-picker-close" class="apparel-close-btn" aria-label="Close">✕</button>
+            </div>
+            <div class="sleeve-picker-list" id="sleeve-picker-list"></div>
+          </div>
+        `;
+        document.body.appendChild(modal);
+        document.getElementById('btn-sleeve-picker-close')?.addEventListener('click', () => modal.classList.add('hidden'));
+        modal.addEventListener('click', (e) => {
+          if (e.target === modal) modal.classList.add('hidden');
+        });
+      }
+
+      const renderList = () => {
+        const owned = this.getInventorySleeveCount(spec.sleeveTier);
+        const titleEl = document.getElementById('sleeve-picker-title');
+        const subEl = document.getElementById('sleeve-picker-sub');
+        const listEl = document.getElementById('sleeve-picker-list');
+        if (titleEl) titleEl.textContent = `${spec.icon} Apply ${spec.name} (${owned} in Bag)`;
+        if (subEl) subEl.textContent = owned > 0
+          ? `Select any raw card in your Playing Deck, Binder, or Backpack to protect it.`
+          : `Out of ${spec.name}! Buy more at Leo's Card Shop or Mike's Card Grading.`;
+        if (!listEl) return;
+        listEl.innerHTML = '';
+
+        const reg = window.MythosGwentCards?.CARDS || {};
+        const candidates = [];
+        (this.playingDeck || []).forEach((entry, idx) => {
+          const cid = this.getDeckCardId(entry);
+          const def = reg[cid];
+          if (!def || def.isToken || !entry.condition || entry.condition.isGraded) return;
+          candidates.push({ loc: `⚔️ Playing Deck #${idx + 1}`, def, cond: entry.condition });
+        });
+        (this.binderSlots || []).forEach(slot => {
+          if (!this.isMythosCardRecord(slot)) return;
+          const cid = String(slot.beastId || slot.id || '').replace(/^card_/, '');
+          const def = reg[cid];
+          if (!def || def.isToken) return;
+          (this.ensureSlotCopies(slot) || []).forEach(c => {
+            if (!c.isGraded) candidates.push({ loc: '📖 Binder', def, cond: c });
+          });
+        });
+        (this.inventory || []).forEach(item => {
+          if (!this.isMythosCardRecord(item)) return;
+          const cid = String(item.beastId || item.id || '').replace(/^card_/, '');
+          const def = reg[cid];
+          if (!def || def.isToken) return;
+          (this.ensureSlotCopies(item) || []).forEach(c => {
+            if (!c.isGraded) candidates.push({ loc: '🎒 Backpack', def, cond: c });
+          });
+        });
+
+        const eligible = candidates.filter(x => {
+          const cur = x.cond.sleeveTier || 'none';
+          if (cur === spec.sleeveTier) return false;
+          if (cur === 'pro_sleeve' && spec.sleeveTier === 'clear_sleeve') return false;
+          return true;
+        });
+
+        if (eligible.length === 0 || owned <= 0) {
+          listEl.innerHTML = `<div style="padding:18px;text-align:center;color:#94a3b8;font-size:12px;">${owned <= 0 ? `No ${spec.name} left in your Backpack.` : 'All raw cards already have equal or better sleeves!'}</div>`;
+          return;
+        }
+
+        eligible.forEach(entry => {
+          const row = document.createElement('button');
+          row.type = 'button';
+          row.className = 'grading-item-row';
+          const curBadge = entry.cond.sleeveTier === 'clear_sleeve' ? ' • Upgrading 🛡️ → ✨' : '';
+          row.innerHTML = `
+            <img src="${this.getCardTraditionalImg(entry.def)}" alt="${entry.def.name}" class="grading-row-thumb">
+            <div class="grading-row-info">
+              <div class="grading-row-name">${entry.def.name}</div>
+              <div class="grading-row-sub">${entry.loc}${curBadge}</div>
+            </div>
+            <span class="grading-row-badge raw">Sleeve</span>
+          `;
+          row.addEventListener('click', () => {
+            if (this.applyInventorySleeveToCondition(spec.sleeveTier, entry.cond, entry.def.name)) {
+              if (this.getInventorySleeveCount(spec.sleeveTier) <= 0) {
+                modal.classList.add('hidden');
+              } else {
+                renderList();
+              }
+            }
+          });
+          listEl.appendChild(row);
+        });
+      };
+
+      renderList();
+      modal.classList.remove('hidden');
+    }
+
+    openMikeSleeveShopModal() {
+      let modal = document.getElementById('mike-sleeve-shop-modal');
+      if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'mike-sleeve-shop-modal';
+        modal.className = 'modal-overlay hidden';
+        modal.innerHTML = `
+          <div class="sleeve-picker-dialog" style="max-width:520px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;border-bottom:1px solid rgba(212,175,55,0.28);padding-bottom:8px;">
+              <div>
+                <h3 style="margin:0;color:#fde68a;font-size:16px;font-weight:900;">🛡️ Mike's Archival Sleeves</h3>
+                <div id="mike-sleeve-shop-sub" style="font-size:11.5px;color:#cbd5e1;margin-top:2px;">Sleeves go straight into your Backpack to slip onto any raw card.</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span id="mike-sleeve-wallet-pill" class="apparel-wallet-pill">💰 $0.00</span>
+                <button type="button" id="btn-mike-sleeve-close" class="apparel-close-btn" aria-label="Close">✕</button>
+              </div>
+            </div>
+            <div class="shop-grading-shelf" style="margin-top:4px;padding-top:4px;border-top:none;">
+              <button type="button" class="ui-btn shop-shelf-btn" id="btn-mike-buy-pro-1">🛡️ Pro Sleeve ×1 • $0.50</button>
+              <button type="button" class="ui-btn shop-shelf-btn" id="btn-mike-buy-pro-5">🛡️ Pro Sleeves ×5 • $2.00</button>
+              <button type="button" class="ui-btn shop-shelf-btn" id="btn-mike-buy-matte-1">✨ Pro Matte ×1 • $1.00</button>
+              <button type="button" class="ui-btn shop-shelf-btn" id="btn-mike-buy-matte-5">✨ Pro Matte ×5 • $4.00</button>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(modal);
+        document.getElementById('btn-mike-sleeve-close')?.addEventListener('click', () => modal.classList.add('hidden'));
+        modal.addEventListener('click', (e) => { if (e.target === modal) modal.classList.add('hidden'); });
+        document.getElementById('btn-mike-buy-pro-1')?.addEventListener('click', () => this.buyCardSleeveItem('clear_sleeve', 1, 0.50));
+        document.getElementById('btn-mike-buy-pro-5')?.addEventListener('click', () => this.buyCardSleeveItem('clear_sleeve', 5, 2.00));
+        document.getElementById('btn-mike-buy-matte-1')?.addEventListener('click', () => this.buyCardSleeveItem('pro_sleeve', 1, 1.00));
+        document.getElementById('btn-mike-buy-matte-5')?.addEventListener('click', () => this.buyCardSleeveItem('pro_sleeve', 5, 4.00));
+      }
+      this.renderMikeSleeveShopModal();
+      modal.classList.remove('hidden');
+    }
+
+    renderMikeSleeveShopModal() {
+      const modal = document.getElementById('mike-sleeve-shop-modal');
+      if (!modal) return;
+      const g = this.gold || 0;
+      const w = document.getElementById('mike-sleeve-wallet-pill');
+      if (w) w.textContent = `💰 ${this.formatMoney(g)}`;
+      const sub = document.getElementById('mike-sleeve-shop-sub');
+      if (sub) {
+        sub.textContent = `In Bag: 🛡️ Pro Sleeves (${this.getInventorySleeveCount('clear_sleeve')}) • ✨ Pro Matte (${this.getInventorySleeveCount('pro_sleeve')})`;
+      }
+      const p1 = document.getElementById('btn-mike-buy-pro-1');
+      const p5 = document.getElementById('btn-mike-buy-pro-5');
+      const m1 = document.getElementById('btn-mike-buy-matte-1');
+      const m5 = document.getElementById('btn-mike-buy-matte-5');
+      if (p1) p1.disabled = g < 0.50;
+      if (p5) p5.disabled = g < 2.00;
+      if (m1) m1.disabled = g < 1.00;
+      if (m5) m5.disabled = g < 4.00;
+    }
+
+    openGradingModal(initialTab = null) {
+      this.syncMgsStatuses?.(false);
+      this.ensureGradingModal();
+      this._gradingSelectedRawKey = this._gradingSelectedRawKey || null;
+      this._gradingSelectedGradedKey = this._gradingSelectedGradedKey || null;
+      if (!this._gradingDropoffSelection) this._gradingDropoffSelection = new Set();
+      this.ensureGradingDropoffSlots();
+
+      if (initialTab === 'dropoff' || initialTab === 'grading' || initialTab === 'graded' || initialTab === 'pickup') {
+        this._gradingActiveTab = initialTab;
+      } else {
+        const hasReady = (this.mgsOrders || []).some(o => o && o.status === 'ready_pickup');
+        const hasActiveWin = Boolean(this.getActiveMgsAppointmentNow?.());
+        const hasInGrading = (this.mgsOrders || []).some(o => o && o.status === 'grading');
+        const hasSlabs = this._collectGradableCardCopies().some(x => x.cond?.isGraded);
+        if (hasReady) this._gradingActiveTab = 'pickup';
+        else if (hasActiveWin) this._gradingActiveTab = 'dropoff';
+        else if (hasInGrading) this._gradingActiveTab = 'grading';
+        else if (hasSlabs) this._gradingActiveTab = 'graded';
+        else this._gradingActiveTab = 'dropoff';
+      }
+
+      this.renderGradingModal();
+      document.getElementById('grading-modal')?.classList.remove('hidden');
+    }
+
+    closeGradingModal() {
+      document.getElementById('grading-modal')?.classList.add('hidden');
+    }
+
+    ensureGradingModal() {
+      if (document.getElementById('grading-modal')) return;
+      const modal = document.createElement('div');
+      modal.id = 'grading-modal';
+      modal.className = 'modal-overlay hidden';
+      modal.innerHTML = `
+        <div class="grading-modal-dialog">
+          <div class="grading-header">
+            <div>
+              <h2 class="grading-title">🏆 MGS — MIKE'S GRADING SCALE</h2>
+              <p class="grading-sub">Drop off cards in your scheduled window ($2 / $3 / $6 per card), track bench progress, read grade reports, or pick up finished cards</p>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <span id="grading-wallet-pill" class="apparel-wallet-pill">💰 $0.00</span>
+              <button type="button" id="btn-grading-close" class="apparel-close-btn" aria-label="Close Grading Counter">✕</button>
+            </div>
+          </div>
+          <div class="grading-counter-tabs" role="tablist">
+            <button type="button" class="grading-counter-tab" id="btn-grading-tab-dropoff" role="tab">📥 Drop-off Tray <span class="grading-tab-pill" id="grading-tab-badge-dropoff">CLOSED</span></button>
+            <button type="button" class="grading-counter-tab" id="btn-grading-tab-grading" role="tab">📊 Currently Grading <span class="grading-tab-pill" id="grading-tab-count-grading">0</span></button>
+            <button type="button" class="grading-counter-tab" id="btn-grading-tab-graded" role="tab">🏆 Graded Card Reports <span class="grading-tab-pill" id="grading-tab-count-graded">0</span></button>
+            <button type="button" class="grading-counter-tab" id="btn-grading-tab-pickup" role="tab">📦 Pick-up Tray <span class="grading-tab-pill" id="grading-tab-count-pickup">0</span></button>
+          </div>
+          <div class="grading-screen-body" id="grading-screen-body"></div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+      document.getElementById('btn-grading-close')?.addEventListener('click', () => this.closeGradingModal());
+      document.getElementById('btn-grading-tab-dropoff')?.addEventListener('click', () => {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        this._gradingActiveTab = 'dropoff';
+        this.renderGradingModal();
+      });
+      document.getElementById('btn-grading-tab-grading')?.addEventListener('click', () => {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        this._gradingActiveTab = 'grading';
+        this.renderGradingModal();
+      });
+      document.getElementById('btn-grading-tab-graded')?.addEventListener('click', () => {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        this._gradingActiveTab = 'graded';
+        this.renderGradingModal();
+      });
+      document.getElementById('btn-grading-tab-pickup')?.addEventListener('click', () => {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        this._gradingActiveTab = 'pickup';
+        this.renderGradingModal();
+      });
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) this.closeGradingModal();
+      });
+    }
+
+    _collectGradableCardCopies() {
+      const reg = window.MythosGwentCards?.CARDS || {};
+      const list = [];
+      const addFromHolder = (source, holderIdx, holder) => {
+        if (!this.isMythosCardRecord(holder)) return;
+        const cleanId = String(holder.beastId || holder.id || '').replace(/^card_/, '');
+        const def = reg[cleanId];
+        if (!def || def.isToken) return;
+        const copies = this.ensureSlotCopies(holder) || [];
+        copies.forEach((cond, copyIdx) => {
+          list.push({
+            key: `${source}:${holderIdx}:${copyIdx}`,
+            source,
+            holderIdx,
+            copyIdx,
+            cleanId,
+            def,
+            holder,
+            cond
+          });
+        });
+      };
+      (this.binderSlots || []).forEach((s, idx) => s && addFromHolder('binder', idx, s));
+      (this.inventory || []).forEach((i, idx) => i && addFromHolder('inventory', idx, i));
+      return list;
+    }
+
+    renderGradingModal() {
+      const modal = document.getElementById('grading-modal');
+      if (!modal) return;
+      this.syncMgsStatuses?.(false);
+
+      const CG = window.MythosCardGrading;
+      const walletEl = document.getElementById('grading-wallet-pill');
+      if (walletEl) walletEl.textContent = `💰 ${this.formatMoney(this.gold || 0)}`;
+
+      const goldNow = this.gold || 0;
+
+      const allItems = this._collectGradableCardCopies();
+      const rawItems = allItems.filter(x => !x.cond?.isGraded);
+      const gradedItems = allItems.filter(x => Boolean(x.cond?.isGraded)).sort((a, b) => (Number(b.cond?.grade) || 0) - (Number(a.cond?.grade) || 0));
+      const gradingOrders = (this.mgsOrders || []).filter(o => o && o.status === 'grading');
+      const readyOrders = (this.mgsOrders || []).filter(o => o && o.status === 'ready_pickup');
+      const activeWin = this.getActiveMgsAppointmentNow?.() || null;
+
+      const tab = this._gradingActiveTab || 'dropoff';
+      document.getElementById('btn-grading-tab-dropoff')?.classList.toggle('active', tab === 'dropoff');
+      document.getElementById('btn-grading-tab-grading')?.classList.toggle('active', tab === 'grading');
+      document.getElementById('btn-grading-tab-graded')?.classList.toggle('active', tab === 'graded');
+      document.getElementById('btn-grading-tab-pickup')?.classList.toggle('active', tab === 'pickup');
+
+      const bDropoff = document.getElementById('grading-tab-badge-dropoff');
+      const cGrading = document.getElementById('grading-tab-count-grading');
+      const cGraded = document.getElementById('grading-tab-count-graded');
+      const cPickup = document.getElementById('grading-tab-count-pickup');
+      if (bDropoff) {
+        bDropoff.textContent = activeWin ? 'OPEN' : 'CLOSED';
+        bDropoff.classList.toggle('is-open', Boolean(activeWin));
+      }
+      if (cGrading) cGrading.textContent = `${gradingOrders.length}`;
+      if (cGraded) cGraded.textContent = `${gradedItems.length}`;
+      if (cPickup) {
+        cPickup.textContent = `${readyOrders.length}`;
+        cPickup.classList.toggle('is-alert', readyOrders.length > 0);
+      }
+
+      const body = document.getElementById('grading-screen-body');
+      if (!body) return;
+      body.innerHTML = '';
+
+      const nowTotal = this.getTotalGameMinutes ? this.getTotalGameMinutes() : 0;
+      const catalog = this.getMythosPackCatalog ? this.getMythosPackCatalog() : [];
+      const findOrderImg = (cardId) => {
+        const clean = String(cardId || '').replace(/^card_/, '');
+        const cardDef = window.MythosGwentCards?.CARDS?.[clean] || catalog.find(c => c.beastId === clean);
+        return cardDef && this.getCardTraditionalImg ? this.getCardTraditionalImg(cardDef) : 'Cards/Argo_The_MerKing_Traditional.jpg';
+      };
+
+      // ================================================================
+      // TAB 2: LARGE "CURRENTLY GRADING" BENCH STATUS SCREEN
+      // ================================================================
+      if (tab === 'grading') {
+        const banner = document.createElement('div');
+        banner.className = `grading-status-banner ${gradingOrders.length > 0 ? 'is-open' : ''}`;
+        banner.innerHTML = `
+          <div>
+            <strong>📊 Currently Grading — ${gradingOrders.length} Card${gradingOrders.length === 1 ? '' : 's'} on Bench</strong>
+            <div style="font-size:11.5px;color:#cbd5e1;margin-top:2px;">Current time: ${this.getMgsDayLabel(this.dayNumber || 1)}${this.getClockText ? ' • ' + this.getClockText() : ''}. Completed cards move to the <b>Pick-up Tray</b>.</div>
+          </div>
+          <button type="button" class="ui-btn shop-shelf-btn" id="btn-grading-go-dropoff">📥 Drop-off Tray</button>
+        `;
+        body.appendChild(banner);
+        banner.querySelector('#btn-grading-go-dropoff')?.addEventListener('click', () => {
+          this._gradingActiveTab = 'dropoff';
+          this.renderGradingModal();
+        });
+
+        if (gradingOrders.length === 0) {
+          const empty = document.createElement('div');
+          empty.className = 'grading-empty-panel';
+          empty.innerHTML = `
+            <div style="font-size:32px;">🔍</div>
+            <div style="font-size:15px;font-weight:900;color:#fde68a;">Mike's Grading Bench Is Clear</div>
+            <div style="font-size:12.5px;color:#cbbba6;max-width:440px;">Book a drop-off window on your phone's <b>MGS App</b>, then visit during that window to place raw cards in the <b>Drop-off Tray</b>.</div>
+            <button type="button" class="ui-btn primary-btn" id="btn-grading-empty-sched">📥 Go to Drop-off Tray</button>
+          `;
+          body.appendChild(empty);
+          empty.querySelector('#btn-grading-empty-sched')?.addEventListener('click', () => {
+            this._gradingActiveTab = 'dropoff';
+            this.renderGradingModal();
+          });
+          return;
+        }
+
+        const list = document.createElement('div');
+        list.className = 'grading-bench-list';
+        gradingOrders.forEach(order => {
+          const start = Number(order.submittedAtMin) || 0;
+          const end = Math.max(start + 60, Number(order.readyAtMin) || (start + 2880));
+          const rawPct = ((nowTotal - start) / (end - start)) * 100;
+          const approxPct = Math.max(10, Math.min(95, Math.round(rawPct / 5) * 5));
+          const remHours = Math.max(1, Math.ceil((end - nowTotal) / 60));
+
+          let stageIdx = 0;
+          let stageLabel = '📥 Logged & Queued';
+          if (approxPct >= 75) { stageIdx = 3; stageLabel = '🔒 Ready for Finish'; }
+          else if (approxPct >= 50) { stageIdx = 2; stageLabel = '⚖️ Sub-Grade Audit'; }
+          else if (approxPct >= 25) { stageIdx = 1; stageLabel = '🔍 Loupe & Light'; }
+
+          const tierDef = this.getMgsServiceTierDef(order.serviceTier || 'standard');
+          const hurryLabel = order.serviceTierLabel || `${tierDef.icon} ${tierDef.label}`;
+          const trend = this.getMgsGradeTrendHint(order, approxPct);
+
+          const card = document.createElement('div');
+          card.className = 'grading-bench-card';
+          card.innerHTML = `
+            <div class="grading-bench-top">
+              <img src="${findOrderImg(order.cardId)}" alt="${order.cardName}" class="grading-bench-thumb">
+              <div style="flex:1;min-width:0;">
+                <div class="grading-bench-title">${order.cardName || 'Mythos Card'}</div>
+                <div class="grading-bench-meta-row">
+                  <span class="grading-bench-pill">📅 Drop-Off: ${order.submittedDayLabel || 'MGS Counter'}</span>
+                  <span class="grading-bench-pill is-hurry">Hurry: ${hurryLabel}</span>
+                  <span class="grading-bench-pill trend-${trend.tone}">${trend.icon} ${trend.label}</span>
+                </div>
+              </div>
+              <div class="grading-bench-pct">~${approxPct}%<small>~${remHours} hr${remHours > 1 ? 's' : ''} left</small></div>
+            </div>
+            <div class="mgs-progress-track" style="height:10px;">
+              <div class="mgs-progress-fill" style="width:${approxPct}%;"></div>
+            </div>
+            <div class="grading-pipeline">
+              <span class="grading-pipe-step ${stageIdx >= 0 ? 'done' : ''} ${stageIdx === 0 ? 'current' : ''}">1. Logged</span>
+              <span class="grading-pipe-step ${stageIdx >= 1 ? 'done' : ''} ${stageIdx === 1 ? 'current' : ''}">2. Loupe &amp; Light</span>
+              <span class="grading-pipe-step ${stageIdx >= 2 ? 'done' : ''} ${stageIdx === 2 ? 'current' : ''}">3. Sub-Grade Audit</span>
+              <span class="grading-pipe-step ${stageIdx >= 3 ? 'done' : ''} ${stageIdx === 3 ? 'current' : ''}">4. Finishing</span>
+              <span style="margin-left:auto;color:#fde68a;font-weight:800;">${stageLabel}</span>
+            </div>
+          `;
+          list.appendChild(card);
+        });
+        body.appendChild(list);
+        return;
+      }
+
+      // ================================================================
+      // TAB 3: LARGE "GRADED CARD REPORTS" SCREEN
+      // ================================================================
+      if (tab === 'graded') {
+        if (readyOrders.length > 0) {
+          const jumpBanner = document.createElement('div');
+          jumpBanner.className = 'grading-status-banner is-open';
+          jumpBanner.innerHTML = `
+            <div>
+              <strong>📦 ${readyOrders.length} Finished Card${readyOrders.length === 1 ? '' : 's'} Waiting in the Pick-up Tray</strong>
+              <div style="font-size:11.5px;color:#d1fae5;margin-top:2px;">Choose whether to seal each finished card in an MGS Slab or sleeve it raw before adding it to your collection.</div>
+            </div>
+            <button type="button" class="ui-btn primary-btn" id="btn-graded-go-pickup">📦 Open Pick-up Tray</button>
+          `;
+          body.appendChild(jumpBanner);
+          jumpBanner.querySelector('#btn-graded-go-pickup')?.addEventListener('click', () => {
+            this._gradingActiveTab = 'pickup';
+            this.renderGradingModal();
+          });
+        }
+
+        if (gradedItems.length === 0) {
+          const empty = document.createElement('div');
+          empty.className = 'grading-empty-panel';
+          empty.innerHTML = `
+            <div style="font-size:32px;">🏆</div>
+            <div style="font-size:15px;font-weight:900;color:#fde68a;">No Graded MGS Slabs in Collection Yet</div>
+            <div style="font-size:12.5px;color:#cbbba6;max-width:440px;">Once your cards finish grading and you choose <b>Slab It</b> in the <b>Pick-up Tray</b>, select any slabbed card here to inspect why it earned its score.</div>
+          `;
+          body.appendChild(empty);
+          return;
+        }
+
+        if (!this._gradingSelectedGradedKey || !gradedItems.some(x => x.key === this._gradingSelectedGradedKey)) {
+          this._gradingSelectedGradedKey = gradedItems[0].key;
+        }
+        const selected = gradedItems.find(x => x.key === this._gradingSelectedGradedKey) || gradedItems[0];
+
+        const split = document.createElement('div');
+        split.className = 'grading-graded-split';
+        split.innerHTML = `
+          <div class="grading-report-pane" id="grading-graded-report-pane">
+            <div class="grading-report-top">
+              <div class="grading-tilt-stage" id="grading-tilt-stage" style="width:190px;flex-shrink:0;">
+                <div class="grading-card-frame" id="grading-card-frame"></div>
+              </div>
+              <div class="grading-report-summary" id="grading-report-summary"></div>
+            </div>
+            <div class="grading-report-box" id="grading-report-box"></div>
+            <div id="grading-graded-actions"></div>
+          </div>
+          <div class="grading-list-col">
+            <div style="font-size:11.5px;font-weight:800;color:#fde68a;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.4px;">Your Graded Slabs (${gradedItems.length})</div>
+            <div class="grading-list-grid" id="grading-graded-list"></div>
+          </div>
+        `;
+        body.appendChild(split);
+
+        const listEl = split.querySelector('#grading-graded-list');
+        gradedItems.forEach(entry => {
+          const c = entry.cond;
+          const meta = CG?.getGradeMeta ? CG.getGradeMeta(c.grade, c.isPristine) : null;
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = `grading-item-row is-slab${entry.key === selected.key ? ' active' : ''}`;
+          btn.innerHTML = `
+            <img src="${this.getCardTraditionalImg(entry.def)}" alt="${entry.def.name}" class="grading-row-thumb">
+            <div class="grading-row-info">
+              <div class="grading-row-name">${entry.def.name}</div>
+              <div class="grading-row-sub">${entry.source === 'binder' ? '📖 Binder' : '🎒 Bag'} • ${this.formatMoney(this.getCardSellPrice(entry.def, c))}</div>
+            </div>
+            <span class="grading-row-badge graded">${meta?.short || `MGS ${c.grade}`}</span>
+          `;
+          btn.addEventListener('click', () => {
+            if (window.sounds?.playClick) window.sounds.playClick();
+            this._gradingSelectedGradedKey = entry.key;
+            this.renderGradingModal();
+          });
+          listEl?.appendChild(btn);
+        });
+
+        const stage = split.querySelector('#grading-tilt-stage');
+        const frame = split.querySelector('#grading-card-frame');
+        const summaryTopEl = split.querySelector('#grading-report-summary');
+        const reportBoxEl = split.querySelector('#grading-report-box');
+        const actEl = split.querySelector('#grading-graded-actions');
+        if (stage && CG?.attachInspectTilt) CG.attachInspectTilt(stage);
+
+        const cond = CG?.ensureHydratedCondition ? CG.ensureHydratedCondition(selected.cond) : selected.cond;
+        const tradImg = this.getCardTraditionalImg(selected.def);
+        const imgStyle = CG?.getCardImgStyle ? CG.getCardImgStyle(cond) : '';
+        const overlayHtml = CG?.renderConditionOverlayHtml ? CG.renderConditionOverlayHtml(cond, { includeTiltGlare: true }) : '';
+        if (frame) {
+          frame.innerHTML = `
+            <div class="grading-card-inner is-slabbed">
+              <img src="${tradImg}" alt="${selected.def.name}" class="grading-preview-img" style="${imgStyle}">
+              ${overlayHtml}
+            </div>
+          `;
+        }
+
+        const gMeta = CG.getGradeMeta(cond.grade, cond.isPristine);
+        const unitPrice = this.getCardSellPrice(selected.def, cond);
+        const report = CG?.buildGradeSummary ? CG.buildGradeSummary(cond) : null;
+
+        if (summaryTopEl) {
+          const catMetersHtml = (report?.categories || []).map(cat => `
+            <div class="grading-submeter">
+              <div class="grading-submeter-head"><span>${cat.label}</span><b>${cat.score}/10</b></div>
+              <div class="grading-submeter-track"><div class="grading-submeter-fill" style="width:${cat.score * 10}%;"></div></div>
+            </div>
+          `).join('');
+          summaryTopEl.innerHTML = `
+            <div class="grading-slab-banner" style="background:${gMeta.bg};color:${gMeta.color};font-size:13px;padding:7px 10px;">
+              <span>🏆 ${gMeta.label}</span>
+              <span>${gMeta.mult.toFixed(2)}× (${this.formatMoney(unitPrice)})</span>
+            </div>
+            <div style="font-size:12px;color:#fde68a;font-weight:800;margin-top:4px;">${selected.def.name} • ${selected.source === 'binder' ? '📖 Binder' : '🎒 Backpack'}</div>
+            <div class="grading-submeters">${catMetersHtml}</div>
+            <div class="grading-hint">🔒 Ultrasonically sealed slab (0% wear, protected from play).</div>
+          `;
+        }
+
+        if (reportBoxEl && report) {
+          const rowsHtml = report.categories.map(cat => `
+            <div class="grading-report-row">
+              <div class="grading-report-cat"><span>${cat.label}</span><span class="grading-report-score">${cat.score}/10</span></div>
+              <div class="grading-report-note">${cat.notes}</div>
+            </div>
+          `).join('');
+          reportBoxEl.innerHTML = `
+            <div class="grading-report-verdict">📝 <b>Why Mike Graded It ${report.headline}:</b> ${report.verdict}</div>
+            <div class="grading-report-rows">${rowsHtml}</div>
+          `;
+        }
+
+        if (actEl) {
+          actEl.innerHTML = `<button type="button" class="ui-btn secondary" id="btn-crack-slab" style="width:100%;">🔨 Break Open Slab (Return to Raw)</button>`;
+          actEl.querySelector('#btn-crack-slab')?.addEventListener('click', () => {
+            CG.crackSlab(cond);
+            if (window.sounds?.playClick) window.sounds.playClick();
+            this.saveWorldData?.(this.draftAppearance);
+            this.renderBinderModal?.();
+            this.renderShopModal?.();
+            this.renderGradingModal();
+            this.showAutosaveIndicator?.(`🔨 Cracked ${selected.def.name} slab back to raw!`);
+          });
+        }
+        return;
+      }
+
+      // ================================================================
+      // TAB 4: "PICK-UP TRAY" (PREP SLEEVE OR SLAB BEFORE PULLING OUT)
+      // ================================================================
+      if (tab === 'pickup') {
+        const bagPro = this.getInventorySleeveCount('clear_sleeve');
+        const bagMatte = this.getInventorySleeveCount('pro_sleeve');
+        const banner = document.createElement('div');
+        banner.className = `grading-status-banner ${readyOrders.length > 0 ? 'is-open' : ''}`;
+        banner.innerHTML = `
+          <div>
+            <strong>📦 Pick-up Tray — ${readyOrders.length} Card${readyOrders.length === 1 ? '' : 's'} Ready</strong>
+            <div style="font-size:11.5px;color:#cbd5e1;margin-top:2px;">Add a <b>Pro Sleeve</b>, add a <b>Pro Matte</b>, or <b>Slab</b> each card inside the tray before pulling it out to your Binder. Bag: <b>🛡️ Pro Sleeves (${bagPro})</b> • <b>✨ Pro Matte (${bagMatte})</b></div>
+          </div>
+          ${readyOrders.length > 1 ? `<button type="button" class="ui-btn primary-btn" id="btn-pickup-pull-all">📦 Pull All Out (${readyOrders.length})</button>` : ''}
+        `;
+        body.appendChild(banner);
+        banner.querySelector('#btn-pickup-pull-all')?.addEventListener('click', () => this.claimAllMgsReadyOrders());
+
+        if (readyOrders.length === 0) {
+          const empty = document.createElement('div');
+          empty.className = 'grading-empty-panel';
+          empty.innerHTML = `
+            <div style="font-size:32px;">📦</div>
+            <div style="font-size:15px;font-weight:900;color:#fde68a;">Pick-up Tray Is Empty</div>
+            <div style="font-size:12.5px;color:#cbbba6;max-width:460px;">Finished cards from <b>Currently Grading</b> arrive here so you can add a sleeve or seal them in an MGS Slab before pulling them out to your Binder.</div>
+            <button type="button" class="ui-btn shop-shelf-btn" id="btn-pickup-go-grading">📊 View Currently Grading</button>
+          `;
+          body.appendChild(empty);
+          empty.querySelector('#btn-pickup-go-grading')?.addEventListener('click', () => {
+            this._gradingActiveTab = 'grading';
+            this.renderGradingModal();
+          });
+          return;
+        }
+
+        const list = document.createElement('div');
+        list.className = 'grading-pickup-list';
+        readyOrders.forEach(order => {
+          const baseCond = order.cond ? this.cloneCardCondition(order.cond) : this.createDefaultCardCondition();
+          const curFinish = order.preparedFinish || (baseCond.isGraded ? 'slab' : (baseCond.sleeveTier || 'none'));
+          const evalRes = CG?.gradeCard ? CG.gradeCard(this.cloneCardCondition(baseCond)) : { condition: baseCond, meta: { label: 'Graded' } };
+          const evalCond = evalRes.condition || baseCond;
+          const gMeta = evalRes.meta || { label: 'Graded', bg: '#334155', color: '#f8fafc', mult: 1 };
+          const report = CG?.buildGradeSummary ? CG.buildGradeSummary(evalCond) : null;
+          const sg = evalCond.subgrades || { centering: '-', corners: '-', edges: '-', surface: '-' };
+
+          let statusPillClass = 'is-raw';
+          let statusPillText = '📄 Raw (Unsleeved)';
+          let pullFinishLabel = 'Raw';
+          if (curFinish === 'slab') {
+            statusPillClass = 'is-slab';
+            statusPillText = `🏆 Sealed ${gMeta.label}`;
+            pullFinishLabel = `${gMeta.short || gMeta.label} Slab`;
+          } else if (curFinish === 'pro_sleeve') {
+            statusPillClass = 'is-sleeve';
+            statusPillText = '✨ In Pro Matte Sleeve';
+            pullFinishLabel = 'Pro Matte';
+          } else if (curFinish === 'clear_sleeve') {
+            statusPillClass = 'is-sleeve';
+            statusPillText = '🛡️ In Pro Sleeve';
+            pullFinishLabel = 'Pro Sleeve';
+          }
+
+          const proLabel = curFinish === 'clear_sleeve'
+            ? '✓ Pro Sleeve Added'
+            : (bagPro > 0 ? '🛡️ Add Pro Sleeve (Bag)' : '🛡️ Add Pro Sleeve ($0.50)');
+          const matteLabel = curFinish === 'pro_sleeve'
+            ? '✓ Pro Matte Added'
+            : (bagMatte > 0 ? '✨ Add Pro Matte (Bag)' : '✨ Add Pro Matte ($1.00)');
+          const slabLabel = curFinish === 'slab' ? '✓ Slabbed (MGS)' : '🏆 Slab Card';
+
+          const disablePro = curFinish === 'slab' || curFinish === 'clear_sleeve' || curFinish === 'pro_sleeve' || (bagPro === 0 && goldNow < 0.50);
+          const disableMatte = curFinish === 'slab' || curFinish === 'pro_sleeve' || (bagMatte === 0 && goldNow < 1.00);
+          const disableSlab = curFinish === 'slab';
+
+          const previewOverlay = CG?.renderConditionOverlayHtml
+            ? CG.renderConditionOverlayHtml(baseCond, { compact: true, showDefects: false })
+            : '';
+
+          const card = document.createElement('div');
+          card.className = 'grading-pickup-card';
+          card.innerHTML = `
+            <div class="grading-pickup-card-top">
+              <div class="grading-pickup-thumb-wrap">
+                <img src="${findOrderImg(order.cardId)}" alt="${order.cardName}" class="grading-bench-thumb">
+                ${previewOverlay}
+              </div>
+              <div style="flex:1;min-width:0;">
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                  <span class="grading-bench-title">${order.cardName || 'Mythos Card'}</span>
+                  <span class="grading-slab-banner" style="background:${gMeta.bg};color:${gMeta.color};padding:2px 8px;font-size:11px;">🏆 ${gMeta.label} (${gMeta.mult.toFixed(2)}× if slabbed)</span>
+                  <span class="grading-pickup-status-pill ${statusPillClass}">${statusPillText}</span>
+                </div>
+                <div class="grading-bench-sub">Submitted ${order.submittedDayLabel || 'at MGS Counter'}</div>
+                <div class="grading-pickup-subgrades">
+                  <span>Centering: <b>${sg.centering}</b></span>
+                  <span>Corners: <b>${sg.corners}</b></span>
+                  <span>Edges: <b>${sg.edges}</b></span>
+                  <span>Surface: <b>${sg.surface}</b></span>
+                </div>
+              </div>
+            </div>
+            ${report ? `<div class="grading-pickup-verdict">📝 ${report.verdict}</div>` : ''}
+            <div class="grading-pickup-prep-row">
+              <button type="button" class="ui-btn shop-shelf-btn" data-prep="clear_sleeve" ${disablePro ? 'disabled' : ''}>${proLabel}</button>
+              <button type="button" class="ui-btn shop-shelf-btn" data-prep="pro_sleeve" ${disableMatte ? 'disabled' : ''}>${matteLabel}</button>
+              <button type="button" class="ui-btn shop-shelf-btn" data-prep="slab" ${disableSlab ? 'disabled' : ''}>${slabLabel}</button>
+            </div>
+            <button type="button" class="ui-btn primary-btn grading-pickup-pull-btn" data-pull="1">📥 Pull Out to Binder (${pullFinishLabel})</button>
+          `;
+          card.querySelector('[data-prep="clear_sleeve"]')?.addEventListener('click', () => this.prepareMgsPickupOrder(order.id, 'clear_sleeve'));
+          card.querySelector('[data-prep="pro_sleeve"]')?.addEventListener('click', () => this.prepareMgsPickupOrder(order.id, 'pro_sleeve'));
+          card.querySelector('[data-prep="slab"]')?.addEventListener('click', () => this.prepareMgsPickupOrder(order.id, 'slab'));
+          card.querySelector('[data-pull="1"]')?.addEventListener('click', () => this.claimMgsReadyOrder(order.id));
+          list.appendChild(card);
+        });
+        body.appendChild(list);
+        return;
+      }
+
+      const tiers = this.getMgsServiceTiers();
+      const activeTier = this.getMgsServiceTierDef(this._gradingServiceTier || 'standard');
+      this._gradingServiceTier = activeTier.id;
+
+      // ================================================================
+      // TAB 1: "DROP-OFF TRAY" (SCHEDULED WINDOW & PAYMENT SCREEN)
+      // ================================================================
+      if (activeWin) {
+        const schedBanner = document.createElement('div');
+        schedBanner.className = 'grading-status-banner is-open';
+        schedBanner.innerHTML = `
+          <div>
+            <strong>🟢 Scheduled Drop-Off Window OPEN — ${this.getMgsDayLabel(activeWin.appt.dayNumber)} (${activeWin.win.label}: ${activeWin.win.range})</strong>
+            <div style="font-size:11.5px;color:#d1fae5;margin-top:2px;">Pick your speed below &amp; click any <b>Insert Card</b> placeholder to stage raw cards from your <b>Binder</b> (${this.formatMoney(activeTier.price)} / card • ${activeTier.etaLabel}).</div>
+          </div>
+          <span class="grading-tab-pill is-open">Planned: ${activeWin.appt.cardCountLabel || '1'}</span>
+        `;
+        body.appendChild(schedBanner);
+      }
+
+      const slotCount = this.getMgsDropoffSlotCount(activeWin);
+      this.syncGradingDropoffSlotKeys();
+      this.ensureGradingDropoffSlots(slotCount);
+      const validRawKeys = new Set(rawItems.map(x => x.key));
+      for (let s = 0; s < this._gradingDropoffSlots.length; s++) {
+        if (this._gradingDropoffSlots[s] && !validRawKeys.has(this._gradingDropoffSlots[s])) {
+          this._gradingDropoffSlots[s] = null;
+        }
+      }
+
+      const filledKeys = this._gradingDropoffSlots.filter(Boolean);
+      if (!this._gradingSelectedRawKey || !validRawKeys.has(this._gradingSelectedRawKey)) {
+        this._gradingSelectedRawKey = filledKeys[0] || null;
+      }
+      const focusedRaw = rawItems.find(x => x.key === this._gradingSelectedRawKey) || null;
+      const trayCount = filledKeys.length;
+      const trayTotal = Math.round(trayCount * activeTier.price * 100) / 100;
+      const canSubmitTray = Boolean(activeWin) && trayCount > 0 && (this.gold || 0) >= trayTotal;
+
+      const speedButtonsHtml = tiers.map(t => `
+        <button type="button" class="grading-speed-btn${t.id === activeTier.id ? ' active' : ''}" data-mgs-tier="${t.id}">
+          <span class="grading-speed-title">${t.icon} ${t.label}</span>
+          <span class="grading-speed-sub">${this.formatMoney(t.price)}/card • ${t.etaLabel}</span>
+        </button>
+      `).join('');
+
+      const split = document.createElement('div');
+      split.className = 'grading-dropoff-split';
+      split.innerHTML = `
+        <div class="grading-inspect-col">
+          <div class="grading-tilt-stage" id="grading-tilt-stage" style="width:160px;">
+            <div class="grading-card-frame" id="grading-card-frame"></div>
+          </div>
+          <div class="grading-inspect-meta" id="grading-inspect-meta">Click any <b>Insert Card</b> placeholder on the right to choose a card from your Binder.</div>
+          <div class="grading-inspect-actions" id="grading-inspect-actions"></div>
+          <div class="grading-tray-bar">
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;">
+              <span>📥 ${activeTier.icon} ${activeTier.label}: <b>${trayCount} / ${slotCount} card${slotCount === 1 ? '' : 's'}</b></span>
+              <span style="color:#fde047;font-weight:900;">${this.formatMoney(trayTotal)}</span>
+            </div>
+            <button type="button" class="ui-btn primary-btn" id="btn-submit-mgs-tray" style="width:100%;" ${canSubmitTray ? '' : 'disabled'}>
+              ${activeWin ? `💳 Place ${trayCount || ''} Card${trayCount === 1 ? '' : 's'} &amp; Pay (${this.formatMoney(trayTotal)})` : '🔒 Scheduled Window Required to Submit'}
+            </button>
+          </div>
+        </div>
+        <div class="grading-list-col">
+          <div class="grading-speed-row" role="radiogroup" aria-label="Grading Hurry Level">${speedButtonsHtml}</div>
+          <div style="font-size:11.5px;font-weight:800;color:#fde68a;margin-bottom:6px;text-align:center;text-transform:uppercase;letter-spacing:0.4px;">MGS Counter Drop-Off Tray (${trayCount} / ${slotCount} Placed)</div>
+          <div class="grading-dropoff-tray-grid" id="grading-dropoff-tray-grid" data-slots="${slotCount}"></div>
+        </div>
+      `;
+      body.appendChild(split);
+
+      split.querySelectorAll('[data-mgs-tier]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          if (window.sounds?.playClick) window.sounds.playClick();
+          this._gradingServiceTier = btn.dataset.mgsTier || 'standard';
+          this.renderGradingModal();
+        });
+      });
+
+      split.querySelector('#btn-submit-mgs-tray')?.addEventListener('click', () => {
+        this.submitSelectedCardsToMgs(filledKeys, activeTier.id);
+      });
+
+      const trayGridEl = split.querySelector('#grading-dropoff-tray-grid');
+      if (trayGridEl) {
+        this._gradingDropoffSlots.forEach((slotKey, slotIdx) => {
+          const entry = slotKey ? rawItems.find(x => x.key === slotKey) : null;
+          if (!entry) {
+            const emptyBtn = document.createElement('button');
+            emptyBtn.type = 'button';
+            emptyBtn.className = 'grading-tray-slot is-empty';
+            emptyBtn.innerHTML = `
+              <span class="grading-tray-slot-plus">➕</span>
+              <span class="grading-tray-slot-title">Insert Card</span>
+              <span class="grading-tray-slot-sub">Slot #${slotIdx + 1} • From Binder</span>
+            `;
+            emptyBtn.addEventListener('click', () => {
+              if (window.sounds?.playClick) window.sounds.playClick();
+              this.openBinderForGradingDropoff(slotIdx);
+            });
+            trayGridEl.appendChild(emptyBtn);
+          } else {
+            const condSlot = CG?.ensureHydratedCondition ? CG.ensureHydratedCondition(entry.cond) : entry.cond;
+            const imgStyleSlot = CG?.getCardImgStyle ? CG.getCardImgStyle(condSlot) : '';
+            const overlaySlot = CG?.renderConditionOverlayHtml ? CG.renderConditionOverlayHtml(condSlot, { compact: true }) : '';
+            const slotCard = document.createElement('div');
+            slotCard.className = `grading-tray-slot is-filled${entry.key === this._gradingSelectedRawKey ? ' active' : ''}`;
+            slotCard.innerHTML = `
+              <img src="${this.getCardTraditionalImg(entry.def)}" alt="${entry.def.name}" class="grading-tray-slot-img" style="${imgStyleSlot}" draggable="false">
+              ${overlaySlot}
+              <button type="button" class="grading-tray-slot-remove" title="Remove from tray">✕</button>
+              <div class="grading-tray-slot-footer">${entry.def.name}</div>
+            `;
+            slotCard.addEventListener('click', () => {
+              if (window.sounds?.playClick) window.sounds.playClick();
+              this._gradingSelectedRawKey = entry.key;
+              this.renderGradingModal();
+            });
+            slotCard.querySelector('.grading-tray-slot-remove')?.addEventListener('click', (e) => {
+              e.stopPropagation();
+              if (window.sounds?.playClick) window.sounds.playClick();
+              this._gradingDropoffSlots[slotIdx] = null;
+              if (Array.isArray(this._gradingDropoffSlotConds)) this._gradingDropoffSlotConds[slotIdx] = null;
+              if (this._gradingSelectedRawKey === entry.key) {
+                this._gradingSelectedRawKey = this._gradingDropoffSlots.find(Boolean) || null;
+              }
+              this.renderGradingModal();
+            });
+            trayGridEl.appendChild(slotCard);
+          }
+        });
+      }
+
+      const stage = split.querySelector('#grading-tilt-stage');
+      const frame = split.querySelector('#grading-card-frame');
+      const metaEl = split.querySelector('#grading-inspect-meta');
+      const actEl = split.querySelector('#grading-inspect-actions');
+      if (stage && CG?.attachInspectTilt) CG.attachInspectTilt(stage);
+
+      if (!focusedRaw || !frame || !metaEl || !actEl) {
+        if (frame) {
+          frame.innerHTML = `
+            <div class="grading-lamp-empty">
+              <span style="font-size:28px;">🔍</span>
+              <span>Click any <b>Insert Card</b> slot to pick a card from your Binder</span>
+            </div>
+          `;
+        }
+        if (actEl) actEl.innerHTML = '';
+        return;
+      }
+
+      const cond = CG?.ensureHydratedCondition ? CG.ensureHydratedCondition(focusedRaw.cond) : focusedRaw.cond;
+      const tradImg = this.getCardTraditionalImg(focusedRaw.def);
+      const imgStyle = CG?.getCardImgStyle ? CG.getCardImgStyle(cond) : '';
+      const overlayHtml = CG?.renderConditionOverlayHtml ? CG.renderConditionOverlayHtml(cond, { includeTiltGlare: true }) : '';
+      frame.innerHTML = `
+        <div class="grading-card-inner">
+          <img src="${tradImg}" alt="${focusedRaw.def.name}" class="grading-preview-img" style="${imgStyle}">
+          ${overlayHtml}
+        </div>
+      `;
+
+      const unitPrice = this.getCardSellPrice(focusedRaw.def, cond);
+      const defectCount = (cond.defects || []).length;
+      const curSleeve = cond.sleeveTier === 'pro_sleeve'
+        ? '✨ Pro Matte Sleeve (95% block)'
+        : (cond.sleeveTier === 'clear_sleeve' ? '🛡️ Pro Sleeve (75% block)' : 'Unsleeved');
+      metaEl.innerHTML = `
+        <div class="grading-raw-note">🔍 <b>${focusedRaw.def.name}</b> — Tilt cursor to check glare (${defectCount === 0 ? 'appears spotless!' : 'inspect edges, corners, centering &amp; surface'}).</div>
+        <div class="grading-hint">Est. Raw Value: <b>${this.formatMoney(unitPrice)}</b> • Protection: <b>${curSleeve}</b></div>
+      `;
+
+      const bagPro = this.getInventorySleeveCount('clear_sleeve');
+      const bagMatte = this.getInventorySleeveCount('pro_sleeve');
+      const canApplyPro = bagPro > 0 && cond.sleeveTier !== 'clear_sleeve' && cond.sleeveTier !== 'pro_sleeve';
+      const canApplyMatte = bagMatte > 0 && cond.sleeveTier !== 'pro_sleeve';
+      actEl.innerHTML = (canApplyPro || canApplyMatte) ? `
+        <div style="display:flex;gap:6px;">
+          ${canApplyPro ? `<button type="button" class="ui-btn shop-shelf-btn" id="btn-apply-card-pro-sleeve" style="flex:1;">🛡️ Slip Pro Sleeve (${bagPro})</button>` : ''}
+          ${canApplyMatte ? `<button type="button" class="ui-btn shop-shelf-btn" id="btn-apply-card-matte-sleeve" style="flex:1;">✨ Slip Pro Matte (${bagMatte})</button>` : ''}
+        </div>
+      ` : '';
+      actEl.querySelector('#btn-apply-card-pro-sleeve')?.addEventListener('click', () => {
+        this.applyInventorySleeveToCondition('clear_sleeve', cond, focusedRaw.def.name);
+      });
+      actEl.querySelector('#btn-apply-card-matte-sleeve')?.addEventListener('click', () => {
+        this.applyInventorySleeveToCondition('pro_sleeve', cond, focusedRaw.def.name);
+      });
+    }
+
+    isMythosCardRecord(item) {
+      return Boolean(item && (item.type === 'mythos_card' || String(item.id || '').startsWith('card_')));
+    }
+
+    getDeckCardId(entry) {
+      if (typeof entry === 'string') return entry.replace(/^card_/, '');
+      if (entry && typeof entry === 'object') {
+        return String(entry.id || entry.beastId || '').replace(/^card_/, '');
+      }
+      return '';
+    }
+
+    normalizeDeckEntry(entry) {
+      const cleanId = this.getDeckCardId(entry);
+      if (!cleanId) return null;
+      const cond = (entry && typeof entry === 'object' && entry.condition)
+        ? (this.cloneCardCondition(entry.condition) || this.createDefaultCardCondition())
+        : this.createDefaultCardCondition();
+      return { id: cleanId, condition: cond };
+    }
+
+    normalizePlayingDeckArray(rawDeck) {
+      if (!Array.isArray(rawDeck)) return [];
+      return rawDeck.map(e => this.normalizeDeckEntry(e)).filter(Boolean);
+    }
+
+    ensureSlotCopies(slot) {
+      if (!this.isMythosCardRecord(slot)) return null;
+      const qty = Math.max(1, Math.round(Number(slot.qty) || 1));
+      const hydrate = (c) => window.MythosCardGrading?.ensureHydratedCondition
+        ? window.MythosCardGrading.ensureHydratedCondition(this.cloneCardCondition(c) || this.createDefaultCardCondition())
+        : (this.cloneCardCondition(c) || this.createDefaultCardCondition());
+      let copies = Array.isArray(slot.copies)
+        ? slot.copies.map(hydrate)
+        : (slot.condition ? [hydrate(slot.condition)] : []);
+      if (copies.length > qty) copies = copies.slice(0, qty);
+      while (copies.length < qty) copies.push(this.createDefaultCardCondition());
+      slot.copies = copies;
+      return copies;
+    }
+
+    ensureCollectionCardCopies() {
+      if (Array.isArray(this.inventory)) {
+        this.inventory.forEach(item => {
+          if (this.isMythosCardRecord(item)) this.ensureSlotCopies(item);
+        });
+      }
+      if (Array.isArray(this.binderSlots)) {
+        this.binderSlots.forEach(slot => {
+          if (slot) this.ensureSlotCopies(slot);
+        });
+      }
+    }
+
+    buildMythosCardRecord(cardId, condition = null) {
       const cardDef = window.MythosGwentCards?.CARDS?.[cardId] || {};
       const creature = this.getCreatureData?.(cardId);
+      const cond = this.cloneCardCondition(condition) || this.createDefaultCardCondition();
       return {
         id: `card_${cardId}`,
         beastId: cardId,
@@ -14469,42 +17012,77 @@
         cardImg: cardDef.cardImg || creature?.cardImg || '',
         traditionalCardImg: cardDef.traditionalCardImg || null,
         type: 'mythos_card',
-        desc: creature?.lore || cardDef.abilityText || cardDef.desc || ''
+        desc: creature?.lore || cardDef.abilityText || cardDef.desc || '',
+        copies: [cond]
       };
     }
 
-    consumeCardForPlayingDeck(cardId, preferredSource = 'any', preferredSlotIndex = null) {
+    consumeCardForPlayingDeck(cardId, preferredSource = 'any', preferredSlotIndex = null, preferredCopyIndex = null, options = {}) {
       const cleanId = String(cardId || '').replace(/^card_/, '');
+      const allowGraded = Boolean(options?.allowGraded);
+      const strictTopCopy = Boolean(options?.strictTopCopy);
       const matchesSlot = (s) => s && ((s.beastId || String(s.id || '').replace(/^card_/, '')) === cleanId);
+      const hasPlayableCopy = (holder) => {
+        const copies = this.ensureSlotCopies(holder);
+        if (!copies || copies.length === 0) return false;
+        if (strictTopCopy) {
+          return allowGraded || !copies[0]?.isGraded;
+        }
+        return allowGraded || copies.some(c => !c?.isGraded);
+      };
+      const popCopyFrom = (holder) => {
+        const copies = this.ensureSlotCopies(holder);
+        if (!copies || copies.length === 0) return this.createDefaultCardCondition();
+        if (preferredCopyIndex !== null && preferredCopyIndex !== undefined && preferredCopyIndex >= 0 && preferredCopyIndex < copies.length) {
+          const target = copies[preferredCopyIndex];
+          if (allowGraded || !target?.isGraded) {
+            return copies.splice(preferredCopyIndex, 1)[0];
+          }
+          if (strictTopCopy) return null;
+        }
+        if (allowGraded) return copies.shift();
+        // Take the top-most raw (ungraded) copy first
+        for (let idx = 0; idx < copies.length; idx++) {
+          if (!copies[idx]?.isGraded) {
+            return copies.splice(idx, 1)[0];
+          }
+        }
+        return null;
+      };
       const consumeFromBinder = () => {
-        if (!Array.isArray(this.binderSlots)) return false;
-        let idx = (preferredSlotIndex !== null && preferredSlotIndex !== undefined && matchesSlot(this.binderSlots[preferredSlotIndex]))
+        if (!Array.isArray(this.binderSlots)) return null;
+        let idx = (preferredSlotIndex !== null && preferredSlotIndex !== undefined && matchesSlot(this.binderSlots[preferredSlotIndex]) && hasPlayableCopy(this.binderSlots[preferredSlotIndex]))
           ? preferredSlotIndex
-          : this.binderSlots.findIndex(matchesSlot);
-        if (idx === -1) return false;
+          : this.binderSlots.findIndex(s => matchesSlot(s) && hasPlayableCopy(s));
+        if (idx === -1) return null;
         const slot = this.binderSlots[idx];
-        const rem = (slot.qty || 1) - 1;
+        const poppedCondition = popCopyFrom(slot);
+        if (!poppedCondition) return null;
+        const rem = slot.copies ? slot.copies.length : ((slot.qty || 1) - 1);
         if (rem > 0) {
           slot.qty = rem;
         } else {
           this.binderSlots[idx] = null;
         }
-        return true;
+        return { ok: true, id: cleanId, condition: poppedCondition };
       };
       const consumeFromInventory = () => {
-        if (!Array.isArray(this.inventory)) return false;
+        if (!Array.isArray(this.inventory)) return null;
         const invIdx = this.inventory.findIndex(
           i => (i.type === 'mythos_card' || i.id?.startsWith('card_'))
             && (i.qty || 0) > 0
             && ((i.beastId || String(i.id || '').replace(/^card_/, '')) === cleanId)
+            && hasPlayableCopy(i)
         );
-        if (invIdx === -1) return false;
+        if (invIdx === -1) return null;
         const item = this.inventory[invIdx];
-        item.qty -= 1;
+        const poppedCondition = popCopyFrom(item);
+        if (!poppedCondition) return null;
+        item.qty = item.copies ? item.copies.length : (item.qty - 1);
         if (item.qty <= 0) {
           this.inventory.splice(invIdx, 1);
         }
-        return true;
+        return { ok: true, id: cleanId, condition: poppedCondition };
       };
 
       if (preferredSource === 'binder') {
@@ -14513,12 +17091,15 @@
       return consumeFromInventory() || consumeFromBinder();
     }
 
-    returnCardFromPlayingDeckToCollection(cardId, preferredDest = 'binder') {
-      const cleanId = String(cardId || '').replace(/^card_/, '');
+    returnCardFromPlayingDeckToCollection(cardOrEntry, preferredDest = 'binder', explicitCondition = null) {
+      const cleanId = this.getDeckCardId(cardOrEntry);
       const cardDef = window.MythosGwentCards?.CARDS?.[cleanId];
       if (!cardDef || cardDef.isToken) return;
 
-      const record = this.buildMythosCardRecord(cleanId);
+      const cond = this.cloneCardCondition(
+        explicitCondition || (cardOrEntry && typeof cardOrEntry === 'object' ? cardOrEntry.condition : null)
+      ) || this.createDefaultCardCondition();
+      const record = this.buildMythosCardRecord(cleanId, cond);
       if (preferredDest === 'inventory' || preferredDest === 'bag') {
         this.addInventoryItem(record);
         return 'inventory';
@@ -14530,7 +17111,9 @@
         );
         if (existingIdx !== -1) {
           const existing = this.binderSlots[existingIdx];
-          existing.qty = (existing.qty || 1) + 1;
+          const existingCopies = this.ensureSlotCopies(existing);
+          existingCopies.unshift(cond);
+          existing.qty = existingCopies.length;
           if (!existing.traditionalCardImg && record.traditionalCardImg) {
             existing.traditionalCardImg = record.traditionalCardImg;
           }
@@ -14550,20 +17133,46 @@
     migrateDeckCardsOutOfBinderAndInventory() {
       if (!Array.isArray(this.playingDeck) || this.playingDeck.length === 0) return false;
       let changed = false;
-      this.playingDeck.forEach(cid => {
-        if (this.consumeCardForPlayingDeck(cid, 'binder')) {
+      for (let i = 0; i < this.playingDeck.length; i++) {
+        const cid = this.getDeckCardId(this.playingDeck[i]);
+        const consumed = this.consumeCardForPlayingDeck(cid, 'binder');
+        if (consumed) {
+          this.playingDeck[i] = { id: cid, condition: consumed.condition };
           changed = true;
         }
-      });
+      }
       return changed;
     }
 
-    addCardToPlayingDeck(cardId, preferredSource = 'any', preferredSlotIndex = null) {
+    addCardToPlayingDeck(cardId, preferredSource = 'any', preferredSlotIndex = null, preferredCopyIndex = null, options = {}) {
       const reg = window.MythosGwentCards?.CARDS || {};
       const cardDef = reg[cardId];
       if (!cardDef || cardDef.isToken) {
         if (window.sounds?.playClick) window.sounds.playClick();
         return { ok: false, message: '⚠️ Only Mythos battle cards can be added to the Playing Deck.' };
+      }
+
+      if (options?.strictTopCopy) {
+        const matchesHolder = (s) => s && ((s.beastId || String(s.id || '').replace(/^card_/, '')) === cardId);
+        let holder = null;
+        if (preferredSource === 'binder') {
+          holder = (preferredSlotIndex !== null && preferredSlotIndex !== undefined && matchesHolder(this.binderSlots?.[preferredSlotIndex]))
+            ? this.binderSlots[preferredSlotIndex]
+            : (this.binderSlots || []).find(matchesHolder);
+        } else if (preferredSource === 'inventory') {
+          holder = (this.inventory || []).find(i => this.isMythosCardRecord(i) && (i.qty || 0) > 0 && matchesHolder(i));
+        }
+        const holderCopies = holder ? (this.ensureSlotCopies(holder) || []) : [];
+        if (holderCopies[0]?.isGraded) {
+          if (window.sounds?.playClick) window.sounds.playClick();
+          const hasRawBehind = holderCopies.some(c => !c?.isGraded);
+          return {
+            ok: false,
+            message: hasRawBehind
+              ? `🔒 Top card is a Graded Slab! Hold-click the stack &amp; use ◀ ▶ to bring a raw copy to the front first.`
+              : `🔒 Top card is a Graded Slab! Crack a slab at Mike's Card Grading to play it.`
+          };
+        }
       }
 
       const stats = this.getPlayingDeckStats();
@@ -14581,7 +17190,7 @@
       const availableCount = (this.getOwnedMythosCardPool()[cardId] || 0);
       const getCanon = (id) => window.MythosGwentCards?.getCanonicalCardId?.(id) || id;
       const canonicalId = getCanon(cardId);
-      const inDeckCount = (this.playingDeck || []).filter(id => getCanon(id) === canonicalId).length;
+      const inDeckCount = (this.playingDeck || []).filter(entry => getCanon(this.getDeckCardId(entry)) === canonicalId).length;
       if (availableCount <= 0) {
         if (window.sounds?.playClick) window.sounds.playClick();
         return { ok: false, message: `⚠️ You have no spare copies of ${cardDef.name} left in your Binder or Inventory.` };
@@ -14595,12 +17204,14 @@
         return { ok: false, message: `⚠️ Limit reached: ${cardDef.name} is limited to ${maxPerDeck} copy/copies per deck.` };
       }
 
-      if (!this.consumeCardForPlayingDeck(cardId, preferredSource, preferredSlotIndex)) {
+      const consumed = this.consumeCardForPlayingDeck(cardId, preferredSource, preferredSlotIndex, preferredCopyIndex, options);
+      if (!consumed) {
         if (window.sounds?.playClick) window.sounds.playClick();
-        return { ok: false, message: `⚠️ Could not move ${cardDef.name} into the Playing Deck.` };
+        return { ok: false, message: `🔒 Remaining copies of ${cardDef.name} are sealed in Graded Slabs! Crack a slab at Mike's Card Grading to play it.` };
       }
 
-      this.playingDeck.push(cardId);
+      this.applyCardHandlingWear(consumed.condition, cardDef.name, 'transfer');
+      this.playingDeck.push({ id: cardId, condition: consumed.condition });
       if (window.sounds?.playCardFlipReveal) {
         window.sounds.playCardFlipReveal(cardDef.rarity === 'gold');
       } else if (window.sounds?.playClick) {
@@ -14617,15 +17228,19 @@
 
     removeCardFromPlayingDeck(index, destination = 'binder') {
       if (index < 0 || index >= (this.playingDeck || []).length) return;
-      const [removedId] = this.playingDeck.splice(index, 1);
-      const dest = this.returnCardFromPlayingDeckToCollection(removedId, destination);
+      const [removedEntry] = this.playingDeck.splice(index, 1);
+      const removedId = this.getDeckCardId(removedEntry);
+      const cardDef = window.MythosGwentCards?.CARDS?.[removedId];
+      if (removedEntry?.condition) {
+        this.applyCardHandlingWear(removedEntry.condition, cardDef?.name || removedId, 'transfer');
+      }
+      const dest = this.returnCardFromPlayingDeckToCollection(removedEntry, destination);
       if (window.sounds?.playClick) window.sounds.playClick();
       this.saveWorldData(this.draftAppearance);
       this.updateHUDSaveInfo();
       this.renderPlayingDeckModal();
       this.renderBinderModal();
       this.renderInventoryModal();
-      const cardDef = window.MythosGwentCards?.CARDS?.[removedId];
       const statusEl = document.getElementById('playing-deck-status');
       const hintEl = document.getElementById('binder-hint-text');
       const msg = cardDef
@@ -14638,7 +17253,7 @@
     clearPlayingDeck() {
       const removed = [...(this.playingDeck || [])];
       this.playingDeck = [];
-      removed.forEach(cid => this.returnCardFromPlayingDeckToCollection(cid, 'binder'));
+      removed.forEach(entry => this.returnCardFromPlayingDeckToCollection(entry, 'binder'));
       if (window.sounds?.playClick) window.sounds.playClick();
       this.saveWorldData(this.draftAppearance);
       this.updateHUDSaveInfo();
@@ -14655,7 +17270,7 @@
     autoFillPlayingDeck() {
       const current = [...(this.playingDeck || [])];
       this.playingDeck = [];
-      current.forEach(cid => this.returnCardFromPlayingDeckToCollection(cid, 'binder'));
+      current.forEach(entry => this.returnCardFromPlayingDeckToCollection(entry, 'binder'));
 
       const std = window.MythosGwentCards?.getDeckRecipe?.('standard') || [];
       const reg = window.MythosGwentCards?.CARDS || {};
@@ -14677,11 +17292,12 @@
           : (cStars >= 4 ? 1 : (def?.maxDeckCopies ?? 3));
         const canonId = getCanon(cid);
         if ((deckCounts[canonId] || 0) >= maxPerDeck) return false;
-        if (!this.consumeCardForPlayingDeck(cid, 'any')) return false;
+        const consumed = this.consumeCardForPlayingDeck(cid, 'any');
+        if (!consumed) return false;
         pool[cid] -= 1;
         deckCounts[canonId] = (deckCounts[canonId] || 0) + 1;
         currentStars += cStars;
-        this.playingDeck.push(cid);
+        this.playingDeck.push({ id: cid, condition: consumed.condition });
         return true;
       };
 
@@ -14779,7 +17395,9 @@
       } else {
         const grouped = [];
         const groupMap = {};
-        this.playingDeck.forEach((cid, idx) => {
+        this.playingDeck.forEach((entry, idx) => {
+          const cid = this.getDeckCardId(entry);
+          if (!cid) return;
           if (!groupMap[cid]) {
             groupMap[cid] = { cid, count: 0, lastIndex: idx };
             grouped.push(groupMap[cid]);
@@ -14811,7 +17429,7 @@
       const availableCounts = this.getOwnedMythosCardPool();
       const allPoolIds = Array.from(new Set([
         ...Object.keys(availableCounts),
-        ...(this.playingDeck || [])
+        ...(this.playingDeck || []).map(e => this.getDeckCardId(e)).filter(Boolean)
       ]));
       if (allPoolIds.length === 0) {
         poolList.innerHTML = `<div style="padding: 16px; text-align: center; color: #94a3b8; font-size: 12px;">No Mythos cards in your Backpack or Binder yet. Open Booster Packs at Leo's Card Shop!</div>`;
@@ -14822,8 +17440,8 @@
           if (!c) return;
           const avail = availableCounts[cid] || 0;
           const canonCid = getCanon(cid);
-          const inDeck = (this.playingDeck || []).filter(id => id === cid).length;
-          const inDeckCanonical = (this.playingDeck || []).filter(id => getCanon(id) === canonCid).length;
+          const inDeck = (this.playingDeck || []).filter(e => this.getDeckCardId(e) === cid).length;
+          const inDeckCanonical = (this.playingDeck || []).filter(e => getCanon(this.getDeckCardId(e)) === canonCid).length;
           const maxPerDeck = window.MythosGwentCards?.getMaxDeckCopies
             ? window.MythosGwentCards.getMaxDeckCopies(c)
             : ((Number(c?.stars) || 1) >= 4 ? 1 : (c?.maxDeckCopies ?? 3));
@@ -14855,14 +17473,16 @@
       const card = this.binderSlots[slotIndex];
       if (!card) return;
 
-      const remaining = (card.qty || 1) - 1;
+      const movedCondition = this.ensureSlotCopies(card)?.shift() || this.createDefaultCardCondition();
+      this.applyCardHandlingWear(movedCondition, card.shortName || card.name, 'transfer');
+      const remaining = card.copies ? card.copies.length : ((card.qty || 1) - 1);
       if (remaining > 0) {
         card.qty = remaining;
       } else {
         this.binderSlots[slotIndex] = null;
       }
 
-      // Add back into player's inventory
+      // Add back into player's inventory preserving its condition
       this.addInventoryItem({
         id: card.id,
         beastId: card.beastId,
@@ -14875,7 +17495,8 @@
         cardImg: card.cardImg,
         traditionalCardImg: this.getCardTraditionalImg(card) || null,
         type: 'mythos_card',
-        desc: card.desc
+        desc: card.desc,
+        copies: [movedCondition]
       });
 
       if (window.sounds?.playClick) window.sounds.playClick();
@@ -15081,6 +17702,7 @@
         if (animatedVariant && Math.random() < animatedUpgradeChance) {
           picked = { ...animatedVariant };
         }
+        picked.condition = this.createDefaultCardCondition();
         drawn.push(picked);
       }
 
@@ -15382,6 +18004,10 @@
         || cardDef?.animatedCardVideo
         || null;
 
+      const CG = window.MythosCardGrading;
+      const pullImgStyle = CG?.getCardImgStyle ? CG.getCardImgStyle(card.condition) : '';
+      const pullDefectHtml = CG?.renderConditionOverlayHtml ? CG.renderConditionOverlayHtml(card.condition, { compact: false, showSlabBadge: false }) : '';
+
       slot.innerHTML = `
         <div class="pack-card-inner">
           <!-- Face-Down Back using Cleaned Mythos_Card_Back.png -->
@@ -15390,8 +18016,9 @@
           </div>
           <!-- Face-Up Revealed Beast Card -->
           <div class="pack-card-face pack-card-front">
-            <img src="${pullImg}" alt="${card.name}">
+            <img src="${pullImg}" alt="${card.name}" style="${pullImgStyle}">
             ${animPullVideo ? `<video class="pack-card-video hidden" src="${animPullVideo}" poster="${pullImg}" playsinline preload="auto"></video>` : ''}
+            ${pullDefectHtml}
             <div class="pack-card-holo-glint"></div>
           </div>
         </div>
@@ -15578,7 +18205,9 @@
         const getCanon = (id) => window.MythosGwentCards?.getCanonicalCardId?.(id) || id;
         const deckCounts = {};
         let currentStars = 0;
-        this.playingDeck.forEach(existingId => {
+        this.playingDeck.forEach(existingEntry => {
+          const existingId = this.getDeckCardId(existingEntry);
+          if (!existingId) return;
           const canon = getCanon(existingId);
           deckCounts[canon] = (deckCounts[canon] || 0) + 1;
           currentStars += Number(reg[existingId]?.stars) || 1;
@@ -15592,6 +18221,7 @@
             ? window.MythosGwentCards.getMaxDeckCopies(def || { stars: cStars })
             : (cStars >= 4 ? 1 : (def?.maxDeckCopies ?? 3));
           const canonId = getCanon(cid);
+          const pulledCond = this.cloneCardCondition(card.condition) || this.createDefaultCardCondition();
 
           if (
             cid &&
@@ -15599,7 +18229,7 @@
             (currentStars + cStars) <= 40 &&
             (deckCounts[canonId] || 0) < maxPerDeck
           ) {
-            this.playingDeck.push(cid);
+            this.playingDeck.push({ id: cid, condition: pulledCond });
             deckCounts[canonId] = (deckCounts[canonId] || 0) + 1;
             currentStars += cStars;
             placedInDeck++;
@@ -15619,7 +18249,8 @@
               animatedCardVideo: card.animatedCardVideo || null,
               animatedTraditionalVideo: card.animatedTraditionalVideo || null,
               type: 'mythos_card',
-              desc: card.desc
+              desc: card.desc,
+              copies: [pulledCond]
             });
             overflowToBinder++;
           }
@@ -15627,6 +18258,7 @@
       } else {
         // Place Booster Pack pulls into the Card Binder, never directly into Playing Deck
         st.pulledCards.forEach(card => {
+          const pulledCond = this.cloneCardCondition(card.condition) || this.createDefaultCardCondition();
           this.addCardToBinder({
             id: card.id,
             beastId: card.beastId,
@@ -15642,7 +18274,8 @@
             animatedCardVideo: card.animatedCardVideo || null,
             animatedTraditionalVideo: card.animatedTraditionalVideo || null,
             type: 'mythos_card',
-            desc: card.desc
+            desc: card.desc,
+            copies: [pulledCond]
           });
         });
       }
@@ -16147,7 +18780,10 @@
         const regCards = window.MythosGwentCards?.CARDS || {};
         const deckFallbackNames = (this.playingDeck || [])
           .slice(0, 3)
-          .map(cid => regCards[cid]?.name || cid)
+          .map(entry => {
+            const cid = this.getDeckCardId(entry);
+            return regCards[cid]?.name || cid;
+          })
           .filter(Boolean);
         const binderFallbackNames = (this.binderSlots || [])
           .filter(Boolean)
@@ -18397,6 +21033,66 @@
           challengeBtn.classList.remove('ow-talk-btn');
           bar.classList.add('hidden');
         }
+      } else if (this.currentArea === 'card_grading_shop_interior') {
+        const pName = this.draftAppearance?.name || 'Asher';
+        const grader = this.cardGraderNpc;
+        const dist = grader ? Math.hypot(this.player.x - grader.x, this.player.y - grader.y) : 999;
+        if (dist < 1.85) {
+          this.nearInteractable = grader;
+          this.syncMgsStatuses?.(false);
+          const inGradingCount = (this.mgsOrders || []).filter(o => o && o.status === 'grading').length;
+          const readyPickupCount = (this.mgsOrders || []).filter(o => o && o.status === 'ready_pickup').length;
+          const activeWin = this.getActiveMgsAppointmentNow?.() || null;
+          let counterTag = '';
+          if (readyPickupCount > 0) counterTag = ` (📦 ${readyPickupCount} Ready for Pickup!)`;
+          else if (activeWin) counterTag = ' (🟢 Drop-off Window Open!)';
+          else if (inGradingCount > 0) counterTag = ` (📊 ${inGradingCount} Currently Grading)`;
+          this.renderNpcChoicePrompt({
+            npcId: 'grader_mike',
+            promptKey: `grader_mike_dialogue_${pName}_g${inGradingCount}_r${readyPickupCount}_w${activeWin ? 1 : 0}`,
+            speakerText: '🏆 MIKE — OAKHAVEN CARD GRADING',
+            speakerClass: 'ow-speaker-tag friend',
+            talkPromptHtml: `Press <b>Talk</b> to speak with <b>Mike</b> at the grading &amp; slabbing counter.`,
+            greetingHtml: `<b>Mike:</b> "Welcome to <b>Oakhaven Card Grading</b>, ${pName}! Step up to the MGS counter whenever you're ready to drop off, check bench progress, read reports, or pick up finished cards."`,
+            choices: [
+              {
+                label: `1. 🏆 "Open Mike's Grading Scale Counter${counterTag}"`,
+                primary: true,
+                silentClick: true,
+                onSelect: () => {
+                  this.closeDialogue();
+                  this.openGradingModal();
+                }
+              },
+              {
+                label: `2. 🛡️ "Buy Pro Sleeves ($0.50 / $2×5) or Pro Matte ($1 / $4×5)"`,
+                silentClick: true,
+                onSelect: () => {
+                  this.closeDialogue();
+                  this.openMikeSleeveShopModal();
+                }
+              },
+              {
+                label: `3. 🔍 "How does Mike's Grading Scale (MGS) work?"`,
+                onSelect: (el) => {
+                  el.innerHTML = `<b>Mike:</b> "Book a drop-off window in your phone's <b>MGS App</b>, then place raw cards in the <b>Drop-off Tray</b> during that window ($2 Economic / $3 Standard / $6 Rush). I score <b>Centering, Corners, Edges &amp; Surface</b> from 1–10—with <b>Gem Mint 9.5 (2.8×)</b> and <b>Pristine 10 (4.0×)</b> at the top—and in the <b>Pick-up Tray</b> you can sleeve or seal your card in an MGS Slab!"`;
+                  this.gainDialogueRelationship('grader_mike', 2, 'grading scale explanation');
+                }
+              },
+              {
+                label: `4. 👋 "See you around, Mike! (Leave)"`,
+                onSelect: () => this.closeDialogue()
+              }
+            ],
+            challengeText: '🏆 Open MGS Counter (Space)'
+          });
+        } else {
+          this.lastShopPromptKey = null;
+          this.nearInteractable = null;
+          this.activeDialogueNpc = null;
+          challengeBtn.classList.remove('ow-talk-btn');
+          bar.classList.add('hidden');
+        }
       } else if (this.currentArea === 'west_house_1_interior') {
         const pName = this.draftAppearance?.name || 'Asher';
         const otis = this.westOtisNpc;
@@ -20260,6 +22956,9 @@
             const copy = { ...i };
             delete copy._isProxy;
             if (Array.isArray(i.cards)) copy.cards = [...i.cards];
+            if (Array.isArray(i.copies)) {
+              copy.copies = i.copies.map(c => this.cloneCardCondition(c) || this.createDefaultCardCondition());
+            }
             return copy;
           })
         : [];
@@ -20268,6 +22967,9 @@
             if (!s) return null;
             const copy = { ...s };
             delete copy._isProxy;
+            if (Array.isArray(s.copies)) {
+              copy.copies = s.copies.map(c => this.cloneCardCondition(c) || this.createDefaultCardCondition());
+            }
             return copy;
           })
         : Array(9).fill(null);
@@ -20288,7 +22990,17 @@
         hasOldCardBinder: this.hasOldCardBinder ?? false,
         inventory: cleanInventory,
         binderSlots: cleanBinderSlots,
-        playingDeck: [...(this.playingDeck || [])],
+        playingDeck: this.normalizePlayingDeckArray(this.playingDeck),
+        deckSleeveTier: this.deckSleeveTier || 'none',
+        mgsOrders: Array.isArray(this.mgsOrders)
+          ? this.mgsOrders.filter(o => o && o.status !== 'picked_up').map(o => ({ ...o }))
+          : [],
+        mgsAppointments: Array.isArray(this.mgsAppointments)
+          ? [
+              ...this.mgsAppointments.filter(a => a && a.status === 'scheduled').map(a => ({ ...a })),
+              ...this.mgsAppointments.filter(a => a && a.status === 'missed').slice(0, 10).map(a => ({ ...a }))
+            ]
+          : [],
         deckStorageMigrated: this.deckStorageMigrated ?? true,
         equippedBoardTheme: this.equippedBoardTheme || 'classic',
         ownedHairStyles: [...(this.ownedHairStyles || [])],
@@ -20441,6 +23153,8 @@
         areaLabel = `🕹️ Oakhaven Arcade — Back Room`;
       } else if (this.currentArea === 'animal_hospital_interior') {
         areaLabel = `🐾 Oakhaven Animal Hospital`;
+      } else if (this.currentArea === 'card_grading_shop_interior') {
+        areaLabel = `🏛️ Oakhaven Card Grading`;
       } else if (this.currentArea === 'west_house_1_interior') {
         areaLabel = `🪵 Otis's Woodcarver Cottage`;
       } else if (this.currentArea === 'west_house_2_interior') {
@@ -20528,6 +23242,7 @@
         else if (this.currentArea === 'arcade_interior') shortArea = `🕹️ Arcade`;
         else if (this.currentArea === 'arcade_back_interior') shortArea = `🕹️ Back Room`;
         else if (this.currentArea === 'animal_hospital_interior') shortArea = `🐾 Animal Hospital`;
+        else if (this.currentArea === 'card_grading_shop_interior') shortArea = `🏆 Card Grading`;
         else if (this.currentArea === 'west_house_1_interior') shortArea = `🪵 Otis's`;
         else if (this.currentArea === 'west_house_2_interior') shortArea = `🥖 Maren's`;
         else if (this.currentArea === 'west_house_3_interior') shortArea = `🎵 Caleb's`;
@@ -20729,7 +23444,10 @@
       const owPhoneDockBtn = document.getElementById('ow-phone-dock');
       if (owPhoneDockBtn) {
         owPhoneDockBtn.addEventListener('click', () => {
-          if (this.activeIncomingDuelCall) {
+          if (this.activeIncomingMgsCall) {
+            if (window.sounds?.playClick) window.sounds.playClick();
+            this.openMgsCallModal();
+          } else if (this.activeIncomingDuelCall) {
             if (window.sounds?.playClick) window.sounds.playClick();
             this.openDuelCallModal();
           } else {
@@ -21004,6 +23722,10 @@
         this.togglePhoneModal(false);
         this.toggleInventoryModal(true);
       });
+      document.getElementById('app-btn-mgs')?.addEventListener('click', () => {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        this.openPhoneApp('mgs');
+      });
 
       // App Back Buttons
       document.getElementById('btn-contacts-back')?.addEventListener('click', () => {
@@ -21031,6 +23753,25 @@
       document.getElementById('btn-system-back')?.addEventListener('click', () => {
         if (window.sounds?.playClick) window.sounds.playClick();
         this.openPhoneApp('home');
+      });
+      document.getElementById('btn-mgs-back')?.addEventListener('click', () => {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        this.openPhoneApp('home');
+      });
+      document.getElementById('tab-mgs-status')?.addEventListener('click', () => {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        this.mgsActiveTab = 'status';
+        this.renderMgsApp();
+      });
+      document.getElementById('tab-mgs-pickup')?.addEventListener('click', () => {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        this.mgsActiveTab = 'pickup';
+        this.renderMgsApp();
+      });
+      document.getElementById('tab-mgs-schedule')?.addEventListener('click', () => {
+        if (window.sounds?.playClick) window.sounds.playClick();
+        this.mgsActiveTab = 'schedule';
+        this.renderMgsApp();
       });
 
       // System App Actions
@@ -21284,7 +24025,13 @@
       }
 
       ['btn-close-binder', 'btn-binder-done', 'btn-close-binder-deck', 'btn-close-binder-sleeves'].forEach(btnId => {
-        document.getElementById(btnId)?.addEventListener('click', () => closeSectionToPhoneHome(() => this.toggleBinderModal(false)));
+        document.getElementById(btnId)?.addEventListener('click', () => {
+          if (this._mgsBinderPickTargetSlot !== null && this._mgsBinderPickTargetSlot !== undefined) {
+            this.cancelBinderForGradingDropoff();
+            return;
+          }
+          closeSectionToPhoneHome(() => this.toggleBinderModal(false));
+        });
       });
       document.getElementById('btn-close-binder-inv')?.addEventListener('click', () => closeSectionToPhoneHome(() => this.toggleInventoryModal(false)));
 
@@ -21504,6 +24251,11 @@
         shopRipPremNowBtn.addEventListener('click', () => this.startBoosterPackOpening('unopened_premium_pack'));
       }
 
+      document.getElementById('btn-shop-buy-pro-1')?.addEventListener('click', () => this.buyCardSleeveItem('clear_sleeve', 1, 0.50));
+      document.getElementById('btn-shop-buy-pro-5')?.addEventListener('click', () => this.buyCardSleeveItem('clear_sleeve', 5, 2.00));
+      document.getElementById('btn-shop-buy-matte-1')?.addEventListener('click', () => this.buyCardSleeveItem('pro_sleeve', 1, 1.00));
+      document.getElementById('btn-shop-buy-matte-5')?.addEventListener('click', () => this.buyCardSleeveItem('pro_sleeve', 5, 4.00));
+
       const shopBuyMapBtn = document.getElementById('btn-shop-buy-map');
       if (shopBuyMapBtn) {
         shopBuyMapBtn.addEventListener('click', () => this.buyBase2v2Map());
@@ -21629,9 +24381,15 @@
         }
         newWorldBtn?.classList.remove('intro-rpg-primary');
         const rawApp = this.worldSave.playerAppearance || {};
-        const app = {
+        const baseApp = {
           ...window.MythosCharacterSprites.DEFAULT_APPEARANCE,
           ...((rawApp && rawApp.playerAppearance) ? rawApp.playerAppearance : rawApp)
+        };
+        const app = {
+          ...baseApp,
+          customSprite: window.MythosCharacterSprites.resolvePlayerCustomSprite
+            ? window.MythosCharacterSprites.resolvePlayerCustomSprite(baseApp)
+            : baseApp.customSprite
         };
         const fName = 'Rocky';
         const wins = this.worldSave.wins ?? 0;
@@ -21764,9 +24522,15 @@
       this.binderPage = 0;
       this.deckPage = 0;
       this.invPage = 0;
+      try { this.ensureCollectionCardCopies(); } catch (e) { console.warn('ensureCollectionCardCopies:', e); }
       try { this.consolidateBinderStacks(); } catch (e) { console.warn('consolidateBinderStacks:', e); }
-      this.playingDeck = Array.isArray(this.worldSave.playingDeck)
-        ? [...this.worldSave.playingDeck]
+      this.playingDeck = this.normalizePlayingDeckArray(this.worldSave.playingDeck);
+      this.deckSleeveTier = this.worldSave.deckSleeveTier || 'none';
+      this.mgsOrders = Array.isArray(this.worldSave.mgsOrders)
+        ? this.worldSave.mgsOrders.map(o => ({ ...o }))
+        : [];
+      this.mgsAppointments = Array.isArray(this.worldSave.mgsAppointments)
+        ? this.worldSave.mgsAppointments.map(a => ({ ...a }))
         : [];
       this.deckStorageMigrated = Boolean(this.worldSave.deckStorageMigrated);
       this.equippedBoardTheme = (this.worldSave.equippedBoardTheme === 'tavern_feast' && this.hasOwnedBoardTheme('tavern_feast'))
@@ -21913,9 +24677,8 @@
       }
 
       const nameInput = document.getElementById('cc-player-name');
-      const worldInput = document.getElementById('cc-world-name');
       if (nameInput) nameInput.value = this.draftAppearance.name || 'Asher';
-      if (worldInput) worldInput.value = this.draftAppearance.worldName || 'Oakhaven';
+      this.draftAppearance.worldName = 'Oakhaven';
 
       this.syncCreatorUI();
     }
@@ -21950,58 +24713,60 @@
 
     buildCreatorControls() {
       const CS = window.MythosCharacterSprites;
-
-      const makeColorSwatches = (containerId, list, key, colorProp) => {
-        const el = document.getElementById(containerId);
-        if (!el) return;
-        el.innerHTML = '';
-        list.forEach(item => {
-          const btn = document.createElement('button');
-          btn.type = 'button';
-          btn.className = 'cc-swatch-btn';
-          btn.dataset.key = key;
-          btn.dataset.val = item.id;
-          btn.title = item.name;
-          btn.style.backgroundColor = item[colorProp];
-          btn.addEventListener('click', () => {
-            if (window.sounds?.playClick) window.sounds.playClick();
-            this.draftAppearance[key] = item.id;
-            this.playerSprite.setAppearance(this.draftAppearance);
-            this.syncCreatorUI();
-          });
-          el.appendChild(btn);
-        });
+      const defaultNames = new Set((CS.PLAYER_GENDERS || []).map(g => g.defaultName).filter(Boolean));
+      const applyCharacterChoice = (item) => {
+        if (!item) return;
+        const nameInput = document.getElementById('cc-player-name');
+        const curName = (nameInput?.value || '').trim();
+        if ((!curName || defaultNames.has(curName)) && item.defaultName) {
+          this.draftAppearance.name = item.defaultName;
+          if (nameInput) nameInput.value = item.defaultName;
+        }
+        this.draftAppearance.gender = item.id;
+        if (item.starterHair) this.draftAppearance.hairStyle = item.starterHair;
+        if (item.starterOutfit) this.draftAppearance.styleDOutfit = item.starterOutfit;
+        if (CS.resolvePlayerCustomSprite) {
+          this.draftAppearance.customSprite = CS.resolvePlayerCustomSprite(this.draftAppearance);
+        }
+        this.playerSprite.setAppearance(this.draftAppearance);
+        this.syncCreatorUI();
+        this.renderCreatorPreview();
       };
 
-      const makePillButtons = (containerId, list, key) => {
-        const el = document.getElementById(containerId);
-        if (!el) return;
-        el.innerHTML = '';
-        list.forEach(item => {
-          const btn = document.createElement('button');
-          btn.type = 'button';
-          btn.className = 'cc-pill-btn';
-          btn.dataset.key = key;
-          btn.dataset.val = item.id;
-          btn.textContent = item.name;
-          btn.addEventListener('click', () => {
+      const genderGrid = document.getElementById('cc-gender-options');
+      if (genderGrid) {
+        genderGrid.innerHTML = '';
+        (CS.PLAYER_GENDERS || []).forEach(item => {
+          const card = document.createElement('button');
+          card.type = 'button';
+          card.className = 'cc-char-card';
+          card.dataset.key = 'gender';
+          card.dataset.val = item.id;
+          if (item.accent) card.style.setProperty('--card-accent', item.accent);
+          card.innerHTML = `
+            <span class="cc-char-check" aria-hidden="true">✓</span>
+            <div class="cc-char-sprite-wrap">
+              <div class="cc-char-sprite-thumb" style="background-image:url('Sprites/Characters/${item.sprite}.png?v=7')"></div>
+            </div>
+            <div class="cc-char-name">${item.name}</div>
+            <div class="cc-char-tag">${item.tag || ''}</div>
+          `;
+          card.addEventListener('click', () => {
             if (window.sounds?.playClick) window.sounds.playClick();
-            this.draftAppearance[key] = item.id;
-            this.playerSprite.setAppearance(this.draftAppearance);
-            this.syncCreatorUI();
+            applyCharacterChoice(item);
           });
-          el.appendChild(btn);
+          genderGrid.appendChild(card);
         });
-      };
+      }
 
-      makeColorSwatches('cc-skin-swatches', CS.SKIN_TONES, 'skin', 'base');
-      makePillButtons('cc-hair-styles', CS.HAIR_STYLES, 'hairStyle');
-      makeColorSwatches('cc-hair-colors', CS.HAIR_COLORS, 'hairColor', 'base');
-      makeColorSwatches('cc-eye-colors', CS.EYE_COLORS, 'eyeColor', 'base');
-      makePillButtons('cc-outfit-styles', CS.OUTFIT_STYLES, 'outfitStyle');
-      makeColorSwatches('cc-outfit-colors', CS.OUTFIT_COLORS, 'outfitColor', 'base');
-      makeColorSwatches('cc-pants-colors', CS.PANTS_COLORS, 'pantsColor', 'base');
-      makePillButtons('cc-hat-styles', CS.HAT_STYLES, 'hatStyle');
+      const nameInputEl = document.getElementById('cc-player-name');
+      if (nameInputEl) {
+        nameInputEl.addEventListener('input', () => {
+          this.draftAppearance.name = nameInputEl.value;
+          const npName = document.getElementById('cc-np-name');
+          if (npName) npName.textContent = nameInputEl.value.trim() || 'Asher';
+        });
+      }
 
       document.querySelectorAll('.cc-dir-btn').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -22014,24 +24779,6 @@
       if (walkChk) {
         walkChk.addEventListener('change', (e) => {
           this.creatorWalking = e.target.checked;
-        });
-      }
-
-      const randBtn = document.getElementById('btn-cc-random');
-      if (randBtn) {
-        randBtn.addEventListener('click', () => {
-          if (window.sounds?.playClick) window.sounds.playClick();
-          const pick = arr => arr[Math.floor(Math.random() * arr.length)].id;
-          this.draftAppearance.skin = pick(CS.SKIN_TONES);
-          this.draftAppearance.hairStyle = pick(CS.HAIR_STYLES);
-          this.draftAppearance.hairColor = pick(CS.HAIR_COLORS);
-          this.draftAppearance.eyeColor = pick(CS.EYE_COLORS);
-          this.draftAppearance.outfitStyle = pick(CS.OUTFIT_STYLES);
-          this.draftAppearance.outfitColor = pick(CS.OUTFIT_COLORS);
-          this.draftAppearance.pantsColor = pick(CS.PANTS_COLORS);
-          this.draftAppearance.hatStyle = pick(CS.HAT_STYLES);
-          this.playerSprite.setAppearance(this.draftAppearance);
-          this.syncCreatorUI();
         });
       }
 
@@ -22050,12 +24797,22 @@
         startWorldBtn.addEventListener('click', () => {
           if (window.sounds?.playClick) window.sounds.playClick();
           const nameInput = document.getElementById('cc-player-name');
-          const worldInput = document.getElementById('cc-world-name');
           this.draftAppearance.name = (nameInput?.value || 'Asher').trim() || 'Asher';
-          this.draftAppearance.worldName = (worldInput?.value || 'Oakhaven').trim() || 'Oakhaven';
+          this.draftAppearance.worldName = 'Oakhaven';
+          if (window.MythosCharacterSprites?.resolvePlayerCustomSprite) {
+            this.draftAppearance.customSprite = window.MythosCharacterSprites.resolvePlayerCustomSprite(this.draftAppearance);
+          }
           this.playerSprite.setAppearance(this.draftAppearance);
 
           if (this.isCreatingNewWorld || !this.worldSave) {
+            if (!Array.isArray(this.ownedHairStyles)) this.ownedHairStyles = [];
+            if (this.draftAppearance.hairStyle && this.draftAppearance.hairStyle !== 'spiky' && !this.ownedHairStyles.includes(this.draftAppearance.hairStyle)) {
+              this.ownedHairStyles.push(this.draftAppearance.hairStyle);
+            }
+            if (!Array.isArray(this.ownedShirts)) this.ownedShirts = [];
+            if (this.draftAppearance.styleDOutfit && this.draftAppearance.styleDOutfit !== 'default_jacket' && !this.ownedShirts.includes(this.draftAppearance.styleDOutfit)) {
+              this.ownedShirts.push(this.draftAppearance.styleDOutfit);
+            }
             this.wins = 0;
             this.losses = 0;
             this.friendName = 'Rocky';
@@ -22074,11 +24831,21 @@
     }
 
     syncCreatorUI() {
-      document.querySelectorAll('.cc-swatch-btn, .cc-pill-btn').forEach(btn => {
+      const CS = window.MythosCharacterSprites;
+      const list = CS?.PLAYER_GENDERS || [];
+      document.querySelectorAll('.cc-char-card, .cc-swatch-btn, .cc-pill-btn').forEach(btn => {
         const k = btn.dataset.key;
         const v = btn.dataset.val;
         btn.classList.toggle('active', this.draftAppearance[k] === v);
       });
+      const selected = list.find(g => g.id === this.draftAppearance.gender) || list[0];
+      const nameInput = document.getElementById('cc-player-name');
+      const npName = document.getElementById('cc-np-name');
+      const npTag = document.getElementById('cc-np-tag');
+      const bioEl = document.getElementById('cc-char-bio');
+      if (npName) npName.textContent = (nameInput?.value || this.draftAppearance.name || 'Asher').trim() || 'Asher';
+      if (npTag && selected) npTag.textContent = selected.name;
+      if (bioEl && selected) bioEl.textContent = selected.desc || '';
     }
 
     renderCreatorPreview() {
@@ -22092,19 +24859,62 @@
 
       pctx.clearRect(0, 0, W, H);
 
-      const grad = pctx.createRadialGradient(W / 2, H * 0.65, 10, W / 2, H * 0.65, 90);
-      grad.addColorStop(0, '#2e3852');
-      grad.addColorStop(1, '#0f1420');
-      pctx.fillStyle = grad;
+      // Twilight-to-emerald dusk sky backdrop
+      const bgGrad = pctx.createLinearGradient(0, 0, 0, H);
+      bgGrad.addColorStop(0, '#131d33');
+      bgGrad.addColorStop(0.58, '#1b2f38');
+      bgGrad.addColorStop(1, '#121826');
+      pctx.fillStyle = bgGrad;
       pctx.fillRect(0, 0, W, H);
 
-      pctx.fillStyle = 'rgba(0,0,0,0.45)';
+      // Warm golden overhead spotlight cone
+      const spotGrad = pctx.createRadialGradient(W / 2, H * 0.42, 8, W / 2, H * 0.48, 108);
+      spotGrad.addColorStop(0, 'rgba(253, 224, 71, 0.2)');
+      spotGrad.addColorStop(0.55, 'rgba(212, 175, 55, 0.08)');
+      spotGrad.addColorStop(1, 'rgba(18, 24, 38, 0)');
+      pctx.fillStyle = spotGrad;
+      pctx.fillRect(0, 0, W, H);
+
+      // Subtle floating golden dust motes
+      const t = (this.tick || 0) * 0.025;
+      for (let i = 0; i < 8; i++) {
+        const mx = W * (0.14 + ((i * 0.11 + Math.sin(t + i * 1.7) * 0.04) % 0.76));
+        const my = H * (0.15 + ((i * 0.13 - t * 0.08) % 0.65 + 0.65) % 0.65);
+        const alpha = 0.25 + 0.25 * Math.sin(t * 1.4 + i);
+        pctx.fillStyle = `rgba(253, 230, 138, ${alpha.toFixed(2)})`;
+        pctx.beginPath();
+        pctx.arc(mx, my, i % 2 === 0 ? 1.6 : 1.1, 0, Math.PI * 2);
+        pctx.fill();
+      }
+
+      // Carved wooden/stone pedestal dais anchored at footY = H - 24
+      const footY = H - 24;
+      pctx.fillStyle = 'rgba(0, 0, 0, 0.48)';
       pctx.beginPath();
-      pctx.ellipse(W / 2, H - 24, 42, 14, 0, 0, Math.PI * 2);
+      pctx.ellipse(W / 2, footY + 7, 56, 17, 0, 0, Math.PI * 2);
+      pctx.fill();
+
+      const daisGrad = pctx.createLinearGradient(0, footY - 12, 0, footY + 14);
+      daisGrad.addColorStop(0, '#4f3827');
+      daisGrad.addColorStop(1, '#261a12');
+      pctx.fillStyle = daisGrad;
+      pctx.beginPath();
+      pctx.ellipse(W / 2, footY + 2, 50, 14, 0, 0, Math.PI * 2);
+      pctx.fill();
+
+      pctx.strokeStyle = 'rgba(250, 204, 21, 0.68)';
+      pctx.lineWidth = 1.5;
+      pctx.beginPath();
+      pctx.ellipse(W / 2, footY + 2, 50, 14, 0, 0, Math.PI * 2);
+      pctx.stroke();
+
+      pctx.fillStyle = 'rgba(0, 0, 0, 0.42)';
+      pctx.beginPath();
+      pctx.ellipse(W / 2, footY + 2, 32, 9, 0, 0, Math.PI * 2);
       pctx.fill();
 
       const walkFrame = this.creatorWalking ? (this.tick * 0.06) : 0;
-      this.playerSprite.draw(pctx, W / 2, H - 20, this.creatorDir, walkFrame, 4.2);
+      this.playerSprite.draw(pctx, W / 2, footY, this.creatorDir, walkFrame, 4.2);
     }
 
     // -------------------------------------------------------------------------
@@ -22538,6 +25348,14 @@
             talkId: 'vet_hannah',
             tapRadius: 1.25,
             reachRadius: 1.65,
+            yOffset: 0.35
+          },
+          {
+            active: this.currentArea === 'card_grading_shop_interior',
+            npc: this.cardGraderNpc,
+            talkId: 'grader_mike',
+            tapRadius: 1.35,
+            reachRadius: 1.95,
             yOffset: 0.35
           },
           {
@@ -23228,6 +26046,26 @@
         // Mid-Right Steel & Oak Veterinary Examination Table
         if (tx >= 12.15 && tx <= 14.70 && ty >= 6.10 && ty <= 8.10) return true;
         return false;
+      } else if (this.currentArea === 'card_grading_shop_interior') {
+        // Cutaway Oakhaven Card Grading floor bounds (16 x 12 room matching card_grading_shop_interior.png @ 1264x848)
+        // Allow stepping onto the centered OAKHAVEN doormat to exit cleanly
+        if (tx >= 7.15 && tx <= 8.85 && ty >= 10.05 && ty <= 10.65) return false;
+        if (tx < 1.25 || tx > 14.75 || ty < 5.05 || ty > 10.08) return true;
+        // Upper-Left Supply Shelves protruding along back-left wall
+        if (tx <= 3.15 && ty <= 5.28) return true;
+        // Left-Wing Illuminated Graded Slab Display Cases (both upper & lower cases, sealing narrow 0.5-tile gap)
+        if (tx <= 4.25 && ty >= 5.68 && ty <= 10.25) return true;
+        // Center L-Shaped Appraisal & Slabbing Counter (press, ledger, lamp & chair)
+        if (tx >= 6.15 && tx <= 10.15 && ty <= 7.02) return true;
+        // Right-Wing Tall Archival File Cabinet
+        if (tx >= 13.95 && ty <= 6.50) return true;
+        // Right-Wing Tufted Leather Waiting Sofa
+        if (tx >= 13.65 && ty >= 6.82 && ty <= 9.88) return true;
+        // Right-Wing Round Side Table (magnifying glass & grading guides)
+        if (tx >= 12.55 && tx <= 14.15 && ty >= 7.58 && ty <= 9.15) return true;
+        // Solid NPC collision for Mike
+        if (this.cardGraderNpc && ignoreNpc !== this.cardGraderNpc && this.isNpcBlockingPoint(tx, ty, this.cardGraderNpc, fromX, fromY)) return true;
+        return false;
       } else if (this.currentArea === 'west_house_1_interior') {
         // Cutaway Otis's Woodcarver Cottage floor bounds (16 x 12 flat orthographic room @ 1264x848)
         if (tx >= 7.0 && tx <= 8.8 && ty >= 10.15 && ty <= 10.65) return false;
@@ -23478,7 +26316,7 @@
         const minExtX = (this.EXT_MIN_COL ?? -26.5) + 0.5;
         const maxExtX = (this.EXT_COLS ?? 68.0) - 0.4;
         const minExtY = (this.EXT_MIN_ROW ?? 0) + 0.5;
-        const maxExtY = (this.EXT_ROWS ?? 36.5) - 0.5;
+        const maxExtY = (this.EXT_ROWS ?? 42.0) - 0.5;
         if (tx < minExtX || tx > maxExtX || ty < minExtY || ty > maxExtY) return true;
 
         // Oakhaven Elementary School (East End of Willow Way: Option 1 Civic Storybook HD w/ West Portico Doors)
@@ -23536,6 +26374,11 @@
         // Oakhaven Fishmonger Shop (west of Oakhaven Bistro: x: -23.6..-18.8, y: 28.55..31.75)
         if (tx >= -23.6 && tx <= -18.8 && ty >= 28.55 && ty <= 31.75) {
           if (tx >= -21.15 && tx <= -20.25 && ty >= 31.0) return false; // Double front door
+          return true;
+        }
+        // Oakhaven Card Grading (South of Fishmonger along South Paved Road: x: -23.80..-18.60, y: 34.15..37.58)
+        if (tx >= -23.80 && tx <= -18.60 && ty >= 34.15 && ty <= 37.58) {
+          if (tx >= -21.65 && tx <= -20.75 && ty >= 37.25) return false; // Centered double doors
           return true;
         }
         // Oakhaven Bistro (3 blocks west of Roundabout: x: -17.6..-13.4, y: 28.9..31.7)
@@ -24185,6 +27028,15 @@
           doorX: -20.70, doorY: 31.45
         },
         {
+          id: 'card_grading_shop',
+          spriteKey: 'card_grading_shop',
+          isWideCivic: true,
+          spriteWallWFrac: 1.0,
+          spriteBaseYFrac: 1.0,
+          hx: -23.80, hy: 34.10, hw: 5.20, maxY: 37.58,
+          doorX: -21.20, doorY: 37.65
+        },
+        {
           id: 'west_oak_1',
           spriteKey: 'cottage_west_oak_1',
           hx: -4.2, hy: 0.45, hw: 3.4, maxY: 3.38,
@@ -24311,6 +27163,7 @@
         'barber_shop_interior',
         'clothing_store_interior',
         'animal_hospital_interior',
+        'card_grading_shop_interior',
         'west_house_1_interior',
         'west_house_2_interior',
         'west_house_3_interior',
@@ -24470,7 +27323,7 @@
       const minX = isExt ? ((this.EXT_MIN_COL ?? -26.5) + 0.5) : 1.0;
       const minY = isExt ? ((this.EXT_MIN_ROW ?? 0) + 0.5) : 4.0;
       const maxX = isExt ? ((this.EXT_COLS ?? 68.0) - 0.4) : 15.0;
-      const maxY = isExt ? ((this.EXT_ROWS ?? 36.5) - 0.5) : 10.75;
+      const maxY = isExt ? ((this.EXT_ROWS ?? 42.0) - 0.5) : 10.75;
       const cols = Math.round((maxX - minX) / step) + 1;
       const rows = Math.round((maxY - minY) / step) + 1;
       return { step, minX, minY, maxX, maxY, cols, rows };
@@ -24650,14 +27503,15 @@
       if (inBox(27.50, -13.00, 28.70, 5.95)) return true;    // Lake & Park Trail N-S Road
       if (inBox(25.00, 4.80, 37.70, 5.95)) return true;      // Lake Pier & Central Park Connector
 
-      // Urban Paved Avenue (Oakhaven Blvd), Willow Way, West Roundabout Ave & Roundabout
-      if (inBox(-0.35, 0.00, 0.70, 33.50)) return true;   // N-S Oakhaven Blvd
+      // Urban Paved Avenue (Oakhaven Blvd), Willow Way, South Blvd Block, West Roundabout Ave & Roundabout
+      if (inBox(-0.35, 0.00, 0.70, 38.65)) return true;   // N-S Oakhaven Blvd
       if (Math.hypot(tx - 0.175, ty - 32.85) <= 1.75) return true; // Roundabout
       if (inBox(-26.00, 32.30, 30.20, 33.40)) return true; // Oakhaven Blvd (extended West to West N-S Connector & East past Animal Hospital)
-      if (inBox(14.65, 15.80, 15.70, 33.40)) return true;  // East N-S Connector linking South Cobblestone Way, Willow Way East & Oakhaven Blvd
+      if (inBox(-26.00, 37.55, 30.20, 38.65)) return true; // South Paved Road (1 block south of Oakhaven Blvd)
+      if (inBox(14.65, 15.80, 15.70, 38.65)) return true;  // East N-S Connector linking South Cobblestone Way, Willow Way East, Oakhaven Blvd & South Paved Road
       if (inBox(-26.00, 27.05, 24.50, 28.20)) return true;// Willow Way & School Drop-Off Lane
       if (inBox(-26.00, 20.05, 0.70, 21.15)) return true; // West Road (1 block north of Willow Way, Oakhaven Blvd to West N-S Connector)
-      if (inBox(-26.00, 15.80, -24.95, 33.40)) return true; // West N-S Paved Connector linking South Cobblestone Way, Barber Road, Willow Way & Oakhaven Blvd
+      if (inBox(-26.00, 15.80, -24.95, 38.65)) return true; // West N-S Paved Connector linking South Cobblestone Way, Barber Road, Willow Way, Oakhaven Blvd & South Paved Road
 
       // Building Entry Aprons & Plazas
       if (inBox(1.50, 2.70, 2.50, 4.30)) return true;     // Player's House
@@ -24683,6 +27537,7 @@
       if (inBox(-18.70, 19.70, -12.90, 21.15)) return true; // Oakhaven Apparel Front Apron
       if (inBox(-12.60, 19.70, -6.80, 21.15)) return true;  // Oakhaven Arcade Front Apron
       if (inBox(-13.35, 26.70, -7.55, 28.20)) return true; // Oakhaven Animal Hospital Front Apron
+      if (inBox(-23.90, 37.20, -18.50, 38.65)) return true; // Oakhaven Card Grading Front Apron
       if (inBox(18.00, 6.80, 24.20, 11.60)) return true;  // Central Park Courtyard Walkways
       if (inBox(-9.70, 31.60, -8.70, 32.40)) return true; // Oakhaven Apartments Entrance Apron
       if (inBox(23.10, -16.65, 24.30, -14.00)) return true; // Homestead Dairy Farmhouse Driveway
@@ -25143,7 +27998,7 @@
         this.rowanNpc, this.jasperNpc, this.pierFinnNpc, this.farmstandHazelNpc, this.bertoNpc,
         this.fireChiefNpc, this.policeChiefNpc,
         this.aptTessaNpc, this.aptDanteNpc, this.aptNinaNpc, this.aptMilesNpc,
-        this.barberNpc, this.fishmongerMarinaNpc, this.tailorNpc, this.vetNpc, this.westOtisNpc, this.westMarenNpc, this.westCalebNpc, this.westJuniperNpc, this.westGideonNpc, this.fh1MarthaNpc, this.fh1HarlanNpc, this.fh2EleanorNpc, this.fh2ArthurNpc, this.barnKidTobyNpc, this.barnKidDaisyNpc, this.barnKidOwenNpc, this.barnKidPoppyNpc, this.arcadeZekeNpc, this.leagueRegistrarNpc
+        this.barberNpc, this.fishmongerMarinaNpc, this.tailorNpc, this.vetNpc, this.cardGraderNpc, this.westOtisNpc, this.westMarenNpc, this.westCalebNpc, this.westJuniperNpc, this.westGideonNpc, this.fh1MarthaNpc, this.fh1HarlanNpc, this.fh2EleanorNpc, this.fh2ArthurNpc, this.barnKidTobyNpc, this.barnKidDaisyNpc, this.barnKidOwenNpc, this.barnKidPoppyNpc, this.arcadeZekeNpc, this.leagueRegistrarNpc
       ].forEach(add);
       return list;
     }
@@ -25197,6 +28052,7 @@
 
     onInGameHourPassed() {
       if (this.storyState !== 'free_roam' || this._isSleeping) return;
+      this.syncMgsStatuses?.(true);
       this.maybeTriggerRandomDuelCall();
       this.checkOakhavenLeagueAutoAdvance?.();
       const buildingKeys = Object.keys(this.TRIP_BUILDINGS || {});
@@ -25649,7 +28505,7 @@
       if (a === 'card_shop_interior' || a === 'corner_store_interior' || a === 'arcade_interior' || a === 'arcade_back_interior' || a === 'fishmonger_shop_interior') return 'shop';
       if (a === 'restaurant_interior') return 'bistro';
       if (a === 'barber_shop_interior') return 'barber';
-      if (a === 'clothing_store_interior') return 'boutique';
+      if (a === 'clothing_store_interior' || a === 'card_grading_shop_interior') return 'boutique';
       if (a === 'school_interior') return 'school';
       if (a === 'fire_station_interior' || a === 'police_station_interior') return 'civic';
       if (a === 'mayor_interior' || a === 'mayor_2f_interior' || a === 'convention_center_interior') return 'grand';
@@ -26366,6 +29222,30 @@
           this.currentArea = 'exterior';
           this.player.x = -15.80;
           this.player.y = 20.45;
+          this.player.dir = 'down';
+          this.player.targetX = null;
+          this.player.targetY = null;
+          this.areaTransitionCooldown = 25;
+          this.updateHUDSaveInfo();
+        } else if (this.currentArea === 'exterior' && this.player.x >= -21.70 && this.player.x <= -20.70 && this.player.y >= 37.25 && this.player.y <= 37.85) {
+          // Enter Oakhaven Card Grading via centered mahogany double doors
+          if (window.sounds?.playMove) window.sounds.playMove();
+          this.currentArea = 'card_grading_shop_interior';
+          this.player.x = 7.90;
+          this.player.y = 9.75;
+          this.player.dir = 'up';
+          this.player.targetX = null;
+          this.player.targetY = null;
+          this.areaTransitionCooldown = 25;
+          this.cameraX = 0;
+          this.cameraY = 0;
+          this.updateHUDSaveInfo();
+        } else if (this.currentArea === 'card_grading_shop_interior' && this.player.x >= 7.0 && this.player.x <= 8.8 && this.player.y >= 10.25) {
+          // Exit Oakhaven Card Grading via centered OAKHAVEN mat
+          if (window.sounds?.playMove) window.sounds.playMove();
+          this.currentArea = 'exterior';
+          this.player.x = -21.20;
+          this.player.y = 37.95;
           this.player.dir = 'down';
           this.player.targetX = null;
           this.player.targetY = null;
@@ -29448,7 +32328,7 @@
         'haystack_barn_1f_interior', 'haystack_barn_club_interior',
         'archway_meadowland', 'farmhouse_1', 'farmhouse_2', 'haystack_barn', 'roadside_farmstand',
         'card_shop', 'shop_banner', 'convention_center', 'oakhaven_apartments',
-        'school_exterior', 'school_bus', 'police_station', 'fire_station', 'fire_station_interior', 'police_station_interior', 'barber_shop', 'barber_shop_interior', 'fishmonger_shop', 'fishmonger_shop_interior', 'clothing_store', 'clothing_store_interior', 'animal_hospital', 'animal_hospital_interior', 'arcade', 'arcade_interior', 'arcade_back_interior', 'npc_fire_chief', 'npc_fire_chief_back', 'npc_fire_chief_side', 'npc_police_chief', 'npc_police_chief_back', 'npc_police_chief_side',
+        'school_exterior', 'school_bus', 'police_station', 'fire_station', 'fire_station_interior', 'police_station_interior', 'barber_shop', 'barber_shop_interior', 'fishmonger_shop', 'fishmonger_shop_interior', 'clothing_store', 'clothing_store_interior', 'animal_hospital', 'animal_hospital_interior', 'card_grading_shop', 'card_grading_shop_interior', 'arcade', 'arcade_interior', 'arcade_back_interior', 'npc_fire_chief', 'npc_fire_chief_back', 'npc_fire_chief_side', 'npc_police_chief', 'npc_police_chief_back', 'npc_police_chief_side',
         'playground_ground', 'playground_fort', 'playground_swingset',
         'playground_seesaw', 'playground_spinner', 'playground_hoop',
         'tree_green', 'tree_autumn', 'tree_autumn_small',
@@ -34216,6 +37096,10 @@
       this._renderCutawayBuildingInterior('animal_hospital_interior');
     }
 
+    renderCardGradingShopInterior() {
+      this._renderCutawayBuildingInterior('card_grading_shop_interior');
+    }
+
     renderArcadeInterior() {
       this._renderCutawayBuildingInterior('arcade_interior', 20, 14);
     }
@@ -36331,6 +39215,7 @@
       const eastExitEndX = willowEastEndX;          // X-alignment of the East N-S Connector
       const oakhavenBlvdEastEndX = Math.round(30.20 * S); // Extends Oakhaven Blvd east past the East Connector & Animal Hospital
       const westExitY = Math.round(rbCy - oakhavenWestTurnW / 2);
+      const southBlvdY = Math.round(38.10 * S - oakhavenWestTurnW / 2); // 1 city block (5.25 tiles) south of Oakhaven Blvd
       const northWestPavedY = Math.round(27.60 * S - oakhavenWestTurnW / 2); // 1 city block (5.25 tiles) north of Oakhaven Blvd
       const barberRoadY = Math.round(20.60 * S - oakhavenWestTurnW / 2);     // 1 block north of Willow Way running west from Oakhaven Blvd
 
@@ -36367,31 +39252,47 @@
       const eastConnX = Math.round(eastExitEndX - oakhavenWestTurnW);
 
       drawUrbanPavedRoad(oakhavenWestTurnX, 0, oakhavenWestTurnW, southPavedEndY);
+      drawUrbanPavedRoad(oakhavenWestTurnX, rbCy, oakhavenWestTurnW, (southBlvdY + oakhavenWestTurnW) - rbCy);
       drawUrbanPavedRoadH(westExitEndX, westExitY, oakhavenBlvdEastEndX - westExitEndX, oakhavenWestTurnW);
       // Clean concrete east end-cap past Oakhaven Animal Hospital
       ctx.fillStyle = '#94a3b8';
       ctx.fillRect(oakhavenBlvdEastEndX - 5, westExitY, 5, Math.round(oakhavenWestTurnW));
       ctx.fillStyle = '#64748b';
       ctx.fillRect(oakhavenBlvdEastEndX - 7, westExitY + 5, 2, Math.round(oakhavenWestTurnW - 10));
+      drawUrbanPavedRoadH(westExitEndX, southBlvdY, oakhavenBlvdEastEndX - westExitEndX, oakhavenWestTurnW);
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillRect(oakhavenBlvdEastEndX - 5, southBlvdY, 5, Math.round(oakhavenWestTurnW));
+      ctx.fillStyle = '#64748b';
+      ctx.fillRect(oakhavenBlvdEastEndX - 7, southBlvdY + 5, 2, Math.round(oakhavenWestTurnW - 10));
       drawUrbanPavedRoadH(willowWestEndX, northWestPavedY, willowEastEndX - willowWestEndX, oakhavenWestTurnW);
       drawUrbanPavedRoadH(willowWestEndX, barberRoadY, oakhavenWestTurnX + oakhavenWestTurnW - willowWestEndX, oakhavenWestTurnW);
       const eastConnTopY = Math.round(road3Y + road3H);
-      drawUrbanPavedRoad(eastConnX, eastConnTopY, oakhavenWestTurnW, (westExitY + oakhavenWestTurnW) - eastConnTopY);
+      drawUrbanPavedRoad(eastConnX, eastConnTopY, oakhavenWestTurnW, (southBlvdY + oakhavenWestTurnW) - eastConnTopY);
       const westPavedTopY = Math.round(road3Y + road3H);
-      const westPavedBotY = Math.round(westExitY + oakhavenWestTurnW);
+      const westPavedBotY = Math.round(southBlvdY + oakhavenWestTurnW);
       drawUrbanPavedRoad(westPavedConnX, westPavedTopY, oakhavenWestTurnW, westPavedBotY - westPavedTopY);
 
-      // Open intersection seams where the East N-S Connector crosses Willow Way East & joins Oakhaven Blvd East
+      // Open intersection seams where the East N-S Connector crosses Willow Way East, Oakhaven Blvd East & South Paved Road
       ctx.fillStyle = this.urbanRoadPattern || '#444d5c';
       ctx.fillRect(eastConnX - 6, northWestPavedY + 7, Math.round(oakhavenWestTurnW + 12), Math.round(oakhavenWestTurnW - 14));
       ctx.fillRect(eastConnX + 7, northWestPavedY - 6, Math.round(oakhavenWestTurnW - 14), Math.round(oakhavenWestTurnW + 12));
       ctx.fillRect(eastConnX - 6, westExitY + 7, Math.round(oakhavenWestTurnW + 12), Math.round(oakhavenWestTurnW - 14));
-      ctx.fillRect(eastConnX + 7, westExitY - 6, Math.round(oakhavenWestTurnW - 14), Math.round(oakhavenWestTurnW));
-      // Re-stroke continuous south concrete shoulder across the East Connector T-junction
+      ctx.fillRect(eastConnX + 7, westExitY - 6, Math.round(oakhavenWestTurnW - 14), Math.round(oakhavenWestTurnW + 12));
+      ctx.fillRect(eastConnX - 6, southBlvdY + 7, Math.round(oakhavenWestTurnW + 12), Math.round(oakhavenWestTurnW - 14));
+      ctx.fillRect(eastConnX + 7, southBlvdY - 6, Math.round(oakhavenWestTurnW - 14), Math.round(oakhavenWestTurnW));
+      // Re-stroke continuous south concrete shoulder across the East Connector South T-junction
       ctx.fillStyle = '#94a3b8';
-      ctx.fillRect(eastConnX - 6, westExitY + Math.round(oakhavenWestTurnW) - 5, Math.round(oakhavenWestTurnW + 12), 5);
+      ctx.fillRect(eastConnX - 6, southBlvdY + Math.round(oakhavenWestTurnW) - 5, Math.round(oakhavenWestTurnW + 12), 5);
       ctx.fillStyle = '#64748b';
-      ctx.fillRect(eastConnX - 6, westExitY + Math.round(oakhavenWestTurnW) - 7, Math.round(oakhavenWestTurnW + 12), 2);
+      ctx.fillRect(eastConnX - 6, southBlvdY + Math.round(oakhavenWestTurnW) - 7, Math.round(oakhavenWestTurnW + 12), 2);
+      // Open T-intersection where Roundabout South Stem joins South Paved Road
+      ctx.fillStyle = this.urbanRoadPattern || '#444d5c';
+      ctx.fillRect(Math.round(oakhavenWestTurnX - 6), southBlvdY + 7, Math.round(oakhavenWestTurnW + 12), Math.round(oakhavenWestTurnW - 14));
+      ctx.fillRect(Math.round(oakhavenWestTurnX + 7), southBlvdY - 6, Math.round(oakhavenWestTurnW - 14), Math.round(oakhavenWestTurnW));
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillRect(Math.round(oakhavenWestTurnX - 6), southBlvdY + Math.round(oakhavenWestTurnW) - 5, Math.round(oakhavenWestTurnW + 12), 5);
+      ctx.fillStyle = '#64748b';
+      ctx.fillRect(Math.round(oakhavenWestTurnX - 6), southBlvdY + Math.round(oakhavenWestTurnW) - 7, Math.round(oakhavenWestTurnW + 12), 2);
       // Open 4-way intersection box so Willow Way (West & East) merges seamlessly into Oakhaven Blvd
       ctx.fillStyle = this.urbanRoadPattern || '#444d5c';
       ctx.fillRect(Math.round(oakhavenWestTurnX - 6), northWestPavedY + 7, Math.round(oakhavenWestTurnW + 12), Math.round(oakhavenWestTurnW - 14));
@@ -36404,14 +39305,16 @@
       ctx.fillRect(westPavedConnX + 7, barberRoadY + 7, Math.round(oakhavenWestTurnW), Math.round(oakhavenWestTurnW - 14));
       ctx.fillRect(westPavedConnX + 7, northWestPavedY + 7, Math.round(oakhavenWestTurnW), Math.round(oakhavenWestTurnW - 14));
       ctx.fillRect(westPavedConnX + 7, westExitY + 7, Math.round(oakhavenWestTurnW), Math.round(oakhavenWestTurnW - 14));
-      ctx.fillRect(westPavedConnX + 7, westExitY - 6, Math.round(oakhavenWestTurnW - 14), Math.round(oakhavenWestTurnW));
+      ctx.fillRect(westPavedConnX + 7, westExitY - 6, Math.round(oakhavenWestTurnW - 14), Math.round(oakhavenWestTurnW + 12));
+      ctx.fillRect(westPavedConnX + 7, southBlvdY + 7, Math.round(oakhavenWestTurnW), Math.round(oakhavenWestTurnW - 14));
+      ctx.fillRect(westPavedConnX + 7, southBlvdY - 6, Math.round(oakhavenWestTurnW - 14), Math.round(oakhavenWestTurnW));
       // Re-draw outer west & south concrete shoulders around the SW L-corner
       ctx.fillStyle = '#94a3b8';
-      ctx.fillRect(westPavedConnX, westExitY, 5, Math.round(oakhavenWestTurnW));
-      ctx.fillRect(westPavedConnX, westExitY + Math.round(oakhavenWestTurnW) - 5, Math.round(oakhavenWestTurnW) + 6, 5);
+      ctx.fillRect(westPavedConnX, southBlvdY, 5, Math.round(oakhavenWestTurnW));
+      ctx.fillRect(westPavedConnX, southBlvdY + Math.round(oakhavenWestTurnW) - 5, Math.round(oakhavenWestTurnW) + 6, 5);
       ctx.fillStyle = '#64748b';
-      ctx.fillRect(westPavedConnX + 5, westExitY, 2, Math.round(oakhavenWestTurnW) - 5);
-      ctx.fillRect(westPavedConnX + 5, westExitY + Math.round(oakhavenWestTurnW) - 7, Math.round(oakhavenWestTurnW) + 1, 2);
+      ctx.fillRect(westPavedConnX + 5, southBlvdY, 2, Math.round(oakhavenWestTurnW) - 5);
+      ctx.fillRect(westPavedConnX + 5, southBlvdY + Math.round(oakhavenWestTurnW) - 7, Math.round(oakhavenWestTurnW) + 1, 2);
 
       // Urban Paved Roundabout at South End
       ctx.fillStyle = '#64748b';
@@ -36420,9 +39323,10 @@
       ctx.beginPath(); ctx.arc(rbCx, rbCy, rbOuterR + 4, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = this.urbanRoadPattern || '#444d5c';
       ctx.beginPath(); ctx.arc(rbCx, rbCy, rbOuterR, 0, Math.PI * 2); ctx.fill();
-      // Open road mouths so N entry and W exit merge seamlessly without shoulder seams
+      // Open road mouths so N entry, S stem, and W/E exits merge seamlessly without shoulder seams
       ctx.fillStyle = this.urbanRoadPattern || '#444d5c';
       ctx.fillRect(Math.round(oakhavenWestTurnX + 7), Math.round(rbCy - rbOuterR - 4), Math.round(oakhavenWestTurnW - 14), 24);
+      ctx.fillRect(Math.round(oakhavenWestTurnX + 7), Math.round(rbCy + rbOuterR - 16), Math.round(oakhavenWestTurnW - 14), 24);
       ctx.fillRect(Math.round(rbCx - rbOuterR - 4), westExitY + 7, 24, Math.round(oakhavenWestTurnW - 14));
       ctx.fillRect(Math.round(rbCx + rbOuterR - 20), westExitY + 7, 24, Math.round(oakhavenWestTurnW - 14));
       // Dashed yellow circular lane line
@@ -36462,11 +39366,10 @@
         ctx.fillRect(lx - 2, cy - 31, 8, 6);
       });
 
-      // 4 City-Block Crosswalk Markers & Streetlight Corners along the Roundabout West Exit (Oakhaven Blvd)
-      // and the parallel East-West Paved Road 1 block north
+      // 4 City-Block Crosswalk Markers & Streetlight Corners along South Paved Road, Oakhaven Blvd & Willow Way West
       [-6.45 * S, -11.45 * S, -16.45 * S, -21.05 * S].forEach(bx => {
         const cx = Math.round(bx);
-        [westExitY, northWestPavedY].forEach(roadTopY => {
+        [southBlvdY, westExitY, northWestPavedY].forEach(roadTopY => {
           ctx.fillStyle = '#e2e8f0';
           for (let sy = roadTopY + 10; sy < roadTopY + oakhavenWestTurnW - 10; sy += 11) {
             ctx.fillRect(cx, Math.round(sy), 14, 6);
@@ -36493,18 +39396,20 @@
         ctx.fillRect(cx + 2, ly - 31, 8, 6);
       });
 
-      // 3 City-Block Crosswalk Markers & Streetlight Corners along Oakhaven Blvd East (3 blocks east of Roundabout)
+      // 3 City-Block Crosswalk Markers & Streetlight Corners along Oakhaven Blvd East & South Paved Road East
       [5.45 * S, 10.45 * S, 13.15 * S].forEach(bx => {
         const cx = Math.round(bx);
-        ctx.fillStyle = '#e2e8f0';
-        for (let sy = westExitY + 10; sy < westExitY + oakhavenWestTurnW - 10; sy += 11) {
-          ctx.fillRect(cx, Math.round(sy), 14, 6);
-        }
-        const ly = westExitY - 6;
-        ctx.fillStyle = '#1e293b';
-        ctx.fillRect(cx + 4, ly - 26, 4, 28);
-        ctx.fillStyle = '#fef08a';
-        ctx.fillRect(cx + 2, ly - 31, 8, 6);
+        [westExitY, southBlvdY].forEach(roadTopY => {
+          ctx.fillStyle = '#e2e8f0';
+          for (let sy = roadTopY + 10; sy < roadTopY + oakhavenWestTurnW - 10; sy += 11) {
+            ctx.fillRect(cx, Math.round(sy), 14, 6);
+          }
+          const ly = roadTopY - 6;
+          ctx.fillStyle = '#1e293b';
+          ctx.fillRect(cx + 4, ly - 26, 4, 28);
+          ctx.fillStyle = '#fef08a';
+          ctx.fillRect(cx + 2, ly - 31, 8, 6);
+        });
       });
 
       // OAKHAVEN FISHMONGER SHOP (West of Oakhaven Bistro: x = -23.6..-18.8, y = 28.8..31.7)
@@ -38409,6 +41314,50 @@
           }
           ctx.restore();
         }
+
+        // 6. Oakhaven Card Grading (South of Fishmonger along South Paved Road: x = -23.80..-18.60, base y = 37.58)
+        if (this.isImgReady('card_grading_shop')) {
+          const gImg = this.owSprites.card_grading_shop;
+          const dw = Math.round(5.20 * S);
+          const dh = Math.round(dw * (gImg.height / gImg.width));
+          const dx = Math.round(-23.80 * S);
+          const gradingRoadTopY = Math.round(37.58 * S);
+          const dy = Math.round(gradingRoadTopY - dh + 2);
+          ctx.fillStyle = this.flagstonePattern || '#988878';
+          ctx.fillRect(dx - 4, gradingRoadTopY - 6, dw + 8, Math.round(southBlvdY - gradingRoadTopY + 8));
+          drawDrivewayPath(-21.55 * S, gradingRoadTopY - 2, 0.70 * S, southBlvdY - gradingRoadTopY + 6);
+          ctx.fillStyle = 'rgba(18, 12, 8, 0.28)';
+          ctx.beginPath();
+          ctx.ellipse(dx + dw / 2, gradingRoadTopY - 2, Math.round(dw * 0.48), 9, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.save();
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+          ctx.drawImage(gImg, dx, dy, dw, dh);
+          if (isLit) {
+            ctx.globalCompositeOperation = 'lighter';
+            const gradingLights = [
+              [0.50, 0.14, 34, 0.36, '253, 224, 71'], // Glowing glass dome cupola
+              [0.19, 0.68, 44, 0.44, '251, 191, 36'], // Left slab gallery window
+              [0.81, 0.68, 44, 0.44, '251, 191, 36'], // Right appraisal window
+              [0.36, 0.80, 22, 0.56, '253, 224, 71'], // Left standing globe bollard
+              [0.64, 0.80, 22, 0.56, '253, 224, 71'], // Right standing globe bollard
+              [0.50, 0.72, 32, 0.40, '253, 224, 71']  // Mahogany doors & transom
+            ];
+            gradingLights.forEach(([fx, fy, gr, ga, rgb]) => {
+              const gx = dx + dw * fx;
+              const gy = dy + dh * fy;
+              const glow = ctx.createRadialGradient(gx, gy, 2, gx, gy, gr);
+              glow.addColorStop(0, `rgba(${rgb}, ${(ga * glowMult).toFixed(3)})`);
+              glow.addColorStop(1, `rgba(${rgb}, 0)`);
+              ctx.fillStyle = glow;
+              ctx.beginPath();
+              ctx.arc(gx, gy, gr, 0, Math.PI * 2);
+              ctx.fill();
+            });
+          }
+          ctx.restore();
+        }
       };
 
       drawFishmongerShop();
@@ -38503,17 +41452,30 @@
       drawStoneCurbH(-20.25 * S, westExitY - 6, (-15.85 - (-20.25)) * S, 'bot');
       drawStoneCurbH(-15.15 * S, westExitY - 6, (-9.55 - (-15.15)) * S, 'bot');
       drawStoneCurbH(-8.85 * S, westExitY - 6, (rbCx - rbOuterR) - (-8.85 * S) + 12, 'bot');
-      drawStoneCurbH(westPavedConnX, westExitY + oakhavenWestTurnW, (rbCx - rbOuterR) - westPavedConnX + 12, 'top');
+      drawStoneCurbH(westPavedConnX + oakhavenWestTurnW, westExitY + oakhavenWestTurnW, (rbCx - rbOuterR) - (westPavedConnX + oakhavenWestTurnW) + 12, 'top');
       // Vertical stone curbs along West N-S Paved Connector
-      drawStoneCurbV(westPavedConnX - 6, road3Y + road3H, (westExitY + oakhavenWestTurnW + 6) - (road3Y + road3H), 'right');
+      drawStoneCurbV(westPavedConnX - 6, road3Y + road3H, (southBlvdY + oakhavenWestTurnW + 6) - (road3Y + road3H), 'right');
       drawStoneCurbV(westPavedConnX + oakhavenWestTurnW, road3Y + road3H, barberRoadY - (road3Y + road3H), 'left');
       drawStoneCurbV(westPavedConnX + oakhavenWestTurnW, barberRoadY + oakhavenWestTurnW, northWestPavedY - (barberRoadY + oakhavenWestTurnW), 'left');
       drawStoneCurbV(westPavedConnX + oakhavenWestTurnW, northWestPavedY + oakhavenWestTurnW, westExitY - (northWestPavedY + oakhavenWestTurnW), 'left');
+      drawStoneCurbV(westPavedConnX + oakhavenWestTurnW, westExitY + oakhavenWestTurnW, southBlvdY - (westExitY + oakhavenWestTurnW), 'left');
       // Stone curbs along Oakhaven Blvd East extension (east of Roundabout past East Connector)
       drawStoneCurbH(rbCx + rbOuterR - 12, westExitY - 6, eastConnX - (rbCx + rbOuterR - 12), 'bot');
       drawStoneCurbH(eastConnX + oakhavenWestTurnW, westExitY - 6, oakhavenBlvdEastEndX - (eastConnX + oakhavenWestTurnW), 'bot');
-      drawStoneCurbH(rbCx + rbOuterR - 12, westExitY + oakhavenWestTurnW, oakhavenBlvdEastEndX - (rbCx + rbOuterR - 12), 'top');
+      drawStoneCurbH(rbCx + rbOuterR - 12, westExitY + oakhavenWestTurnW, eastConnX - (rbCx + rbOuterR - 12), 'top');
+      drawStoneCurbH(eastConnX + oakhavenWestTurnW, westExitY + oakhavenWestTurnW, oakhavenBlvdEastEndX - (eastConnX + oakhavenWestTurnW), 'top');
       drawStoneCurbV(oakhavenBlvdEastEndX, westExitY - 6, oakhavenWestTurnW + 12, 'left');
+      // Stone curbs along Roundabout South Stem, East N-S Connector lower span & South Paved Road
+      drawStoneCurbV(oakhavenWestTurnX - 6, rbCy + rbOuterR - 12, southBlvdY - (rbCy + rbOuterR - 12), 'right');
+      drawStoneCurbV(oakhavenWestTurnX + oakhavenWestTurnW, rbCy + rbOuterR - 12, southBlvdY - (rbCy + rbOuterR - 12), 'left');
+      drawStoneCurbV(eastConnX - 6, westExitY + oakhavenWestTurnW, southBlvdY - (westExitY + oakhavenWestTurnW), 'right');
+      drawStoneCurbV(eastConnX + oakhavenWestTurnW, westExitY + oakhavenWestTurnW, southBlvdY - (westExitY + oakhavenWestTurnW), 'left');
+      drawStoneCurbH(westPavedConnX + oakhavenWestTurnW, southBlvdY - 6, (-21.55 * S) - (westPavedConnX + oakhavenWestTurnW), 'bot');
+      drawStoneCurbH(-20.85 * S, southBlvdY - 6, oakhavenWestTurnX - (-20.85 * S), 'bot');
+      drawStoneCurbH(oakhavenWestTurnX + oakhavenWestTurnW, southBlvdY - 6, eastConnX - (oakhavenWestTurnX + oakhavenWestTurnW), 'bot');
+      drawStoneCurbH(eastConnX + oakhavenWestTurnW, southBlvdY - 6, oakhavenBlvdEastEndX - (eastConnX + oakhavenWestTurnW), 'bot');
+      drawStoneCurbH(westPavedConnX, southBlvdY + oakhavenWestTurnW, oakhavenBlvdEastEndX - westPavedConnX, 'top');
+      drawStoneCurbV(oakhavenBlvdEastEndX, southBlvdY - 6, oakhavenWestTurnW + 12, 'left');
       drawStoneCurbV(oakhavenTurnX - 6, 0, road1Y, 'right');
 
       // Upper Road Bottom Curbs (top lip of middle grass plots)
@@ -41693,6 +44655,9 @@
       } else if (area === 'animal_hospital_interior') {
         if (!this.vetNpc) this.vetNpc = this.createVetNpc();
         active.push(this.vetNpc);
+      } else if (area === 'card_grading_shop_interior') {
+        if (!this.cardGraderNpc) this.cardGraderNpc = this.createCardGraderNpc();
+        active.push(this.cardGraderNpc);
       } else if (area === 'west_house_1_interior') {
         if (!this.westOtisNpc) this.westOtisNpc = this.createWestOtisNpc();
         active.push(this.westOtisNpc);
@@ -41923,6 +44888,8 @@
         this.renderClothingStoreInterior();
       } else if (this.currentArea === 'animal_hospital_interior') {
         this.renderAnimalHospitalInterior();
+      } else if (this.currentArea === 'card_grading_shop_interior') {
+        this.renderCardGradingShopInterior();
       } else if (this.currentArea === 'west_house_1_interior') {
         this.renderWestHouse1Interior();
       } else if (this.currentArea === 'west_house_2_interior') {

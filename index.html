@@ -710,19 +710,32 @@
     <!-- Stardew Valley / Pokémon Style Character Creator Modal -->
     <div class="modal-overlay hidden" id="creator-modal">
       <div class="creator-modal-dialog">
+        <span class="binder-brass-corner top-left" aria-hidden="true"></span>
+        <span class="binder-brass-corner bottom-left" aria-hidden="true"></span>
+        <span class="binder-brass-corner top-right" aria-hidden="true"></span>
+        <span class="binder-brass-corner bottom-right" aria-hidden="true"></span>
+
         <div class="creator-header">
-          <div>
-            <h2 class="creator-title">TRAVELER & WORLD CREATOR</h2>
-            <p class="creator-sub">Customize your pixel-art duelist and name your new world</p>
+          <div class="creator-header-brand">
+            <span class="creator-emblem" aria-hidden="true">⚔️</span>
+            <div>
+              <h2 class="creator-title">TRAVELER CREATOR</h2>
+              <p class="creator-sub">Choose your duelist and step into Oakhaven</p>
+            </div>
           </div>
-          <button class="ui-btn secondary" id="btn-cc-random" title="Randomize Appearance">🎲 Randomize</button>
         </div>
 
         <div class="creator-body">
-          <!-- Left: Live 4x Pixel-Art Preview Stage -->
+          <!-- Left: Illuminated Pedestal Stage -->
           <div class="creator-preview-col">
-            <div class="creator-canvas-box">
-              <canvas id="cc-preview-canvas" width="160" height="180"></canvas>
+            <div class="creator-stage-frame">
+              <div class="creator-canvas-box">
+                <canvas id="cc-preview-canvas" width="196" height="200"></canvas>
+              </div>
+              <div class="cc-stage-nameplate" id="cc-stage-nameplate">
+                <span class="cc-np-name" id="cc-np-name">Asher</span>
+                <span class="cc-np-tag" id="cc-np-tag">Classic Duelist</span>
+              </div>
             </div>
             <div class="creator-dir-row">
               <button type="button" class="cc-dir-btn active" data-dir="down">⬇️ Front</button>
@@ -730,63 +743,31 @@
               <button type="button" class="cc-dir-btn" data-dir="right">➡️ Right</button>
               <button type="button" class="cc-dir-btn" data-dir="up">⬆️ Back</button>
             </div>
-            <label class="ow-check-label" style="margin-top: 4px;">
+            <label class="cc-walk-toggle">
               <input type="checkbox" id="cc-toggle-walk" checked>
               <span>Preview Walk Cycle</span>
             </label>
           </div>
 
-          <!-- Right: Customization Options -->
+          <!-- Right: Duelist Registry Options -->
           <div class="creator-options-col">
-            <div class="cc-inputs-row">
-              <div class="cc-field">
-                <label for="cc-player-name">Duelist Name</label>
-                <input type="text" id="cc-player-name" maxlength="16" value="Asher" placeholder="Enter name...">
+            <div class="cc-section">
+              <span class="cc-label">Choose Your Traveler</span>
+              <div class="cc-character-grid" id="cc-gender-options"></div>
+              <div class="cc-char-bio" id="cc-char-bio"></div>
+            </div>
+
+            <div class="cc-section">
+              <div class="cc-inputs-row">
+                <div class="cc-field">
+                  <label for="cc-player-name">Duelist Name</label>
+                  <input type="text" id="cc-player-name" maxlength="16" value="Asher" placeholder="Enter name...">
+                </div>
               </div>
-              <div class="cc-field">
-                <label for="cc-world-name">World / Town Name</label>
-                <input type="text" id="cc-world-name" maxlength="18" value="Oakhaven" placeholder="Enter world name...">
-              </div>
             </div>
 
-            <div class="cc-group">
-              <span class="cc-label">Skin Tone</span>
-              <div class="cc-swatch-row" id="cc-skin-swatches"></div>
-            </div>
-
-            <div class="cc-group">
-              <span class="cc-label">Hairstyle</span>
-              <div class="cc-pill-row" id="cc-hair-styles"></div>
-            </div>
-
-            <div class="cc-group">
-              <span class="cc-label">Hair Color</span>
-              <div class="cc-swatch-row" id="cc-hair-colors"></div>
-            </div>
-
-            <div class="cc-group">
-              <span class="cc-label">Eye Color</span>
-              <div class="cc-swatch-row" id="cc-eye-colors"></div>
-            </div>
-
-            <div class="cc-group">
-              <span class="cc-label">Outfit Style</span>
-              <div class="cc-pill-row" id="cc-outfit-styles"></div>
-            </div>
-
-            <div class="cc-group">
-              <span class="cc-label">Outfit Color</span>
-              <div class="cc-swatch-row" id="cc-outfit-colors"></div>
-            </div>
-
-            <div class="cc-group">
-              <span class="cc-label">Pants Color</span>
-              <div class="cc-swatch-row" id="cc-pants-colors"></div>
-            </div>
-
-            <div class="cc-group">
-              <span class="cc-label">Headgear / Hat</span>
-              <div class="cc-pill-row" id="cc-hat-styles"></div>
+            <div class="cc-shop-tip">
+              ✂️ Visit Oakhaven's Barber &amp; Tailor in town to unlock additional hairstyles &amp; outfits.
             </div>
           </div>
         </div>
@@ -924,6 +905,12 @@
               </div>
               <div class="shop-class-tray-grid" id="shop-refillable-packs-grid" title="Buy a $1 empty Fillable Class Pack, fill it with 5 matching cards and permanently seal (+25% bonus) to sell to Leo!">
                 <!-- Dynamically populated 3x3 tray of all 9 class refillable packs -->
+              </div>
+              <div class="shop-grading-shelf" id="shop-grading-shelf">
+                <button type="button" class="ui-btn shop-shelf-btn" id="btn-shop-buy-pro-1" title="Slip onto any raw card to cut wear by 75%">🛡️ Pro Sleeve ×1 • $0.50</button>
+                <button type="button" class="ui-btn shop-shelf-btn" id="btn-shop-buy-pro-5" title="Bundle of 5 Pro Sleeves (Save $0.50)">🛡️ Pro Sleeves ×5 • $2.00</button>
+                <button type="button" class="ui-btn shop-shelf-btn" id="btn-shop-buy-matte-1" title="Slip onto any raw card to cut wear by 95%">✨ Pro Matte ×1 • $1.00</button>
+                <button type="button" class="ui-btn shop-shelf-btn" id="btn-shop-buy-matte-5" title="Bundle of 5 Pro Matte Sleeves (Save $1.00)">✨ Pro Matte ×5 • $4.00</button>
               </div>
             </div>
           </section>
@@ -1630,6 +1617,15 @@
                 </div>
                 <span class="phone-app-name">Inventory</span>
               </div>
+
+              <!-- App 11: MGS — Mike's Grading Scale -->
+              <div class="phone-app-icon-item" data-app="mgs" id="app-btn-mgs">
+                <div class="phone-icon-box bg-mgs">
+                  <img src="Sprites/Overworld/phone_icon_mgs.png?v=1.0" class="phone-app-img" alt="MGS">
+                  <span class="phone-app-unread-dot hidden" id="dot-mgs"></span>
+                </div>
+                <span class="phone-app-name">MGS</span>
+              </div>
             </div>
 
             <!-- Quick Widget: Today's Town Event Summary -->
@@ -1737,6 +1733,23 @@
               <button type="button" class="phone-sys-btn" id="btn-phone-sys-creator">👤 Character &amp; World</button>
               <button type="button" class="phone-sys-btn" id="btn-phone-sys-duel">🃏 Quick Duel Arena</button>
               <button type="button" class="phone-sys-btn" id="btn-phone-sys-sound">🔊 Sound: ON</button>
+            </div>
+          </div>
+
+          <!-- App View 6: MGS (Mike's Grading Scale) -->
+          <div class="phone-view phone-sub-view hidden" id="phone-view-mgs">
+            <div class="phone-app-header">
+              <button class="phone-back-btn" id="btn-mgs-back">‹ Home</button>
+              <div class="phone-app-title">🏆 MGS — Mike's Grading Scale</div>
+              <span style="width: 36px;"></span>
+            </div>
+            <div class="phone-market-tabs mgs-tabs">
+              <button type="button" class="phone-market-tab-btn" id="tab-mgs-schedule">📅 Drop Off <span id="mgs-sched-count"></span></button>
+              <button type="button" class="phone-market-tab-btn active" id="tab-mgs-status">📊 In Grading <span id="mgs-grading-count"></span></button>
+              <button type="button" class="phone-market-tab-btn" id="tab-mgs-pickup">📦 Pickup <span id="mgs-pickup-count"></span></button>
+            </div>
+            <div class="phone-mgs-body" id="phone-mgs-body">
+              <!-- Dynamically rendered MGS tabs -->
             </div>
           </div>
         </div>
@@ -1882,6 +1895,7 @@
 
   <script src="js/audio.js?v=2.76"></script>
   <script src="js/character_sprites.js?v=2.87"></script>
+  <script src="js/card_grading.js?v=1.0"></script>
   <script src="js/overworld.js?v=3.27"></script>
   <script src="js/gwent_cards.js?v=2.96"></script>
   <script src="js/game.js?v=3.04"></script>

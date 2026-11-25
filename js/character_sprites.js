@@ -141,6 +141,49 @@
     { id: 'crown', name: 'Mythos Circlet' }
   ];
 
+  const PLAYER_GENDERS = [
+    {
+      id: 'male',
+      name: 'Classic Duelist',
+      tag: 'Male • Blue Jacket',
+      desc: 'Spiky chestnut hair, cobalt zip jacket, slate jeans & boots.',
+      sprite: 'player_hero_d',
+      defaultName: 'Asher',
+      accent: '#3b82f6',
+      starterHair: 'spiky',
+      starterOutfit: 'default_jacket'
+    },
+    {
+      id: 'male_coastal',
+      name: 'Harbor Ace',
+      tag: 'Male • Coastal Knit',
+      desc: 'Platinum-blonde curtain waves, cream coastal knit sweater, charcoal chinos & suede boots.',
+      sprite: 'player_platinum_coastal_d',
+      defaultName: 'Liam',
+      accent: '#0ea5e9',
+      starterHair: 'platinum_curtain',
+      starterOutfit: 'coastal_knit'
+    },
+    {
+      id: 'female',
+      name: 'Meadow Traveler',
+      tag: 'Female • Sundress',
+      desc: 'Chestnut twin braids with sage bows, sunlit sundress & leather boots.',
+      sprite: 'woman_braids_sundress_d',
+      defaultName: 'Wren',
+      accent: '#eab308'
+    },
+    {
+      id: 'female_street',
+      name: 'Street Ace',
+      tag: 'Female • Bomber Jacket',
+      desc: 'Obsidian bob with gold clip, crimson bomber jacket, cuffed jeans & sneakers.',
+      sprite: 'woman_bob_jacket_d',
+      defaultName: 'Sora',
+      accent: '#ef4444'
+    }
+  ];
+
   const PLAYER_HAIR_OPTIONS = [
     {
       id: 'spiky',
@@ -194,6 +237,15 @@
       tier: 'Master Cut',
       icon: '🌙',
       desc: 'Sleek jet-black swept bangs gathered into a crisp tied-back ponytail.',
+      isStarter: false
+    },
+    {
+      id: 'platinum_curtain',
+      name: 'Platinum Curtain Waves',
+      price: 5,
+      tier: 'Styled Cut',
+      icon: '❄️',
+      desc: 'Light platinum-blonde center-parted wavy curtain hair framing the face.',
       isStarter: false
     }
   ];
@@ -258,6 +310,16 @@
       desc: 'Charcoal and electric-cyan techwear windbreaker jacket paired with black tech pants and neon high-tops.',
       colors: { base: '#0ea5e9' },
       isStarter: false
+    },
+    {
+      id: 'coastal_knit',
+      name: 'Harbor Coastal Knit',
+      price: 6,
+      tier: 'Smart Casual',
+      icon: '🧶',
+      desc: 'Warm cream cable-knit sweater layered over an ocean-blue collared shirt, charcoal chinos, and tan suede boots.',
+      colors: { base: '#0284c7' },
+      isStarter: false
     }
   ];
 
@@ -268,7 +330,8 @@
       sovereign_coat: 'player_spiky_sovereign_d',
       emerald_hoodie: 'player_spiky_hoodie_d',
       ranger_vest: 'player_spiky_ranger_d',
-      cyber_street: 'player_spiky_cyber_d'
+      cyber_street: 'player_spiky_cyber_d',
+      coastal_knit: 'player_spiky_coastal_d'
     },
     swept_blonde: {
       default_jacket: 'player_swept_default_d',
@@ -276,7 +339,8 @@
       sovereign_coat: 'player_swept_sovereign_d',
       emerald_hoodie: 'player_swept_hoodie_d',
       ranger_vest: 'player_swept_ranger_d',
-      cyber_street: 'player_swept_cyber_d'
+      cyber_street: 'player_swept_cyber_d',
+      coastal_knit: 'player_swept_coastal_d'
     },
     crimson_mohawk: {
       default_jacket: 'player_mohawk_default_d',
@@ -284,7 +348,8 @@
       sovereign_coat: 'player_mohawk_sovereign_d',
       emerald_hoodie: 'player_mohawk_hoodie_d',
       ranger_vest: 'player_mohawk_ranger_d',
-      cyber_street: 'player_mohawk_cyber_d'
+      cyber_street: 'player_mohawk_cyber_d',
+      coastal_knit: 'player_mohawk_coastal_d'
     },
     silver_wolf: {
       default_jacket: 'player_silver_default_d',
@@ -292,7 +357,8 @@
       sovereign_coat: 'player_silver_sovereign_d',
       emerald_hoodie: 'player_silver_hoodie_d',
       ranger_vest: 'player_silver_ranger_d',
-      cyber_street: 'player_silver_cyber_d'
+      cyber_street: 'player_silver_cyber_d',
+      coastal_knit: 'player_silver_coastal_d'
     },
     emerald_curls: {
       default_jacket: 'player_curls_default_d',
@@ -300,7 +366,8 @@
       sovereign_coat: 'player_curls_sovereign_d',
       emerald_hoodie: 'player_curls_hoodie_d',
       ranger_vest: 'player_curls_ranger_d',
-      cyber_street: 'player_curls_cyber_d'
+      cyber_street: 'player_curls_cyber_d',
+      coastal_knit: 'player_curls_coastal_d'
     },
     midnight_ponytail: {
       default_jacket: 'player_ponytail_default_d',
@@ -308,11 +375,23 @@
       sovereign_coat: 'player_ponytail_sovereign_d',
       emerald_hoodie: 'player_ponytail_hoodie_d',
       ranger_vest: 'player_ponytail_ranger_d',
-      cyber_street: 'player_ponytail_cyber_d'
+      cyber_street: 'player_ponytail_cyber_d',
+      coastal_knit: 'player_ponytail_coastal_d'
+    },
+    platinum_curtain: {
+      default_jacket: 'player_platinum_default_d',
+      varsity_crimson: 'player_platinum_varsity_d',
+      sovereign_coat: 'player_platinum_sovereign_d',
+      emerald_hoodie: 'player_platinum_hoodie_d',
+      ranger_vest: 'player_platinum_ranger_d',
+      cyber_street: 'player_platinum_cyber_d',
+      coastal_knit: 'player_platinum_coastal_d'
     }
   };
 
   function resolvePlayerCustomSprite(app = {}) {
+    if (app?.gender === 'female') return 'woman_braids_sundress_d';
+    if (app?.gender === 'female_street') return 'woman_bob_jacket_d';
     const hair = Object.prototype.hasOwnProperty.call(PLAYER_SPRITE_MATRIX, app?.hairStyle)
       ? app.hairStyle
       : 'spiky';
@@ -324,6 +403,7 @@
   }
 
   const DEFAULT_APPEARANCE = {
+    gender: 'male',
     name: 'Asher',
     worldName: 'Oakhaven',
     skin: 'light',
@@ -418,7 +498,7 @@
   }
   preloadCharacterSheets();
 
-  const CUSTOM_SPRITE_VER = '7';
+  const CUSTOM_SPRITE_VER = '8';
   const customSpriteBank = new Map();
   function getCustomSpriteImage(id) {
     if (!id) return null;
@@ -446,6 +526,10 @@
     'player_silver_default_d', 'player_silver_varsity_d', 'player_silver_sovereign_d', 'player_silver_hoodie_d', 'player_silver_ranger_d', 'player_silver_cyber_d',
     'player_curls_default_d', 'player_curls_varsity_d', 'player_curls_sovereign_d', 'player_curls_hoodie_d', 'player_curls_ranger_d', 'player_curls_cyber_d',
     'player_ponytail_default_d', 'player_ponytail_varsity_d', 'player_ponytail_sovereign_d', 'player_ponytail_hoodie_d', 'player_ponytail_ranger_d', 'player_ponytail_cyber_d',
+    'player_platinum_coastal_d', 'player_platinum_default_d', 'player_platinum_varsity_d', 'player_platinum_sovereign_d', 'player_platinum_hoodie_d', 'player_platinum_ranger_d', 'player_platinum_cyber_d',
+    'player_spiky_coastal_d', 'player_swept_coastal_d', 'player_mohawk_coastal_d', 'player_silver_coastal_d', 'player_curls_coastal_d', 'player_ponytail_coastal_d',
+    'woman_braids_sundress_d',
+    'woman_bob_jacket_d',
     'maya_d',
     'rocky_d', 'mom_d', 'shopkeeper_d', 'vet_hannah_d', 'fire_chief_d',
     'police_chief_d', 'mayor_donald_d', 'chef_marco_d', 'shaun_d', 'barber_enzo_d',
@@ -454,7 +538,7 @@
     'apt_nina_d', 'apt_miles_d', 'chloe_d', 'berto_d', 'rowan_d', 'jasper_d',
     'west_otis_d', 'west_maren_d', 'west_caleb_d', 'west_juniper_d', 'west_gideon_d',
     'fh1_martha_d', 'fh1_harlan_d', 'fh2_eleanor_d', 'fh2_arthur_d', 'arcade_zeke_d',
-    'pier_finn_d', 'farmstand_hazel_d', 'fishmonger_marina_d', 'barn_kid_toby_d', 'barn_kid_daisy_d', 'barn_kid_owen_d', 'barn_kid_poppy_d'
+    'pier_finn_d', 'farmstand_hazel_d', 'fishmonger_marina_d', 'grader_mike_d', 'barn_kid_toby_d', 'barn_kid_daisy_d', 'barn_kid_owen_d', 'barn_kid_poppy_d'
   ];
   for (const id of CUSTOM_SPRITE_IDS) getCustomSpriteImage(id);
 
@@ -1743,6 +1827,7 @@
     APPAREL_SHIRTS,
     APPAREL_PANTS,
     APPAREL_SHOES,
+    PLAYER_GENDERS,
     PLAYER_HAIR_OPTIONS,
     PLAYER_OUTFIT_OPTIONS,
     HAT_STYLES,
